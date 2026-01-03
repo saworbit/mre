@@ -70,6 +70,7 @@ Advanced **path_corner chain prediction** for moving platforms:
 | 💣 **Grenade Bounce Prediction** | 1-bounce physics for wall-bank shots and corner kills |
 | 🌈 **Gravity Arc Simulation** | Full parabolic trajectory for long-range lobs |
 | 🎯 **Predictive Aim** | Splash height variance + vertical lead + velocity smoothing |
+| 🎬 **Human-Like Aim Smoothing** | Pitch slew rate system (150-450°/s by skill) replaces aimbot snap-lock |
 | 🛡️ **Self-Risk Validation** | Aborts GL fire if self-splash risk < 128u |
 | 🔫 **Weapon-Aware Evasion** | Rocket zigzags, strafe flips, LG jump bias |
 

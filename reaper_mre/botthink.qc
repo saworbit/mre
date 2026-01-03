@@ -276,6 +276,10 @@ void () BotCheckPowerups =
 
 void () BotDead;
 
+// ===== ENHANCED AIM: Human-Like Aim Smoothing (Slew Rate) =====
+// Removes instant-snap "aimbot" behavior by limiting how fast the bot can
+// change its pitch (look up/down) per frame, creating human-like tracking
+// that can be dodged rather than perfect instant locking.
 void () checkyaw =
 {
    local vector los;
@@ -283,40 +287,51 @@ void () checkyaw =
    local float o_range;
    local float missile_factor;
    local vector spotty_squid;
-   local string st;
+   local float desired_pitch;
+   local float current_pitch;
+   local float diff;
+   local float turn_speed;
+   local float abs_diff;
 
+   // 1. Early exit if no enemy
+   if (!self.enemy) return;
+
+   // 2. Calculate lead target (standard logic)
    o_range = vlen ((self.enemy.origin - self.origin));
    if ((((self.weapon == IT_ROCKET_LAUNCHER) || (self.weapon == IT_NAILGUN)) || (self.weapon == IT_SUPER_NAILGUN)))
    {
       missile_factor = (o_range / (1900.000 + (random () * 700.000)));
-
    } //end if
    else
    {
       if ((self.weapon == IT_GRENADE_LAUNCHER))
       {
          missile_factor = (o_range / (1000.000 + (random () * 50.000)));
-
       } //end if
       else
       {
          missile_factor = CAM_IDLE;
       } //end if
    } //end if
+
+   // 3. Add "Human Error" Noise
+   // Bots aim slightly off-center at range, tightening as they get closer or gain focus
    if ((o_range > 300.000))
    {
       spotty_squid = ('9.000 9.000 8.000' * (random () - 0.500));
-
    } //end if
    else
    {
       spotty_squid = VEC_ORIGIN;
    } //end if
-   // Focus burst: high adrenaline tightens aim noise for clutch accuracy.
+
+   // Focus burst: high adrenaline tightens aim noise for clutch accuracy
    if ((self.adrenaline > 0.700))
    {
       spotty_squid = (spotty_squid * 0.500);
    } //end if
+
+   // Calculate final target point
    los = (((self.enemy.origin - self.origin) + (self.enemy.velocity * missile_factor)) + spotty_squid);
 
    // ===== TWEAK #2: Jump velocity pattern smoothing (stable arcs, anti-jitter) =====
@@ -348,14 +363,67 @@ void () checkyaw =
    // This is a "hook point" for jump trajectory calculations in botmove.qc / bot_ai.qc.
    // ===== END TWEAK #2 =====
 
+   // 4. NEW: Pitch Smoothing Logic (Slew Rate)
+   // Replaces instant ChangePitch with gradual rotation based on skill level
+
    los_angles = vectoangles (los);
-   self.ideal_pitch = los_angles_x;
-   if ((self.ideal_pitch > 180.000))
+
+   // Calculate desired pitch (-90 to 90 range)
+   desired_pitch = los_angles_x;
+   if ((desired_pitch > 180.000))
    {
-      self.ideal_pitch = (self.ideal_pitch - 360.000);
+      desired_pitch = (desired_pitch - 360.000);
    } //end if
-   ChangePitch ();
+
+   // Normalize current pitch to same range for comparison
+   current_pitch = self.angles_x;
+   if ((current_pitch > 180.000))
+   {
+      current_pitch = (current_pitch - 360.000);
+   } //end if
+
+   // Calculate difference
+   diff = (desired_pitch - current_pitch);
+
+   // Slew Rate: How many degrees can we turn this tick? (0.1s)
+   // Skill 0 (Easy): 15 deg/tick = 150 deg/s (Lazy tracking)
+   // Skill 3 (Nightmare): 45 deg/tick = 450 deg/s (Snappy but not instant)
+   turn_speed = (15.000 + (self.skil * 10.000));
+
+   // Get absolute value of diff manually (QuakeC has no fabs)
+   abs_diff = diff;
+   if ((abs_diff < 0.000))
+   {
+      abs_diff = (abs_diff * -1.000);
+   } //end if
+
+   // Apply smoothing
+   if ((abs_diff > turn_speed))
+   {
+      // If difference is too big, move only by turn_speed
+      if ((diff > 0.000))
+      {
+         current_pitch = (current_pitch + turn_speed);
+      } //end if
+      else
+      {
+         current_pitch = (current_pitch - turn_speed);
+      } //end if
+   } //end if
+   else
+   {
+      // Close enough—snap to desired to prevent jitter
+      current_pitch = desired_pitch;
+   } //end if
+
+   // 5. Apply Final Angle
+   self.ideal_pitch = current_pitch;
+   self.angles_x = current_pitch;
+
+   // NOTE: We do NOT call ChangePitch() because we handled pitch update manually above.
+   // The engine's ChangeYaw() still runs automatically for yaw (left/right) smoothing.
 }; //end of the function checkyaw
+// ===== END ENHANCED AIM =====
 
 void () BotPostThink =
 {

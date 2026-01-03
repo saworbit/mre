@@ -29,3 +29,9 @@ impulse 208
 skill 3
 give rockets 50
 impulse 208
+skill 3
+impulse 208
+skill 3
+impulse 208
+skill 3
+impulse 208
