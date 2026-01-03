@@ -215,8 +215,9 @@ launch_reaper_mre.bat 8 dm4
 **Debug Mode (verbose logging):**
 ```bash
 cd launch\quake-spasm
-quakespasm.exe -basedir . -game reaper_mre +map dm4 +skill 3 +deathmatch 1 +maxplayers 8 +impulse 208
+quakespasm.exe -basedir . -game reaper_mre -listen 8 +map dm4 +skill 3 +deathmatch 1 +maxplayers 8 +impulse 208
 ```
+- `-listen 8` = Run as listen server (keeps game running for observation)
 - `+skill 3` = Expert bots (full AI capabilities)
 - `+impulse 208` = Spawns bots via console command
 - Logs output to `qconsole.log`
@@ -423,12 +424,13 @@ launch_reaper_mre.bat 8 dm4
 cd launch\quake-spasm
 
 # Launch with debug flags
-quakespasm.exe -basedir . -game reaper_mre +map dm4 +skill 3 +deathmatch 1 +maxplayers 8 +impulse 208
+quakespasm.exe -basedir . -game reaper_mre -listen 8 +map dm4 +skill 3 +deathmatch 1 +maxplayers 8 +impulse 208
 ```
 
 **Debug flags explained:**
 - `-basedir .` — Use current directory as Quake root
 - `-game reaper_mre` — Load reaper_mre mod
+- `-listen 8` — Run as listen server (keeps game running for observation, prevents "server is full" exit)
 - `+map dm4` — Auto-load DM4 map
 - `+skill 3` — Expert difficulty (enables all AI features)
 - `+deathmatch 1` — Deathmatch mode
@@ -700,7 +702,7 @@ launch_reaper_mre.bat 8 dm4
 **Debug test:**
 ```bash
 cd launch\quake-spasm
-quakespasm.exe -basedir . -game reaper_mre +map dm4 +skill 3 +deathmatch 1 +maxplayers 8 +impulse 208
+quakespasm.exe -basedir . -game reaper_mre -listen 8 +map dm4 +skill 3 +deathmatch 1 +maxplayers 8 +impulse 208
 ```
 
 **Check logs:**
