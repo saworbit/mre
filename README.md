@@ -4,6 +4,8 @@
 
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)]() [![Quake](https://img.shields.io/badge/Quake-1-brown)]() [![Bot AI](https://img.shields.io/badge/AI-Enhanced-blue)]()
 
+**📂 Active Development:** All modern enhancements are in [`reaper_mre/`](https://github.com/saworbit/mre/tree/master/reaper_mre) — this is the primary codebase for MRE features.
+
 ---
 
 ## 🎯 What is MRE?
@@ -133,36 +135,191 @@ launch_reaper_mre.bat 16 dm3   # 16-player chaos on The Abandoned Base
 
 ## 🏗️ Building from Source
 
-### Compile MRE
+### Directory Structure
 
-1. **Navigate to project root:**
-   ```bash
-   cd c:\reaperai
+```
+reaper_mre/              ← Active development (QuakeC source)
+├── botmove.qc          ← Movement, navigation, rocket jumps, train prediction
+├── botfight.qc         ← Combat AI, weapon selection, predictive aim
+├── botthink.qc         ← Physics systems, air control, velocity management
+├── botit_th.qc         ← Entity fields, bot state tracking
+├── botvis.qc           ← Visibility, reachability, pathfinding
+├── botgoal.qc          ← Goal selection, item scoring, tactics
+├── progs.src           ← Build manifest (entry point for compiler)
+└── ...                 ← Additional QuakeC modules
+
+tools/fteqcc_win64/
+└── fteqcc64.exe        ← Compiler binary
+
+launch/quake-spasm/
+├── reaper_mre/         ← Deployed progs.dat (build artifact)
+├── launch_reaper_mre.bat  ← Quick launch script
+└── quakespasm.exe      ← Quake engine
+```
+
+---
+
+### Full Build Workflow
+
+#### Step 1: Compile Source
+
+**Command:**
+```bash
+cd c:\reaperai
+tools\fteqcc_win64\fteqcc64.exe -O3 reaper_mre\progs.src
+```
+
+**What it does:**
+- Compiles all `reaper_mre/*.qc` files into `reaper_mre/progs.dat`
+- `-O3` flag enables maximum optimization
+- Output: ~380 KB binary
+
+**Expected output:**
+```
+Compiling progs.dat
+...
+Successfull compile! (with warnings)
+```
+
+---
+
+#### Step 2: Deploy Build Artifact
+
+**Commands:**
+```bash
+# Deploy to test environment
+copy reaper_mre\progs.dat launch\quake-spasm\reaper_mre\progs.dat /Y
+
+# Deploy to CI validation directory
+copy reaper_mre\progs.dat ci\reaper_mre\progs.dat /Y
+```
+
+**What it does:**
+- Copies compiled `progs.dat` to runtime directories
+- `/Y` flag suppresses overwrite confirmation
+- Creates deployable artifact for testing
+
+---
+
+#### Step 3: Launch and Test
+
+**Normal Play (recommended):**
+```bash
+cd launch\quake-spasm
+launch_reaper_mre.bat 8 dm4
+```
+- Starts 8-player deathmatch on DM4
+- Uses standard game settings
+- No console output
+
+**Debug Mode (verbose logging):**
+```bash
+cd launch\quake-spasm
+quakespasm.exe -basedir . -game reaper_mre +map dm4 +skill 3 +deathmatch 1 +maxplayers 8 +impulse 208
+```
+- `+skill 3` = Expert bots (full AI capabilities)
+- `+impulse 208` = Spawns bots via console command
+- Logs output to `qconsole.log`
+
+**Console Commands (in-game):**
+```
+skill 3           // Set difficulty (0-3, higher = smarter)
+impulse 100       // Add 1 bot
+impulse 101       // Add bots until maxplayers
+impulse 102       // Remove 1 bot
+impulse 208       // Mass-spawn bots
+```
+
+---
+
+#### Step 4: Verify Functionality
+
+**Check console log:**
+```bash
+type launch\quake-spasm\qconsole.log
+```
+
+**Expected indicators of success:**
+- `Programs occupy 376K` (confirms progs.dat loaded)
+- Bot spawn messages: `Cheater (iq 1) is reformed Thanks Chris.`
+- No `Host Error` messages
+- Expected warnings only (missing music files, IPX disabled)
+
+**Test rocket jumps:**
+- Watch skill 3 bots on DM3/DM4
+- Should see bots rocket-jumping to high ledges
+- No suicide deaths at low HP
+
+**Test train navigation:**
+- DM6 has moving trains
+- Bots should intercept trains mid-movement
+- No "stuck" loops near trains
+
+---
+
+### CI Pipeline (Automated Build)
+
+#### GitHub Actions Workflow
+
+**File:** `.github/workflows/ci.yml`
+
+**Trigger:** Every push to repository
+
+**Build steps:**
+1. **Compile:** Run `fteqcc64.exe -O3 reaper_mre\progs.src`
+2. **Validate:** Check build size (~380 KB)
+3. **Archive:** Upload `reaper_mre-progs.dat` as artifact
+4. **Status:** Report success/failure
+
+**Artifact download:**
+- Go to [Actions tab](https://github.com/saworbit/mre/actions)
+- Click latest workflow run
+- Download `reaper_mre-progs.dat` from artifacts
+
+**Integration:**
+```bash
+# Download artifact from CI
+curl -L -o progs.dat https://github.com/saworbit/mre/actions/runs/[RUN_ID]/artifacts/[ARTIFACT_ID]
+
+# Deploy to local test environment
+copy progs.dat launch\quake-spasm\reaper_mre\progs.dat /Y
+```
+
+---
+
+### Documentation Update Workflow
+
+**After adding new features:**
+
+1. **Update source code comments:**
+   - Add `// =====` section headers in `.qc` files
+   - Document function purpose, parameters, return values
+   - Example: See `bot_rocket_jump()` in `reaper_mre/botmove.qc:627-667`
+
+2. **Update CHANGELOG.md:**
+   ```markdown
+   ## Unreleased
+
+   - **Feature name** for category:
+     - **Implementation** in `file.qc`: Description with technical details...
    ```
 
-2. **Run the compiler:**
+3. **Update README.md:**
+   - Add feature to appropriate table (Navigation/Combat/Tactical/Physics)
+   - Update Quick Start if workflow changes
+   - Update skill level descriptions if behavior changes
+
+4. **Test and verify:**
+   - Compile → Deploy → Launch → Test
+   - Check `qconsole.log` for errors
+   - Verify feature works as documented
+
+5. **Commit:**
    ```bash
-   tools\fteqcc_win64\fteqcc64.exe -O3 reaper_mre\progs.src
+   git add reaper_mre/ CHANGELOG.md README.md
+   git commit -m "Add [feature]: [description]"
+   git push
    ```
-
-3. **Deploy to test environment:**
-   ```bash
-   copy reaper_mre\progs.dat launch\quake-spasm\reaper_mre\progs.dat /Y
-   ```
-
-4. **Launch and test:**
-   ```bash
-   cd launch\quake-spasm
-   launch_reaper_mre.bat 8 dm4
-   ```
-
-### CI Pipeline
-
-GitHub Actions automatically compiles `progs.dat` on every push:
-
-- 📦 **Artifact:** `reaper_mre-progs.dat`
-- 🔍 **Size:** ~380 KB (optimized with `-O3`)
-- ✅ **Status:** Check [Actions tab](https://github.com/saworbit/mre/actions)
 
 ---
 
