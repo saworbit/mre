@@ -27,6 +27,12 @@ This repository contains an enhanced version of the classic Reaper bot with mode
 - Pro movement: Context-aware high jumps and long jumps like human speedrunners
 - Health checks (no suicide <40 HP), 2s cooldown (prevents spam), synchronized jump timing
 
+**Previous: Danger & Glory Semantic Mapping** (2026-01)
+- Danger scent: Marks death zones (+10 per death, 200u radius) that bots avoid (-100× penalty)
+- Glory score: Marks power positions (+10 per kill, 150u radius) that roaming bots seek (+50× bonus)
+- Scent fading: Decays 50% every 60s for tactical evolution (prevents permanent stigma)
+- Emergent behavior: Bots naturally flank when choke points deadly, fight for control of sniper spots
+
 **Previous: Platform Mastery System** (2026-01)
 - Enable learning on elevators: Removed restriction preventing breadcrumb drops on moving platforms
 - Platform node tagging: Detects and tags nodes on func_plat/func_train via downward traceline (64u)

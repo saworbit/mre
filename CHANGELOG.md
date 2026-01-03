@@ -7,6 +7,14 @@
   - **Upgraded desperate unstuck** in `reaper_mre/botmove.qc`: Replaced crude rocket fire with full `bot_rocket_jump()` call in stuck escape sequence. Train surf → enhanced RJ → super jump priority ensures safe, cooldown-managed escape with proper directional arcs.
   - Added `.float rj_cooldown` field in `reaper_mre/botit_th.qc` for spam prevention and timing control.
 
+- **Danger & Glory semantic mapping** for emergent tactical behavior:
+  - **Danger scent marking** in `reaper_mre/combat.qc`: When bot dies, finds nearest BotPath node within 200u and increments `.float danger_scent` by 10. Creates "death zones" that bots naturally avoid—simulates learned survival instinct from repeated deaths in choke points.
+  - **Glory score marking** in `reaper_mre/combat.qc`: When bot gets kill, finds nearest node within 150u and increments `.float glory_score` by 10. Creates "power positions" that roaming bots seek out—simulates recognition of sniper spots and control points.
+  - **Scent fading** in `reaper_mre/botgoal.qc`: Scents decay by 50% every 60 seconds to simulate "coast is clear" or meta shift. Prevents permanent node stigma—allows tactical evolution as match progresses.
+  - **Fear response** in `reaper_mre/botgoal.qc`: Danger scent subtracts 100× penalty from path weight (3 deaths = -3000 cost). Bots actively avoid high-danger nodes, creating organic flanking behavior when choke points become too deadly.
+  - **Glory seeking** in `reaper_mre/botgoal.qc`: Glory score adds 50× bonus to path weight when bot is roaming + healthy (>80 HP, no enemy). Bots gravitate to successful ambush spots, fighting for control of power positions like human players.
+  - Added `.float danger_scent`, `.float glory_score`, `.float scent_time` fields in `reaper_mre/botit_th.qc` for semantic learning.
+
 - **Platform mastery system** for intelligent elevator and lift usage:
   - **Enable learning on elevators** in `reaper_mre/botroute.qc`: Removed restriction that prevented breadcrumb drops on moving platforms (func_plat/func_train). Bots now learn paths while riding elevators—solves "active avoidance" where bots ignored lifts entirely.
   - **Platform node tagging** in `reaper_mre/botroute.qc`: Detects when node is dropped on moving platform via downward traceline (64u), tags with `.float is_platform_node` field. Enables elevator-aware pathfinding—bots "remember" which nodes ride lifts.

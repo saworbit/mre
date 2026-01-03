@@ -62,6 +62,7 @@ Advanced **path_corner chain prediction** for moving platforms:
 | 💾 **Smart Spacing** | 250u distance + LOS checks prevent node clumping for clean navigation networks |
 | 📤 **Brain Dump** | Export learned waypoints to console (impulse 100) for manual persistence |
 | 📥 **Waypoint Loader** | Import saved nodes to "bake" map knowledge—bots remember instantly |
+| ☠️ **Danger & Glory** | Learns death zones (avoid) and power positions (seek)—emergent tactical evolution |
 | 🛗 **Platform Mastery** | Learns elevator paths, waits patiently at lift shafts, uses DM2 lift intelligently |
 | 📊 **Platform Prediction** | Velocity + state forecasting for timed jumps on moving plats |
 | 🎯 **Jump Arc Collision** | Mid-air platform detection for precise airborne landings |

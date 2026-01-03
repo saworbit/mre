@@ -717,8 +717,36 @@ float (entity e) pathweight =
       {
          return (weight);
       } //end if
-      weight = vlen ((self.origin - org));
+      weight = vlen ((self.origin - e.origin));
       weight = ((50.000 * SEARCH_RADIUS) - weight);
+
+      // ===== DANGER & GLORY: Semantic Interpretation =====
+      // 1. FADE SCENTS: If it's been a while (60s), reduce the intensity
+      // This simulates "the coast is clear" or "meta shift".
+      if (((time - e.scent_time) > 60.000))
+      {
+         e.danger_scent = (e.danger_scent * 0.500);
+         e.glory_score = (e.glory_score * 0.500);
+         e.scent_time = time;
+      } //end if
+
+      // 2. FEAR: Subtract weight for Danger (Bots avoid this node)
+      // High skill bots respect danger more (survival instinct)
+      if ((e.danger_scent > 0.000))
+      {
+         // e.g. 3 deaths = 30 danger. 30 * 100 = 3000 penalty cost.
+         weight = (weight - (e.danger_scent * 100.000));
+      } //end if
+
+      // 3. GREED: Add weight for Glory (Bots want to camp here)
+      // Only if we are roaming (no enemy) and healthy
+      if (((!self.enemy && (self.health > 80.000)) && (e.glory_score > 0.000)))
+      {
+         // e.g. 5 kills = 50 glory. 50 * 50 = 2500 bonus attraction.
+         weight = (weight + (e.glory_score * 50.000));
+      } //end if
+      // ===================================================
+
       if ((e.lastbot == self))
       {
          if ((e.lasttime > (time - MOVETYPE_TOSS)))

@@ -151,6 +151,12 @@ float (entity targ, entity inflictor) CanDamage;
 .float deny_flag;
 // Marks path nodes sitting on moving platforms (func_plat/func_train) for elevator logic.
 .float is_platform_node;
+// Semantic map learning: danger scent (how many bots died here - avoid).
+.float danger_scent;
+// Semantic map learning: glory score (how many kills happened here - attract).
+.float glory_score;
+// Semantic map learning: last update time for scent fading.
+.float scent_time;
 .float skil;
 .float rocketlen;
 .entity rocketcache;

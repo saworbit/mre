@@ -75,6 +75,63 @@ void (entity targ, entity attacker) Killed =
    self.takedamage = DAMAGE_NO;
    self.touch = SUB_Null;
    monster_death_use ();
+
+   // ===== DANGER & GLORY: Semantic Map Learning =====
+   // 1. MARK DANGER (Victim died here)
+   if ((self.classname == "dmbot"))
+   {
+      local entity d_node;
+      d_node = findradius (self.origin,200.000);
+
+      while (d_node)
+      {
+         if ((d_node.classname == "BotPath"))
+         {
+            // Stain this node with death!
+            d_node.danger_scent = (d_node.danger_scent + 10.000);
+            d_node.scent_time = time;
+
+            // Bot chat: "This place is cursed!"
+            if (((d_node.danger_scent > 30.000) && (random () < 0.200)))
+            {
+               bprint (self.netname);
+               bprint (": Stay away from the ");
+               bprint (d_node.classname);
+               bprint ("!\n");
+            } //end if
+
+            d_node = world;
+         } //end if
+         else
+         {
+            d_node = d_node.chain;
+         } //end if
+      } //end while
+   } //end if
+
+   // 2. MARK GLORY (Attacker got a kill here)
+   if ((((attacker.classname == "dmbot") && (attacker != world)) && (attacker != self)))
+   {
+      local entity g_node;
+      g_node = findradius (attacker.origin,150.000);
+
+      while (g_node)
+      {
+         if ((g_node.classname == "BotPath"))
+         {
+            // Mark this as a Sniper Spot!
+            g_node.glory_score = (g_node.glory_score + 10.000);
+            g_node.scent_time = time;
+            g_node = world;
+         } //end if
+         else
+         {
+            g_node = g_node.chain;
+         } //end if
+      } //end while
+   } //end if
+   // ===============================================
+
    self.th_die ();
    self = oself;
 }; //end of the function Killed
