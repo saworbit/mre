@@ -37,14 +37,15 @@ Nightmare bots use **mathematically perfect interception physics**:
 
 ### 🗺️ A* Pathfinding (Optimal Route Solver)
 
-Bots use **industry-standard graph search** for guaranteed optimal paths:
+Nightmare bots use **industry-standard graph search** for guaranteed optimal paths:
 
 - 🧭 **True A* algorithm** — f = g + h, finds mathematically shortest path
 - 🔗 **Linked list sets** — Open/Closed sets via entity chains (no array limits)
 - 🆔 **Search ID system** — Instant state invalidation (no expensive clearing)
 - 🎮 **16M op budget** — Leverages Quakespasm's massive instruction limit (50k iterations)
+- ⚡ **Skill-based** — Skill > 2 uses A*, ≤2 uses greedy search (difficulty progression)
 
-**Result:** Bots never get stuck in local minima! A* guarantees optimal routes through complex navmeshes—works on any map automatically! 🧠✨
+**Result:** High-skill bots never get stuck in local minima! A* guarantees optimal routes, discovers brilliant shortcuts greedy search misses—active and integrated! 🧠✨
 
 ### 💾 Auto Waypoint Dump (Periodic Persistence)
 

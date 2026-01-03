@@ -201,6 +201,9 @@ void (entity a, entity b) addTarget =
    updateRouteCache (a,b,TE_LAVASPLASH);
 }; //end of the function addTarget
 float () FindAPath;
+float () FindAPath_Greedy;
+float () FindAPath_AStar;
+entity (entity start, entity goal) AStarSolve;
 float () FindAltPath =
 {
    local entity e;
@@ -255,7 +258,102 @@ float () FindAltPath =
    carriedPath.movetarget = bestPath;
    return (dropPath);
 }; //end of the function FindAltPath
-float () FindAPath =
+// ===== A* INTEGRATION: Smart Path Selection =====
+// High-skill bots (skill > 2) use A* for optimal routing.
+// Low-skill bots use greedy search for human-like mistakes.
+float () FindAPath_AStar =
+{
+   local entity start_node;
+   local entity goal_node;
+   local entity path_result;
+   local entity first_step;
+   local entity e;
+   local float best_start_dist;
+   local float best_goal_dist;
+   local float dist;
+   local entity carriedPath;
+   local entity goal_entity;
+
+   carriedPath = self.movetarget;
+   goal_entity = self.goalentity.goalentity;
+
+   // If no goal, fall back to greedy
+   if (!goal_entity)
+   {
+      return (FindAPath_Greedy ());
+   } //end if
+
+   // Find nearest BotPath to bot (start node)
+   start_node = world;
+   best_start_dist = 999999.000;
+   e = findradius (self.origin,(SEARCH_RADIUS * 2.000));
+   while (e)
+   {
+      if ((e.pathtype == DROPPED))
+      {
+         dist = vlen ((e.origin - self.origin));
+         if ((dist < best_start_dist))
+         {
+            if (BotReachable (e,self))
+            {
+               start_node = e;
+               best_start_dist = dist;
+            } //end if
+         } //end if
+      } //end if
+      e = e.chain;
+   } //end while
+
+   // Find nearest BotPath to goal (goal node)
+   goal_node = world;
+   best_goal_dist = 999999.000;
+   e = findradius (goal_entity.origin,(SEARCH_RADIUS * 2.000));
+   while (e)
+   {
+      if ((e.pathtype == DROPPED))
+      {
+         dist = vlen ((e.origin - goal_entity.origin));
+         if ((dist < best_goal_dist))
+         {
+            goal_node = e;
+            best_goal_dist = dist;
+         } //end if
+      } //end if
+      e = e.chain;
+   } //end while
+
+   // If we have both nodes, try A*
+   if ((start_node && goal_node))
+   {
+      path_result = AStarSolve (start_node,goal_node);
+
+      if (path_result)
+      {
+         // Success! Walk backwards from goal to find first step
+         first_step = path_result;
+         while (first_step.parent_node)
+         {
+            if ((first_step.parent_node == start_node))
+            {
+               // Found the first step from start
+               carriedPath.movetarget = first_step;
+               return (FALSE); // Path found
+            } //end if
+            first_step = first_step.parent_node;
+         } //end while
+
+         // Fallback: if we reached here, just use the start node
+         carriedPath.movetarget = start_node;
+         return (FALSE);
+      } //end if
+   } //end if
+
+   // A* failed or no nodes found - fall back to greedy
+   return (FindAPath_Greedy ());
+}; //end of the function FindAPath_AStar
+
+// Greedy pathfinding (original algorithm)
+float () FindAPath_Greedy =
 {
    local float dropPath;
    local float bestrng;
@@ -300,7 +398,21 @@ float () FindAPath =
    } //end while
    carriedPath.movetarget = bestPath;
    return (dropPath);
+}; //end of the function FindAPath_Greedy
+
+// Skill-based path selection: A* for high-skill, greedy for low-skill
+float () FindAPath =
+{
+   // High-skill bots (Nightmare difficulty) use A* for optimal routing
+   if ((self.skil > 2.000))
+   {
+      return (FindAPath_AStar ());
+   } //end if
+
+   // Low-skill bots use greedy search (more human-like, makes mistakes)
+   return (FindAPath_Greedy ());
 }; //end of the function FindAPath
+// ===== END A* INTEGRATION =====
 float () CheckDropPath =
 {
    local entity carriedPath;
