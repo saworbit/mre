@@ -1,25 +1,16 @@
-Do-it-yourself Reaper
+## Historical Archive
 
-I am sure most of you know this already, but I will tell you how to obtain the Reaper Source code.
+### Do-it-yourself Reaper (Original 1998 Instructions)
 
-First - download the Reaper Bot ver 0.81. I have it here. (164 KB)
-Second - download the proqcc compiler/decompiler. I have it here. (87 KB)
-Third - download the rip011a.txt file. I have it here. (34 KB) This text file will instruct you on how to decompile and create a readable, compilable Reaper source.
-If this seems like too much work, here is the patched Reaper Bot progs.dat file (compressed down to 161 KB).
-UPDATE: 2-19-98
+This section preserved for historical reference. See README.md for modern MRE setup.
 
-The progs.dat file posted above is a newly patched version that corrects the following problems with the Reaper:
+Original instructions for obtaining and decompiling the Reaper Bot v0.81 source code:
+- Reaper Bot ver 0.81 (164 KB)
+- proqcc compiler/decompiler (87 KB)
+- rip011a.txt decompilation guide (34 KB)
 
- 
-
-Reapers on the Scoreboard - finally got around to adding this much wanted feature of the bots and player frag totals both appearing on screen. Here is a screenshot. (40 KB)
-Disappearing Weapons - fixed this bug as well as, ensured your not automatically switched to another weapon while you still have one rocket or grenade left.
-Floating Gibs and Backpacks - fragged players and bots body parts/backpacks now float on the top of all liquid surfaces. Bobbing Bot heads, Very Cool!
-Bounce the Reaper - added the ability of the Reaper to be "bounced" around by rocket or grenade explosions.
-Corrected Reaper Sounds - reduced the damn "splash noise" the Bot makes at respawn and the Reaper also now makes the correct sound when jumping.
-Chase Cam - added the "chase cam" that allows you the option to view the action from a completely different perspective. Note: I included a readme.txt file to help explain how you can adjust the camera angle anyway you want.
-UPDATE: I fixed the progs.dat file, uploaded here on 2-18-98, which caused the Reaper to continue floating after respawn, so if you are having this problem download the new progs.dat file.
-Here is the decompiled Reaper Bot Source code (compressed down to 107 KB). Just unzip and you will be able to get a look at the code inside any file by simply opening it with a text editor.
+1998 patch notes included scoreboard display, weapon switching fixes, floating gibs/backpacks,
+rocket bounce physics, corrected sounds, and chase cam feature.
 
 ---
 
