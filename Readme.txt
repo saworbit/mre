@@ -19,10 +19,11 @@ rocket bounce physics, corrected sounds, and chase cam feature.
 This repository contains an enhanced version of the classic Reaper bot with modern AI improvements:
 
 **Latest: Enhanced Rocket Jump System** (2026-01)
-- Full RJ mechanics: Health checks, 2s cooldown, pitch/yaw control, synchronized jump timing
+- Directional RJ mechanics: Dynamic geometry-based aim (85° pitch for high ledges, 45° for gaps), yaw aims toward goal
 - Smart high-ledge trigger: Proactive RJ when height >1.5× normal jump (skill >2 only)
 - Safe unstuck upgrade: Enhanced RJ replaces crude fire (prevents suicide/spam)
-- Pro movement: Bots RJ to unreachable platforms like human speedrunners
+- Pro movement: Context-aware high jumps and long jumps like human speedrunners
+- Health checks (no suicide <50 HP), 2s cooldown (prevents spam), synchronized jump timing
 
 **Previous: Train Navigation Enhancements** (2026-01)
 - Path_corner chain traversal: Two-pass algorithm predicts train positions along multi-segment paths
