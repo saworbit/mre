@@ -84,6 +84,10 @@ Advanced **path_corner chain prediction** for moving platforms:
 | ⚔️ **Weapon Counter-Tactics** | Rock-paper-scissors logic: RL counters LG (knockback), LG counters RL (hitscan) |
 | 🗺️ **Global Scavenger Hunt** | Map-wide item scan when alone (RL/LG/RA/Mega prioritization vs random wander) |
 | 🧩 **Problem Solver** | Dynamic obstacle solving: RJ for high items, button-door linking, shootable detection |
+| ⏰ **Spawn Camping** | Timer-based item control: camps RL/Quad/RA/Mega respawns (<10s), waits at spawn points |
+| 🌀 **Circle Strafing** | Smooth 1.5s orbital movement (80° spiral-in) replaces erratic zigzag for disorientation |
+| 💣 **Retreat Trap** | Drops grenade when fleeing (10% chance) to punish aggressive pursuers |
+| 🔍 **Ambush Mode** | Investigates combat sounds (1000u range) for third-party opportunistic kills |
 | 🏆 **Powerup Denial** | Amplified aggression when leading or enemy weak (<40 HP) |
 | 🔄 **Adaptive Goals** | Health when hurt, denial when leading, smart roam patterns |
 | 💰 **Weapon Conservation** | Rocket economy, Quad/Pent counters, ammo awareness |

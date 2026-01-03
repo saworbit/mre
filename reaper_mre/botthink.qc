@@ -452,6 +452,54 @@ void () BotPostThink =
    {
       self.adrenaline = 1.000;
    } //end if
+
+   // ===== CUNNING AI: Ambush (Sound Investigation) =====
+   // If idle (roaming) and hear combat/pickup noise, investigate the sound source
+   if (!self.enemy)
+   {
+      if ((self.search_time < time))
+      {
+         local entity sound_maker;
+         local float d;
+
+         sound_maker = find (world,classname,"player");
+         while (sound_maker)
+         {
+            if ((sound_maker != self))
+            {
+               if ((sound_maker.health > 0.000))
+               {
+                  // Did they make noise recently? (Shooting = attack_finished still active)
+                  // attack_finished is set when firing weapons, indicates recent combat
+                  if ((sound_maker.attack_finished > time))
+                  {
+                     d = vlen ((sound_maker.origin - self.origin));
+                     // Can we "hear" them? (Within 1000 units, even through walls)
+                     if ((d < 1000.000))
+                     {
+                        // Move towards the noise! (Investigate)
+                        // Set them as goalentity temporarily (not enemy yet)
+                        if ((self.goalentity.classname == "BotTarget"))
+                        {
+                           setorigin (self.goalentity,sound_maker.origin);
+                        } //end if
+
+                        // Investigate for 2 seconds
+                        self.search_time = (time + 2.000);
+
+                        // Cunning: Don't run straight at them—approach cautiously
+                        // (Human behavior: hear shots → move to investigate)
+                        break;
+                     } //end if
+                  } //end if
+               } //end if
+            } //end if
+            sound_maker = find (sound_maker,classname,"player");
+         } //end while
+      } //end if
+   } //end if
+   // ===== END CUNNING AI: Ambush =====
+
    checkyaw ();
    if (self.pather)
    {

@@ -1031,12 +1031,65 @@ void () aibot_chooseGoal =
             } //end if
             else
             {
+               // ===== CUNNING AI: Spawn Camping (Item Timing) =====
+               // OLD: Ignored all picked-up items (SOLID_NOT)
+               // NEW: Smart bots "camp" high-value items about to respawn
                if ((e.solid == SOLID_NOT))
                {
+                  // DEFAULT: Ignore empty spots
                   weight = DONT_WANT;
 
+                  // EXCEPTION: High-Value Item "Spawn Camping"
+                  // If a critical item is respawning soon (<10s), treat it as valid target.
+                  // Simulates bot "knowing" the timer (heard pickup / tracking cycle).
+                  local float is_valuable;
+                  is_valuable = FALSE;
+
+                  if ((e.classname == "weapon_rocketlauncher"))
+                  {
+                     is_valuable = TRUE;
+                  } //end if
+                  if ((e.classname == "item_artifact_super_damage"))
+                  {
+                     is_valuable = TRUE;
+                  } //end if
+                  if ((e.classname == "item_armor2"))
+                  {
+                     is_valuable = TRUE;
+                  } //end if
+                  if ((e.classname == "item_health"))
+                  {
+                     if ((e.healamount > 90.000))
+                     {
+                        is_valuable = TRUE;
+                     } //end if
+                  } //end if
+
+                  // Check the timer (nextthink holds respawn time in Quake)
+                  if (is_valuable)
+                  {
+                     if ((e.nextthink > time))
+                     {
+                        if ((e.nextthink < (time + 10.000)))
+                        {
+                           // It's coming back! Camp it.
+                           // Weight increases as spawn time approaches (Don't miss it!)
+                           weight = (4000.000 - ((e.nextthink - time) * 100.000));
+
+                           // If we are already there, WAIT (don't run off)
+                           if ((vlen ((e.origin - self.origin)) < 100.000))
+                           {
+                              // Force wait behavior
+                              self.search_time = (time + 1.000);
+                           } //end if
+                        } //end if
+                     } //end if
+                  } //end if
+
                } //end if
-               else
+               // ===== END CUNNING AI: Spawn Camping =====
+
+               if ((weight == DONT_WANT))
                {
                   if ((e.solid == SOLID_TRIGGER))
                   {

@@ -687,8 +687,13 @@ void (float dist, float turn) aibot_run_slide =
          } //end if
       } //end if
    } //end if
-   if ((self.strafetime > 0.400))
+
+   // ===== CUNNING AI: Circle Strafing (Orbit Mode) =====
+   // OLD: Flipped direction every 0.4s (erratic zigzag)
+   // NEW: Commit to direction for 1.5s to create smooth circular orbit around enemy
+   if ((self.strafetime > 1.500))
    {
+      // Only flip direction if we hit a wall or randomly after a long time
       rnd = (random () * SPAWNFLAG_LASER);
       if ((rnd > 1.870))
       {
@@ -705,6 +710,13 @@ void (float dist, float turn) aibot_run_slide =
          return ;
       } //end if
    } //end if
+
+   // Force the strafe angle to be tangential (Circle)
+   // 90 degrees = perfect circle.
+   // 80 degrees = slight spiral IN towards enemy (aggressive)
+   ofs = 80.000;
+   // ===== END CUNNING AI: Circle Strafing =====
+
    if ((self.lefty & STRAFE_DIR))
    {
       ofs = (CONTENT_EMPTY * ofs);
@@ -892,6 +904,42 @@ void (float dist) ai_botrun =
    self.lefty = (self.lefty + TRUE);
    if (RunAway ())
    {
+      // ===== CUNNING AI: The "Parting Gift" (Retreat Trap) =====
+      // When running away, drop a grenade behind to blow up pursuers
+      if ((self.items & IT_GRENADE_LAUNCHER))
+      {
+         if ((self.ammo_rockets >= 1.000))
+         {
+            // Only do this occasionally (don't waste all ammo)
+            if ((time > self.attack_finished))
+            {
+               if ((random () < 0.100))
+               {
+                  // Face the enemy (or behind us)
+                  self.ideal_yaw = vectoyaw ((self.enemy.origin - self.origin));
+                  ChangeYaw ();
+
+                  // Look DOWN (grenade at feet)
+                  self.angles_x = 80.000;
+                  makevectors (self.angles);
+
+                  // Fire grenade at our own feet (or slightly towards enemy)
+                  W_FireGrenade ();
+
+                  // Taunt: "Catch!"
+                  if ((random () < 0.200))
+                  {
+                     bprint (self.netname);
+                     bprint (": Catch!\n");
+                  } //end if
+
+                  self.attack_finished = (time + 1.000);
+               } //end if
+            } //end if
+         } //end if
+      } //end if
+      // ===== END CUNNING AI: Retreat Trap =====
+
       self.lefty = (self.lefty - (self.lefty & LOCAL_TIME));
       self.lastseenpos = self.goalentity.origin;
       if (aibot_checkforGoodies (DONT_WANT))

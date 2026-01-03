@@ -35,3 +35,13 @@ skill 3
 impulse 208
 skill 3
 impulse 208
+skill 3
+impulse 208
+crosshair 1
+skill 3
+crosshair 1
+impulse 208
+skill 3
+impulse 208
+skill 3
+impulse 208

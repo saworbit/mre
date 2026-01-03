@@ -50,6 +50,10 @@ This repository contains an enhanced version of the classic Reaper bot with mode
 - Weapon counter-tactics: Rock-paper-scissors logic (RL counters LG with knockback, LG counters RL with hitscan)
 - Global scavenger hunt: Map-wide item scan when alone (RL/LG/RA/Mega prioritization vs random wander)
 - Problem solver: Dynamic obstacle solving (RJ for high items, button-door linking, shootable detection)
+- Spawn camping: Timer-based item control (camps RL/Quad/RA/Mega respawns <10s, waits at spawn points)
+- Circle strafing: Smooth 1.5s orbital movement (80° spiral-in, harder to predict)
+- Retreat trap: Drops grenade when fleeing (10% chance) to punish pursuers
+- Ambush mode: Investigates combat sounds (1000u range) for opportunistic third-party kills
 - Powerup denial logic for quad/pent/ring contesting (now amplified when leading/enemy weak)
 - Adaptive goal selection (health when hurt, denial when leading)
 - Weapon conservation (rocket economy, Quad/Pent counters)
