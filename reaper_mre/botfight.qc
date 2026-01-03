@@ -203,22 +203,36 @@ vector () botaim =
          if ((self.weapon & IT_ROCKET_LAUNCHER))
          {
             tg = leadtarget (src,tg,0.001);
-            // Randomize aim height within the enemy bbox for splash/uneven-ground hits.
-            splash_z = (self.enemy.mins_z + (random () * (self.enemy.view_ofs_z - self.enemy.mins_z)));
-            tg_z = (tg_z + splash_z);
-            if ((self.origin_z >= self.enemy.origin_z))
+
+            // ===== SPLASH MASTERY: Floor Shooting (The 'Floor Frag') =====
+            // Don't aim at chest—aim at feet. Rockets that hit the floor always splash,
+            // even if direct-body trace misses. Forces guaranteed 80+ splash damage.
+            if ((self.enemy.flags & FL_ONGROUND))
             {
-               rnd = ((random () * 3.500) + TRUE);
-               if ((self.skil > rnd))
+               // Aim slightly above feet to hit floor beneath enemy (8 units = just above absmin)
+               tg_z = (self.enemy.absmin_z + 8.000);
+
+               // Validate shot will actually hit something near enemy (120u = splash radius)
+               traceline (src,tg,TRUE,self);
+               if ((trace_fraction != TRUE))
                {
-                  tg_z = ((tg_z + self.enemy.mins_z) + FL_SWIM);
-                  traceline (src,tg,TRUE,self);
-                  if ((trace_fraction != TRUE))
+                  local float splash_dist;
+                  splash_dist = vlen ((trace_endpos - self.enemy.origin));
+
+                  // If blockage is too far from enemy, fall back to chest aim
+                  if ((splash_dist > 120.000))
                   {
-                     tg_z = ((tg_z - self.enemy.mins_z) - MOVETYPE_WALK);
+                     tg_z = (self.enemy.origin_z + (self.enemy.view_ofs_z * 0.500));
                   } //end if
                } //end if
             } //end if
+            else
+            {
+               // Enemy airborne: use standard chest/splash randomization
+               splash_z = (self.enemy.mins_z + (random () * (self.enemy.view_ofs_z - self.enemy.mins_z)));
+               tg_z = (tg_z + splash_z);
+            } //end if
+            // ===== END SPLASH MASTERY: Floor Shooting =====
 
          } //end if
          else
@@ -291,6 +305,44 @@ float () CheckBotAttack =
    traceline (spot1,spot2,FALSE,self);
    if ((trace_ent != targ))
    {
+      // ===== SPLASH MASTERY: Corner Clipping (Indirect Splash) =====
+      // Can't see enemy directly, but can we splash them around a corner?
+      // If holding splash weapon (RL/GL), allow firing if trace hits wall/floor near enemy.
+      if ((self.weapon & (IT_ROCKET_LAUNCHER + IT_GRENADE_LAUNCHER)))
+      {
+         local float wall_dist;
+
+         // Did we hit a wall/floor instead of the enemy?
+         if ((trace_fraction < TRUE))
+         {
+            // Check distance from wall hit to enemy position
+            wall_dist = vlen ((trace_endpos - targ.origin));
+
+            // If wall is close to enemy (110u = splash radius minus safety margin), shoot it!
+            if ((wall_dist < 110.000))
+            {
+               self.attack_state = AS_MISSILE;
+               return (TRUE);
+            } //end if
+
+            // Try aiming at feet for floor splash
+            spot2 = targ.origin;
+            spot2_z = (targ.absmin_z + 8.000);
+            traceline (spot1,spot2,TRUE,self);
+
+            if ((trace_fraction < TRUE))
+            {
+               wall_dist = vlen ((trace_endpos - targ.origin));
+               if ((wall_dist < 110.000))
+               {
+                  self.attack_state = AS_MISSILE;
+                  return (TRUE);
+               } //end if
+            } //end if
+         } //end if
+      } //end if
+      // ===== END SPLASH MASTERY: Corner Clipping =====
+
       return (FALSE);
    } //end if
    if ((trace_inopen && trace_inwater))
@@ -360,6 +412,43 @@ float () W_BestBotWeapon =
          return (IT_SUPER_NAILGUN);
       } //end if
    } //end if
+
+   // ===== SPLASH MASTERY: Suicide Prevention (Safety Check) =====
+   // Don't use Rocket Launcher at point-blank range—prioritize safe weapons first.
+   // If enemy is in melee range, use SSG/SNG/LG to avoid rocket suicide.
+   if ((rng == RANGE_MELEE))
+   {
+      // Prefer Super Shotgun at melee range (safe, high burst damage)
+      if (((self.ammo_shells >= 2.000) && (it & IT_SUPER_SHOTGUN)))
+      {
+         return (IT_SUPER_SHOTGUN);
+      } //end if
+
+      // Prefer Super Nailgun at melee range (safe, high DPS)
+      if (((self.ammo_nails >= 10.000) && (it & IT_SUPER_NAILGUN)))
+      {
+         return (IT_SUPER_NAILGUN);
+      } //end if
+
+      // Prefer Lightning Gun at melee range (safe, instant damage)
+      if (((self.ammo_cells >= 10.000) && (it & IT_LIGHTNING)))
+      {
+         wlevel = CheckWaterLevel ();
+         if ((wlevel < FL_SWIM))
+         {
+            return (IT_LIGHTNING);
+         } //end if
+         if ((self.items & IT_INVULNERABILITY))
+         {
+            return (IT_LIGHTNING);
+         } //end if
+      } //end if
+
+      // Only use rockets if no safe alternatives (last resort)
+      // Fall through to standard weapon logic below
+   } //end if
+   // ===== END SPLASH MASTERY: Suicide Prevention =====
+
    if ((rng != RANGE_MELEE))
    {
       // Ammo conservation: require a deeper rocket stack before committing to RL.
