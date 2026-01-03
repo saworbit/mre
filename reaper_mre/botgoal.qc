@@ -700,6 +700,16 @@ float (entity e) pathweight =
    local vector org;
 
    weight = DONT_WANT;
+
+   // ===== PLATFORM MASTERY: Platform Awareness =====
+   // If the target node is on a platform, we assume it's reachable
+   // even if it's currently high up (the lift will come down).
+   if (e.is_platform_node)
+   {
+      OK_HIGH = TRUE;
+   } //end if
+   // ================================================
+
    if (TrueReachable (e))
    {
       weight = cacheweight (e);

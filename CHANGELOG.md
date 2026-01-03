@@ -7,6 +7,13 @@
   - **Upgraded desperate unstuck** in `reaper_mre/botmove.qc`: Replaced crude rocket fire with full `bot_rocket_jump()` call in stuck escape sequence. Train surf → enhanced RJ → super jump priority ensures safe, cooldown-managed escape with proper directional arcs.
   - Added `.float rj_cooldown` field in `reaper_mre/botit_th.qc` for spam prevention and timing control.
 
+- **Platform mastery system** for intelligent elevator and lift usage:
+  - **Enable learning on elevators** in `reaper_mre/botroute.qc`: Removed restriction that prevented breadcrumb drops on moving platforms (func_plat/func_train). Bots now learn paths while riding elevators—solves "active avoidance" where bots ignored lifts entirely.
+  - **Platform node tagging** in `reaper_mre/botroute.qc`: Detects when node is dropped on moving platform via downward traceline (64u), tags with `.float is_platform_node` field. Enables elevator-aware pathfinding—bots "remember" which nodes ride lifts.
+  - **Platform awareness** in `reaper_mre/botgoal.qc`: Modified `pathweight` to ignore height restrictions when `is_platform_node` flag is set. Bots recognize high platform nodes as reachable even when lift is elevated—no more "too high" rejections for DM2 lift destination.
+  - **Elevator patience** in `reaper_mre/botmove.qc`: Added wait logic in `Botmovetogoal` when approaching elevated platform nodes (>64u high, <200u horizontal distance). Bots stop at lift shaft, look up (-45° pitch), reset stuck timers, and wait for lift to descend—human-like behavior instead of wandering off impatiently.
+  - Added `.float is_platform_node` field in `reaper_mre/botit_th.qc` for platform node tracking.
+
 - **Navigation persistence system** for saving/loading learned pathfinding knowledge:
   - **Smart spacing optimization** in `reaper_mre/botroute.qc`: Enhanced `CheckDropPath` with distance (250u threshold) and line-of-sight checks to prevent node clumping. Only drops breadcrumb nodes when bot has moved far from or lost sight of last node—creates clean, efficient navigation network instead of messy "spaghetti" graph. Remembers last dropped node via `.entity last_dropped_node` field in `reaper_mre/botit_th.qc`.
   - **Brain dump exporter** in `reaper_mre/botroute.qc`: New `DumpWaypoints` function exports all learned BotPath nodes to console as QuakeC code (impulse 100 command). Prints ready-to-paste `SpawnSavedWaypoint('x y z')` calls for manual persistence—solves QuakeC's no-file-IO limitation via copy-paste workflow.

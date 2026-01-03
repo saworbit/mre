@@ -149,6 +149,8 @@ float (entity targ, entity inflictor) CanDamage;
 .float pathtype;
 // Marks paths tied to contested powerups so bots can try denial/intercepts.
 .float deny_flag;
+// Marks path nodes sitting on moving platforms (func_plat/func_train) for elevator logic.
+.float is_platform_node;
 .float skil;
 .float rocketlen;
 .entity rocketcache;

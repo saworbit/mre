@@ -27,6 +27,12 @@ This repository contains an enhanced version of the classic Reaper bot with mode
 - Pro movement: Context-aware high jumps and long jumps like human speedrunners
 - Health checks (no suicide <40 HP), 2s cooldown (prevents spam), synchronized jump timing
 
+**Previous: Platform Mastery System** (2026-01)
+- Enable learning on elevators: Removed restriction preventing breadcrumb drops on moving platforms
+- Platform node tagging: Detects and tags nodes on func_plat/func_train via downward traceline (64u)
+- Platform awareness: pathweight ignores height restrictions for platform nodes (no "too high" rejections)
+- Elevator patience: Bots wait at lift shafts (>64u high, <200u distance), look up, reset stuck timers
+
 **Previous: Navigation Persistence System** (2026-01)
 - Smart spacing optimization: 250u distance + LOS checks prevent node clumping (clean navigation networks)
 - Brain dump exporter: Export learned waypoints to console (impulse 100) for manual persistence

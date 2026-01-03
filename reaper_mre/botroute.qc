@@ -361,14 +361,19 @@ float () CheckDropPath =
          return (FALSE);
       } //end if
    } //end if
-   if (((trace_ent.classname == "plat") || (trace_ent.classname == "train")))
-   {
-      if (trace_ent.think)
-      {
-         self.lefty = (self.lefty | NODROP);
-         return (FALSE);
-      } //end if
-   } //end if
+   // ===== PLATFORM MASTERY: Enable Learning on Elevators =====
+   // REMOVED RESTRICTION: Old code prevented breadcrumb drops on moving platforms.
+   // We WANT bots to map elevator paths so they can learn to use lifts!
+   // OLD CODE (DISABLED):
+   // if (((trace_ent.classname == "plat") || (trace_ent.classname == "train")))
+   // {
+   //    if (trace_ent.think)
+   //    {
+   //       self.lefty = (self.lefty | NODROP);
+   //       return (FALSE);
+   //    } //end if
+   // } //end if
+   // ===== END PLATFORM MASTERY =====
    if ((self.teleport_time > time))
    {
       self.lefty = (self.lefty | NODROP);
@@ -430,6 +435,15 @@ void () DropBotPath =
    // ===== SMART SPACING: Remember this node for spacing optimization =====
    self.last_dropped_node = oldpath;
    // ====================================================================
+
+   // ===== PLATFORM MASTERY: Platform Tagging =====
+   // Check what we are standing on. If it's a lift/train, mark this node.
+   traceline (self.origin,(self.origin - '0.000 0.000 64.000'),TRUE,self);
+   if ((((trace_ent.classname == "func_plat") || (trace_ent.classname == "func_train")) || (trace_ent.classname == "func_door")))
+   {
+      oldpath.is_platform_node = TRUE;
+   } //end if
+   // ==============================================
 
    NUMPATHS = (NUMPATHS + SPAWNFLAG_SUPERSPIKE);
 }; //end of the function DropBotPath

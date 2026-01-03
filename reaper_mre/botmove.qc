@@ -1322,6 +1322,38 @@ void (float dist) Botmovetogoal =
    self.ideal_yaw = vectoyaw ((Botgoal.origin - self.origin));
    ChangeYaw ();
 
+   // ===== PLATFORM MASTERY: Elevator Patience =====
+   // If our next step is a platform node, and it's high above us,
+   // it means the lift is UP and we are DOWN. We must WAIT.
+   if (Botgoal.is_platform_node)
+   {
+      // Is the node significantly above us? (> 64 units)
+      if ((Botgoal.origin_z > (self.origin_z + 64.000)))
+      {
+         // Are we close to the shaft? (Horizontal distance < 200)
+         local vector flat_dist;
+         flat_dist = (Botgoal.origin - self.origin);
+         flat_dist_z = 0.000;
+
+         if ((vlen (flat_dist) < 200.000))
+         {
+            // We are at the lift shaft. WAIT here.
+            self.velocity = '0.000 0.000 0.000';
+
+            // Look UP at the lift (human behavior)
+            self.ideal_pitch = -45.000;
+            ChangePitch ();
+
+            // Reset stuck timers so we don't panic-teleport
+            self.stuck_time = 0.000;
+            self.stuck_count = 0.000;
+
+            return ;
+         } //end if
+      } //end if
+   } //end if
+   // ===============================================
+
    // ===== PROBLEM SOLVER: Execute Vertical Solve (Rocket Jump for High Items) =====
    // Check if we are near the goal but it's above us (The "Quad Ledge" Scenario)
    local float vert_dist;
