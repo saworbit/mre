@@ -287,6 +287,434 @@ copy progs.dat launch\quake-spasm\reaper_mre\progs.dat /Y
 
 ---
 
+### Complete Development Workflow
+
+This section documents the full end-to-end development cycle for implementing and testing features.
+
+#### Prerequisites Check
+
+**Required files and tools:**
+```
+c:\reaperai\
+├── tools\fteqcc_win64\fteqcc64.exe   ← Compiler (must exist)
+├── reaper_mre\*.qc                   ← Source files (active development)
+├── reaper_mre\progs.src              ← Build manifest
+├── launch\quake-spasm\               ← Test environment
+│   ├── quakespasm.exe                ← Engine binary
+│   ├── id1\PAK0.PAK                  ← Game data (required)
+│   ├── id1\PAK1.PAK                  ← Game data (required)
+│   └── reaper_mre\                   ← Deployment target
+└── ci\reaper_mre\                    ← CI validation target
+```
+
+**Verify setup:**
+```bash
+# Check compiler exists
+dir tools\fteqcc_win64\fteqcc64.exe
+
+# Check source files
+dir reaper_mre\*.qc
+
+# Check engine
+dir launch\quake-spasm\quakespasm.exe
+
+# Check game data
+dir launch\quake-spasm\id1\*.PAK
+```
+
+---
+
+#### Workflow: Making Code Changes
+
+**Step 1: Edit QuakeC source files**
+
+Edit files in `reaper_mre/` directory:
+- `botmove.qc` — Movement, navigation, jumps, trains
+- `botfight.qc` — Combat, weapons, aim
+- `botthink.qc` — Physics, air control
+- `botvis.qc` — Visibility, reachability
+- `botgoal.qc` — Item scoring, tactics
+- `botit_th.qc` — Entity fields (add `.float` variables here)
+
+**QuakeC syntax constraints:**
+- No ternary operators: Use `if/else` blocks
+- No compound assignment: `x = x + 1` not `x += 1`
+- No increment: `x = x + 1` not `x++`
+- Forward declarations required: If function A calls function B before B is defined, add `float() B;` at top
+
+**Step 2: Compile the source**
+
+```bash
+# Change to project root
+cd c:\reaperai
+
+# Run compiler with optimization
+tools\fteqcc_win64\fteqcc64.exe -O3 reaper_mre\progs.src
+```
+
+**Success indicators:**
+```
+Compiling progs.dat
+<compilation output>
+Successfull compile! (with warnings)
+```
+
+**Expected output file:**
+- Location: `reaper_mre\progs.dat`
+- Size: ~380 KB (376-384 KB range)
+- Warnings: Expected (missing precache, unused variables)
+- Errors: Must be 0 for success
+
+**Failure indicators:**
+- `error: <message>` lines in output
+- No `progs.dat` file created
+- Build stops before "Successfull compile!"
+
+**Step 3: Deploy to test environments**
+
+```bash
+# Deploy to primary test location
+copy reaper_mre\progs.dat launch\quake-spasm\reaper_mre\progs.dat /Y
+
+# Deploy to CI validation location
+copy reaper_mre\progs.dat ci\reaper_mre\progs.dat /Y
+```
+
+**Success indicators:**
+- `1 file(s) copied.` for each copy command
+- Files exist at target locations
+
+**Verify deployment:**
+```bash
+# Check file sizes match
+dir reaper_mre\progs.dat
+dir launch\quake-spasm\reaper_mre\progs.dat
+dir ci\reaper_mre\progs.dat
+```
+
+---
+
+#### Workflow: Testing Changes
+
+**Quick test (normal play):**
+
+```bash
+# Navigate to test environment
+cd launch\quake-spasm
+
+# Launch with standard settings
+launch_reaper_mre.bat 8 dm4
+```
+
+**Parameters:**
+- `8` — Max players (2-16)
+- `dm4` — Map name (dm2, dm3, dm4, dm5, dm6)
+
+**What happens:**
+- Quake engine launches in window
+- Map loads with 8 player slots
+- Bots spawn automatically
+- No console log output
+
+**Debug test (verbose logging):**
+
+```bash
+# Navigate to test environment
+cd launch\quake-spasm
+
+# Launch with debug flags
+quakespasm.exe -basedir . -game reaper_mre +map dm4 +skill 3 +deathmatch 1 +maxplayers 8 +impulse 208
+```
+
+**Debug flags explained:**
+- `-basedir .` — Use current directory as Quake root
+- `-game reaper_mre` — Load reaper_mre mod
+- `+map dm4` — Auto-load DM4 map
+- `+skill 3` — Expert difficulty (enables all AI features)
+- `+deathmatch 1` — Deathmatch mode
+- `+maxplayers 8` — 8 player slots
+- `+impulse 208` — Mass-spawn bots command
+
+**What happens:**
+- Console output written to `qconsole.log`
+- Verbose loading information displayed
+- Bot spawn messages logged
+- All errors/warnings captured
+
+**In-game console commands:**
+
+```
+skill 0           // Novice bots (IQ 1.0)
+skill 1           // Intermediate (IQ 1.5)
+skill 2           // Advanced (IQ 2.0)
+skill 3           // Expert (IQ 3.0, full features)
+
+impulse 100       // Add 1 bot
+impulse 101       // Fill server with bots
+impulse 102       // Remove 1 bot
+impulse 208       // Mass-spawn bots
+```
+
+---
+
+#### Workflow: Verifying Functionality
+
+**Step 1: Check console log**
+
+```bash
+type launch\quake-spasm\qconsole.log
+```
+
+**Success indicators:**
+```
+Quake 1.09 (c) id Software
+...
+execing quake.rc
+...
+Programs occupy 376K.
+...
+Cheater (iq 1) is reformed Thanks Chris.
+Cheat (iq 1) is reformed Thanks Chris.
+<more bot spawn messages>
+```
+
+**Failure indicators:**
+- `Host Error: <message>` — Critical failure, progs.dat didn't load
+- `SV_Error: <message>` — Runtime error in QuakeC code
+- No bot spawn messages — Bots not spawning
+- `Bad entity field` — Field definition error in botit_th.qc
+
+**Expected warnings (safe to ignore):**
+```
+Couldn't load gfx/ipx.cfg.
+CD track 2 not found
+Couldn't exec config.cfg
+```
+
+**Step 2: Test specific features**
+
+**Rocket jumps (skill 3 required):**
+- Maps: DM3, DM4 (have high ledges)
+- Watch bots near high platforms
+- Should see upward rocket blast + jump
+- Verify no suicide at low HP (<50)
+- Check cooldown (2 seconds between RJs)
+
+**Train navigation:**
+- Map: DM6 (has func_train entities)
+- Watch bots near moving platforms
+- Should intercept trains at future positions
+- No "stuck" loops near trains
+- Bots should ride trains smoothly
+
+**Platform prediction:**
+- Maps: DM3, DM5 (have moving platforms)
+- Watch bots jump onto rising/falling platforms
+- Precise mid-air landings
+- Follow platform motion after landing
+
+**Combat AI:**
+- Skill 3 bots should use all weapons tactically
+- Grenade launcher lobs at distant targets
+- Rocket conservation (don't spam)
+- Evasion patterns vs enemy rockets
+
+**Step 3: Performance check**
+
+**Verify no stuck loops:**
+- Watch bots for 2-3 minutes
+- Should not spin in corners
+- Should escape geometry traps (rocket jump, super jump)
+- Movement should be fluid
+
+**Verify FPS stability:**
+- Check console: `host_framerate` command
+- Should maintain ~60 FPS with 8 bots
+- No stuttering or freezes
+
+---
+
+#### Workflow: Documentation Updates
+
+**After verifying features work, update documentation:**
+
+**Step 1: Update source code comments**
+
+Add comments in `.qc` files:
+```quakec
+// ============================================================
+// Feature Name
+// ============================================================
+// Description of what this function/section does
+// Parameters: self = bot entity
+// Returns: TRUE if success, FALSE if failure
+// ============================================================
+float() example_function =
+{
+    // Implementation
+};
+```
+
+Example: See `bot_rocket_jump()` in [botmove.qc:627-667](reaper_mre/botmove.qc#L627-L667)
+
+**Step 2: Update CHANGELOG.md**
+
+Add entry to "## Unreleased" section:
+
+```markdown
+## Unreleased
+
+- **Feature category name** for [navigation|combat|tactics|physics]:
+  - **Implementation detail** in `reaper_mre/file.qc`: Technical description with function names, algorithms, mechanics. Explain what problem it solves and how.
+  - **Integration point** in `reaper_mre/file.qc`: Where/how feature integrates with existing systems.
+  - Added `.float field_name` field in `reaper_mre/botit_th.qc` for [purpose].
+```
+
+**Step 3: Update README.md**
+
+Add to appropriate feature table:
+
+```markdown
+| Feature | Description |
+|---------|-------------|
+| 🆕 **Your Feature** | Concise description of capability and benefit |
+```
+
+Update if needed:
+- Quick Start section — if launch process changed
+- Skill Levels table — if bot behavior changed
+- Testing Maps — if map-specific features added
+
+**Step 4: Verify documentation**
+
+```bash
+# Check markdown renders correctly
+type README.md
+type CHANGELOG.md
+
+# Verify file references
+dir reaper_mre\botmove.qc
+dir reaper_mre\botit_th.qc
+```
+
+---
+
+#### Workflow: Git Commit and Push
+
+**Step 1: Check status**
+
+```bash
+git status
+```
+
+**Expected changes:**
+- Modified: `reaper_mre/*.qc` files
+- Modified: `CHANGELOG.md`
+- Modified: `README.md`
+- Untracked: None (reaper_mre/*.qc should be tracked)
+
+**Note:** `progs.dat` files should NOT appear (ignored by .gitignore)
+
+**Step 2: Stage changes**
+
+```bash
+# Stage source code
+git add reaper_mre/
+
+# Stage documentation
+git add CHANGELOG.md README.md
+
+# Verify staged files
+git status
+```
+
+**Step 3: Create commit**
+
+```bash
+git commit -m "Add [feature name]: [brief description]
+
+[Detailed description paragraph explaining what was added, why, and what problem it solves]
+
+Technical changes:
+- Enhanced [file.qc] with [specific function/logic]
+- Added [field name] to botit_th.qc for [purpose]
+- Updated [system] to integrate with [new feature]
+"
+```
+
+**Good commit message example:**
+```
+Add enhanced rocket jump system: safe controlled navigation
+
+Replaced crude "turn and fire" rocket jump with sophisticated system featuring health checks (<50 HP suicide prevention), 2-second cooldown, precise pitch/yaw control (90° down + 180° backward), and synchronized jump timing.
+
+Technical changes:
+- Implemented bot_rocket_jump() in botmove.qc with safety checks
+- Added .float rj_cooldown field to botit_th.qc for spam prevention
+- Enhanced Bot_tryjump() to trigger RJ for high ledges (>1.5× MAXJUMP)
+- Upgraded desperate unstuck to use enhanced RJ instead of crude fire
+```
+
+**Step 4: Push to GitHub**
+
+```bash
+git push origin master
+```
+
+**Success indicators:**
+```
+Enumerating objects: X, done.
+Counting objects: 100% (X/X), done.
+Delta compression using up to Y threads
+Compressing objects: 100% (X/X), done.
+Writing objects: 100% (X/X), Z KiB | Z MiB/s, done.
+Total X (delta Y), (reused Z) (delta W)
+To https://github.com/saworbit/mre
+   abc1234..def5678  master -> master
+```
+
+**Step 5: Verify GitHub Actions CI**
+
+1. Go to [GitHub Actions](https://github.com/saworbit/mre/actions)
+2. Check latest workflow run
+3. Verify "Build Reaper MRE" workflow succeeded
+4. Download artifact `reaper_mre-progs.dat` to verify build
+
+---
+
+#### Quick Reference: Common Tasks
+
+**Rebuild after code change:**
+```bash
+cd c:\reaperai
+tools\fteqcc_win64\fteqcc64.exe -O3 reaper_mre\progs.src
+copy reaper_mre\progs.dat launch\quake-spasm\reaper_mre\progs.dat /Y
+```
+
+**Quick test:**
+```bash
+cd launch\quake-spasm
+launch_reaper_mre.bat 8 dm4
+```
+
+**Debug test:**
+```bash
+cd launch\quake-spasm
+quakespasm.exe -basedir . -game reaper_mre +map dm4 +skill 3 +deathmatch 1 +maxplayers 8 +impulse 208
+```
+
+**Check logs:**
+```bash
+type launch\quake-spasm\qconsole.log
+```
+
+**Full workflow (one command block):**
+```bash
+cd c:\reaperai && tools\fteqcc_win64\fteqcc64.exe -O3 reaper_mre\progs.src && copy reaper_mre\progs.dat launch\quake-spasm\reaper_mre\progs.dat /Y && copy reaper_mre\progs.dat ci\reaper_mre\progs.dat /Y
+```
+
+---
+
 ### Documentation Update Workflow
 
 **After adding new features:**
@@ -387,6 +815,7 @@ This project builds upon the classic **Reaper Bot** (1998) with modern enhanceme
 ## 🙏 Credits
 
 - 🎮 **Original Reaper Bot** — Steven Polge & community (1998)
+- 🤖 **Omicron Bot** — Mr Elusive (AI architecture inspiration)
 - 🔧 **FTEQCC Compiler** — FTE QuakeWorld team
 - 🎨 **QuakeSpasm Engine** — QuakeSpasm developers
 - 🧠 **MRE AI Systems** — Modern enhancements (2026)
