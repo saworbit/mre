@@ -162,7 +162,7 @@ GitHub Actions automatically compiles `progs.dat` on every push:
 
 - 📦 **Artifact:** `reaper_mre-progs.dat`
 - 🔍 **Size:** ~380 KB (optimized with `-O3`)
-- ✅ **Status:** Check [Actions tab](../../actions)
+- ✅ **Status:** Check [Actions tab](https://github.com/saworbit/mre/actions)
 
 ---
 
@@ -238,10 +238,10 @@ This project builds upon the classic **Reaper Bot** (1998) with modern enhanceme
 
 ## 🔗 Links
 
-- 📦 **GitHub Releases:** [Latest progs.dat builds](../../releases)
-- 🐛 **Issue Tracker:** [Report bugs](../../issues)
-- 💬 **Discussions:** [Share strategies](../../discussions)
-- 📊 **CI Status:** [Build pipeline](../../actions)
+- 📦 **GitHub Releases:** [Latest progs.dat builds](https://github.com/saworbit/mre/releases)
+- 🐛 **Issue Tracker:** [Report bugs](https://github.com/saworbit/mre/issues)
+- 💬 **Discussions:** [Share strategies](https://github.com/saworbit/mre/discussions)
+- 📊 **CI Status:** [Build pipeline](https://github.com/saworbit/mre/actions)
 
 ---
 
