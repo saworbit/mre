@@ -41,3 +41,6 @@ release.html
 !/reaper/Autoexec.cfg
 !/launch/quake-spasm/RPBOT/Autoexec.cfg
 !/launch/quake-spasm/reaper_mre/config.cfg
+
+# Legacy/archived documentation (superseded by README.md)
+Readme.txt
