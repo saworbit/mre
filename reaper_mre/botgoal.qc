@@ -122,10 +122,35 @@ float (entity e) thingweight =
    {
       if (!OK_HIGH)
       {
+         // ===== ENHANCED TWEAK: Rocket Jump Reachability (Gap Crosser) =====
+         // If thing is high (up to 450 units), but we have a Rocket Launcher,
+         // Health, and Ammo, we MARK IT AS REACHABLE instead of ignoring it.
+         local float can_rj;
+         can_rj = FALSE;
+         if (((self.items & IT_ROCKET_LAUNCHER) && (self.ammo_rockets >= 1.000)))
+         {
+            if ((self.health >= 40.000))
+            {
+               can_rj = TRUE;
+            } //end if
+         } //end if
+
          if ((e.absmin_z > (self.origin_z + MAXJUMP)))
          {
-            weight = DONT_WANT;
+            // If we can RJ and it's within "Rocket Jump Height" (approx 450u)
+            if ((can_rj && (e.absmin_z < (self.origin_z + 450.000))))
+            {
+               // KEEP weight! (Do nothing, let it pass)
+               // Bonus: Boost desire slightly because high things are usually good.
+               weight = (weight * 1.200);
+            } //end if
+            else
+            {
+               // Truly unreachable
+               weight = DONT_WANT;
+            } //end if
          } //end if
+         // ===== END ENHANCED TWEAK =====
       } //end if
    } //end if
    return (weight);
@@ -351,10 +376,36 @@ float (entity e) itemweight =
    {
       if (!OK_HIGH)
       {
+         // ===== ENHANCED TWEAK: Rocket Jump Reachability (Gap Crosser) =====
+         // If item is high (up to 450 units), but we have a Rocket Launcher,
+         // Health, and Ammo, we MARK IT AS REACHABLE instead of ignoring it.
+         // This enables bots to reach Quad Damage on DM2 and similar high ledges.
+         local float can_rj;
+         can_rj = FALSE;
+         if (((self.items & IT_ROCKET_LAUNCHER) && (self.ammo_rockets >= 1.000)))
+         {
+            if ((self.health >= 40.000))
+            {
+               can_rj = TRUE;
+            } //end if
+         } //end if
+
          if ((e.absmin_z > (self.origin_z + MAXJUMP)))
          {
-            weight = DONT_WANT;
+            // If we can RJ and it's within "Rocket Jump Height" (approx 450u)
+            if ((can_rj && (e.absmin_z < (self.origin_z + 450.000))))
+            {
+               // KEEP weight! (Do nothing, let it pass)
+               // Bonus: Boost desire slightly because high items are usually good.
+               weight = (weight * 1.200);
+            } //end if
+            else
+            {
+               // Truly unreachable
+               weight = DONT_WANT;
+            } //end if
          } //end if
+         // ===== END ENHANCED TWEAK =====
       } //end if
    } //end if
    if ((weight > DONT_WANT))

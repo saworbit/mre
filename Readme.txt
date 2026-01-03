@@ -20,10 +20,12 @@ This repository contains an enhanced version of the classic Reaper bot with mode
 
 **Latest: Enhanced Rocket Jump System** (2026-01)
 - Directional RJ mechanics: Dynamic geometry-based aim (85° pitch for high ledges, 45° for gaps), yaw aims toward goal
+- Aggressive leap: 3× forward velocity (-320 u/s) enables gap crossing to DM2 Quad and similar platforms
+- Enhanced reachability: Recognizes items up to 450u high as reachable, actively seeks and RJs to them
 - Smart high-ledge trigger: Proactive RJ when height >1.5× normal jump (skill >2 only)
 - Safe unstuck upgrade: Enhanced RJ replaces crude fire (prevents suicide/spam)
 - Pro movement: Context-aware high jumps and long jumps like human speedrunners
-- Health checks (no suicide <50 HP), 2s cooldown (prevents spam), synchronized jump timing
+- Health checks (no suicide <40 HP), 2s cooldown (prevents spam), synchronized jump timing
 
 **Previous: Train Navigation Enhancements** (2026-01)
 - Path_corner chain traversal: Two-pass algorithm predicts train positions along multi-segment paths

@@ -749,7 +749,7 @@ float() bot_rocket_jump =
    // 1. Safety Checks
    if ((self.ammo_rockets < 1)) return (FALSE);
    if (!(self.items & IT_ROCKET_LAUNCHER)) return (FALSE);
-   if ((self.health < 50.000)) return (FALSE); // Prevent suicide
+   if ((self.health < 40.000)) return (FALSE); // Prevent suicide (lowered to 40 for gap crossing)
    if ((time < self.rj_cooldown)) return (FALSE); // 2s cooldown
    if (!self.goalentity) return (FALSE); // Need a target for directional RJ
 
@@ -794,7 +794,8 @@ float() bot_rocket_jump =
 
    // Add forward momentum relative to where we want to go (v_forward is pointing back)
    // We invert v_forward because we are looking backwards
-   jumpv = (jumpv + (v_forward * -120.000));
+   // AGGRESSIVE LEAP: Tripled from -120 to -320 (running speed) to clear wide gaps like DM2 Quad
+   jumpv = (jumpv + (v_forward * -320.000));
 
    Botjump (jumpv);
 

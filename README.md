@@ -28,11 +28,13 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 Bots now execute **proper rocket jumps** with professional-level control:
 
-- ✅ **Health checks** — Won't suicide if HP < 50
+- ✅ **Health checks** — Won't suicide if HP < 40 (lowered for aggressive play)
 - ⏱️ **2-second cooldown** — Prevents spam and maintains balance
 - 🎯 **Directional aim control** — Dynamic pitch: 85° for high ledges, 45° for long gaps; yaw aims toward goal
 - ⚡ **Synchronized timing** — Jump perfectly timed with rocket blast
+- 🚀 **Aggressive leap** — 3× forward velocity (-320 u/s) enables gap crossing to DM2 Quad and similar platforms
 - 🏔️ **Smart triggers** — Auto-RJ when ledges exceed 1.5× normal jump height (skill >2)
+- 🎯 **Enhanced reachability** — Recognizes items up to 450u high as reachable, actively seeks and RJs to them
 - 🆘 **Safe unstuck escape** — Replaces dangerous "turn and fire" with controlled RJ
 
 **Result:** Bots reach unreachable platforms just like human speedrunners! 🏃‍♂️💨
