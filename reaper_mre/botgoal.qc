@@ -414,6 +414,47 @@ float (entity e) itemweight =
       {
          weight = DONT_WANT;
       } //end if
+
+      // ===== FAT TRACE: Bar Detection (Anti-Cookie Jar) =====
+      // Problem: Center ray sees item through bars, but bot is too fat to fit.
+      // Solution: Trace lines from the bot's left and right shoulders.
+      // If sides are blocked but center is clear, it's a trap (bars/grate).
+      else if (visible (e)) // Only check if we can actually see it
+      {
+         local vector right_ofs;
+         local vector targ_org;
+         local float f_right;
+         local float f_left;
+
+         makevectors (self.angles); // Get bot orientation
+         right_ofs = (v_right * 14.000); // Check 14 units to the side (bot radius is 16)
+
+         // Use item origin for target
+         targ_org = e.origin;
+
+         // 1. Right Shoulder Trace
+         traceline ((self.origin + right_ofs), (targ_org + right_ofs), TRUE, self);
+         f_right = trace_fraction;
+
+         // 2. Left Shoulder Trace
+         traceline ((self.origin - right_ofs), (targ_org - right_ofs), TRUE, self);
+         f_left = trace_fraction;
+
+         // If either shoulder hits a wall early (while center is visible)
+         // trace_fraction < 1.0 means we hit something.
+         // trace_ent != e means we didn't hit the item itself.
+         if (((f_right < 1.000) && (trace_ent != e)) || ((f_left < 1.000) && (trace_ent != e)))
+         {
+            // We are too fat to fit!
+            // Only reject if the blockage is CLOSE to us (the bars are in our face)
+            // If blockage is far away, we might be able to navigate around.
+            if ((vlen ((trace_endpos - self.origin)) < 64.000))
+            {
+               weight = DONT_WANT;
+            } //end if
+         } //end if
+      } //end if
+      // ======================================================
    } //end if
    return (weight);
 }; //end of the function itemweight

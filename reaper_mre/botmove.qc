@@ -1025,6 +1025,43 @@ void (float dist) strafemove =
       return ;
    } //end if
 
+   // ===== STAIR SMOOTHING: The "Step Up" =====
+   // If blocked, check if it's just a low step (stairs/debris).
+   // Trace 22 units (above step height) to see if path is clear at knee level.
+   local vector step_trace_dest;
+   local vector dir;
+   local float angle_rad;
+
+   // Calculate direction vector from ideal_yaw + ofs
+   angle_rad = ((self.ideal_yaw + ofs) * (3.14159 / 180.000)); // Convert to radians
+
+   // Manual vector construction (QuakeC doesn't have cos/sin, use makevectors workaround)
+   self.angles_y = (self.ideal_yaw + ofs);
+   makevectors(self.angles);
+   dir = v_forward;
+   dir_z = 0.000;
+   dir = normalize(dir);
+
+   step_trace_dest = (self.origin + (dir * dist));
+   step_trace_dest_z = (self.origin_z + 22.000); // Check slightly above standard step height (18)
+
+   // Trace forward at knee height
+   traceline((self.origin + '0.000 0.000 22.000'), step_trace_dest, TRUE, self);
+
+   if ((trace_fraction == 1.000))
+   {
+      // Knee-height is clear! The blockage is below our knees (a step).
+      // Nudge the bot UP so it can slide over it.
+      // We don't jump (too high), we just pop velocity to clear the friction.
+      if ((self.flags & FL_ONGROUND))
+      {
+         self.velocity_z = 210.000; // Small hop (just enough to clear stairs)
+         self.flags = (self.flags - FL_ONGROUND);
+         return ;
+      } //end if
+   } //end if
+   // =======================================
+
    // --- SLIDE LOGIC #1 (from Step 4) ---
    self.angles_y = self.ideal_yaw + ofs;
    makevectors(self.angles);

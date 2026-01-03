@@ -24,6 +24,30 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 ## 🎬 Latest Features (2026-01)
 
+### 🪜 Stair Smoothing (The "Step Up")
+
+Bots now **glide smoothly** over stairs and debris:
+
+- 🔍 **Step detection** — Traces at knee height (22u) when blocked to detect low obstacles vs walls
+- 🎈 **Micro-hop** — 210 u/s vertical pop (smaller than jump) lifts bot just enough to clear step friction
+- 🏃 **Fluid navigation** — No more stuttering on jagged stairs, crate piles, or uneven terrain
+- 📦 **Handles DM6 crates** — Smoothly ascends multi-step obstacles without stuck loops
+- 🎯 **Human-like** — Mimics how players naturally run up stairs without manual jumping
+
+**Result:** Stairs become highways, not obstacles! Bots navigate vertical terrain with professional fluidity! 🎢✨
+
+### 🚫 Fat Trace (Anti-Cookie Jar)
+
+Bots recognize when they're **too fat to fit** through gaps:
+
+- 👁️ **Shoulder width checking** — Dual traces at ±14u (matching 16u bot radius) detect narrow passages
+- 🚧 **Bar detection** — Recognizes when center vision fits but body cannot (grates, bars, cages)
+- 📏 **Distance awareness** — Only rejects if blockage close (<64u), allows pathfinding around distant obstacles
+- 🎯 **Realistic collision** — No more staring at Red Armor through grates or Quad behind bars
+- 🧠 **Smart filtering** — Ignores physically impossible goals, focuses on reachable items
+
+**Result:** No more "cookie jar syndrome"! Bots understand physical constraints like humans! 🍪🚪
+
 ### 🎯 Action Breadcrumbs (The "Jump" Scent)
 
 Teach bots **exact movement sequences** through demonstration:

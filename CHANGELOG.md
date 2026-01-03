@@ -1,5 +1,15 @@
 ## Unreleased
 
+- **Stair smoothing system** for fluid vertical navigation:
+  - **Step detection** in `reaper_mre/botmove.qc`: When primary walkmove fails in strafemove, traces at knee height (22u above ground) to detect low obstacles like stairs or debris. If path is clear at knee level but blocked at foot level, identifies obstacle as a step rather than a wall.
+  - **Micro-hop execution** in `reaper_mre/botmove.qc`: Applies 210 u/s vertical velocity (smaller than standard 270 jump) to lift bot just enough to clear step friction. Prevents stuck loops on jagged stairs, crate piles, and uneven terrain—bots now glide smoothly up stairs like human players.
+  - **Result:** No more stair stuttering! Bots handle DM6 crate stairs, E1M1 entrance steps, and debris-filled corridors with fluid movement instead of repetitive stuck detection.
+
+- **Fat trace system** for realistic collision awareness:
+  - **Shoulder width checking** in `reaper_mre/botgoal.qc`: When itemweight validates visible items, performs dual shoulder traces (±14u from center, matching 16u bot radius) in addition to center ray. Detects when center vision line fits through bars/grates but bot body cannot.
+  - **Bar detection logic** in `reaper_mre/botgoal.qc`: If either shoulder trace hits obstruction before reaching item (trace_fraction < 1.0 and trace_ent != item), marks item as DONT_WANT only if blockage is close (<64u). Distant blockages allow pathfinding around obstacle—prevents false rejections.
+  - **Result:** No more "cookie jar syndrome"! Bots stop staring at Red Armor through grates, Quad Damage behind bars, or health packs in locked cages. They recognize physical impossibility and move on to reachable goals.
+
 - **Action breadcrumbs system** for teaching complex movement sequences:
   - **Action flag field** in `reaper_mre/botit_th.qc`: New `.float action_flag` entity field stores required actions at waypoint nodes (0=walk, 1=jump, 2=wait). Enables "action tagging" where player behaviors become executable bot instructions—transforms navigation network from passive paths into active choreography.
   - **Jump detection** in `reaper_mre/client.qc`: PlayerPostThink detects when player presses jump (button2) while grounded and immediately drops breadcrumb node tagged with action_flag=1. Uses forced drop (bypasses 0.1s throttle) to capture exact takeoff position with 0.5s cooldown to prevent spam—records precise jump points for parkour sequences like crate hopping or gap crossing.

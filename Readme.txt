@@ -18,7 +18,19 @@ rocket bounce physics, corrected sounds, and chase cam feature.
 
 This repository contains an enhanced version of the classic Reaper bot with modern AI improvements:
 
-**Latest: Action Breadcrumbs (The "Jump" Scent)** (2026-01)
+**Latest: Stair Smoothing (The "Step Up")** (2026-01)
+- Step detection: Traces at knee height (22u) when blocked to detect low obstacles vs walls
+- Micro-hop: 210 u/s vertical pop lifts bot just enough to clear step friction (smaller than jump)
+- Fluid navigation: No more stuttering on jagged stairs, crate piles, or uneven terrain
+- Handles DM6 crates: Smoothly ascends multi-step obstacles without stuck loops
+
+**Previous: Fat Trace (Anti-Cookie Jar)** (2026-01)
+- Shoulder width checking: Dual traces at ±14u detect narrow passages (bot radius 16u)
+- Bar detection: Recognizes when center vision fits but body cannot (grates/bars/cages)
+- Distance awareness: Only rejects if blockage close (<64u), allows pathfinding around distant obstacles
+- Realistic collision: No more staring at items through grates or bars
+
+**Previous: Action Breadcrumbs (The "Jump" Scent)** (2026-01)
 - Jump tagging: When you jump, waypoint tagged with action_flag=1 (forced immediate drop at takeoff)
 - Action execution: Bots detect jump nodes, execute 270 u/s jump when within 64u of trigger point
 - Precise timing: 0.5s cooldown prevents spam, captures exact takeoff position for parkour sequences
