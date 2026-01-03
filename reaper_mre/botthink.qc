@@ -424,35 +424,55 @@ void () BotPostThink =
    BotCheckPowerups ();
    BotWaterMove ();
 
-   // ===== TWEAK #1: Air velocity clamp (realistic physics, anti-exploit) =====
-   // Prevents infinite bunny-hop acceleration and wall-stuck bugs by capping horizontal
-   // air speed to realistic Quake limits. Skill-scaled cap (320-400 u/s) allows advanced
-   // bots more air control while maintaining physics authenticity. Without this, bots can
-   // accumulate excessive velocity through repeated jumps, leading to collision issues,
-   // wall penetration, and unrealistic movement that breaks map navigation.
+   // ===== NEW TWEAK #1: Air acceleration / bunny hopping =====
+   // Replaces restrictive velocity clamp with skill-based strafe-jump mechanics.
+   // High-skill bots (skill >2) gain speed by turning while airborne, simulating
+   // human strafe-jumping. Adds acceleration boost when turning, capped at 600 u/s
+   // (vs old 320-400 cap) for realistic bunny-hop physics without engine breaks.
    if (!(self.flags & FL_ONGROUND))
    {
-      // Bot is airborne—check horizontal velocity magnitude
-      local vector xy_vel;
-      local float air_speed;
-      local float air_cap;
-
-      xy_vel = self.velocity;
-      xy_vel_z = 0;  // Isolate horizontal component (ignore vertical fall/jump speed)
-      air_speed = vlen (xy_vel);
-
-      // Skill-based air control cap: 320 (novice) to 400 (expert) units/sec
-      // Higher skill = more "pro" air steering range before physics enforcement kicks in
-      air_cap = (320.000 + (self.skil * 20.000));
-
-      if ((air_speed > air_cap))
+      // Only high-skill bots can bunny hop (skill >2)
+      if ((self.skil > 2.000))
       {
-         // Normalize horizontal vector and re-scale to cap, preserve vertical velocity
-         // This maintains jump arc shape while preventing xy over-acceleration
-         self.velocity = ((normalize (xy_vel) * air_cap) + ('0.000 0.000 1.000' * self.velocity_z));
+         // Check if bot is turning significantly (yaw difference > 5 degrees)
+         local float yaw_diff;
+         yaw_diff = (self.ideal_yaw - self.angles_y);
+
+         // Normalize yaw difference to -180 to 180 range
+         while ((yaw_diff > 180.000))
+         {
+            yaw_diff = (yaw_diff - 360.000);
+         } //end while
+         while ((yaw_diff < -180.000))
+         {
+            yaw_diff = (yaw_diff + 360.000);
+         } //end while
+
+         // Get absolute value manually (QuakeC has no abs/fabs)
+         if ((yaw_diff < 0.000))
+         {
+            yaw_diff = (yaw_diff * -1.000);
+         } //end if
+
+         // If turning significantly, add strafe acceleration
+         if ((yaw_diff > 5.000))
+         {
+            local float currentspeed;
+            currentspeed = vlen (self.velocity);
+
+            // Cap at 600 u/s to prevent physics engine breaks
+            // Much higher than old 320-400 limit, allows bunny-hop acceleration
+            if ((currentspeed < 600.000))
+            {
+               // Add acceleration boost in facing direction (strafe-jump)
+               // 12 u/s per frame = realistic bunny-hop speed gain
+               makevectors (self.angles);
+               self.velocity = (self.velocity + (v_forward * 12.000));
+            } //end if
+         } //end if
       } //end if
    } //end if
-   // ===== END TWEAK #1 =====
+   // ===== END NEW TWEAK #1 =====
 
    // Burst think time during adrenaline to simulate faster reaction windows.
    think_delay = 0.100;

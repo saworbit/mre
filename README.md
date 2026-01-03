@@ -89,7 +89,7 @@ Advanced **path_corner chain prediction** for moving platforms:
 
 | Feature | Description |
 |---------|-------------|
-| 🌪️ **Air Velocity Clamp** | Skill-scaled caps (320-400 u/s) prevent bunny-hop exploits |
+| 🐰 **Bunny Hop Mechanics** | Skill-based strafe-jump acceleration (skill >2, +12 u/s boost, 600 u/s cap) |
 | 🎢 **Jump Smoothing** | 3-frame moving average eliminates jittery trajectories |
 | 🪂 **Mid-Air Correction** | 20% velocity damping when trajectory becomes unreachable |
 | 🎯 **Finer Arc Simulation** | 0.05s timesteps for precise parabolic prediction |

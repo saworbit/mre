@@ -29,8 +29,8 @@
   - **Conditional denial rush** in `reaper_mre/botroute.qc`: Amplifies powerup denial aggression when leading (+0.15 multiplier) or enemy is weak <40 HP (+0.2 multiplier, stacks to 0.55 total) for opportunistic Quad/Pent contests. Added `BotHasWeakEnemy()` helper to avoid variable shadowing.
   - **Stuck rotate + cache nuke** in `reaper_mre/botmove.qc`: Cycles retry counter 0-7, rotates ideal_yaw in 45° increments after 3 failed moves, full route cache clear on loop. Escapes corner-stuck "moron loops" via multi-angle exploration.
   - Added `stuck_count` field in `reaper_mre/botit_th.qc` for rotation cycle tracking.
-- **Air physics anti-exploit suite** in `reaper_mre/botthink.qc` for realistic bot movement:
-  - **Air velocity clamp**: Skill-scaled horizontal speed caps (320-400 u/s) prevent infinite bunny-hop acceleration, wall-stuck bugs, and physics exploits while preserving skill-based air control variance.
+- **Advanced air movement system** in `reaper_mre/botthink.qc` for pro-level bot physics:
+  - **Bunny hop mechanics**: Skill-based strafe-jump system (skill >2 only) adds acceleration boost (+12 u/s) when turning while airborne, simulating human strafe-jumping. Replaces restrictive 320-400 u/s cap with 600 u/s limit for realistic bunny-hop physics without engine breaks—expert bots now gain speed like speedrunners.
   - **Jump velocity pattern smoothing**: 3-frame moving average with 300 u/s normalization eliminates erratic jump trajectories, ledge overshoots, and jittery navigation on complex geometry—creates stable, human-like arcs.
   - **Mid-air reachability correction**: Predicts landing positions and dampens horizontal velocity by 20% when trajectory becomes unreachable, enabling proactive unstuck recovery and reducing fall deaths from bad jumps.
   - Added `jump_vel_pat0/1` velocity history fields in `reaper_mre/botit_th.qc` for pattern tracking.
