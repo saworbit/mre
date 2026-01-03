@@ -1,0 +1,19 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-mre:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build progs.dat
+        shell: pwsh
+        run: .\ci\build_reaper_mre.ps1
+      - name: Upload progs.dat
+        uses: actions/upload-artifact@v4
+        with:
+          name: reaper_mre-progs.dat
+          path: ci/reaper_mre/progs.dat

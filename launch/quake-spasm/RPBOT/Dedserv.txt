@@ -1,0 +1,39 @@
+DEDICATED SERVERS
+	Important Note:  Add 4194304 to the X resulting from the
+	formula below.  This is the flag that tells the mod to use
+	TEMP1 for configuration.  For example, if the result from
+	the formulas below is X = 128, then set temp1 to
+	4194304 + 128 = 4194432.
+
+	Dedicated servers (or anyone else) can configure their
+	bot setup using the temp1 console variable.  Type TEMP1 X
+	at the console, where X is determined by the following
+	formula:
+	
+	For team play - 
+		X = 	number bot-only team bots * 16
+			+ number bots/player team * 256
+			+ 4096 for restricted mode
+			+ 8192 for super restricted mode
+			+ 16384 to set bot team mode.
+	
+	For deathmatch play -
+		X = 	number of bots * 16
+			+ max bots + players restriction * 256
+			+ 4096 for restricted mode
+			+ 8192 for super restricted mode.
+
+	Examples:
+		- Non-team deathmatch with 8 bots, X = 128.
+		- Team deathmatch with 3 bots per player team,
+		no bot only team, X = 768.
+		- Team deathmatch with 3 bots per player team,
+		4 bot bot-only team, X = 772.
+		- Non-team deathmatch with 8 bots + players
+		maximum, X = 2048.
+		- Non-team deathmatch with 8 bots + players
+		maximum, super restricted, X = 10240.
+
+	Important note: if setting the serverflags, never use a value
+	larger than 15 in the equations above. Remember to add
+	4194304 to the result from the formulas above.

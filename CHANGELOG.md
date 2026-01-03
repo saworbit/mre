@@ -1,0 +1,82 @@
+## Unreleased
+
+- **Enhanced rocket jump system** for safe, controlled, and skill-based navigation:
+  - **Full rocket jump mechanics** in `reaper_mre/botmove.qc`: Sophisticated `bot_rocket_jump` function with health checks (<50 HP prevents suicide), 2s cooldown (prevents spam), precise pitch/yaw control (90° down + 180° backward), and synchronized jump timing. Replaces crude "turn and fire" with proper aim-down-feet blast physics—safer, more controlled, human-like RJ execution.
+  - **Smart RJ trigger for high ledges** in `reaper_mre/botmove.qc`: Proactive rocket jump in `Bot_tryjump` when target height exceeds 1.5× MAXJUMP and bot has skill >2. Enables skilled bots to reach otherwise unreachable platforms/items via RJ instead of fail-and-give-up loops—"pro movement" for vertical navigation.
+  - **Upgraded desperate unstuck** in `reaper_mre/botmove.qc`: Replaced crude rocket fire with full `bot_rocket_jump()` call in stuck escape sequence. Train surf → enhanced RJ → super jump priority ensures safe, cooldown-managed escape with proper directional arcs.
+  - Added `.float rj_cooldown` field in `reaper_mre/botit_th.qc` for spam prevention and timing control.
+
+- **Train navigation enhancements** for path_corner chain prediction and timing:
+  - **Path_corner chain traversal** in `reaper_mre/botmove.qc`: New `predict_train_pos` helper function traverses train path_corner chains using two-pass algorithm (total distance calculation + interpolation) to predict where trains will be at future time. Handles looping paths via modulo arithmetic, detects cycles with first_corner tracking, and limits to 16 segments for safety—enables precise multi-segment train pathing instead of blind velocity guessing.
+  - **Train path prediction in movement** in `reaper_mre/botmove.qc`: Expanded platform prediction in `Botmovetogoal` to call `predict_train_pos` for func_train entities, following actual route through waypoint network instead of simple velocity multiplication. Bots now time train intercepts along complex paths—"human timing" for vertical/horizontal train navigation.
+  - **Train path prediction in jumps** in `reaper_mre/botmove.qc`: Enhanced jump arc train prediction in `Bot_tryjump` to use `predict_train_pos` at LEVELJUMPTIME (≈0.6s) instead of velocity guessing. Ensures bots jump to where train will be, not where it is—precise mid-air train sync for moving platform landings.
+  - **Train reachability checks** in `reaper_mre/botvis.qc`: Added train-specific logic to `Reachable` function that predicts train position at bot arrival time (distance / BOTSPEED) using path_corner chain. Prevents false "unreachable" rejections when timing is correct—bots won't chase static positions, will aim for future intercept points.
+  - **Train surf unstuck escape** in `reaper_mre/botmove.qc`: Added train detection to desperate unstuck tactics (after 5+ stuck attempts). Downward traceline (32u) detects train beneath bot, boosts velocity with train momentum (1.5x multiplier) for "human exploit" surf escape—cheaper than rocket jump, prioritized before ammo-based escapes.
+
+- **Advanced navigation suite** for human-like platform/environmental interaction:
+  - **Platform movement prediction** in `reaper_mre/botmove.qc`: Predicts where moving platforms (func_plat, func_train) will be when bot arrives based on velocity + state (pos1/bottom, pos2/top), enabling timed jumps to meet rising/falling platforms instead of static position chasing—creates "human timing" for vertical navigation.
+  - **Jump arc platform collision** in `reaper_mre/botmove.qc`: Detects platforms during jump simulation (Bot_tryjump) as valid landing surfaces with downward re-trace confirmation, enabling precise mid-air platform landings without ground-only bias—bots now jump onto moving platforms fluidly.
+  - **Button shoot + wait logic** in `reaper_mre/botgoal.qc` and `reaper_mre/botmove.qc`: Auto-shoots visible buttons/shootables (visibility check prevents wall waste), waits 2s for door activation, monitors door state (pointcontents) to clear wait timer early when opened—enables fluid secret navigation with "human button-use" behavior.
+  - **Ride platform auto-follow** in `reaper_mre/botthink.qc`: Downward traceline (32u) detects when standing on moving platform, inherits platform velocity for smooth ride, adjusts goalentity.origin to follow platform motion—prevents premature dismount and enables seamless vertical travel.
+  - **Desperate unstuck tactics** in `reaper_mre/botmove.qc`: After 5+ stuck attempts in trysidestep, escalates to rocket jump (backward blast-out if ammo available) or super jump (350u high leap)—"human exploit" escape from geometry traps, prevents infinite spin-death.
+  - Added `.float button_wait_time` field in `reaper_mre/botit_th.qc` for button/door wait timer tracking.
+- **Grenade launcher mastery** in `reaper_mre/botfight.qc` for advanced indirect fire:
+  - **Bounce-trace aim** (`predict_gl_bounce`): 1-bounce physics simulation with velocity reflection (0.8 elasticity) predicts wall-bank shots and corner splash kills. Enables indirect fire around cover.
+  - **Gravity arc simulation** (`adjustgrenade`): Full parabolic trajectory with travel-time gravity drop replaces flat percentage guessing. Lobs grenades with (g×t×0.6) vertical velocity for optimal range arcs—hits distant feet precisely.
+  - **Self-risk validation** (W_BotAttack GL block): Pre-fire trace to predicted explosion aborts if self-splash risk <128u. Prevents frag-suicide in tight corners/doorways—bot holds fire until safe angle.
+- **Tactical AI decision-making** for smarter item/powerup priority and unstuck recovery:
+  - **Risk-aware item scoring** in `reaper_mre/botgoal.qc`: Need-based boosts (RL/Quad/low ammo +100-200) minus threat penalty (enemy proximity -80 max) prevent suicide rushes for contested items while grabbing critical gear when safe. Smart own/deny replaces blind item chasing.
+  - **Conditional denial rush** in `reaper_mre/botroute.qc`: Amplifies powerup denial aggression when leading (+0.15 multiplier) or enemy is weak <40 HP (+0.2 multiplier, stacks to 0.55 total) for opportunistic Quad/Pent contests. Added `BotHasWeakEnemy()` helper to avoid variable shadowing.
+  - **Stuck rotate + cache nuke** in `reaper_mre/botmove.qc`: Cycles retry counter 0-7, rotates ideal_yaw in 45° increments after 3 failed moves, full route cache clear on loop. Escapes corner-stuck "moron loops" via multi-angle exploration.
+  - Added `stuck_count` field in `reaper_mre/botit_th.qc` for rotation cycle tracking.
+- **Air physics anti-exploit suite** in `reaper_mre/botthink.qc` for realistic bot movement:
+  - **Air velocity clamp**: Skill-scaled horizontal speed caps (320-400 u/s) prevent infinite bunny-hop acceleration, wall-stuck bugs, and physics exploits while preserving skill-based air control variance.
+  - **Jump velocity pattern smoothing**: 3-frame moving average with 300 u/s normalization eliminates erratic jump trajectories, ledge overshoots, and jittery navigation on complex geometry—creates stable, human-like arcs.
+  - **Mid-air reachability correction**: Predicts landing positions and dampens horizontal velocity by 20% when trajectory becomes unreachable, enabling proactive unstuck recovery and reducing fall deaths from bad jumps.
+  - Added `jump_vel_pat0/1` velocity history fields in `reaper_mre/botit_th.qc` for pattern tracking.
+  - Forward-declared `TrueReachable` in `reaper_mre/botthink.qc` for air check integration.
+- Fixed non-ASCII artifacts in `src/combat.qc`, `src/world.qc`, and `src/client.qc` so FTEQCC no longer errors on invalid UTF-8 sequences.
+- Rebuilt `progs.dat` with `tools/fteqcc_win64/fteqcc64.exe -O3 progs.src`, producing the expected ~500 KB output and a clean “Successfull compile” (with only warnings) log.
+- Added a `launch/quake-spasm` workspace that ships the downloaded Quake Spasm engine binary plus Steam `id1/PAK0.PAK` and `PAK1.PAK`, along with a README explaining how to run it (currently the provided engine is the Linux/ELF build from the jarokuczi pre-alpha release).
+- Downloaded the SourceForge QuakeSpasm 0.96.3 Windows archives, placed the x64 build directly in `launch/quake-spasm` and the x86 build in `launch/quake-spasm/win32`, and updated the README to describe how to launch each build with the local `id1` data.
+- Added `launch/quake-spasm/RPBOT` with the reaper mod’s auxiliary files (`Autoexec.cfg`, etc.) plus the newly compiled `PROGS.DAT/progs.dat`, and updated the README so Quake Spasm can launch the mod via `-game RPBOT` using the nearby `id1` data.
+- Added `launch/quake-spasm/launch_rpbot.bat` and documented it as the one-click Windows launcher with safe defaults for maxplayers and map.
+- Recompiled the decompiled MRE sources with MEQCC (fixing decompiler artifacts) and staged the new `progs.dat` in `launch/quake-spasm/reaper_mre`, plus a `launch_reaper_mre.bat` helper and README instructions for testing.
+- Hardened both launch scripts to strip trailing backslashes from `%ROOT%`, use explicit `-basedir`, and documented the pak-file error fix in the README.
+- Confirmed `launch_reaper_mre.bat` boots successfully; `reaper_mre` is the current working baseline.
+- Tuned `reaper_mre/botmove.qc` (jump volume variation, faster strafes by skill, backward dodge) and rebuilt `reaper_mre/progs.dat`; copied it to `launch/quake-spasm/reaper_mre` and `ci/reaper_mre` for testing.
+- Added `setBotGravity` debug logging and loop guard rails in `reaper_mre/botspawn.qc`, then rebuilt and copied the new `progs.dat` into `launch/quake-spasm/reaper_mre` and `ci/reaper_mre` for testing.
+- Made bot runtime globals mutable in `reaper_mre/botit_th.qc` (removed zero initializers so FTEQCC doesn’t treat them as const), then rebuilt and copied the new `progs.dat` into `launch/quake-spasm/reaper_mre` and `ci/reaper_mre` for testing.
+- Added in-code commentary around `setBotGravity` diagnostics/guards and the mutable bot globals, and documented MRE debug logging (including `qconsole.log`) in the Quake Spasm README.
+- Boosted bot prediction (vertical lead, splash-height variance, chase extrapolation via `last_enemy_vel`) in `reaper_mre/botfight.qc` and `reaper_mre/bot_ai.qc`, added commentary, rebuilt, and refreshed the launch/CI `progs.dat` copies.
+- Documented a simple Windows CI flow for rebuilding `progs.dat` in `launch/quake-spasm/README.md`.
+- Added `ci/build_reaper_mre.ps1` and a GitHub Actions workflow in `.github/workflows/ci.yml` to compile and publish the MRE `progs.dat` artifact.
+- Added powerup denial heuristics in `reaper_mre/botroute.qc` (enemy-aware powerup weighting, intercept flags, and denial offsets) with commentary.
+- Verified a debug dm2 session booted and ran cleanly; no host errors reported in `launch/quake-spasm/qconsole.log`.
+- Added adaptive goal heuristics in `reaper_mre/botgoal.qc` (low-health item bias, score-based deny flag, denial-leaning roam) plus the `lead_score` field in `reaper_mre/botit_th.qc`.
+- Verified a debug dm3 session booted and ran cleanly; no host errors reported in `launch/quake-spasm/qconsole.log`.
+- Tuned `reaper_mre/botfight.qc` weapon selection (rocket conservation, SNG vs Quad/Pent, earlier melee on weak targets) with commentary and rebuilt artifacts.
+- Verified a debug dm6 session booted and ran cleanly; no host errors reported in `launch/quake-spasm/qconsole.log`.
+- Verified a debug dm2 session booted and ran cleanly; no host errors reported in `launch/quake-spasm/qconsole.log`.
+- Added adrenaline focus in `reaper_mre/botthink.qc` (dynamic think delay + reduced aim jitter under pressure) with commentary and rebuilt artifacts.
+- Added skill-based spawn memory in `reaper_mre/botspawn.qc` (pre-cached powerups/weapons and first-goal bias) plus the `has_memory` field in `reaper_mre/botit_th.qc`.
+- Verified a debug dm1 session booted and ran cleanly; no host errors reported in `launch/quake-spasm/qconsole.log`.
+- Added streak tracking and adaptive skill adjustments in `reaper_mre/bot_ai.qc` and `reaper_mre/dmbot.qc`, plus new streak fields in `reaper_mre/botit_th.qc`.
+- Verified a debug dm4 session booted and ran cleanly; no host errors reported in `launch/quake-spasm/qconsole.log`.
+- Verified a debug dm6 session booted and ran cleanly; no host errors reported in `launch/quake-spasm/qconsole.log`.
+- Added dynamic route heuristics in `reaper_mre/botroute.qc` (blockage cost inflation, velocity-shift replans, and A*-lite pruning) plus new route timing/velocity fields in `reaper_mre/botit_th.qc`.
+- Verified a debug dm5 session booted and ran cleanly; no host errors reported in `launch/quake-spasm/qconsole.log`.
+- Added low-HP opportunistic item weighting plus intercept-mode goal biasing in `reaper_mre/botgoal.qc`, along with enemy velocity pattern fields in `reaper_mre/botit_th.qc`.
+- Expanded CI pipeline docs in `launch/quake-spasm/README.md` with compile steps, artifact locations, and workflow details.
+- Reviewed the latest dm2 `qconsole.log` output (no host errors; only expected warnings like missing music tracks/IPX disabled) and documented harder-bot console commands plus the log notes in `launch/quake-spasm/README.md`.
+- Added velocity-history aim smoothing and strafe-pattern overlead in `reaper_mre/botfight.qc`, with new velocity history fields in `reaper_mre/botit_th.qc`, then documented the expanded aim features in `launch/quake-spasm/README.md`.
+- Added weapon-aware evasion in `reaper_mre/botmove.qc` (rocket zigzag widening, self-velocity zigzag flips, lightning-gun jump bias) plus new evasion/velocity history fields in `reaper_mre/botit_th.qc`, then documented the evasion behavior in `launch/quake-spasm/README.md`.
+- Reviewed the latest dm6 `qconsole.log` output (no host errors; only expected warnings like missing music track 5/IPX disabled) and documented the log review in `launch/quake-spasm/README.md`.
+- Added noise-driven taunts in `reaper_mre/botnoise.qc` (hot-streak taunt variety + death-streak complaints on gib noises), with a new `taunt_streak` field in `reaper_mre/botit_th.qc` synced from kill/death streaks in `reaper_mre/bot_ai.qc` and `reaper_mre/dmbot.qc`, then documented the behavior in `launch/quake-spasm/README.md`.
+- Added movement recovery in `reaper_mre/botmove.qc` (stuck-time replans, jump/diagonal/backpedal sidestep escalation, and idle patrol wandering) plus the `stuck_time` field in `reaper_mre/botit_th.qc`, then documented the behavior in `launch/quake-spasm/README.md`.
+- Added vision improvements in `reaper_mre/botvis.qc` (corner-peek traces, idle scan yaw sweeps with widened FOV, and stuck-time quick rejection in reachability checks) and documented the behavior in `launch/quake-spasm/README.md`.
+- **Physics-based navigation improvements** in `reaper_mre/botvis.qc` for more realistic bot movement and pathfinding:
+  - **Finer arc simulation**: Reduced time steps from 0.1s to 0.05s in jump trajectory calculations (`Reachable` function), doubling iteration precision for smoother parabolic prediction—catches low-arc jumps better, reduces overshoot errors on precise ledges.
+  - **Strafe momentum**: Added ground velocity carryover (30% of xy speed) to jump reach calculations, simulating realistic running jumps that reach farther than standing jumps—fixes "short jump" failures when bots have momentum.
+  - **Multi-trace path validation**: Doubled path sampling density in `BotWalkable` function (halved step size, doubled iterations) and added mid-path collision detection via traceline for SOLID_BSP obstacles—proactively detects walls/lips/clips that sparse checks miss, preventing stuck spots.
+  - Physics calibrated to Quake standard: g=800u/s², jump_vel=270u/s, max_height≈45u with improved temporal/spatial accuracy.

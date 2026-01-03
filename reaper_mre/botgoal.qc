@@ -1,0 +1,1097 @@
+
+void (float dist) ai_botrun;
+
+void () bot_chase;
+
+void () bot_trigger1;
+
+void () aibot_chooseGoal;
+float /* ERROR: Could not determine return type */ () BotFindTarget;
+
+void () shoottarget =
+{
+   local vector dir;
+   local entity botTarget;
+
+   botTarget = self.goalentity;
+   bot_trigger1 ();
+   sound (self,CHAN_WEAPON,"weapons/guncock.wav",TRUE,ATTN_NORM);
+   dir = ((botTarget.goalentity.absmin + botTarget.goalentity.absmax) * 0.500);
+   dir = normalize ((dir - self.origin));
+   FireBullets (MOVETYPE_TOSS,dir,'0.040 0.040 0.000');
+   self.attack_finished = (time + 0.500);
+   self.enemy = world;
+   if ((botTarget.goalentity.classname == "door"))
+   {
+      self.search_time = (time + FL_CLIENT);
+   } //end if
+}; //end of the function shoottarget
+
+void (float dist) ai_botseek =
+{
+   local entity botTarget;
+   local vector dir;
+   local float rng;
+   local float oldrng;
+
+   if (self.enemy)
+   {
+      aibot_setupchase ();
+   } //end if
+   if (BotFindTarget ())
+   {
+      self.lefty = (self.lefty | FAR_SEEK);
+      return ;
+   } //end if
+   botTarget = self.goalentity;
+   if ((time < self.search_time))
+   {
+      if ((botTarget.goalentity.classname == "train"))
+      {
+         dir = ((botTarget.goalentity.absmin + botTarget.goalentity.absmax) * 0.500);
+         dir_z = (botTarget.goalentity.absmax_z + TRUE);
+         setorigin (botTarget,dir);
+      } //end if
+      if ((botTarget.goalentity.solid != SOLID_NOT))
+      {
+         oldrng = vlen ((botTarget.origin - self.origin));
+         Botmovetogoal (dist);
+         rng = vlen ((botTarget.origin - self.origin));
+         if ((rng >= oldrng))
+         {
+            self.search_time = (self.search_time - 0.400);
+            if ((botTarget.goalentity == botTarget))
+            {
+               self.search_time = time;
+            } //end if
+         } //end if
+         return ;
+      } //end if
+   } //end if
+   aibot_chooseGoal ();
+
+   // ===== TWEAK #3a: Button shoot + wait (shoot once → loop+open check) =====
+   // Auto-shoots buttons and shootable triggers, then waits 2s for doors to open—enables
+   // fluid secret navigation. Replaces blind ignore with "human button-use" behavior.
+   // Only shoots if visible (avoids wasted shots through walls) and sets wait timer.
+   if (((botTarget.goalentity.takedamage == DAMAGE_YES) && Spotvisible (botTarget.goalentity)))
+   {
+      shoottarget ();
+      self.button_wait_time = (time + 2.000);  // Wait 2s for door/trigger to activate
+   } //end if
+   // ===== END TWEAK #3a =====
+
+   Botmovetogoal (dist);
+}; //end of the function ai_botseek
+float (entity e) thingweight =
+{
+   local float weight;
+   local float OK_HIGH;
+   local float recent;
+   local float waittime;
+
+   weight = DONT_WANT;
+   OK_HIGH = FALSE;
+   if ((self.flags & FL_SWIM))
+   {
+      OK_HIGH = Swimto (e);
+   } //end if
+   if ((e.lastbot == self))
+   {
+      recent = (e.lasttime > (time - FL_CLIENT));
+      if (!recent)
+      {
+         waittime = (time - (LOOPTIME * random ()));
+         recent = (e.lasttime > waittime);
+      } //end if
+      if (recent)
+      {
+         return (DONT_WANT);
+      } //end if
+   } //end if
+   if (e.th_weight)
+   {
+      weight = e.th_weight (e);
+
+   } //end if
+   else
+   {
+      e.pathtype = NEVERTARGET;
+   } //end if
+   if ((weight > DONT_WANT))
+   {
+      if (!OK_HIGH)
+      {
+         if ((e.absmin_z > (self.origin_z + MAXJUMP)))
+         {
+            weight = DONT_WANT;
+         } //end if
+      } //end if
+   } //end if
+   return (weight);
+}; //end of the function thingweight
+float (entity e) trigweight =
+{
+   local float weight;
+
+   weight = DONT_WANT;
+   if ((e.lastbot == self))
+   {
+      if ((e.lasttime > (time - FL_CLIENT)))
+      {
+         return (DONT_WANT);
+      } //end if
+   } //end if
+   if (e.th_weight)
+   {
+      weight = e.th_weight (e);
+
+   } //end if
+   else
+   {
+      e.pathtype = NEVERTARGET;
+   } //end if
+   return (weight);
+}; //end of the function trigweight
+float (entity e) itemweight =
+{
+   local float weight;
+   local float OK_HIGH;
+
+   weight = DONT_WANT;
+   OK_HIGH = FALSE;
+   if ((self.flags & FL_SWIM))
+   {
+      OK_HIGH = Swimto (e);
+   } //end if
+   if ((e.lastbot == self))
+   {
+      if ((e.lasttime > (time - MOVETYPE_FLY)))
+      {
+         return (DONT_WANT);
+      } //end if
+   } //end if
+   if (e.th_weight)
+   {
+      weight = e.th_weight (e);
+
+   } //end if
+   else
+   {
+      e.pathtype = NEVERTARGET;
+   } //end if
+   // Opportunistic finish: boost items near a weak enemy to press advantage.
+   if (self.enemy)
+   {
+      if ((self.enemy != world))
+      {
+         if ((self.enemy.health < 40.000))
+         {
+            if ((vlen ((e.origin - self.enemy.origin)) < 300.000))
+            {
+               if ((weight > DONT_WANT))
+               {
+                  weight = (weight + ((40.000 - self.enemy.health) * 2.000));
+                  if ((self.skil > 2.000))
+                  {
+                     weight = (weight + (random () * 50.000));
+                  } //end if
+               } //end if
+            } //end if
+         } //end if
+      } //end if
+   } //end if
+   // Low-health bias: nudge item_health higher when the bot is hurt.
+   if ((self.health < 50.000))
+   {
+      if ((e.classname == "item_health"))
+      {
+         if ((weight > DONT_WANT))
+         {
+            weight = (weight + ((50.000 - self.health) * 0.500));
+         } //end if
+      } //end if
+   } //end if
+
+   // ===== TWEAK #1: Risk-aware item scoring (smart own/deny) =====
+   // Calculates threat (enemy proximity penalty) and need (critical item boost) to make
+   // bots grab high-priority items (RL, Quad, low ammo) while avoiding contested zones.
+   // Prevents suicide rushes for minor items when enemy controls the area, enables smart
+   // item denial when the bot actually needs it. Risk-reward replaces blind item chasing.
+   local float threat;
+   local float need;
+
+   threat = 0;
+   // Threat assessment: subtract weight when visible enemy is near the item
+   if (self.enemy)
+   {
+      if (enemyvisible (self.enemy))
+      {
+         local float risk_dist;
+         risk_dist = vlen ((self.enemy.origin - e.origin));
+         if ((risk_dist < 400.000))
+         {
+            // Enemy within 400 units of item—subtract risk penalty (closer = more dangerous)
+            // 0.2 multiplier scales threat: 400u away = 0 penalty, 0u away = 80 penalty
+            threat = ((400.000 - risk_dist) * 0.200);
+         } //end if
+      } //end if
+   } //end if
+
+   need = 0;
+   // Need assessment: boost weight for critical items based on bot's current loadout
+   // Rockets critical: boost by 100 if we have <5 (prevents dry RL)
+   if ((e.classname == "item_rockets"))
+   {
+      if ((self.ammo_rockets < 5.000))
+      {
+         need = 100.000;
+      } //end if
+   } //end if
+   // Quad damage: boost by 150 if we lack Quad or Pentagram (game-changing powerup)
+   if ((e.classname == "item_artifact_super_damage"))
+   {
+      if (!(self.items & (IT_QUAD | IT_INVULNERABILITY)))
+      {
+         need = 150.000;
+      } //end if
+   } //end if
+   // Rocket launcher: boost by 200 if we don't have one (most critical weapon)
+   if ((e.classname == "weapon_rocketlauncher"))
+   {
+      if (!(self.items & IT_ROCKET_LAUNCHER))
+      {
+         need = 200.000;
+      } //end if
+   } //end if
+
+   // Apply risk-reward calculation: add need bonus, subtract threat penalty
+   weight = ((weight + need) - threat);
+
+   // Floor clamp: never go below DONT_WANT after risk adjustment
+   if ((weight < DONT_WANT))
+   {
+      weight = DONT_WANT;
+   } //end if
+   // ===== END TWEAK #1 =====
+
+   if ((weight > DONT_WANT))
+   {
+      if (!OK_HIGH)
+      {
+         if ((e.absmin_z > (self.origin_z + MAXJUMP)))
+         {
+            weight = DONT_WANT;
+         } //end if
+      } //end if
+   } //end if
+   if ((weight > DONT_WANT))
+   {
+      if (!TrueReachable (e))
+      {
+         weight = DONT_WANT;
+      } //end if
+   } //end if
+   return (weight);
+}; //end of the function itemweight
+vector (float n) chooseRoamTarget =
+{
+   local float len;
+   local float r;
+   local float d;
+   local float m;
+   local float lnd;
+   local vector dir;
+   local vector below;
+   local vector bestorg;
+   local vector deny_dir;
+
+   bestorg = self.origin;
+   d = random ();
+   if ((d < 0.800))
+   {
+      r = random ();
+      m = TRUE;
+      if ((r < 0.500))
+      {
+         m = CONTENT_EMPTY;
+      } //end if
+      bestorg_x = (bestorg_x + (m * ((700.000 * random ()) + 50.000)));
+   } //end if
+   if ((d > 0.200))
+   {
+      r = random ();
+      m = TRUE;
+      if ((r < 0.500))
+      {
+         m = CONTENT_EMPTY;
+      } //end if
+      bestorg_y = (bestorg_y + (m * ((700.000 * random ()) + 50.000)));
+   } //end if
+   bestorg_z = (((bestorg_z + ((MOVETYPE_WALK * MAXJUMP) * random ())) - (FL_SWIM * MAXJUMP)) - TRUE);
+   traceline (self.origin,bestorg,TRUE,self);
+   dir = normalize ((bestorg - self.origin));
+   len = vlen ((bestorg - self.origin));
+   bestorg = (self.origin + (dir * ((len * trace_fraction) - KINDA_WANT)));
+   below = bestorg;
+   below_z = (dropline (below) + TRUE);
+   lnd = pointcontents (below);
+   if ((lnd != CONTENT_EMPTY))
+   {
+      if ((lnd != CONTENT_WATER))
+      {
+         if ((n < MOVETYPE_PUSH))
+         {
+            return (chooseRoamTarget ((n + TRUE)));
+         } //end if
+      } //end if
+   } //end if
+   below = (bestorg - (SVC_INTERMISSION * dir));
+   below_z = (dropline (below) + TRUE);
+   lnd = pointcontents (below);
+   if ((lnd != CONTENT_EMPTY))
+   {
+      if ((lnd != CONTENT_WATER))
+      {
+         if ((n < MOVETYPE_PUSH))
+         {
+            return (chooseRoamTarget ((n + TRUE)));
+         } //end if
+      } //end if
+   } //end if
+   r = (n + (random () * MOVETYPE_WALK));
+   if (((bestorg_z > self.origin_z) || (r > MOVETYPE_FLY)))
+   {
+      bestorg_z = (below_z - self.mins_z);
+   } //end if
+   len = vlen ((bestorg - self.origin));
+   if ((len < KINDA_WANT))
+   {
+      if ((n < MOVETYPE_PUSH))
+      {
+         return (chooseRoamTarget ((n + TRUE)));
+      } //end if
+   } //end if
+   // When leading, bias roam toward the enemy to deny spawns/items.
+   if (self.lead_score)
+   {
+      if (self.enemy)
+      {
+         if ((self.enemy != world))
+         {
+            deny_dir = (self.enemy.origin - self.origin);
+            if ((vlen (deny_dir) > FALSE))
+            {
+               deny_dir = normalize (deny_dir);
+               bestorg = (bestorg + (deny_dir * 100.000));
+               if ((self.skil > TRUE))
+               {
+                  bestorg_z = (bestorg_z + (random () * 50.000));
+               } //end if
+            } //end if
+         } //end if
+      } //end if
+   } //end if
+   return (bestorg);
+}; //end of the function chooseRoamTarget
+float (entity e) cacheweight =
+{
+   local float weight;
+   local float tw;
+   local float dis;
+   local float it;
+
+   weight = FALSE;
+   if ((e.lastbot == self))
+   {
+      if ((e.lasttime > (time - FL_SWIM)))
+      {
+         return (weight);
+      } //end if
+   } //end if
+   dis = vlen ((self.origin - e.origin));
+   it = self.items;
+   e.pendingcache = world;
+   e.pendinglen = FALSE;
+   if (e.rocketcache)
+   {
+      if (((e.rocketcache.solid == SOLID_TRIGGER) || (e.rocketcache.nextthink < (time + MOVETYPE_STEP))))
+      {
+         if (((self.rocketcache != e.rocketcache) || (self.rocketlen > e.rocketlen)))
+         {
+            weight = ((1000000.000 - e.rocketlen) - (FL_SWIM * dis));
+            if ((it & IT_ROCKET_LAUNCHER))
+            {
+               weight = (weight * 0.500);
+            } //end if
+            e.pendingcache = e.rocketcache;
+            e.pendinglen = e.rocketlen;
+         } //end if
+      } //end if
+   } //end if
+   if (e.lightningcache)
+   {
+      if (((e.lightningcache.solid == SOLID_TRIGGER) || (e.lightningcache.nextthink < (time + MOVETYPE_STEP))))
+      {
+         if (((self.lightningcache != e.lightningcache) || (self.lightninglen > e.lightninglen)))
+         {
+            tw = ((1000000.000 - e.lightninglen) - (FL_SWIM * dis));
+            if ((it & IT_LIGHTNING))
+            {
+               tw = (tw * 0.500);
+            } //end if
+            if ((tw > weight))
+            {
+               weight = tw;
+               e.pendingcache = e.lightningcache;
+               e.pendinglen = e.lightninglen;
+            } //end if
+         } //end if
+      } //end if
+   } //end if
+   if ((self.armorvalue < 101.000))
+   {
+      if (e.armorcache)
+      {
+         if (((e.armorcache.solid == SOLID_TRIGGER) || (e.armorcache.nextthink < (time + MOVETYPE_STEP))))
+         {
+            if (((self.armorcache != e.armorcache) || (self.armorlen > e.armorlen)))
+            {
+               tw = ((1000000.000 - e.armorlen) - (FL_SWIM * dis));
+               if ((tw > weight))
+               {
+                  weight = tw;
+                  e.pendingcache = e.armorcache;
+                  e.pendinglen = e.armorlen;
+               } //end if
+            } //end if
+         } //end if
+      } //end if
+   } //end if
+   if (e.nailcache)
+   {
+      if (((e.nailcache.solid == SOLID_TRIGGER) || (e.nailcache.nextthink < (time + FL_SWIM))))
+      {
+         if (((self.nailcache != e.nailcache) || (self.naillen > e.naillen)))
+         {
+            tw = ((1000000.000 - e.naillen) - (FL_SWIM * dis));
+            if ((it & IT_SUPER_NAILGUN))
+            {
+               tw = (tw * 0.500);
+            } //end if
+            if ((tw > (weight + 2500.000)))
+            {
+               weight = tw;
+               e.pendingcache = e.nailcache;
+               e.pendinglen = e.naillen;
+            } //end if
+         } //end if
+      } //end if
+   } //end if
+   if (e.grenadecache)
+   {
+      if (((e.grenadecache.solid == SOLID_TRIGGER) || (e.grenadecache.nextthink < (time + FL_SWIM))))
+      {
+         if (((self.grenadecache != e.grenadecache) || (self.grenadelen > e.grenadelen)))
+         {
+            tw = ((1000000.000 - e.grenadelen) - (FL_SWIM * dis));
+            if ((it & IT_GRENADE_LAUNCHER))
+            {
+               tw = (tw * 0.500);
+            } //end if
+            if ((tw > (weight + 2500.000)))
+            {
+               weight = tw;
+               e.pendingcache = e.grenadecache;
+               e.pendinglen = e.grenadelen;
+            } //end if
+         } //end if
+      } //end if
+   } //end if
+   if (e.powerupcache)
+   {
+      if ((e.powerupcache.solid == SOLID_TRIGGER))
+      {
+         if (((self.powerupcache != e.powerupcache) || (self.poweruplen > e.poweruplen)))
+         {
+            tw = ((1000000.000 - e.poweruplen) - (FL_SWIM * dis));
+            if ((tw > weight))
+            {
+               weight = tw;
+               e.pendingcache = e.powerupcache;
+               e.pendinglen = e.poweruplen;
+            } //end if
+         } //end if
+      } //end if
+   } //end if
+   return (weight);
+}; //end of the function cacheweight
+float (entity e) pathweight =
+{
+   local float OK_HIGH;
+   local float weight;
+   local vector org;
+
+   weight = DONT_WANT;
+   if (TrueReachable (e))
+   {
+      weight = cacheweight (e);
+      if ((weight > FALSE))
+      {
+         return (weight);
+      } //end if
+      weight = vlen ((self.origin - org));
+      weight = ((50.000 * SEARCH_RADIUS) - weight);
+      if ((e.lastbot == self))
+      {
+         if ((e.lasttime > (time - MOVETYPE_TOSS)))
+         {
+            weight = DONT_WANT;
+
+         } //end if
+         else
+         {
+            if ((e.lasttime > (time - LOOPTIME)))
+            {
+               weight = ((weight - (FL_SWIM * SEARCH_RADIUS)) - (((45.000 * SEARCH_RADIUS) * ((LOOPTIME + e.lasttime) - time)) / LOOPTIME));
+            } //end if
+         } //end if
+
+      } //end if
+      else
+      {
+         if (teamplay)
+         {
+            if ((e.lastbot.team == self.team))
+            {
+               if ((e.lasttime > (time - 1.200)))
+               {
+                  weight = DONT_WANT;
+
+               } //end if
+               else
+               {
+                  if ((e.lasttime > (time - FL_SWIM)))
+                  {
+                     weight = (weight - SEARCH_RADIUS);
+                  } //end if
+               } //end if
+            } //end if
+         } //end if
+      } //end if
+   } //end if
+   return (weight);
+}; //end of the function pathweight
+
+void () goForAir =
+{
+   local vector bestorg;
+   local entity botTarget;
+
+   if (VERBOSEBOT)
+   {
+      dprint (self.teamname);
+      dprint (self.netname);
+      dprint (" needs air!\n");
+   } //end if
+   bestorg = self.origin;
+   bestorg_z = (bestorg_z + 800.000);
+   traceline (self.origin,bestorg,TRUE,self);
+   if (!trace_inopen)
+   {
+      bestorg = chooseRoamTarget (TRUE);
+      bestorg_z = (bestorg_z + 200.000);
+   } //end if
+   botTarget = self.goalentity;
+   botTarget.goalentity = botTarget;
+   if ((self.goalentity.classname != "BotTarget"))
+   {
+      objerror ("bad bot target in botgoal! 1\n");
+   } //end if
+   setorigin (botTarget,bestorg);
+}; //end of the function goForAir
+
+void (entity item) ageCache =
+{
+   if (self.rocketcache)
+   {
+      self.rocketlen = (self.rocketlen + TRUE);
+   } //end if
+   if (self.lightningcache)
+   {
+      self.lightninglen = (self.lightninglen + TRUE);
+   } //end if
+   if (self.armorcache)
+   {
+      self.armorlen = (self.armorlen + TRUE);
+   } //end if
+   if (self.powerupcache)
+   {
+      self.poweruplen = (self.poweruplen + TRUE);
+   } //end if
+   if (self.nailcache)
+   {
+      self.naillen = (self.naillen + TRUE);
+   } //end if
+   if (self.grenadecache)
+   {
+      self.grenadelen = (self.grenadelen + TRUE);
+   } //end if
+   if ((item.solid == SOLID_TRIGGER))
+   {
+      if ((self.rocketcache == item))
+      {
+         self.rocketlen = TRUE;
+
+      } //end if
+      else
+      {
+         if ((self.lightningcache == item))
+         {
+            self.lightninglen = TRUE;
+
+         } //end if
+         else
+         {
+            if ((self.armorcache == item))
+            {
+               self.armorlen = TRUE;
+
+            } //end if
+            else
+            {
+               if ((self.powerupcache == item))
+               {
+                  self.poweruplen = TRUE;
+
+               } //end if
+               else
+               {
+                  if ((self.nailcache == item))
+                  {
+                     self.naillen = TRUE;
+
+                  } //end if
+                  else
+                  {
+                     if ((self.grenadecache == item))
+                     {
+                        self.grenadelen = TRUE;
+                     } //end if
+                  } //end if
+               } //end if
+            } //end if
+         } //end if
+      } //end if
+   } //end if
+}; //end of the function ageCache
+
+void () resetCache =
+{
+   self.pendingcache = world;
+   self.pendinglen = FALSE;
+   if (self.rocketcache)
+   {
+      if ((self.rocketcache.solid == SOLID_NOT))
+      {
+         self.rocketcache = world;
+         self.rocketlen = FALSE;
+      } //end if
+   } //end if
+   if (self.lightningcache)
+   {
+      if ((self.lightningcache.solid == SOLID_NOT))
+      {
+         self.lightningcache = world;
+         self.lightninglen = FALSE;
+      } //end if
+   } //end if
+   if (self.armorcache)
+   {
+      if ((self.armorcache.solid == SOLID_NOT))
+      {
+         self.armorcache = world;
+         self.armorlen = FALSE;
+      } //end if
+   } //end if
+   if (self.powerupcache)
+   {
+      if ((self.powerupcache.solid == SOLID_NOT))
+      {
+         self.powerupcache = world;
+         self.poweruplen = FALSE;
+      } //end if
+   } //end if
+   if (self.nailcache)
+   {
+      if ((self.nailcache.solid == SOLID_NOT))
+      {
+         self.nailcache = world;
+         self.naillen = FALSE;
+      } //end if
+   } //end if
+   if (self.grenadecache)
+   {
+      if ((self.grenadecache.solid == SOLID_NOT))
+      {
+         self.grenadecache = world;
+         self.grenadelen = FALSE;
+      } //end if
+   } //end if
+}; //end of the function resetCache
+
+void () updateBotCache =
+{
+   if (self.pendingcache.th_update)
+   {
+      self.pendingcache.th_update ();
+
+   } //end if
+   else
+   {
+      dprint ("Error - no think update for ");
+      dprint (self.pendingcache.classname);
+      dprint ("\n");
+   } //end if
+   self.pendingcache = world;
+   self.pendinglen = FALSE;
+}; //end of the function updateBotCache
+
+void () aibot_chooseGoal =
+{
+   local vector org;
+   local vector bestorg;
+   local float best;
+   local float weight;
+   local float d1;
+   local float d2;
+   local float OK_NOTVIS;
+   local entity e;
+   local entity current;
+   local entity botTarget;
+   local string tmp;
+   local float my_score;
+   local float enemy_score;
+   local float avg_speed;
+   local vector pred_dir;
+   local vector pred_pos;
+
+   botTarget = self.goalentity;
+   // Score-based denial: when leading by 5+, favor denial/safer routing.
+   my_score = self.frags;
+   enemy_score = CAM_IDLE;
+   self.lead_score = FALSE;
+   if (self.enemy)
+   {
+      if ((self.enemy != world))
+      {
+         enemy_score = self.enemy.frags;
+      } //end if
+   } //end if
+   if ((my_score > (enemy_score + 5.000)))
+   {
+      self.lead_score = TRUE;
+   } //end if
+   // Track recent enemy speeds and flag intercept mode on sustained fast movement.
+   self.intercept_flag = CAM_IDLE;
+   avg_speed = CAM_IDLE;
+   if (self.enemy)
+   {
+      if ((self.enemy != world))
+      {
+         self.enemy_vel_pat0 = self.enemy_vel_pat1;
+         self.enemy_vel_pat1 = self.enemy.velocity;
+         avg_speed = ((vlen (self.enemy_vel_pat0) + vlen (self.enemy_vel_pat1)) * 0.500);
+         if ((self.skil > TRUE))
+         {
+            if ((avg_speed > 300.000))
+            {
+               self.intercept_flag = SPAWNFLAG_SUPERSPIKE;
+            } //end if
+         } //end if
+      } //end if
+   } //end if
+   if ((self.lefty & FAR_SEEK))
+   {
+      self.lefty = ((self.lefty - (self.lefty & LOCAL_TIME)) - FAR_SEEK);
+   } //end if
+   if ((self.lefty & ONTRAIN))
+   {
+      self.lefty = (self.lefty - ONTRAIN);
+   } //end if
+   self.lefty = (self.lefty + TRUE);
+   current = botTarget.goalentity;
+   self.search_time = (time + MOVETYPE_STEP);
+   best = DONT_WANT;
+   OK_NOTVIS = FALSE;
+   if ((self.air_finished < (time + MOVETYPE_FLYMISSILE)))
+   {
+      goForAir ();
+      return ;
+   } //end if
+   if (((self.lefty & LOCAL_TIME) < MOVETYPE_FLY))
+   {
+      e = findradius (self.origin,SEARCH_RADIUS);
+      while (e)
+      {
+         weight = DONT_WANT;
+         if ((e == current))
+         {
+            weight = DONT_WANT;
+
+         } //end if
+         else
+         {
+            if (e.pathtype)
+            {
+               weight = DONT_WANT;
+
+            } //end if
+            else
+            {
+               if ((e.solid == SOLID_NOT))
+               {
+                  weight = DONT_WANT;
+
+               } //end if
+               else
+               {
+                  if ((e.solid == SOLID_TRIGGER))
+                  {
+                     if (e.istrigger)
+                     {
+                        weight = trigweight (e);
+
+                     } //end if
+                     else
+                     {
+                        weight = itemweight (e);
+                     } //end if
+
+                  } //end if
+                  else
+                  {
+                     weight = thingweight (e);
+                  } //end if
+               } //end if
+            } //end if
+         } //end if
+         if ((weight > (KINDA_WANT - MOVETYPE_FLY)))
+         {
+            if ((weight < (WANT + FL_SWIM)))
+            {
+               if (((e.absmin_z + MAXJUMP) < self.absmin_z))
+               {
+                  weight = (KINDA_WANT - MOVETYPE_FLY);
+               } //end if
+            } //end if
+         } //end if
+         if ((weight > DONT_WANT))
+         {
+            org = ((e.absmin + e.absmax) * 0.500);
+            org_z = (e.absmin_z + TRUE);
+            if ((((e.classname == "plat") || (e.classname == "func_plat")) || (e.classname == "train")))
+            {
+               org_z = (e.absmax_z + TRUE);
+            } //end if
+            if ((weight == best))
+            {
+               d1 = vlen ((self.origin - bestorg));
+               d2 = vlen ((self.origin - org));
+               weight = ((weight + (random () * MOVETYPE_FLY)) - FL_SWIM);
+               if ((d1 < d2))
+               {
+                  weight = (weight - TRUE);
+               } //end if
+               if ((weight > best))
+               {
+                  weight = best;
+                  best = (best - TRUE);
+               } //end if
+            } //end if
+            if ((weight > best))
+            {
+               botTarget.goalentity = e;
+               best = weight;
+               bestorg = org;
+               // Predictive intercept: bias the goal toward a fast enemy's path.
+               if (self.intercept_flag)
+               {
+                  if (self.enemy)
+                  {
+                     if ((self.enemy != world))
+                     {
+                        if ((e.pathtype == REGULARTARGET))
+                        {
+                           if ((vlen ((e.origin - self.enemy.origin)) < 500.000))
+                           {
+                              pred_dir = (self.enemy_vel_pat0 + self.enemy_vel_pat1);
+                              if ((vlen (pred_dir) > FALSE))
+                              {
+                                 pred_dir = normalize (pred_dir);
+                                 pred_pos = (self.enemy.origin + (pred_dir * 100.000));
+                                 traceline (self.origin,pred_pos,TRUE,self);
+                                 if ((trace_fraction == TRUE))
+                                 {
+                                    bestorg = ((bestorg + pred_pos) * 0.500);
+                                 } //end if
+                              } //end if
+                           } //end if
+                        } //end if
+                     } //end if
+                  } //end if
+               } //end if
+            } //end if
+         } //end if
+         e = e.chain;
+      } //end while
+   } //end if
+   resetCache ();
+   if ((best < (KINDA_WANT - MOVETYPE_WALK)))
+   {
+      if ((best > DONT_WANT))
+      {
+         best = (1000000.000 - 900.000);
+      } //end if
+      e = findradius (self.origin,SEARCH_RADIUS);
+      best = DONT_WANT;
+      while (e)
+      {
+         if (((e.pathtype == DROPPED) || (e.pathtype == TELEPORT)))
+         {
+            if ((e == current))
+            {
+               weight = DONT_WANT;
+
+            } //end if
+            else
+            {
+               weight = pathweight (e);
+            } //end if
+            if ((weight > best))
+            {
+               best = weight;
+               botTarget.goalentity = e;
+               self.pendingcache = e.pendingcache;
+               self.pendinglen = e.pendinglen;
+               bestorg = e.origin;
+               if (!bestorg)
+               {
+                  bestorg = ((e.absmin + e.absmax) * 0.500);
+                  bestorg_z = (e.absmin_z + TRUE);
+               } //end if
+               self.lefty = (self.lefty | FAR_SEEK);
+            } //end if
+         } //end if
+         e = e.chain;
+      } //end while
+   } //end if
+   if ((best > DONT_WANT))
+   {
+      if (self.pendingcache)
+      {
+         updateBotCache ();
+
+      } //end if
+      else
+      {
+         if ((botTarget.goalentity.classname != "BotPath"))
+         {
+            ageCache (botTarget.goalentity);
+         } //end if
+      } //end if
+   } //end if
+   if ((best <= DONT_WANT))
+   {
+      botTarget.goalentity = botTarget;
+      bestorg = chooseRoamTarget (FALSE);
+      self.lefty = (self.lefty | FAR_SEEK);
+      self.search_time = (time + FL_SWIM);
+   } //end if
+   if (VERBOSEBOT)
+   {
+      dprint (self.teamname);
+      dprint (self.netname);
+      dprint (" going after ");
+      dprint (botTarget.goalentity.classname);
+      dprint ("\n");
+   } //end if
+   if (botTarget.goalentity)
+   {
+      if ((botTarget.goalentity != botTarget))
+      {
+         botTarget.goalentity.lastbot = self;
+         botTarget.goalentity.lasttime = time;
+      } //end if
+   } //end if
+   if ((botTarget.goalentity.classname == "func_button"))
+   {
+      bestorg = ((bestorg - botTarget.goalentity.pos2) - (FL_MONSTER * normalize (botTarget.goalentity.pos2)));
+   } //end if
+   if ((botTarget.classname != "BotTarget"))
+   {
+      objerror ("bad bot target in botgoal! 2\n");
+   } //end if
+   setorigin (botTarget,bestorg);
+}; //end of the function aibot_chooseGoal
+float (entity e) RunAwayWeight =
+{
+   local float weight;
+
+   if (!TrueReachable (e))
+   {
+      return (FALSE);
+   } //end if
+   traceline ((self.enemy.origin + self.enemy.view_ofs),e.origin,TRUE,self.enemy);
+   if ((trace_fraction != TRUE))
+   {
+      weight = WANT;
+   } //end if
+   if ((trace_inopen && trace_inwater))
+   {
+      weight = (WANT - MOVETYPE_FLY);
+   } //end if
+   weight = (weight + (0.100 * vlen ((self.enemy.origin - e.origin))));
+   weight = (weight + (KINDA_WANT * random ()));
+   return (weight);
+}; //end of the function RunAwayWeight
+
+void (entity en) RouteToEnemy;
+entity (entity chaser, entity en) BestChaseRoute =
+{
+   local entity e;
+   local entity p;
+   local entity tmp;
+   local float weight;
+   local float best;
+   local string ts;
+
+   RouteToEnemy (en);
+   e = findradius (chaser.origin,SEARCH_RADIUS);
+   best = 1000000.000;
+   p = en;
+   tmp = self;
+   self = chaser;
+   while (e)
+   {
+      if (((e.pathtype == DROPPED) || (e.pathtype == TELEPORT)))
+      {
+         weight = 1000000.000;
+         if ((e.enemycache == en))
+         {
+            if (TrueReachable (e))
+            {
+               weight = (e.enemylen + (vlen ((self.origin - e.origin)) * 0.500));
+            } //end if
+         } //end if
+         if ((weight < best))
+         {
+            best = weight;
+            p = e;
+         } //end if
+      } //end if
+      e = e.chain;
+   } //end while
+   self = tmp;
+   return (p);
+}; //end of the function BestChaseRoute

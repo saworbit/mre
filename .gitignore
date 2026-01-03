@@ -1,0 +1,42 @@
+# Build outputs / binaries
+*.dat
+*.exe
+*.dll
+*.pak
+*.PAK
+*.log
+*.zip
+*.exe.db
+
+# Quake data / assets
+id1/
+
+# Temp / cache
+*.tmp
+*.bak
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# IDE / Editor specific
+.claude/
+
+# Build artifacts
+ci/reaper_mre/
+launch/quake-spasm/reaper_mre/
+
+# Legacy decompiled source (use src/ for reference only)
+reaper/
+
+# Generated files
+ddg.html
+expanded.html
+jars.html
+release.html
+
+# Config files
+*.cfg
+!/reaper/Autoexec.cfg
+!/launch/quake-spasm/RPBOT/Autoexec.cfg
+!/launch/quake-spasm/reaper_mre/config.cfg

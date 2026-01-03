@@ -1,0 +1,1265 @@
+// Forward declaration for enhanced rocket jump (used in Bot_tryjump before definition)
+float() bot_rocket_jump;
+
+void () halfwalkmove =
+{
+   walkmove (self.strafeyaw,self.strafedist);
+   self.think = self.strafethink;
+   self.nextthink = (time + 0.050);
+}; //end of the function halfwalkmove
+float (float s_yaw, float s_dist) botwalkmove =
+{
+   local float halfdist;
+
+   self.oldorigin = self.origin;
+   if ((self.skil > SPAWNFLAG_LASER))
+   {
+      halfdist = (0.650 * s_dist);
+
+   } //end if
+   else
+   {
+      halfdist = (0.550 * s_dist);
+   } //end if
+   if (!walkmove (s_yaw,halfdist))
+   {
+      return (FALSE);
+   } //end if
+   self.strafethink = self.think;
+   self.strafeyaw = s_yaw;
+   self.strafedist = halfdist;
+   self.think = halfwalkmove;
+   self.nextthink = (time + 0.050);
+   return (TRUE);
+}; //end of the function botwalkmove
+float (float dist) teleptest =
+{
+   local vector start;
+   local vector up;
+
+   up = self.origin;
+   start = self.origin;
+   if ((dist < FALSE))
+   {
+      up_z = ((self.absmin_z + dist) - SPAWNFLAG_SUPERSPIKE);
+
+   } //end if
+   else
+   {
+      up_z = ((self.absmax_z + dist) + SPAWNFLAG_SUPERSPIKE);
+   } //end if
+   traceline (start,up,FALSE,self);
+   if ((trace_fraction < SPAWNFLAG_SUPERSPIKE))
+   {
+      return (FALSE);
+   } //end if
+   start_x = (start_x + SECRET_YES_SHOOT);
+   start_y = (start_y + SECRET_YES_SHOOT);
+   up_x = (up_x + SECRET_YES_SHOOT);
+   up_y = (up_y + SECRET_YES_SHOOT);
+   traceline (start,up,FALSE,self);
+   if ((trace_fraction < SPAWNFLAG_SUPERSPIKE))
+   {
+      return (FALSE);
+   } //end if
+   start_x = (start_x - DOOR_TOGGLE);
+   up_x = (up_x - DOOR_TOGGLE);
+   traceline (start,up,FALSE,self);
+   if ((trace_fraction < SPAWNFLAG_SUPERSPIKE))
+   {
+      return (FALSE);
+   } //end if
+   start_y = (start_y - DOOR_TOGGLE);
+   up_y = (up_y - DOOR_TOGGLE);
+   traceline (start,up,FALSE,self);
+   if ((trace_fraction < SPAWNFLAG_SUPERSPIKE))
+   {
+      return (FALSE);
+   } //end if
+   start_x = (start_x + DOOR_TOGGLE);
+   up_x = (up_x + DOOR_TOGGLE);
+   traceline (start,up,FALSE,self);
+   if ((trace_fraction < SPAWNFLAG_SUPERSPIKE))
+   {
+      return (FALSE);
+   } //end if
+   start = self.origin;
+   start_z = up_z;
+   up = start;
+   start_x = (start_x + SECRET_YES_SHOOT);
+   up_x = (up_x - SECRET_YES_SHOOT);
+   traceline (start,up,FALSE,self);
+   if ((trace_fraction < SPAWNFLAG_SUPERSPIKE))
+   {
+      return (FALSE);
+   } //end if
+   start = self.origin;
+   start_z = up_z;
+   up = start;
+   start_y = (start_y + SECRET_YES_SHOOT);
+   up_y = (up_y - SECRET_YES_SHOOT);
+   traceline (start,up,FALSE,self);
+   if ((trace_fraction < SPAWNFLAG_SUPERSPIKE))
+   {
+      return (FALSE);
+   } //end if
+   return (TRUE);
+}; //end of the function teleptest
+float (float dist) waterupz =
+{
+   local vector start;
+   local vector up;
+
+   if (!teleptest (dist))
+   {
+      return (FALSE);
+   } //end if
+   up = self.origin;
+   up_z = (up_z + dist);
+   setorigin (self,up);
+   return (TRUE);
+}; //end of the function waterupz
+float (float dist) waterdownz =
+{
+   local vector up;
+   local vector start;
+
+   if (!teleptest ((CONTENT_EMPTY * dist)))
+   {
+      return (FALSE);
+   } //end if
+   up = self.origin;
+   up_z = (up_z - dist);
+   setorigin (self,up);
+   return (TRUE);
+}; //end of the function waterdownz
+float (vector jmpv) Botjump =
+{
+   local float vol;
+
+   if ((self.flags & FL_ONGROUND))
+   {
+      self.flags = (self.flags - FL_ONGROUND);
+   } //end if
+   self.velocity = jmpv;
+   if ((jmpv_z > 200.000))
+   {
+      vol = (SPAWNFLAG_SUPERSPIKE * (0.700 + (random () * 0.300)));
+      sound (self,CHAN_BODY,"player/plyrjmp8.wav",vol,ATTN_NORM);
+   } //end if
+   return (TRUE);
+}; //end of the function Botjump
+float (vector jmpv) Botwaterjump =
+{
+   if ((self.flags & FL_ONGROUND))
+   {
+      self.flags = (self.flags - FL_ONGROUND);
+   } //end if
+   if (!waterupz (45.000))
+   {
+      return (FALSE);
+   } //end if
+   jmpv_z = 200.000;
+   self.velocity = jmpv;
+   if ((self.flags & FL_SWIM))
+   {
+      self.flags = (self.flags - FL_SWIM);
+   } //end if
+   if ((self.flags & FL_INWATER))
+   {
+      self.flags = (self.flags - FL_INWATER);
+   } //end if
+   self.teleport_time = (time + 0.700);
+   return (TRUE);
+}; //end of the function Botwaterjump
+
+// ===== TWEAK #1 HELPER: Train path prediction (path_corner chain traversal) =====
+// Predicts where a train will be at future time by traversing its path_corner chain.
+// Two-pass algorithm: (1) calculate total path distance for cycling, (2) interpolate
+// position along chain based on time. Handles looping paths via modulo arithmetic,
+// detects cycles with first_corner tracking, and limits to 16 segments for safety.
+vector (entity train, float t_future) predict_train_pos =
+{
+   local entity curr;
+   local entity first_corner;
+   local float dist_accum;
+   local float total_dist;
+   local float train_speed;
+   local vector last_pos;
+   local vector next_pos;
+   local float seg_dist;
+   local float seg_count;
+   local float t_mod;
+
+   if (!train) return train.origin;
+
+   train_speed = vlen(train.velocity);
+   if (train_speed < 1)
+   {
+      if (train.speed)
+      {
+         train_speed = train.speed;
+      }
+      else
+      {
+         train_speed = 100; // Default fallback
+      }
+   }
+
+   curr = find(world, targetname, train.target); // First path_corner in chain
+   first_corner = curr; // Save for loop detection/cycling
+   if (!curr) return train.origin;
+
+   last_pos = train.origin;
+   dist_accum = 0;
+   total_dist = 0;
+   seg_count = 0;
+
+   // First pass: accumulate total chain distance (for cycling)
+   while (curr && seg_count < 16) {  // Max 16 segments to prevent infinite loops
+      next_pos = curr.origin;
+      seg_dist = vlen(next_pos - last_pos);
+      total_dist = (total_dist + seg_dist);
+
+      last_pos = next_pos;
+      curr = find(world, targetname, curr.target);
+      if (curr == first_corner) break; // Loop detected: stop to avoid infinite
+      seg_count = (seg_count + 1);
+   }
+
+   if (total_dist == 0) return train.origin; // No path length? Static
+
+   // Modulo time for cycling paths
+   t_mod = t_future - (floor(t_future / (total_dist / train_speed)) * (total_dist / train_speed));
+   local float dist_future = train_speed * t_mod;
+
+   // Second pass: traverse to find interpolated position
+   curr = first_corner; // Reset to start
+   last_pos = train.origin;
+   dist_accum = 0;
+   seg_count = 0;
+
+   while (curr && seg_count < 16) {
+      next_pos = curr.origin;
+      seg_dist = vlen(next_pos - last_pos);
+
+      if ((dist_accum + seg_dist) >= dist_future) {
+         // Interpolate within this segment
+         local float remainder = dist_future - dist_accum;
+         local vector dir = normalize(next_pos - last_pos);
+         return last_pos + (dir * remainder);
+      }
+
+      dist_accum = (dist_accum + seg_dist);
+      last_pos = next_pos;
+      curr = find(world, targetname, curr.target);
+      seg_count = (seg_count + 1);
+   }
+
+   return last_pos; // Fallback: end of chain or error
+}; //end of the function predict_train_pos
+// ===== END TWEAK #1 HELPER =====
+
+float (entity targ) Swimto;
+float (vector spot) CheckLavaOrLow =
+{
+   local float lnd;
+   local float boost;
+   local vector spot2;
+
+   lnd = pointcontents (spot);
+   if (((lnd == CONTENT_LAVA) || (lnd == CONTENT_SLIME)))
+   {
+      return (TRUE);
+   } //end if
+   spot2 = spot;
+   spot2_z = (spot_z + SPAWNFLAG_LASER);
+   lnd = pointcontents (spot2);
+   if (((lnd == CONTENT_LAVA) || (lnd == CONTENT_SLIME)))
+   {
+      return (TRUE);
+   } //end if
+   if ((lnd != CONTENT_WATER))
+   {
+      boost = (MAXJUMP + SPAWNFLAG_SUPERSPIKE);
+      if ((self.goalentity.goalentity.classname == "func_button"))
+      {
+         boost = ((boost + self.maxs_z) - SPAWNFLAG_SUPERSPIKE);
+      } //end if
+      if (((spot_z + boost) < self.goalentity.origin_z))
+      {
+         return (TRUE);
+      } //end if
+
+   } //end if
+   else
+   {
+      traceline (spot2,self.goalentity.absmin,SPAWNFLAG_SUPERSPIKE,self);
+      if (trace_inopen)
+      {
+         if (((spot_z + 45.000) > self.goalentity.origin_z))
+         {
+            return (FALSE);
+         } //end if
+         return (TRUE);
+      } //end if
+      if ((trace_fraction == SPAWNFLAG_SUPERSPIKE))
+      {
+         return (FALSE);
+      } //end if
+      return (TRUE);
+   } //end if
+   return (FALSE);
+}; //end of the function CheckLavaOrLow
+float (vector middle) checkLanding =
+{
+   local float goodcnt;
+   local vector spot;
+   local vector center;
+
+   center = middle;
+   spot = middle;
+   spot_x = (spot_x + CAM_NOCLIP);
+   if ((pointcontents (spot) == CONTENT_SOLID))
+   {
+      center_x = (center_x - CAM_NOCLIP);
+   } //end if
+   spot_x = (spot_x - 12.000);
+   if ((pointcontents (spot) == CONTENT_SOLID))
+   {
+      center_x = (center_x + CAM_NOCLIP);
+   } //end if
+   spot = middle;
+   spot_y = (spot_y + CAM_NOCLIP);
+   if ((pointcontents (spot) == CONTENT_SOLID))
+   {
+      center_y = (center_y - CAM_NOCLIP);
+   } //end if
+   spot_y = (spot_y - 12.000);
+   if ((pointcontents (spot) == CONTENT_SOLID))
+   {
+      center_y = (center_y + CAM_NOCLIP);
+   } //end if
+   spot = center;
+   spot_z = dropline (spot);
+   goodcnt = MOVETYPE_FLY;
+   if (CheckLavaOrLow (spot))
+   {
+      return (FALSE);
+   } //end if
+   spot = center;
+   spot_x = (spot_x + CAM_NOCLIP);
+   spot_z = dropline (spot);
+   if (CheckLavaOrLow (spot))
+   {
+      goodcnt = (goodcnt - SPAWNFLAG_SUPERSPIKE);
+   } //end if
+   spot = center;
+   spot_x = (spot_x - CAM_NOCLIP);
+   spot_z = dropline (spot);
+   if (CheckLavaOrLow (spot))
+   {
+      goodcnt = (goodcnt - SPAWNFLAG_SUPERSPIKE);
+   } //end if
+   spot = center;
+   spot_y = (spot_y + CAM_NOCLIP);
+   spot_z = dropline (spot);
+   if (CheckLavaOrLow (spot))
+   {
+      goodcnt = (goodcnt - SPAWNFLAG_SUPERSPIKE);
+   } //end if
+   spot = center;
+   spot_y = (spot_y - CAM_NOCLIP);
+   spot_z = dropline (spot);
+   if (CheckLavaOrLow (spot))
+   {
+      goodcnt = (goodcnt - SPAWNFLAG_SUPERSPIKE);
+   } //end if
+   if ((goodcnt > CAM_FOLLOW))
+   {
+      return (TRUE);
+   } //end if
+   return (FALSE);
+}; //end of the function checkLanding
+float (float dist) JumpUpToPush =
+{
+   local float len;
+   local vector botxy;
+   local vector goalxy;
+   local vector xydir;
+   local vector jumpv;
+
+   botxy = self.origin;
+   botxy_z = FALSE;
+   goalxy = self.goalentity.origin;
+   goalxy_z = FALSE;
+   xydir = normalize ((goalxy - botxy));
+   len = vlen ((goalxy - botxy));
+   if ((len < 25.000))
+   {
+      jumpv = (xydir * LOOPTIME);
+      jumpv_z = 270.000;
+      Botjump (jumpv);
+      return (TRUE);
+   } //end if
+   if ((len < 80.000))
+   {
+      jumpv = (xydir * (len / LEVELJUMPTIME));
+      jumpv_z = 270.000;
+      Botjump (jumpv);
+      return (TRUE);
+   } //end if
+   return (FALSE);
+}; //end of the function JumpUpToPush
+float /* ERROR: Could not determine return type */ (float vz, float dist, float imagine) Bot_tryjump =
+{
+   local float timetofloor;
+   local float tvel;
+   local float dis;
+   local float diffz;
+   local float diffxy;
+   local float NOTLAND;
+   local float lnd;
+   local float len;
+   local float depth;
+   local float wlevel;
+   local float velz;
+   local float ht;
+   local float frac;
+   local vector botxy;
+   local vector goalxy;
+   local vector xydir;
+   local vector top;
+   local vector bottom;
+   local vector jumpv;
+   local vector newtop;
+   local vector newbottom;
+   local vector back;
+   local vector front;
+   local vector dir;
+   local vector start;
+   local string tmp;
+   local entity botTarget;
+
+   if (!(self.flags & (FL_ONGROUND + FL_SWIM)))
+   {
+      return (FALSE);
+   } //end if
+   wlevel = CheckWaterLevel ();
+   if ((wlevel > SPAWNFLAG_LASER))
+   {
+      return (FALSE);
+   } //end if
+   // Lightning-gun evade burst: add jump bias when focused by hitscan.
+   if ((self.evade_mode == 2.000))
+   {
+      if ((self.skil > 2.000))
+      {
+         if ((random () < 0.300))
+         {
+            vz = (vz + 100.000);
+            // If vertical velocity has been steady, add an extra boost to break beams.
+            if ((fabs ((self.self_vel_hist1_z - self.self_vel_hist2_z)) < 50.000))
+            {
+               vz = (vz * 1.200);
+            } //end if
+         } //end if
+      } //end if
+   } //end if
+   if (!FacingIdeal ())
+   {
+      ChangeYaw ();
+      if (!FacingIdeal ())
+      {
+         ChangeYaw ();
+         if (!FacingIdeal ())
+         {
+            ChangeYaw ();
+         } //end if
+      } //end if
+   } //end if
+   makevectors (self.angles);
+   start = (self.origin + (SECRET_YES_SHOOT * v_forward));
+   botTarget = self.goalentity;
+   velz = vz;
+   if ((wlevel >= SPAWNFLAG_SUPERSPIKE))
+   {
+      if ((velz > 200.000))
+      {
+         velz = 200.000;
+      } //end if
+   } //end if
+   if ((wlevel == SPAWNFLAG_LASER))
+   {
+      if ((botTarget.origin_z < self.origin_z))
+      {
+         return (FALSE);
+      } //end if
+      start_z = (start_z + 45.000);
+   } //end if
+   botxy = self.origin;
+   botxy_z = FALSE;
+   diffz = ((start_z - botTarget.origin_z) + SPAWNFLAG_SUPERSPIKE);
+   if ((diffz < (CONTENT_EMPTY * MAXJUMP)))
+   {
+      if ((botTarget.goalentity.classname != "trigger_push"))
+      {
+         return (FALSE);
+
+      } //end if
+      else
+      {
+         if ((diffz < FALSE))
+         {
+            if (JumpUpToPush (dist))
+            {
+               return (TRUE);
+            } //end if
+         } //end if
+      } //end if
+   } //end if
+
+   // ===== SMART RJ TRIGGER: Proactive rocket jump for unreachable heights =====
+   // If target is too high for normal jump (>1.5x MAXJUMP), skilled bots use rocket jump
+   // to reach ledges that would otherwise be unreachable. Prevents fail-and-give-up loops.
+   if ((diffz > (MAXJUMP * 1.500)))
+   {
+      if (((self.ammo_rockets > 0) && (self.skil > 2.000)))
+      {
+         if (bot_rocket_jump ())
+         {
+            return (TRUE);
+         } //end if
+      } //end if
+   } //end if
+   // ===== END SMART RJ TRIGGER =====
+
+   dis = dist;
+   goalxy = botTarget.origin;
+   // ===== TWEAK #3: Jump arc train prediction (velocity guess → path chain) =====
+   // When jump target is a train, predict its position along path_corner chain at
+   // jump landing time (LEVELJUMPTIME ≈ 0.6s) instead of simple velocity guess.
+   // Ensures bot jumps to where train will be, not where it is—precise mid-air sync.
+   if ((botTarget.goalentity.classname == "train"))
+   {
+      goalxy = predict_train_pos(botTarget.goalentity, LEVELJUMPTIME);
+   } //end if
+   // ===== END TWEAK #3 =====
+   lnd = pointcontents (goalxy);
+   if (((lnd == CONTENT_LAVA) || (lnd == CONTENT_SLIME)))
+   {
+      return (FALSE);
+   } //end if
+   goalxy_z = FALSE;
+   xydir = normalize ((goalxy - botxy));
+   diffxy = vlen ((goalxy - botxy));
+   if ((wlevel == SPAWNFLAG_LASER))
+   {
+      if ((diffxy > (CAM_FOLLOW * BOTSPEED)))
+      {
+         diffxy = (CAM_FOLLOW * BOTSPEED);
+      } //end if
+   } //end if
+   bottom = (start + self.view_ofs);
+   top = (bottom + (xydir * dis));
+   top_z = (top_z + (0.100 * (velz - GRAVITY)));
+   traceline (bottom,top,SPAWNFLAG_SUPERSPIKE,self);
+   if ((trace_fraction != SPAWNFLAG_SUPERSPIKE))
+   {
+      if ((velz > (GRAVITY + 180.000)))
+      {
+         return (Bot_tryjump ((velz - GRAVITY),dist,imagine));
+
+      } //end if
+      else
+      {
+         return (FALSE);
+      } //end if
+   } //end if
+   bottom = (start - (SECRET_YES_SHOOT * v_forward));
+   bottom_z = (bottom_z + self.mins_z);
+   top = (bottom + ((xydir * dis) * SPAWNFLAG_LASER));
+   top_z = ((top_z + (0.200 * (velz - GRAVITY))) - (0.100 * GRAVITY));
+   traceline (bottom,top,SPAWNFLAG_SUPERSPIKE,self);
+   if ((trace_fraction != SPAWNFLAG_SUPERSPIKE))
+   {
+      if ((diffxy > (1.900 * BOTSPEED)))
+      {
+         diffxy = (1.900 * BOTSPEED);
+      } //end if
+      top = (bottom + (xydir * dis));
+      top_z = ((top_z + (0.200 * (velz - GRAVITY))) - (0.100 * GRAVITY));
+      traceline (bottom,top,SPAWNFLAG_SUPERSPIKE,self);
+      if ((trace_fraction != SPAWNFLAG_SUPERSPIKE))
+      {
+         if ((diffxy > (0.900 * BOTSPEED)))
+         {
+            diffxy = (0.900 * BOTSPEED);
+         } //end if
+         velz = 290.000;
+      } //end if
+   } //end if
+   timetofloor = FALSE;
+   tvel = velz;
+   if ((diffz < FALSE))
+   {
+      timetofloor = 0.300;
+
+   } //end if
+   else
+   {
+      while ((diffz > FALSE))
+      {
+         timetofloor = (timetofloor + 0.100);
+         tvel = (tvel - GRAVITY);
+         diffz = (diffz + (tvel * 0.100));
+      } //end while
+      timetofloor = (timetofloor - (diffz / tvel));
+   } //end if
+   if ((diffxy < ((dis * MOVETYPE_BOUNCE) * timetofloor)))
+   {
+      jumpv = (xydir * (diffxy / timetofloor));
+
+   } //end if
+   else
+   {
+      jumpv = (xydir * (MOVETYPE_BOUNCE * dis));
+      if (imagine)
+      {
+         return (FALSE);
+      } //end if
+   } //end if
+   tvel = velz;
+   bottom = start;
+   bottom_z = (bottom_z + self.mins_z);
+   ht = (self.view_ofs_z - self.mins_z);
+   NOTLAND = TRUE;
+   while (NOTLAND)
+   {
+      tvel = (tvel - GRAVITY);
+      newbottom = (bottom + (jumpv * 0.100));
+      newbottom_z = (newbottom_z + (tvel * 0.100));
+      traceline (bottom,newbottom,SPAWNFLAG_SUPERSPIKE,self);
+      frac = trace_fraction;
+
+      // ===== TWEAK #2: Jump arc platform collision (ground sim → mid-air predict) =====
+      // Detects platforms during jump arc simulation so bots recognize plats/trains as
+      // valid landing surfaces—enables precise platform timing without ground-only bias.
+      // Re-traces downward to confirm solid surface (not edge/lip) before accepting.
+      if (((trace_ent.classname == "func_plat") || (trace_ent.classname == "func_train")))
+      {
+         // Hit platform surface during arc—verify it's solid collision (not edge)
+         traceline (bottom,(bottom - '0.000 0.000 8.000'),TRUE,self);
+         if ((trace_fraction < 1.000))
+         {
+            // Platform is reachable via jump—treat as valid landing
+            return (TRUE);
+         } //end if
+      } //end if
+      // ===== END TWEAK #2 =====
+
+      if ((trace_fraction == SPAWNFLAG_SUPERSPIKE))
+      {
+         newtop = newbottom;
+         top = bottom;
+         top_z = (top_z + ht);
+         newtop_z = (newtop_z + ht);
+         traceline (top,newtop,SPAWNFLAG_SUPERSPIKE,self);
+         if ((trace_fraction == SPAWNFLAG_SUPERSPIKE))
+         {
+            traceline (newbottom,newtop,SPAWNFLAG_SUPERSPIKE,self);
+         } //end if
+         if ((trace_fraction == SPAWNFLAG_SUPERSPIKE))
+         {
+            top = (top + (SECRET_YES_SHOOT * v_right));
+            newtop = (newtop + (SECRET_YES_SHOOT * v_right));
+            traceline (top,newtop,SPAWNFLAG_SUPERSPIKE,self);
+         } //end if
+         if ((trace_fraction == SPAWNFLAG_SUPERSPIKE))
+         {
+            top = (top - (DOOR_TOGGLE * v_right));
+            newtop = (newtop - (DOOR_TOGGLE * v_right));
+            traceline (top,newtop,SPAWNFLAG_SUPERSPIKE,self);
+         } //end if
+         if ((trace_fraction != SPAWNFLAG_SUPERSPIKE))
+         {
+            frac = 0.100;
+         } //end if
+      } //end if
+      if ((trace_fraction != SPAWNFLAG_SUPERSPIKE))
+      {
+         dir = normalize ((newbottom - bottom));
+         len = vlen ((newbottom - bottom));
+         newbottom = (bottom + ((dir * len) * frac));
+         newbottom_z = (newbottom_z + LOOPTIME);
+         if (!checkLanding ((newbottom - (SECRET_YES_SHOOT * v_forward))))
+         {
+            return (FALSE);
+         } //end if
+         NOTLAND = FALSE;
+      } //end if
+      if (NOTLAND)
+      {
+         if (CheckLavaOrLow (newbottom))
+         {
+            return (FALSE);
+         } //end if
+      } //end if
+      lnd = pointcontents (newbottom);
+      if ((lnd == CONTENT_WATER))
+      {
+         NOTLAND = FALSE;
+      } //end if
+      bottom = newbottom;
+   } //end while
+   jumpv_z = velz;
+   if (imagine)
+   {
+      if ((wlevel == SPAWNFLAG_LASER))
+      {
+         return (teleptest (45.000));
+      } //end if
+      return (TRUE);
+   } //end if
+   if ((wlevel == SPAWNFLAG_LASER))
+   {
+      return (Botwaterjump (jumpv));
+   } //end if
+   if ((newbottom_z < (self.absmin_z - MAXJUMP)))
+   {
+      clearCache (self);
+   } //end if
+   return (Botjump (jumpv));
+}; //end of the function Bot_tryjump
+
+// ===== ENHANCED ROCKET JUMP: Proper RJ with safety/timing/direction =====
+// Full rocket jump implementation with health checks, cooldown, and synchronized jump timing.
+// Aims down at feet, fires rocket, jumps to catch blast propulsion. Safer and more controlled
+// than crude "turn and fire" - prevents suicide, spam, and enables directional arcs.
+float() bot_rocket_jump =
+{
+   local vector old_angles;
+   local vector jumpv;
+
+   // Safety checks: ammo, weapon, health (prevent suicide), cooldown (prevent spam)
+   if ((self.ammo_rockets < 1)) return (FALSE);
+   if (!(self.items & IT_ROCKET_LAUNCHER)) return (FALSE);
+   if ((self.health < 50.000)) return (FALSE);  // Don't suicide
+   if ((time < self.rj_cooldown)) return (FALSE);  // 2s cooldown
+
+   // Save current aim angles
+   old_angles = self.angles;
+
+   // Aim straight down at feet (pitch 90°) + backward for forward push
+   self.angles_x = 90.000;  // Pitch down
+   self.angles_y = (self.angles_y + 180.000);  // Face backward for forward arc
+   ChangePitch ();
+   ChangeYaw ();
+
+   // Fire rocket at feet
+   makevectors (self.angles);
+   W_FireRocket ();
+
+   // Synchronized jump to catch blast (explosion ~0.1s delay)
+   // Base jump vel + backward kick for forward arc
+   jumpv = '0.000 0.000 270.000';  // Base jump
+   jumpv = (jumpv + (v_forward * (CONTENT_EMPTY * 100.000)));  // Backward kick
+   Botjump (jumpv);
+
+   // Restore original aim
+   self.angles = old_angles;
+   ChangePitch ();
+   ChangeYaw ();
+
+   // Set cooldown and reset stuck counter
+   self.rj_cooldown = (time + 2.000);  // 2s cooldown
+   self.stuck_count = 0;
+
+   return (TRUE);
+}; //end of the function bot_rocket_jump
+// ===== END ENHANCED ROCKET JUMP =====
+
+float (float dist) waterupdown =
+{
+   local float wlevel;
+   local float dis;
+   local float rnd;
+   local float zbottom;
+
+   dis = LOOPTIME;
+   wlevel = CheckWaterLevel ();
+   if ((wlevel < SPAWNFLAG_LASER))
+   {
+      return (FALSE);
+   } //end if
+   if ((self.absmin_z > self.goalentity.origin_z))
+   {
+      if ((dis > LOOPTIME))
+      {
+         dis = LOOPTIME;
+      } //end if
+      if (waterdownz (dis))
+      {
+         return (TRUE);
+      } //end if
+      if (waterdownz ((dis * 0.500)))
+      {
+         return (TRUE);
+      } //end if
+      if (waterdownz ((dis * 0.200)))
+      {
+         return (TRUE);
+      } //end if
+   } //end if
+   if ((wlevel == CAM_FOLLOW))
+   {
+      if ((self.absmin_z < self.goalentity.origin_z))
+      {
+         dis = (self.goalentity.origin_z - self.absmin_z);
+         if ((dis > LOOPTIME))
+         {
+            dis = LOOPTIME;
+         } //end if
+         if (waterupz (dis))
+         {
+            return (TRUE);
+         } //end if
+         if (waterupz ((dis * 0.500)))
+         {
+            return (TRUE);
+         } //end if
+         if (waterupz ((dis * 0.200)))
+         {
+            return (TRUE);
+         } //end if
+      } //end if
+   } //end if
+   return (FALSE);
+}; //end of the function waterupdown
+
+void (float dist) strafemove =
+{
+   local float ofs;
+   local float pat_var;
+
+   if ((self.flags & FL_SWIM))
+   {
+      if (waterupdown (dist))
+      {
+         return ;
+      } //end if
+   } //end if
+   // Weapon-aware evasion: set dodge mode from the enemy's current weapon.
+   self.evade_mode = CAM_IDLE;
+   if (self.enemy)
+   {
+      if ((self.enemy != world))
+      {
+         if ((self.enemy.weapon == IT_ROCKET_LAUNCHER))
+         {
+            self.evade_mode = TRUE;
+         } //end if
+         else
+         {
+            if ((self.enemy.weapon == IT_LIGHTNING))
+            {
+               self.evade_mode = 2.000;
+            } //end if
+         } //end if
+      } //end if
+   } //end if
+   ofs = 90.000;
+   // Wider strafe arcs when evading, scaled by skill for less predictability.
+   if ((self.evade_mode && (self.skil > TRUE)))
+   {
+      ofs = (ofs * (TRUE + (random () * 0.500)));
+   } //end if
+   // Track recent self-velocity in a small ring buffer for zigzag timing.
+   if ((self.self_vel_hist_idx == CAM_IDLE))
+   {
+      self.self_vel_hist0 = self.velocity;
+   } //end if
+   else
+   {
+      if ((self.self_vel_hist_idx == TRUE))
+      {
+         self.self_vel_hist1 = self.velocity;
+      } //end if
+      else
+      {
+         self.self_vel_hist2 = self.velocity;
+      } //end if
+   } //end else
+   self.self_vel_hist_idx = (self.self_vel_hist_idx + TRUE);
+   if ((self.self_vel_hist_idx > 2.000))
+   {
+      self.self_vel_hist_idx = CAM_IDLE;
+   } //end if
+   // Zigzag logic: if speed changed enough recently, flip strafe direction vs rockets.
+   if (((self.evade_mode == TRUE) && (self.skil > TRUE)))
+   {
+      pat_var = ((vlen (self.self_vel_hist0) - vlen (self.self_vel_hist2)) / 100.000);
+      if ((fabs (pat_var) > 0.500))
+      {
+         ofs = (CONTENT_EMPTY * ofs);
+      } //end if
+   } //end if
+   // No-enemy patrol: wander with random yaw and occasional hop instead of strafing.
+   if (!self.enemy)
+   {
+      self.ideal_yaw = (self.ideal_yaw + ((random () - 0.500) * 180.000));
+      if ((random () < 0.200))
+      {
+         Bot_tryjump (270.000,dist,FALSE);
+      } //end if
+      walkmove (self.ideal_yaw,dist);
+      return ;
+   } //end if
+   self.strafeonly = MOVETYPE_FLY;
+   if ((self.lefty & STRAFE_DIR))
+   {
+      ofs = (CONTENT_EMPTY * ofs);
+   } //end if
+   if (walkmove ((self.ideal_yaw + ofs),dist))
+   {
+      return ;
+   } //end if
+   if (self.enemy)
+   {
+      return ;
+   } //end if
+   ofs = (CONTENT_EMPTY * ofs);
+   if (walkmove ((self.ideal_yaw + ofs),dist))
+   {
+      return ;
+   } //end if
+   if ((self.flags & (FL_INWATER + FL_ONGROUND)))
+   {
+      self.search_time = (self.search_time - 0.300);
+   } //end if
+}; //end of the function strafemove
+
+void (float dist, float wlevel) BotUnderwaterMove =
+{
+   local float rng;
+   local float oldrng;
+   local float rnd;
+
+   rnd = random ();
+   if ((rnd < 0.750))
+   {
+      oldrng = vlen ((self.origin - self.goalentity.origin));
+      movetogoal (dist);
+      rng = vlen ((self.origin - self.goalentity.origin));
+      if ((oldrng > rng))
+      {
+         return ;
+      } //end if
+      if ((wlevel == SPAWNFLAG_LASER))
+      {
+         if (Bot_tryjump (200.000,dist,FALSE))
+         {
+            return ;
+         } //end if
+      } //end if
+   } //end if
+   strafemove (dist);
+}; //end of the function BotUnderwaterMove
+float (float dist) trysidestep =
+{
+   local vector dir;
+   local vector start;
+
+   dir = (self.goalentity.origin - self.origin);
+   dir_z = FALSE;
+   dir = normalize (dir);
+   start = self.origin;
+   start_z = (self.origin_z + (self.view_ofs_z * 0.500));
+   traceline (start,(start + (BOTSPEED * dir)),FALSE,self);
+   if ((trace_fraction != SPAWNFLAG_SUPERSPIKE))
+   {
+      strafemove ((dist * 0.600));
+      return (TRUE);
+   } //end if
+   makevectors (self.angles);
+   start = (start + (v_right * 15.000));
+   traceline (start,(start + (BOTSPEED * dir)),FALSE,self);
+   if ((trace_fraction != SPAWNFLAG_SUPERSPIKE))
+   {
+      if (walkmove ((self.ideal_yaw - 90.000),(dist * 0.600)))
+      {
+         return (TRUE);
+      } //end if
+   } //end if
+   start = (start - (v_right * SVC_INTERMISSION));
+   traceline (start,(start + (BOTSPEED * dir)),FALSE,self);
+   if ((trace_fraction != TRUE))
+   {
+      if (walkmove ((self.ideal_yaw + 90.000),(dist * 0.600)))
+      {
+         return (TRUE);
+      } //end if
+   } //end if
+   // Escalate: jump or diagonal/backpedal to clear corners and lips.
+   if (Bot_tryjump (270.000,dist,FALSE))
+   {
+      return (TRUE);
+   } //end if
+   if (walkmove ((self.ideal_yaw + 135.000),(dist * 0.400)))
+   {
+      return (TRUE);
+   } //end if
+   if (walkmove ((self.ideal_yaw - 135.000),(dist * 0.400)))
+   {
+      return (TRUE);
+   } //end if
+   if (walkmove ((self.ideal_yaw + 180.000),(dist * 0.500)))
+   {
+      return (TRUE);
+   } //end if
+
+   // ===== TWEAK #5: Desperate unstuck via train/rocket/super (strafe → exploit) =====
+   // After 5+ stuck attempts, escalate to "human exploit" tactics: train surf (boost off
+   // moving train momentum), rocket jump (blast out backward), or super jump (350u leap).
+   // Resets counter after escape. Prevents infinite spin-death in geometry traps.
+   if ((self.stuck_count > 5))
+   {
+      // Check if standing on a moving train—surf away with velocity boost
+      local vector train_check;
+      local entity ground_ent;
+      train_check = self.origin;
+      train_check_z = (train_check_z - 32.000);  // Trace 32 units down
+      traceline(self.origin, train_check, TRUE, self);
+      ground_ent = trace_ent;
+
+      if ((ground_ent.classname == "train"))
+      {
+         // Boost velocity with train momentum (1.5x multiplier for escape power)
+         self.velocity = (self.velocity + (ground_ent.velocity * 1.500));
+         self.stuck_count = 0;
+         return (TRUE);
+      } //end if
+
+      // No train—try enhanced rocket jump if available
+      if (bot_rocket_jump ())
+      {
+         return (TRUE);
+      } //end if
+
+      // No rockets—try super jump instead
+      Bot_tryjump (350.000,dist,FALSE);  // High jump attempt
+      self.stuck_count = 0;
+      return (TRUE);
+   } //end if
+   self.stuck_count = (self.stuck_count + 1);  // Track failed sidestep
+   // ===== END TWEAK #5 =====
+
+   return (FALSE);
+}; //end of the function trysidestep
+float (float dist) testmove =
+{
+   local float rng;
+   local float oldrng;
+
+   oldrng = vlen ((self.origin - self.goalentity.origin));
+   movetogoal (dist);
+   rng = vlen ((self.origin - self.goalentity.origin));
+   if ((rng < oldrng))
+   {
+      return (TRUE);
+   } //end if
+   return (FALSE);
+}; //end of the function testmove
+
+void (float dist) BotmovetoWindTunnel =
+{
+   if (testmove (dist))
+   {
+      return ;
+   } //end if
+   if (trysidestep (dist))
+   {
+      return ;
+   } //end if
+   if (Bot_tryjump (270.000,dist,FALSE))
+   {
+      return ;
+   } //end if
+   strafemove ((dist * 0.500));
+   return ;
+}; //end of the function BotmovetoWindTunnel
+
+void (float dist) BotmovetoVisiblegoal =
+{
+   if (walkmove (self.ideal_yaw,SPAWNFLAG_LASER))
+   {
+      botwalkmove (self.ideal_yaw,(dist - SPAWNFLAG_LASER));
+      return ;
+   } //end if
+   if (walkmove ((self.ideal_yaw + 45.000),SPAWNFLAG_LASER))
+   {
+      movetogoal ((dist - SPAWNFLAG_LASER));
+      return ;
+   } //end if
+   if (walkmove ((self.ideal_yaw - 45.000),SPAWNFLAG_LASER))
+   {
+      movetogoal ((dist - SPAWNFLAG_LASER));
+      return ;
+   } //end if
+   if (trysidestep (dist))
+   {
+      return ;
+   } //end if
+   if (Bot_tryjump (270.000,dist,FALSE))
+   {
+      return ;
+   } //end if
+   strafemove ((dist * 0.500));
+   return ;
+}; //end of the function BotmovetoVisiblegoal
+
+void (float dist) Botmovetogoal =
+{
+   local entity Botgoal;
+   local float wlevel;
+   local vector prev_origin;
+
+   prev_origin = self.oldorigin;
+   self.oldorigin = self.origin;
+   // Stuck detection: if we haven't moved 10 units in 1s, clear caches and replan.
+   if ((vlen ((self.origin - prev_origin)) < 10.000))
+   {
+      if (!self.stuck_time)
+      {
+         self.stuck_time = time;
+      } //end if
+      if (((time - self.stuck_time) > 1.000))
+      {
+         clearCache (self);
+         // Start a short cooldown so we avoid immediately picking the same bad goal.
+         self.stuck_time = time;
+         return ;
+      } //end if
+   } //end if
+   else
+   {
+      self.stuck_time = CAM_IDLE;
+   } //end if
+   Botgoal = self.goalentity;
+   self.ideal_yaw = vectoyaw ((Botgoal.origin - self.origin));
+   ChangeYaw ();
+
+   // ===== TWEAK #2: Platform/train movement prediction (velocity → path chain) =====
+   // Predicts where moving platforms will be when bot arrives. For func_plat, uses state-based
+   // prediction (pos1/pos2). For func_train, uses path_corner chain traversal via predict_train_pos
+   // to follow the train's actual route through its waypoint network—enables precise timing for
+   // complex multi-segment train paths instead of blind velocity guessing.
+   entity g_ent;
+   g_ent = Botgoal.goalentity;
+   if ((g_ent && ((g_ent.classname == "func_plat") || (g_ent.classname == "func_train"))))
+   {
+      local vector pred_pos;
+      local float travel_time;
+      local float dist_to_goal;
+
+      dist_to_goal = vlen ((Botgoal.origin - self.origin));
+      travel_time = (dist_to_goal / 200.000);  // Bot speed ~200 u/s
+
+      // For trains: use path_corner chain prediction (accurate multi-segment pathing)
+      if ((g_ent.classname == "func_train"))
+      {
+         pred_pos = predict_train_pos(g_ent, travel_time);
+      }
+      else
+      {
+         // For plats: use velocity-based prediction with state adjustments
+         pred_pos = (g_ent.origin + (g_ent.velocity * travel_time));
+
+         // Adjust for plat state if known (pos1=bottom, pos2=top)
+         // STATE_UP=1 (moving to top), STATE_DOWN=2 (moving to bottom)
+         if ((g_ent.state == STATE_UP))
+         {
+            pred_pos = g_ent.pos2;  // Will be at top when bot arrives
+         } //end if
+         else if ((g_ent.state == STATE_DOWN))
+         {
+            pred_pos = g_ent.pos1;  // Will be at bottom
+         } //end if
+      }
+
+      // Re-aim at predicted position instead of current static origin—creates timing magic
+      self.ideal_yaw = vectoyaw ((pred_pos - self.origin));
+      ChangeYaw ();
+   } //end if
+   // ===== END TWEAK #2 =====
+
+   if ((self.flags & FL_INWATER))
+   {
+      wlevel = CheckWaterLevel ();
+      if ((wlevel > SPAWNFLAG_SUPERSPIKE))
+      {
+         BotUnderwaterMove ((dist * 0.800),wlevel);
+         return ;
+      } //end if
+   } //end if
+   if ((Botgoal.goalentity.classname == "trigger_push"))
+   {
+      BotmovetoWindTunnel (dist);
+      return ;
+   } //end if
+   if (Spotvisible (Botgoal))
+   {
+      BotmovetoVisiblegoal (dist);
+      return ;
+   } //end if
+   if (testmove (dist))
+   {
+      // Movement succeeded—reset stuck counter on progress
+      self.stuck_count = 0;
+      return ;
+   } //end if
+
+   // ===== TWEAK #3: Stuck rotate + cache nuke (multi-angle escape) =====
+   // Aggressive unstuck: cycles retry counter (0-7), rotates ideal_yaw in 45° increments
+   // after 3 failed attempts, and nukes route cache on loop-back to force fresh pathfinding.
+   // Prevents corner-stuck "moron loops" where bot repeatedly tries same blocked angle.
+   self.stuck_count = (self.stuck_count + 1);
+   if ((self.stuck_count >= 8))
+   {
+      self.stuck_count = 0;  // Wrap to 0 after 7
+   } //end if
+
+   if ((self.stuck_count > 3))
+   {
+      // More than 3 stuck attempts—start aggressive angle rotation
+      // Rotate ideal_yaw by 45° × (attempts - 3) to explore new directions
+      // Example: attempt 4 = +45°, attempt 5 = +90°, attempt 6 = +135°, attempt 7 = +180°
+      self.ideal_yaw = (self.ideal_yaw + (45.000 * (self.stuck_count - 3)));
+      ChangeYaw ();
+
+      if ((self.stuck_count == 7))
+      {
+         // Maximum stuck count reached—nuke route cache and force full replan
+         // This clears all cached paths forcing the bot to recalculate from scratch
+         clearCache (self);
+         self.stuck_count = 0;  // Reset counter after cache clear
+      } //end if
+      return ;  // Exit after rotation attempt—let next think cycle test new angle
+   } //end if
+   // ===== END TWEAK #3 =====
+
+   // ===== TWEAK #3b: Button wait door-open check (persistent wait → early proceed) =====
+   // Monitors door state after shooting button—if door opens (becomes non-solid), clear wait
+   // timer early so bot proceeds immediately instead of waiting full 2s. Fluid progression.
+   if (((self.button_wait_time > time) && (Botgoal.goalentity.classname == "func_door")))
+   {
+      if ((pointcontents (Botgoal.goalentity.origin) != CONTENT_SOLID))
+      {
+         self.button_wait_time = 0;  // Door opened—proceed immediately
+      } //end if
+   } //end if
+   // ===== END TWEAK #3b =====
+
+   strafemove ((dist * 0.800));
+   return ;
+}; //end of the function Botmovetogoal

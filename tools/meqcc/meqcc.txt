@@ -1,0 +1,122 @@
+
+Title:      MrElusive's QuakeC compiler
+Filename:   MEQCC14.ZIP
+Version:    1.4
+Date:       1999 October 29th
+Author:     Mr Elusive
+Credits:    id Software
+
+
+Description
+-----------
+
+This is a modification to John Carmack's Quake-C compiler. It allows
+for creating a progs.dat which cannot be decompiled to Quake-C source code.
+As an added bonus a progs.dat which cannot be decompiled is a lot smaller.
+The compiler also has a C compatible precompiler. A description of the
+precompiler directives can be found in a regular C manual.
+There are two additional precompiler directives:
+
+$evalint(statement)       evaluates statement to an integer
+$evalfloat(statement)     evaluates statement to a floating point number
+
+The statement may not contain Quake-C variables.
+
+Example:
+
+#define FL_1     1
+#define FL_2     2
+#define FL_3     4
+#define FL_4     8
+flags = $evalint(FL_1|FL_2|FL_3|FL_4);
+
+the precompiler will create the following Quake-C source code:
+
+flags = 15;
+
+NOTE: the defines and macros are NOT global like the QuakeC source. If you
+want to use certain defines and/or macros in all the source files you can
+put them on the command-line. You can also put them in a file and include
+this file in every QuakeC file. For instance create 'settings.h' with the
+defines and/or macros and add '#include "settings.h"' at the top of every
+QuakeC file.
+
+
+Usage
+-----
+
+MEQCC.EXE looks for a progs.src in the current directory.
+The easy way to use the compiler is to copy it to the directory with
+the source code and execute it from there.
+
+Command line options:
+
+-src <directory>  look for a progs.src in the specified directory
+-dec [progs.dat]  decompile progs.dat or the one in the current directory
+-undec            create progs.dat which cannot be decompiled
+-undec+           " and write out undec.txt
+-asm <function>   output Quake ASM code of the specified function
+-d <define>       add a preprocessor definition
+-?                display command line options
+-h                "
+-help             "
+
+Example:
+
+meqcc -src e:\quakec\mebot -undec+ -d "BOT 1" -d "ABS(x) (x < 0 ? -x : x)"
+
+The source files listed in e:\quakec\mebot\progs.src will be compiled
+into a progs.dat which cannot be decompiled. Also the following precompiler
+definitions will be added:
+
+#define BOT     1
+#define ABS(x)  (x < 0 ? -x : x)
+
+
+Disclaimer
+----------
+
+THIS PROGRAM IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. YOU AGREE
+THAT NOBODY INVOLVED IN CREATING, PRODUCING OR DELIVERING THE PROGRAM
+SHALL BE LIABLE FOR ANY DIRECT, INDIRECT, CONSEQUENTIAL, OR INCIDENTAL
+DAMAGES RELATING TO THE PROGRAM.
+
+Quake is trademarks of id Software Inc. This program should not be
+associated with ID Software in any way. ID Software will not answer any
+questions related to this program.
+
+
+Copyright and Distribution Permissions
+--------------------------------------
+
+You may distribute this utility in any electronic format as long as this
+description file remains intact and unmodified and is retained along with
+all of the files in the archive and no fees other than the costs of
+distribution are charged.
+
+
+Version changes
+---------------
+
+v1.4
+
+- opcode optimization
+
+v1.3
+
+- string quotes bug fixed
+- compiler optimization
+
+v1.2
+
+- compiler significantly optimized
+
+v1.1
+
+- added a C compatible precompiler
+
+
+Availability
+------------
+
+http://www.botepidemic.com/gladiator

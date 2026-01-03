@@ -1,0 +1,29 @@
+Player.mdls for use with Reaper bots
+(see bottom of note for recommended design of skins)
+
+1. File: REAPERSKN.ZIP available at ftp.cdrom.com/pub/quake/graphics/mdl
+   Author:  Mike Kelly
+   Description:  The skins are just different colored normal player textures.
+	If you want to differentiate the bots, but like the normal quake guy
+	skin, this is the player.mdl for you.
+
+-------------------------------------------------------
+While I don't plan to include skins with the bots, I am putting
+together a file of "recommended" player.mdls for use with the
+reaper bot.  This note describes how the bots will use the skins.
+If you have put together a player.mdl for use with the reaprbot, send
+me a note describing it and where it can be downloaded from, and
+I'll include a mention of it in this file in future releases.
+
+Reaper bot skin spec v0.8
+(BTW, if you think this can be improved, I welcome suggestions)
+
+The reaper bot assumes there are 16 skins in the player.mdl file
+(numbered 0 to 15).  Skin 0 should be the default quake skin.
+Skin 15 is what the "bot only" team uses if skins are enabled.  
+If the "show difficulty" mode is enabled, then skins 1 to 4
+will be associated with progressively higher skill levels (e.g. 
+skill 0 = skin 1, etc.).  Otherwise, the bots will during deathmatch
+play choose any skin between 0 and 15.  For teamplay, of course,
+the bots will share the skin of their human teammate if they aren't
+on the bot only team.
