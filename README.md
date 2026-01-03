@@ -83,6 +83,7 @@ Advanced **path_corner chain prediction** for moving platforms:
 | 🎒 **Smart Backpack Scavenging** | Intelligent prioritization when starving for weapons/ammo (3000 weight if missing RL/LG) |
 | ⚔️ **Weapon Counter-Tactics** | Rock-paper-scissors logic: RL counters LG (knockback), LG counters RL (hitscan) |
 | 🗺️ **Global Scavenger Hunt** | Map-wide item scan when alone (RL/LG/RA/Mega prioritization vs random wander) |
+| 🧩 **Problem Solver** | Dynamic obstacle solving: RJ for high items, button-door linking, shootable detection |
 | 🏆 **Powerup Denial** | Amplified aggression when leading or enemy weak (<40 HP) |
 | 🔄 **Adaptive Goals** | Health when hurt, denial when leading, smart roam patterns |
 | 💰 **Weapon Conservation** | Rocket economy, Quad/Pent counters, ammo awareness |

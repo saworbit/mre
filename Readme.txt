@@ -49,6 +49,7 @@ This repository contains an enhanced version of the classic Reaper bot with mode
 - Smart backpack scavenging: Bots prioritize dropped backpacks (3000 weight if missing RL/LG, +2000 when ammo-starved)
 - Weapon counter-tactics: Rock-paper-scissors logic (RL counters LG with knockback, LG counters RL with hitscan)
 - Global scavenger hunt: Map-wide item scan when alone (RL/LG/RA/Mega prioritization vs random wander)
+- Problem solver: Dynamic obstacle solving (RJ for high items, button-door linking, shootable detection)
 - Powerup denial logic for quad/pent/ring contesting (now amplified when leading/enemy weak)
 - Adaptive goal selection (health when hurt, denial when leading)
 - Weapon conservation (rocket economy, Quad/Pent counters)

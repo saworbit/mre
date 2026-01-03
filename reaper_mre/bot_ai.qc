@@ -37,6 +37,31 @@ void () endEnemy =
    } //end if
 }; //end of the function endEnemy
 
+// ===== PROBLEM SOLVER: Button/Door Solver =====
+// Finds the button that triggers the given door entity.
+// Returns world if no button found (might be shootable or auto-opening).
+entity (entity door_ent) FindButtonForDoor =
+{
+   if ((door_ent.targetname == ""))
+   {
+      return (world);
+   } //end if
+   local entity b;
+   b = find (world,target,door_ent.targetname);
+   // Scan for buttons that target this door
+   while (b)
+   {
+      if ((b.classname == "func_button"))
+      {
+         // Found it! This button opens the door.
+         return (b);
+      } //end if
+      b = find (b,target,door_ent.targetname);
+   } //end while
+   return (world);
+}; //end of the function FindButtonForDoor
+// ===== END PROBLEM SOLVER: Button/Door Solver =====
+
 void () CallForHelp =
 {
    local entity e;

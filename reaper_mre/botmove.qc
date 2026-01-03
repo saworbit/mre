@@ -1,5 +1,7 @@
 // Forward declaration for enhanced rocket jump (used in Bot_tryjump before definition)
 float() bot_rocket_jump;
+// Forward declaration for problem solver (defined in bot_ai.qc)
+entity(entity door_ent) FindButtonForDoor;
 
 void () halfwalkmove =
 {
@@ -1036,6 +1038,43 @@ void (float dist) strafemove =
        slide_dir = normalize(slide_dir);
        slide_yaw = vectoyaw(slide_dir);
        if (walkmove(slide_yaw, dist)) return ;
+
+       // ===== PROBLEM SOLVER: Obstacle Solver (Door/Button Logic) =====
+       // If we are blocked by a door, find the switch!
+       // Check what we hit
+       if ((trace_ent.classname == "func_door"))
+       {
+          // Is the door closed/closing? (State 0=Closed, 1=Opening, 2=Open, 3=Closing)
+          if ((trace_ent.state == 0.000))
+          {
+             // PROBLEM: Locked Door.
+             // SOLUTION: Find the button.
+             local entity key_button;
+             key_button = FindButtonForDoor (trace_ent);
+             if (key_button)
+             {
+                // Found the specific button that opens THIS door.
+                // Override current goal to go press it.
+                if ((self.goalentity != key_button))
+                {
+                   self.goalentity = key_button;
+                   // Retarget navigation immediately
+                   return ;
+                } //end if
+             } //end if
+             else
+             {
+                // No button? Maybe it's a shoot-to-open door?
+                if ((trace_ent.health > 0.000))
+                {
+                   // Attack the door!
+                   self.enemy = trace_ent;
+                   self.th_missile ();
+                } //end if
+             } //end if
+          } //end if
+       } //end if
+       // ===== END PROBLEM SOLVER: Obstacle Solver =====
    }
 
    if (self.enemy)
@@ -1281,6 +1320,46 @@ void (float dist) Botmovetogoal =
    Botgoal = self.goalentity;
    self.ideal_yaw = vectoyaw ((Botgoal.origin - self.origin));
    ChangeYaw ();
+
+   // ===== PROBLEM SOLVER: Execute Vertical Solve (Rocket Jump for High Items) =====
+   // Check if we are near the goal but it's above us (The "Quad Ledge" Scenario)
+   local float vert_dist;
+   local float horiz_dist;
+   vert_dist = (self.goalentity.origin_z - self.origin_z);
+   horiz_dist = vlen ((self.goalentity.origin - self.origin));
+   // If target is close horizontally (<100) but high vertically (>60)
+   if ((horiz_dist < 100.000))
+   {
+      if ((vert_dist > 60.000))
+      {
+         // Do we have the tool?
+         if ((self.items & IT_ROCKET_LAUNCHER))
+         {
+            if ((self.ammo_rockets >= 1.000))
+            {
+               if ((self.health > 50.000))
+               {
+                  // Check cooldown
+                  if ((time > self.rj_cooldown))
+                  {
+                     // Execute rocket jump!
+                     // Look straight down
+                     self.angles_x = 80.000;
+                     makevectors (self.angles);
+                     // Fire!
+                     W_FireRocket ();
+                     // Jump!
+                     self.velocity_z = 300.000;
+                     // Reset cooldown
+                     self.rj_cooldown = (time + 2.000);
+                     return ;
+                  } //end if
+               } //end if
+            } //end if
+         } //end if
+      } //end if
+   } //end if
+   // ===== END PROBLEM SOLVER: Vertical Solve =====
 
    // ===== TWEAK #2: Platform/train movement prediction (velocity → path chain) =====
    // Predicts where moving platforms will be when bot arrives. For func_plat, uses state-based

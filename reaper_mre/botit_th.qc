@@ -137,6 +137,8 @@ float (entity targ, entity inflictor) CanDamage;
 .entity lastbot;
 // Tracks whether the bot is comfortably leading and should play denial-first.
 .float lead_score;
+// Flags that current goal requires special movement (rocket jump for high items).
+.float check_climb;
 .float lasttime;
 .float pather;
 .float pathtype;

@@ -302,6 +302,51 @@ float (entity e) itemweight =
    } //end if
    // ===== END TWEAK #1 =====
 
+   // ===== PROBLEM SOLVER: Vertical Reachability (Rocket Jump for Items) =====
+   // Normally, items >45 units above us are ignored (unreachable).
+   // But if we have a Rocket Launcher and Health, we can RJ to them.
+   if ((e.origin_z > (self.origin_z + 45.000)))
+   {
+      // Default: Bot thinks it's impossible
+      local float is_reachable;
+      is_reachable = FALSE;
+      // PROBLEM: Item is too high.
+      // SOLUTION: Do we have a Rocket Launcher, Ammo, and HP to survive the jump?
+      if ((self.items & IT_ROCKET_LAUNCHER))
+      {
+         if ((self.ammo_rockets >= 1.000))
+         {
+            if ((self.health > 100.000))
+            {
+               // Check if it's within "Rocket Jump Height" (approx 250 units max)
+               if (((e.origin_z - self.origin_z) < 250.000))
+               {
+                  // It IS reachable via physics abuse!
+                  is_reachable = TRUE;
+                  // BOOST the weight because these items (Quad, Red Armor) are usually critical
+                  weight = (weight * 1.500);
+               } //end if
+            } //end if
+         } //end if
+      } //end if
+      // If we can't solve the height problem, ignore it.
+      if (!is_reachable)
+      {
+         // Only strict reject if it's REALLY high (prevent jumping at ceilings)
+         if ((e.origin_z > (self.origin_z + 64.000)))
+         {
+            return (DONT_WANT);
+         } //end if
+      } //end if
+      else
+      {
+         // Flag this goal as requiring a special move
+         // (We'll detect height in Botmovetogoal and execute RJ)
+         self.check_climb = TRUE;
+      } //end if
+   } //end if
+   // ===== END PROBLEM SOLVER: Vertical Reachability =====
+
    if ((weight > DONT_WANT))
    {
       if (!OK_HIGH)
