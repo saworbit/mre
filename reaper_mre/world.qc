@@ -3,6 +3,9 @@ void () InitBodyQue;
 
 void () clientInitMaxClients;
 
+// Forward declaration for portal awareness (defined in botroute.qc)
+void () LinkTeleporters;
+
 void () main =
 {
    dprint ("main function\n");
@@ -234,6 +237,15 @@ void () StartFrame =
    teamplay = cvar ("teamplay");
    skill = cvar ("skill");
    framecount = (framecount + TRUE);
+
+   // ===== PORTAL AWARENESS: Link Teleporters Once =====
+   // Run this on frame 5 to ensure all entities are spawned
+   if ((framecount == 5.000))
+   {
+      LinkTeleporters ();
+      dprint ("Bots have linked teleporter networks.\n");
+   } //end if
+   // ===== END PORTAL AWARENESS =====
 }; //end of the function StartFrame
 
 void () bodyque =

@@ -470,6 +470,23 @@ void () trigger_teleport =
       o = ((self.mins + self.maxs) * 0.500);
       ambientsound (o,"ambience/hum1.wav",0.500,ATTN_STATIC);
    } //end if
+
+   // ===== PORTAL AWARENESS: Register Teleporter Node =====
+   // Automatically spawn a BotPath node inside this teleporter.
+   // Makes navigation system "see" it as a valid location/shortcut.
+   local entity tf_node;
+   tf_node = spawn ();
+   tf_node.classname = "BotTeleporter";
+   tf_node.origin = ((self.mins + self.maxs) * 0.500);
+   tf_node.pathtype = REGULARTARGET;
+   tf_node.solid = SOLID_TRIGGER;
+   setsize (tf_node,'-16 -16 -16','16 16 16');
+
+   // Copy target so we know where it goes
+   tf_node.target = self.target;
+
+   // Mark for later linking (converted to BotPath after wiring)
+   // ===== END PORTAL AWARENESS: Register =====
 }; //end of the function trigger_teleport
 
 void () trigger_skill_touch =

@@ -378,6 +378,50 @@ vector (float n) chooseRoamTarget =
    local vector bestorg;
    local vector deny_dir;
 
+   // ===== PORTAL AWARENESS: Prioritize Teleporter Exploration =====
+   // Bots actively seek out teleporters as "mystery boxes" to explore
+   // instead of just wandering randomly - creates map flow and discovery
+   if ((random () < 0.300))
+   {
+      local entity head;
+      local float best_dist;
+      local entity best_tele;
+
+      best_dist = 9999.000;
+      best_tele = world;
+
+      // Scan for nearby teleporter nodes (BotPath with target field)
+      head = find (world,classname,"BotPath");
+      while (head)
+      {
+         // Teleporter nodes have a target (destination)
+         if ((head.target != ""))
+         {
+            d = vlen ((head.origin - self.origin));
+            // Prefer closer teleporters but not too close (already used)
+            if ((d > 100.000))
+            {
+               if ((d < best_dist))
+               {
+                  best_dist = d;
+                  best_tele = head;
+               } //end if
+            } //end if
+         } //end if
+         head = find (head,classname,"BotPath");
+      } //end while
+
+      // Found a teleporter? Go there!
+      if (best_tele)
+      {
+         if ((random () < 0.500))
+         {
+            return (best_tele.origin);
+         } //end if
+      } //end if
+   } //end if
+   // ===== END PORTAL AWARENESS =====
+
    bestorg = self.origin;
    d = random ();
    if ((d < 0.800))

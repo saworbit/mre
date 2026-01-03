@@ -844,3 +844,48 @@ void (entity en) RouteToEnemy =
       } //end while
    } //end if
 }; //end of the function RouteToEnemy
+
+// ===== PORTAL AWARENESS: Wormhole Linking =====
+// Connects teleporter nodes to their destination nodes.
+// Creates instant-travel paths that bots can plan routes through.
+void () LinkTeleporters =
+{
+   local entity tele_node;
+   local entity dest_ent;
+   local entity dest_node;
+
+   // Find all special teleporter nodes created in triggers.qc
+   tele_node = find (world,classname,"BotTeleporter");
+
+   while (tele_node)
+   {
+      // 1. Find where this teleporter goes (info_teleport_destination)
+      dest_ent = find (world,targetname,tele_node.target);
+
+      if (dest_ent)
+      {
+         // 2. Spawn a node at the EXIT if one doesn't exist
+         // (Ensures bot can pathfind FROM the exit)
+         dest_node = spawn ();
+         dest_node.classname = "BotPath";
+         dest_node.origin = dest_ent.origin;
+         dest_node.pathtype = REGULARTARGET;
+         dest_node.solid = SOLID_TRIGGER;
+         setsize (dest_node,'-16 -16 -16','16 16 16');
+
+         // 3. HARDWIRE THE LINK
+         // Tell the bot: "If you are at tele_node, your next step is dest_node"
+         tele_node.movetarget = dest_node;
+
+         // 4. Zero Cost (Instant Travel)
+         // Teleports are free/instant - no distance penalty
+         // The pathfinding system will see this as a very short walk
+      } //end if
+
+      // Convert back to standard BotPath so normal logic uses it
+      tele_node.classname = "BotPath";
+
+      tele_node = find (tele_node,classname,"BotTeleporter");
+   } //end while
+}; //end of the function LinkTeleporters
+// ===== END PORTAL AWARENESS =====
