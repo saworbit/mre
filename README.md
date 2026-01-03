@@ -24,6 +24,63 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 ## 🎬 Latest Features (2026-01)
 
+### ⏱️ Human Reaction Time (No More Aimbots)
+
+Bots now have **realistic input lag** when spotting enemies:
+
+- 🧠 **Reaction delay** — Easy bots: 0.4s delay, Nightmare bots: 0.1s delay (skill-based scaling)
+- 👀 **No instant snap** — Bots stare blankly for brief moment before tracking (human "oh shit" processing)
+- 🔫 **Delayed firing** — Can't shoot until reaction time expires (no instant first-shot advantage)
+- 🎯 **Fair engagement** — You get 0.1-0.4s window to react when rounding corners (feels like human opponents)
+- 🤖 **Anti-aimbot** — Eliminates robotic instant-lock behavior that screams "I'm a bot"
+
+**Result:** Bots feel human! No more perfect snap-aim-fire when surprised—they need to process "enemy spotted" like real players! 🎮🧑‍🤝‍🧑
+
+### 🎯 Enhanced Ambush Behavior (The Camp Master)
+
+Strong bots now **set ambushes** instead of blindly chasing:
+
+- 🔊 **Sound detection** — Hears combat within 1000u (rocket fire, weapon sounds)
+- 💪 **Confidence check** — Only healthy bots (>80 HP) with good weapons (RL/SNG/LG) ambush
+- 🛑 **Stop and wait** — Freezes movement, faces sound source, holds position for 1.5s
+- 🚪 **Corner camping** — Lets you round corner into their crosshairs instead of charging
+- 🏃 **Fallback behavior** — Weak/unarmed bots still investigate by moving (tactical flexibility)
+
+**Result:** Deadly corner campers! Hear fight → bot stops → aims at doorway → waits for you. Genuinely threatening! 😱🎯
+
+### 🦘 Dynamic Stuck Wiggle (Spam Jump Unstuck)
+
+Bots **immediately hop** when stalled instead of freezing:
+
+- 📉 **Velocity detection** — Checks if speed <10 u/s while grounded (before 1s timeout)
+- ⚡ **Instant response** — 20% chance per frame to micro-jump (220 u/s hop with sound)
+- 🧱 **Clears obstacles** — Unstucks from lips, corners, steps without waiting
+- 🎮 **Human-like** — Looks like player spam-jumping to wiggle free (not patient robot)
+
+**Result:** No more 1-second freeze when hitting walls! Bots jump immediately like frantic humans trying to unstuck! 🦘✨
+
+### 🎯 Finisher Logic (Ammo Conservation)
+
+Bots now **save rockets** for healthy enemies:
+
+- 💀 **Execution detection** — Identifies weak enemies (<20 HP) at close range (<RANGE_NEAR)
+- 🔫 **Shotgun finisher** — Switches to hitscan shotgun for reliable kill on weak targets
+- 🪓 **Axe fallback** — Uses melee if no shotgun (existing <40 HP logic)
+- 💰 **Ammo economy** — Doesn't waste 25-damage rockets on 5 HP enemies
+
+**Result:** Smart ammo management! Bots finish weak enemies with cheap weapons like pro players! 💸🎯
+
+### 💥 Floor Shooting Tweak (Guaranteed Splash)
+
+Rocket **floor shots** now reliably detonate at feet:
+
+- 📐 **Improved aim** — Changed from `absmin_z + 8` (above feet) to `absmin_z - 4` (INTO floor)
+- 💥 **Guaranteed detonation** — Rocket hits solid ground instead of air gap above feet
+- 🎯 **Max splash damage** — Forces explosion at feet level (80+ damage guaranteed)
+- 🏆 **Pro technique** — Exploits splash mechanics like human speedrunners
+
+**Result:** Floor shots always detonate! Consistent splash damage when enemy is grounded—bots master splash physics! 💥🎯
+
 ### 🪜 Stair Smoothing (The "Step Up")
 
 Bots now **glide smoothly** over stairs and debris:

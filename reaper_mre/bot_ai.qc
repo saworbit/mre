@@ -269,6 +269,14 @@ float () BotFoundTarget =
       return (FALSE);
    } //end if
    BotHuntTarget ();
+
+   // ===== HUMAN REACTION TIME: Simulated Input Lag =====
+   // Add delay before bot can aim/fire at newly acquired enemy.
+   // Easy bots (skill 0) get 0.4s delay, Nightmare bots (skill 3) get ~0.1s delay.
+   // Prevents instant snap-to-target "aimbot" behavior that feels inhuman.
+   self.reaction_finished = (time + (0.100 + (random () * 0.200 * (4.000 - self.skil))));
+   // ===== END HUMAN REACTION TIME =====
+
    // Reset streaks on a fresh target so each engagement starts neutral.
    self.kill_streak = CAM_IDLE;
    self.death_streak = CAM_IDLE;

@@ -1336,6 +1336,22 @@ void (float dist) Botmovetogoal =
 
    prev_origin = self.oldorigin;
    self.oldorigin = self.origin;
+
+   // ===== DYNAMIC STUCK WIGGLE: Micro-Jump on Velocity Stall =====
+   // If the bot is trying to move but velocity is near zero, don't wait 1 second.
+   // Try an immediate micro-jump to clear small geometry lips/steps.
+   // This prevents bots from standing still for a full second before reacting.
+   if (((vlen (self.velocity) < 10.000) && (self.flags & FL_ONGROUND)))
+   {
+      // Try a micro-jump (20% chance to avoid spamming every frame)
+      if ((random () < 0.200))
+      {
+         self.velocity_z = 220.000;  // Small hop
+         sound (self,CHAN_BODY,"player/plyrjmp8.wav",1.000,ATTN_NORM);
+      } //end if
+   } //end if
+   // ===== END DYNAMIC STUCK WIGGLE =====
+
    // Stuck detection: if we haven't moved 10 units in 1s, clear caches and replan.
    if ((vlen ((self.origin - prev_origin)) < 10.000))
    {

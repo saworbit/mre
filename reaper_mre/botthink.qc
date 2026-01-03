@@ -296,6 +296,11 @@ void () checkyaw =
    // 1. Early exit if no enemy
    if (!self.enemy) return;
 
+   // ===== HUMAN REACTION TIME: Block Aiming During Delay =====
+   // Don't aim at enemy until reaction time has passed
+   if ((time < self.reaction_finished)) return;
+   // ===== END HUMAN REACTION TIME =====
+
    // 2. Calculate lead target (standard logic)
    o_range = vlen ((self.enemy.origin - self.origin));
    if ((((self.weapon == IT_ROCKET_LAUNCHER) || (self.weapon == IT_NAILGUN)) || (self.weapon == IT_SUPER_NAILGUN)))
@@ -477,8 +482,26 @@ void () BotPostThink =
                      // Can we "hear" them? (Within 1000 units, even through walls)
                      if ((d < 1000.000))
                      {
-                        // Move towards the noise! (Investigate)
-                        // Set them as goalentity temporarily (not enemy yet)
+                        // ===== ENHANCED AMBUSH: Stop and Wait =====
+                        // If we are healthy and well-armed, STOP and wait for them to come to us
+                        // (Real ambush behavior: hear noise → take position → wait)
+                        if (((self.health > 80.000) && (self.items & ((IT_ROCKET_LAUNCHER + IT_SUPER_NAILGUN) + IT_LIGHTNING))))
+                        {
+                           // STOP moving - set velocity to zero
+                           self.velocity = '0.000 0.000 0.000';
+
+                           // Face the noise source
+                           self.ideal_yaw = vectoyaw ((sound_maker.origin - self.origin));
+                           ChangeYaw ();
+
+                           // Wait 1.5 seconds for them to round the corner into our line of fire
+                           // (Don't move goalentity, just stop and face the sound)
+                           self.search_time = (time + 1.500);
+                           break;
+                        } //end if
+                        // ===== END ENHANCED AMBUSH =====
+
+                        // Otherwise, just investigate by moving toward the sound
                         if ((self.goalentity.classname == "BotTarget"))
                         {
                            setorigin (self.goalentity,sound_maker.origin);

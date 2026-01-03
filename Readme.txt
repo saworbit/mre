@@ -18,7 +18,37 @@ rocket bounce physics, corrected sounds, and chase cam feature.
 
 This repository contains an enhanced version of the classic Reaper bot with modern AI improvements:
 
-**Latest: Stair Smoothing (The "Step Up")** (2026-01)
+**Latest: Human Reaction Time (No More Aimbots)** (2026-01)
+- Reaction delay: Easy bots get 0.4s delay, Nightmare bots get 0.1s delay (skill-based scaling)
+- No instant snap: Bots stare blankly before tracking/firing after spotting enemy
+- Fair engagement: 0.1-0.4s window to react when rounding corners (feels like human opponents)
+- Anti-aimbot: Eliminates robotic instant-lock behavior
+- Result: Bots need to process "enemy spotted" like real players instead of instant snap-aim-fire
+
+**Previous: Enhanced Ambush (The Camp Master)** (2026-01)
+- Sound detection: Hears combat within 1000u (rocket fire, weapon sounds)
+- Tactical positioning: Healthy bots (>80 HP) with RL/SNG/LG stop and wait instead of charging
+- Corner camping: Freezes movement, faces sound source, waits 1.5s for enemy to round corner
+- Result: Deadly ambushes that feel genuinely threatening
+
+**Previous: Dynamic Stuck Wiggle (Spam Jump Unstuck)** (2026-01)
+- Velocity detection: Checks if speed <10 u/s while grounded (before 1s timeout)
+- Instant response: 20% chance per frame to micro-jump (220 u/s hop)
+- Result: Bots jump immediately when stuck like frantic humans, no more 1-second freeze
+
+**Previous: Finisher Logic (Ammo Conservation)** (2026-01)
+- Execution detection: Identifies weak enemies (<20 HP) at close range
+- Shotgun finisher: Switches to hitscan for reliable kill on weak targets
+- Ammo economy: Doesn't waste rockets on nearly-dead enemies
+- Result: Smart ammo management like pro players
+
+**Previous: Floor Shooting Tweak (Guaranteed Splash)** (2026-01)
+- Improved aim: Changed from absmin_z+8 to absmin_z-4 (aims INTO floor beneath enemy)
+- Guaranteed detonation: Rocket hits solid ground instead of air gap
+- Max splash damage: Forces explosion at feet level (80+ guaranteed)
+- Result: Consistent splash damage when enemy is grounded
+
+**Previous: Stair Smoothing (The "Step Up")** (2026-01)
 - Step detection: Traces at knee height (22u) when blocked to detect low obstacles vs walls
 - Micro-hop: 210 u/s vertical pop lifts bot just enough to clear step friction (smaller than jump)
 - Fluid navigation: No more stuttering on jagged stairs, crate piles, or uneven terrain

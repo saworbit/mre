@@ -1,5 +1,33 @@
 ## Unreleased
 
+- **Human reaction time simulation** for realistic enemy engagement:
+  - **Reaction delay field** in `reaper_mre/botit_th.qc`: Added `.float reaction_finished` entity field to track when bot can start aiming/firing after acquiring new enemy target. Enables natural input lag simulation instead of instant-snap "aimbot" behavior.
+  - **Delay calculation** in `reaper_mre/bot_ai.qc`: When BotFoundTarget acquires enemy, sets `reaction_finished = time + (0.1 + random()*0.2*(4-skill))`. Easy bots (skill 0) get ~0.4s delay, Nightmare bots (skill 3) get ~0.1s delay. Scales linearly with skill for progressive difficulty—low-skill bots feel sluggish, high-skill bots feel sharp but not inhuman.
+  - **Aim blocking** in `reaper_mre/botthink.qc`: checkyaw() early-returns if `time < reaction_finished`, preventing pitch tracking during delay. Bots stare blankly at new enemy instead of instantly tracking—looks like human "oh shit" moment.
+  - **Fire blocking** in `reaper_mre/botfight.qc`: W_BotAttack() early-returns if `time < reaction_finished`, preventing weapon fire during delay. Bots hold fire until delay expires—no instant first-shot advantage.
+  - **Result:** Bots no longer snap-aim-fire instantly when rounding corners. You get brief window to react (0.1-0.4s depending on skill) before bot starts tracking/firing—feels like fighting humans who need to process "enemy spotted" instead of aimbots.
+
+- **Enhanced sound ambush behavior** for tactical positioning:
+  - **Ambush logic** in `reaper_mre/botthink.qc`: When idle bot hears combat (sound_maker.attack_finished > time) within 1000u, checks if healthy (>80 HP) and well-armed (RL/SNG/LG). If conditions met, stops movement (velocity = 0), faces sound source (ideal_yaw), waits 1.5s at position instead of running toward noise.
+  - **Tactical waiting** in `reaper_mre/botthink.qc`: Uses search_time timer to hold position, allowing sound source to approach. If not well-armed or hurt, falls back to original "investigate by moving" behavior—only confident bots ambush.
+  - **Result:** Strong bots now set ambushes instead of blindly charging at noise. Hear rockets firing around corner → bot stops → faces doorway → waits for you to round corner into crosshairs. Creates "camper" behavior that feels genuinely threatening instead of predictable chase-AI.
+
+- **Dynamic stuck wiggle (micro-jumps)** for immediate unstuck response:
+  - **Velocity stall detection** in `reaper_mre/botmove.qc`: Botmovetogoal checks if velocity <10 u/s while grounded BEFORE the 1-second stuck timer. Detects when bot is trying to move but physics has stalled (stuck on lip, in corner, etc).
+  - **Immediate micro-jump** in `reaper_mre/botmove.qc`: On velocity stall, 20% chance per frame to execute 220 u/s hop with jump sound. Prevents bots from standing motionless for full second before reacting—tries to "wiggle free" immediately.
+  - **Result:** Bots no longer freeze for 1 second when hitting small obstacles. They immediately try micro-jumps to clear geometry lips/steps/corners—looks like human player spam-jumping to unstuck instead of patiently waiting for timeout.
+
+- **Finisher logic** for intelligent ammo conservation:
+  - **Near-death detection** in `reaper_mre/botfight.qc`: W_BestBotWeapon checks if enemy health <20 and range <RANGE_NEAR BEFORE main weapon selection. Identifies "execution" scenarios where rocket would be overkill.
+  - **Shotgun finisher priority** in `reaper_mre/botfight.qc`: Returns IT_SHOTGUN if available for reliable hitscan finish on weak enemies. Saves expensive rockets for healthy targets—prevents wasting 25 damage ammo on 5 HP enemy.
+  - **Fallthrough to axe** in `reaper_mre/botfight.qc`: If no shotgun, allows existing melee logic (<40 HP at RANGE_MELEE) to finish with axe. Smart ammo economy across weapon tiers.
+  - **Result:** Bots stop firing rockets at nearly-dead enemies. Switch to shotgun/axe for finishers when enemy is critically weak—looks like human ammo management instead of wasteful spam.
+
+- **Floor shooting tweak** for guaranteed splash detonation:
+  - **Improved floor aim** in `reaper_mre/botfight.qc`: Changed rocket floor-shooting aim from `absmin_z + 8` (slightly above feet) to `absmin_z - 4` (slightly INTO floor beneath enemy). Ensures rocket hits solid ground instead of air gap above feet.
+  - **Guaranteed ground detonation:** Aiming below absmin forces rocket to impact floor tile, triggering splash explosion at enemy's feet instead of potentially missing ground and hitting body (which does less splash damage). Maximizes splash radius effectiveness.
+  - **Result:** Floor shots now reliably detonate at feet level instead of occasionally hitting legs/body. More consistent splash damage (80+ guaranteed) when enemy is grounded—bots exploit splash mechanics like pro players.
+
 - **Stair smoothing system** for fluid vertical navigation:
   - **Step detection** in `reaper_mre/botmove.qc`: When primary walkmove fails in strafemove, traces at knee height (22u above ground) to detect low obstacles like stairs or debris. If path is clear at knee level but blocked at foot level, identifies obstacle as a step rather than a wall.
   - **Micro-hop execution** in `reaper_mre/botmove.qc`: Applies 210 u/s vertical velocity (smaller than standard 270 jump) to lift bot just enough to clear step friction. Prevents stuck loops on jagged stairs, crate piles, and uneven terrain—bots now glide smoothly up stairs like human players.

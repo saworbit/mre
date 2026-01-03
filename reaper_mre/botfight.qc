@@ -209,8 +209,9 @@ vector () botaim =
             // even if direct-body trace misses. Forces guaranteed 80+ splash damage.
             if ((self.enemy.flags & FL_ONGROUND))
             {
-               // Aim slightly above feet to hit floor beneath enemy (8 units = just above absmin)
-               tg_z = (self.enemy.absmin_z + 8.000);
+               // Aim slightly INTO floor beneath enemy to guarantee ground detonation
+               // (-4 units ensures rocket hits solid ground, not air above feet)
+               tg_z = (self.enemy.absmin_z - 4.000);
 
                // Validate shot will actually hit something near enemy (120u = splash radius)
                traceline (src,tg,TRUE,self);
@@ -457,6 +458,21 @@ float () W_BestBotWeapon =
          return (IT_ROCKET_LAUNCHER);
       } //end if
    } //end if
+
+   // ===== FINISHER LOGIC: Don't Waste Rockets on Near-Dead Enemies =====
+   // If enemy is very weak (< 20 HP) and close, prioritize shotgun or axe over rockets.
+   // This saves ammo and prevents wasting a rocket on a target with 5 HP.
+   if (((self.enemy.health < 20.000) && (rng < RANGE_NEAR)))
+   {
+      // Use Shotgun for reliable hitscan finish
+      if ((it & IT_SHOTGUN))
+      {
+         return (IT_SHOTGUN);
+      } //end if
+      // Fall through to axe if no shotgun
+   } //end if
+   // ===== END FINISHER LOGIC =====
+
    // Aggressive melee: push axe sooner if the target is already weak.
    if (((rng == RANGE_MELEE) && (self.enemy.health < 40.000)))
    {
@@ -576,6 +592,11 @@ void () W_BotAttack =
 {
    local float r;
    local float addt;
+
+   // ===== HUMAN REACTION TIME: Block Firing During Delay =====
+   // Don't fire at enemy until reaction time has passed
+   if ((time < self.reaction_finished)) return;
+   // ===== END HUMAN REACTION TIME =====
 
    if (!W_CheckNoAmmo ())
    {

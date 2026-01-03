@@ -161,6 +161,8 @@ float (entity targ, entity inflictor) CanDamage;
 .float traffic_score;
 // Action Breadcrumbs: what the player did at this node (0=walk, 1=jump, 2=wait).
 .float action_flag;
+// Human Reaction Time: timestamp when bot can start aiming/firing after acquiring new enemy.
+.float reaction_finished;
 .float skil;
 .float rocketlen;
 .entity rocketcache;
