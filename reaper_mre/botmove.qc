@@ -868,10 +868,19 @@ float (float dist) waterupdown =
    return (FALSE);
 }; //end of the function waterupdown
 
+// ===== TWEAK #4: Wall Hugging / Frictionless Sliding =====
+// Enables bots to slide along walls instead of stopping when strafing.
+// Critical for movement in narrow corridors and preventing "stuck" behavior during combat.
 void (float dist) strafemove =
 {
    local float ofs;
    local float pat_var;
+   local vector move_dir;
+   local vector wall_normal;
+   local vector slide_dir;
+   local float slide_yaw;
+   local vector org_start;
+   local float abs_pat_var;
 
    if ((self.flags & FL_SWIM))
    {
@@ -880,8 +889,9 @@ void (float dist) strafemove =
          return ;
       } //end if
    } //end if
+
    // Weapon-aware evasion: set dodge mode from the enemy's current weapon.
-   self.evade_mode = CAM_IDLE;
+   self.evade_mode = 0;
    if (self.enemy)
    {
       if ((self.enemy != world))
@@ -899,14 +909,16 @@ void (float dist) strafemove =
          } //end if
       } //end if
    } //end if
+
    ofs = 90.000;
    // Wider strafe arcs when evading, scaled by skill for less predictability.
    if ((self.evade_mode && (self.skil > TRUE)))
    {
       ofs = (ofs * (TRUE + (random () * 0.500)));
    } //end if
+
    // Track recent self-velocity in a small ring buffer for zigzag timing.
-   if ((self.self_vel_hist_idx == CAM_IDLE))
+   if ((self.self_vel_hist_idx == 0))
    {
       self.self_vel_hist0 = self.velocity;
    } //end if
@@ -924,17 +936,27 @@ void (float dist) strafemove =
    self.self_vel_hist_idx = (self.self_vel_hist_idx + TRUE);
    if ((self.self_vel_hist_idx > 2.000))
    {
-      self.self_vel_hist_idx = CAM_IDLE;
+      self.self_vel_hist_idx = 0;
    } //end if
+
    // Zigzag logic: if speed changed enough recently, flip strafe direction vs rockets.
    if (((self.evade_mode == TRUE) && (self.skil > TRUE)))
    {
       pat_var = ((vlen (self.self_vel_hist0) - vlen (self.self_vel_hist2)) / 100.000);
-      if ((fabs (pat_var) > 0.500))
+
+      // Manual absolute value (QuakeC has no fabs)
+      abs_pat_var = pat_var;
+      if ((abs_pat_var < 0.000))
       {
-         ofs = (CONTENT_EMPTY * ofs);
+         abs_pat_var = (abs_pat_var * -1.000);
+      } //end if
+
+      if ((abs_pat_var > 0.500))
+      {
+         ofs = (-1 * ofs);
       } //end if
    } //end if
+
    // No-enemy patrol: wander with random yaw and occasional hop instead of strafing.
    if (!self.enemy)
    {
@@ -946,29 +968,85 @@ void (float dist) strafemove =
       walkmove (self.ideal_yaw,dist);
       return ;
    } //end if
+
    self.strafeonly = MOVETYPE_FLY;
    if ((self.lefty & STRAFE_DIR))
    {
-      ofs = (CONTENT_EMPTY * ofs);
+      ofs = (-1 * ofs);
    } //end if
+
+   // --- Attempt Primary Move ---
    if (walkmove ((self.ideal_yaw + ofs),dist))
    {
       return ;
    } //end if
+
+   // --- SLIDE LOGIC #1: Primary failed, try to slide along wall ---
+   // 1. Trace slightly ahead to find the wall we just hit
+   self.angles_y = self.ideal_yaw + ofs;
+   makevectors(self.angles);
+   org_start = self.origin;
+   // Trace 16 units ahead to get the normal
+   traceline(org_start, org_start + (v_forward * 16), TRUE, self);
+
+   if (trace_fraction < 1.0)
+   {
+       // 2. Calculate Slide Vector: Dir - (Normal * (Dir . Normal))
+       // This projects our movement vector onto the wall plane
+       move_dir = v_forward;
+       wall_normal = trace_plane_normal;
+
+       // Standard vector projection
+       slide_dir = move_dir - (wall_normal * (move_dir * wall_normal));
+       slide_dir = normalize(slide_dir);
+       slide_yaw = vectoyaw(slide_dir);
+
+       // 3. Attempt to walk along the slide angle
+       if (walkmove(slide_yaw, dist))
+       {
+           return;
+       }
+   }
+   // -----------------------------------------------------------
+
    if (self.enemy)
    {
       return ;
    } //end if
-   ofs = (CONTENT_EMPTY * ofs);
+
+   // Try alternate direction (flip strafe)
+   ofs = (-1 * ofs);
    if (walkmove ((self.ideal_yaw + ofs),dist))
    {
       return ;
    } //end if
+
+   // --- SLIDE LOGIC #2: Alternate failed, try to slide again ---
+   self.angles_y = self.ideal_yaw + ofs;
+   makevectors(self.angles);
+   traceline(org_start, org_start + (v_forward * 16), TRUE, self);
+
+   if (trace_fraction < 1.0)
+   {
+       move_dir = v_forward;
+       wall_normal = trace_plane_normal;
+       slide_dir = move_dir - (wall_normal * (move_dir * wall_normal));
+       slide_dir = normalize(slide_dir);
+       slide_yaw = vectoyaw(slide_dir);
+
+       if (walkmove(slide_yaw, dist))
+       {
+           return;
+       }
+   }
+   // -----------------------------------------------------------
+
    if ((self.flags & (FL_INWATER + FL_ONGROUND)))
    {
       self.search_time = (self.search_time - 0.300);
    } //end if
 }; //end of the function strafemove
+// ===== END TWEAK #4 =====
 
 void (float dist, float wlevel) BotUnderwaterMove =
 {
