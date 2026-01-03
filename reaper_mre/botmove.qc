@@ -732,47 +732,78 @@ float /* ERROR: Could not determine return type */ (float vz, float dist, float 
    return (Botjump (jumpv));
 }; //end of the function Bot_tryjump
 
-// ===== ENHANCED ROCKET JUMP: Proper RJ with safety/timing/direction =====
-// Full rocket jump implementation with health checks, cooldown, and synchronized jump timing.
-// Aims down at feet, fires rocket, jumps to catch blast propulsion. Safer and more controlled
-// than crude "turn and fire" - prevents suicide, spam, and enables directional arcs.
+// ===== ENHANCED ROCKET JUMP: Dynamic Directional Logic =====
+// Calculates optimal pitch/yaw to propel bot TOWARD the target.
+// - High Ledge? Aim nearly straight down (85°) for maximum vertical pop.
+// - Wide Gap? Aim shallower (45°) to convert explosion force into forward speed.
 float() bot_rocket_jump =
 {
    local vector old_angles;
    local vector jumpv;
+   local vector dir;
+   local float dist;
+   local float pitch_aim;
 
-   // Safety checks: ammo, weapon, health (prevent suicide), cooldown (prevent spam)
+   // 1. Safety Checks
    if ((self.ammo_rockets < 1)) return (FALSE);
    if (!(self.items & IT_ROCKET_LAUNCHER)) return (FALSE);
-   if ((self.health < 50.000)) return (FALSE);  // Don't suicide
-   if ((time < self.rj_cooldown)) return (FALSE);  // 2s cooldown
+   if ((self.health < 50.000)) return (FALSE); // Prevent suicide
+   if ((time < self.rj_cooldown)) return (FALSE); // 2s cooldown
+   if (!self.goalentity) return (FALSE); // Need a target for directional RJ
 
-   // Save current aim angles
+   // 2. Calculate Geometry
+   // We need to know where the goal is relative to us
+   dir = normalize((self.goalentity.origin - self.origin));
+   dist = vlen((self.goalentity.origin - self.origin));
+
+   // Save current view to restore later
    old_angles = self.angles;
 
-   // Aim straight down at feet (pitch 90°) + backward for forward push
-   self.angles_x = 90.000;  // Pitch down
-   self.angles_y = (self.angles_y + 180.000);  // Face backward for forward arc
+   // 3. Dynamic Pitch Selection
+   // Default to vertical jump (high ledges)
+   pitch_aim = 85.000;
+
+   // Check if we need distance (gap crossing) instead of just height
+   // If target is far away (>300u) and not too high above us (<64u)
+   if (((dist > 300.000) && ((self.goalentity.origin_z - self.origin_z) < 64.000)))
+   {
+      // Shallow angle: shoots rocket behind bot to push them forward
+      pitch_aim = 45.000;
+   } //end if
+
+   // 4. Set Aim Angles
+   // Pitch: look down/back based on calculated need
+   self.angles_x = pitch_aim;
+
+   // Yaw: Face exactly OPPOSITE to the target direction
+   // This ensures the explosion pushes us directly toward the goal
+   self.angles_y = (vectoyaw(dir) + 180.000);
+
    ChangePitch ();
    ChangeYaw ();
 
-   // Fire rocket at feet
+   // 5. Execute Sequence
    makevectors (self.angles);
-   W_FireRocket ();
+   W_FireRocket (); // Fire at the calculated angle
 
-   // Synchronized jump to catch blast (explosion ~0.1s delay)
-   // Base jump vel + backward kick for forward arc
-   jumpv = '0.000 0.000 270.000';  // Base jump
-   jumpv = (jumpv + (v_forward * (CONTENT_EMPTY * 100.000)));  // Backward kick
+   // Synchronized jump to catch blast
+   // Base vertical jump + heavy kick from the explosion direction
+   jumpv = '0.000 0.000 270.000';
+
+   // Add forward momentum relative to where we want to go (v_forward is pointing back)
+   // We invert v_forward because we are looking backwards
+   jumpv = (jumpv + (v_forward * -120.000));
+
    Botjump (jumpv);
 
-   // Restore original aim
+   // 6. Cleanup
+   // Restore original aim immediately so bot doesn't lose track of enemies
    self.angles = old_angles;
    ChangePitch ();
    ChangeYaw ();
 
-   // Set cooldown and reset stuck counter
-   self.rj_cooldown = (time + 2.000);  // 2s cooldown
+   // Set cooldown (prevents spam) and reset stuck counter (successful escape)
+   self.rj_cooldown = (time + 2.000);
    self.stuck_count = 0;
 
    return (TRUE);

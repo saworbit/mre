@@ -30,7 +30,7 @@ Bots now execute **proper rocket jumps** with professional-level control:
 
 - ✅ **Health checks** — Won't suicide if HP < 50
 - ⏱️ **2-second cooldown** — Prevents spam and maintains balance
-- 🎯 **Precise aim control** — 90° pitch down + 180° backward for optimal arc
+- 🎯 **Directional aim control** — Dynamic pitch: 85° for high ledges, 45° for long gaps; yaw aims toward goal
 - ⚡ **Synchronized timing** — Jump perfectly timed with rocket blast
 - 🏔️ **Smart triggers** — Auto-RJ when ledges exceed 1.5× normal jump height (skill >2)
 - 🆘 **Safe unstuck escape** — Replaces dangerous "turn and fire" with controlled RJ

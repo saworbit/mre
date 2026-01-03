@@ -1,7 +1,7 @@
 ## Unreleased
 
 - **Enhanced rocket jump system** for safe, controlled, and skill-based navigation:
-  - **Full rocket jump mechanics** in `reaper_mre/botmove.qc`: Sophisticated `bot_rocket_jump` function with health checks (<50 HP prevents suicide), 2s cooldown (prevents spam), precise pitch/yaw control (90° down + 180° backward), and synchronized jump timing. Replaces crude "turn and fire" with proper aim-down-feet blast physics—safer, more controlled, human-like RJ execution.
+  - **Directional rocket jump mechanics** in `reaper_mre/botmove.qc`: Sophisticated `bot_rocket_jump` function with health checks (<50 HP prevents suicide), 2s cooldown (prevents spam), and dynamic geometry-based aim calculation. Analyzes target distance/height: steep pitch (85°) for high vertical ledges, shallow pitch (45°) for long horizontal gaps. Yaw aims opposite to target direction, ensuring explosion propels bot precisely toward goal—replaces static "look down and shoot" with intelligent directional RJ like human speedrunners.
   - **Smart RJ trigger for high ledges** in `reaper_mre/botmove.qc`: Proactive rocket jump in `Bot_tryjump` when target height exceeds 1.5× MAXJUMP and bot has skill >2. Enables skilled bots to reach otherwise unreachable platforms/items via RJ instead of fail-and-give-up loops—"pro movement" for vertical navigation.
   - **Upgraded desperate unstuck** in `reaper_mre/botmove.qc`: Replaced crude rocket fire with full `bot_rocket_jump()` call in stuck escape sequence. Train surf → enhanced RJ → super jump priority ensures safe, cooldown-managed escape with proper directional arcs.
   - Added `.float rj_cooldown` field in `reaper_mre/botit_th.qc` for spam prevention and timing control.
