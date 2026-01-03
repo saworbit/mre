@@ -747,6 +747,27 @@ float (entity e) pathweight =
       } //end if
       // ===================================================
 
+      // ===== STREET SMARTS: Traffic Awareness =====
+      // Adjust weight based on Traffic + Intent
+
+      // 1. HUNTING: If we are looking for a fight (healthy, no enemy yet)
+      // Prefer High Traffic nodes (The "Highway")
+      if (!self.enemy && self.health > 80)
+      {
+         // Add bonus for busy areas (max +2000 weight)
+         weight = weight + (e.traffic_score * 20.0);
+      }
+
+      // 2. FLEEING / SNEAKING: If we are hurt
+      // Prefer Low Traffic nodes (The "Back Alley")
+      else if (self.health < 40)
+      {
+         // Subtract penalty for busy areas (Avoid the highway!)
+         // e.g., Traffic 50 * 50 = -2500 weight.
+         weight = weight - (e.traffic_score * 50.0);
+      }
+      // ============================================
+
       if ((e.lastbot == self))
       {
          if ((e.lasttime > (time - MOVETYPE_TOSS)))

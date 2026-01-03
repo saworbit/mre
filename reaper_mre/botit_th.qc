@@ -157,6 +157,8 @@ float (entity targ, entity inflictor) CanDamage;
 .float glory_score;
 // Semantic map learning: last update time for scent fading.
 .float scent_time;
+// Traffic heatmap: how many times anyone has touched this node (main street vs back alley).
+.float traffic_score;
 .float skil;
 .float rocketlen;
 .entity rocketcache;

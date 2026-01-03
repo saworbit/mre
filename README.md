@@ -24,6 +24,30 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 ## 🎬 Latest Features (2026-01)
 
+### 👤 The Shadow System (Player Learning)
+
+Bots learn **directly from you** as you play:
+
+- 🎓 **Human as teacher** — Player drops breadcrumbs like a bot (BotPath movetarget on spawn)
+- 📍 **Automatic waypoint creation** — PlayerPostThink drops nodes every 0.1s when alive + grounded
+- 🤝 **Shared navigation network** — Player nodes integrate instantly into bot pathfinding (no separate graph)
+- ⚡ **Instant knowledge transfer** — Run complex route once → nearby bots see nodes → bots follow same path immediately
+- 🎯 **Teaches by example** — Secret jumps, trick shots, optimal routes learned through observation, not manual editing
+
+**Result:** You become the Master Teacher—bots inherit your advanced movement patterns in real-time! 🎮🧠
+
+### 🚦 Street Smarts (Traffic Heatmaps)
+
+Nodes learn **who goes where**, creating emergent tactical flow:
+
+- 📊 **Traffic tracking** — Each node counts touches (capped at 100), creating "Main Street" vs "Back Alley" distinction
+- ⚔️ **Hunting mode** — Healthy bots (>80 HP, no enemy) seek high-traffic nodes (+20× bonus) to find fights
+- 🏃 **Fleeing mode** — Wounded bots (<40 HP) avoid high-traffic nodes (-50× penalty), take quiet back routes
+- 🌀 **Organic evolution** — Early game: random wander. Mid game: atrium becomes "Hot Zone". Late game: Injured bot auto-routes through ventilation shafts to health pack
+- 🧠 **Emergent tactics** — No explicit "danger zone" code—bots naturally learn where combat happens and adapt pathing accordingly
+
+**Result:** Bots exhibit human-like map awareness—chase fights when aggressive, sneak when vulnerable! 🔥🎭
+
 ### 🚀 Enhanced Rocket Jump System
 
 Bots now execute **proper rocket jumps** with professional-level control:

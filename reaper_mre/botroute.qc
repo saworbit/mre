@@ -1,7 +1,7 @@
 
 void () t_botpath =
 {
-   if ((other.classname != "dmbot"))
+   if ((other.classname != "dmbot") && (other.classname != "player"))
    {
       return ;
    } //end if
@@ -9,6 +9,16 @@ void () t_botpath =
    {
       return ;
    } //end if
+
+   // ===== STREET SMARTS: Traffic Counter =====
+   // Count every time a bot OR player steps here.
+   // Cap at 100 to prevent overflow/math issues.
+   if (self.traffic_score < 100)
+   {
+      self.traffic_score = self.traffic_score + 1;
+   }
+   // ==========================================
+
    bot_toucheditem ();
    addTarget (other.movetarget.movetarget,self);
    other.movetarget.movetarget = self;

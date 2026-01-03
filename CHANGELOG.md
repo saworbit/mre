@@ -1,5 +1,18 @@
 ## Unreleased
 
+- **Player learning system (Shadow)** for human-guided AI training:
+  - **Player path carrier initialization** in `reaper_mre/client.qc`: Players now get BotPath movetarget on spawn (like bots) with CARRIED pathtype. Ensures player can drop breadcrumb nodes as they play—transforms human into "Master Teacher" for bot navigation learning.
+  - **Player breadcrumb dropping** in `reaper_mre/client.qc`: PlayerPostThink throttles CheckDropPath/DropBotPath calls (0.1s intervals) with health >0 and FL_ONGROUND checks. Players automatically drop waypoints as they move—bots instantly adopt player routes, learning jumps/secrets/shortcuts by observation.
+  - **Shared node network** in `reaper_mre/botroute.qc`: Modified t_botpath touch function to accept both "dmbot" and "player" classnames. Player-created nodes integrate seamlessly into bot navigation—no separate path network, immediate knowledge transfer.
+  - **Result:** Human player becomes living tutorial. Run complex route once → nearby bots see new nodes → bots immediately follow same path. Teaches advanced movement (secret jumps, trick shots, optimal routes) through gameplay instead of manual waypoint editing.
+
+- **Traffic heatmap system (Street Smarts)** for emergent tactical flow awareness:
+  - **Traffic counter** in `reaper_mre/botroute.qc`: t_botpath increments `.float traffic_score` on every bot/player touch (capped at 100 to prevent overflow). Each node tracks usage frequency—creates organic "Main Street" (high traffic = combat zones) vs "Back Alley" (low traffic = flanking routes) distinction.
+  - **Hunting behavior** in `reaper_mre/botgoal.qc`: When bot is healthy (>80 HP) with no enemy, traffic_score adds +20× bonus to pathweight (max +2000). Bots actively seek high-traffic nodes to find fights—gravitate toward atrium/choke points where action happens.
+  - **Fleeing behavior** in `reaper_mre/botgoal.qc`: When bot is hurt (<40 HP), traffic_score subtracts -50× penalty from pathweight (max -5000). Bots actively avoid high-traffic nodes when vulnerable—choose quiet ventilation shafts/side corridors to reach health packs safely.
+  - **Organic flow evolution:** Early game: 0 traffic everywhere, random wandering. Mid game: Main atrium gets 50+ traffic, aggressive bots flock there. Late game: Wounded bot calculates route, sees main path is "Hot Zone", automatically routes through back passages—looks incredibly human-like without explicit "danger zone" programming.
+  - Added `.float traffic_score` field in `reaper_mre/botit_th.qc` for traffic tracking.
+
 - **Enhanced rocket jump system** for safe, controlled, and skill-based navigation:
   - **Directional rocket jump mechanics** in `reaper_mre/botmove.qc`: Sophisticated `bot_rocket_jump` function with health checks (<40 HP prevents suicide), 2s cooldown (prevents spam), and dynamic geometry-based aim calculation. Analyzes target distance/height: steep pitch (85°) for high vertical ledges, shallow pitch (45°) for long horizontal gaps. Yaw aims opposite to target direction, ensuring explosion propels bot precisely toward goal—replaces static "look down and shoot" with intelligent directional RJ like human speedrunners. Aggressive forward leap (-320 u/s, tripled from original) enables gap crossing to reach items like DM2 Quad Damage.
   - **Smart RJ trigger for high ledges** in `reaper_mre/botmove.qc`: Proactive rocket jump in `Bot_tryjump` when target height exceeds 1.5× MAXJUMP and bot has skill >2. Enables skilled bots to reach otherwise unreachable platforms/items via RJ instead of fail-and-give-up loops—"pro movement" for vertical navigation.

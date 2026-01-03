@@ -18,7 +18,21 @@ rocket bounce physics, corrected sounds, and chase cam feature.
 
 This repository contains an enhanced version of the classic Reaper bot with modern AI improvements:
 
-**Latest: Enhanced Rocket Jump System** (2026-01)
+**Latest: The Shadow System (Player Learning)** (2026-01)
+- Human as teacher: Player drops breadcrumbs like bots (BotPath movetarget on spawn)
+- Automatic waypoint creation: PlayerPostThink drops nodes every 0.1s when alive + grounded
+- Shared navigation network: Player nodes integrate instantly into bot pathfinding
+- Instant knowledge transfer: Run route once → bots see nodes → bots follow immediately
+- Teaches by example: Secret jumps, trick shots, optimal routes learned through observation
+
+**Previous: Street Smarts (Traffic Heatmaps)** (2026-01)
+- Traffic tracking: Each node counts touches (capped at 100), "Main Street" vs "Back Alley"
+- Hunting mode: Healthy bots (>80 HP, no enemy) seek high-traffic nodes (+20× bonus)
+- Fleeing mode: Wounded bots (<40 HP) avoid high-traffic nodes (-50× penalty)
+- Organic evolution: Early game random wander → mid game Hot Zone atrium → late game back route sneaking
+- Emergent tactics: Bots naturally learn where combat happens and adapt pathing
+
+**Previous: Enhanced Rocket Jump System** (2026-01)
 - Directional RJ mechanics: Dynamic geometry-based aim (85° pitch for high ledges, 45° for gaps), yaw aims toward goal
 - Aggressive leap: 3× forward velocity (-320 u/s) enables gap crossing to DM2 Quad and similar platforms
 - Enhanced reachability: Recognizes items up to 450u high as reachable, actively seeks and RJs to them

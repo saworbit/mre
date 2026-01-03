@@ -542,6 +542,20 @@ void () PutClientInServer =
    {
       initBotLevel ();
    } //end if
+
+   // ===== SHADOW SYSTEM: Init Player Learning =====
+   // Give the player a "path carrier" so they can drop breadcrumbs like a bot.
+   // This allows bots to learn map routes simply by watching the human play.
+   if (!self.movetarget)
+   {
+      self.movetarget = spawn();
+      self.movetarget.classname = "BotPath";
+      self.movetarget.pathtype = CARRIED;
+      setorigin(self.movetarget, self.origin);
+   }
+   // Reset any flags
+   self.lefty = 0;
+   // ===============================================
 }; //end of the function PutClientInServer
 
 void () info_player_start =
@@ -1169,10 +1183,29 @@ void () PlayerPostThink =
    {
       return ;
    } //end if
-   if (CheckDropPath ())
+
+   // ===== SHADOW SYSTEM: Record Path =====
+   // If the player is alive and moving, try to drop a waypoint.
+   // We use the same 'CheckDropPath' logic bots use to ensure valid spacing.
+   if (self.health > 0 && (self.flags & FL_ONGROUND))
    {
-      DropBotPath ();
-   } //end if
+      // Check every 0.1 seconds (throttle to save CPU)
+      if (time > self.search_time)
+      {
+         // Reuse the bot logic!
+         // CheckDropPath ensures we don't drop nodes too close together.
+         if (CheckDropPath())
+         {
+            DropBotPath();
+
+            // Optional: Visual feedback for you (Development mode)
+            // bprint("Node Dropped!\n");
+         }
+         self.search_time = time + 0.1;
+      }
+   }
+   // ======================================
+
    self.movetarget.flags = self.flags;
    setorigin (self.movetarget,self.origin);
    W_WeaponFrame ();
