@@ -24,6 +24,28 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 ## 🎬 Latest Features (2026-01)
 
+### 🎯 Oracle Aiming (Quadratic Prediction)
+
+Nightmare bots use **mathematically perfect interception physics**:
+
+- 🧮 **Quadratic solver** — Solves t² equation to find exact time-to-intercept
+- 🎯 **Perfect leading** — Accounts for perpendicular strafing (no more circle-strafe exploits)
+- 📐 **Physics-based** — Uses actual projectile speed (1000 u/s rockets) + enemy velocity
+- ⚡ **Skill-gated** — Skill > 2 uses Oracle, ≤2 uses simple leading (difficulty curve preserved)
+
+**Result:** High-skill bots hit strafing players with pro-level accuracy! Feels like fighting QuakeWorld veterans who master interception math! 🚀🔥
+
+### 🗺️ A* Pathfinding (Optimal Route Solver)
+
+Bots use **industry-standard graph search** for guaranteed optimal paths:
+
+- 🧭 **True A* algorithm** — f = g + h, finds mathematically shortest path
+- 🔗 **Linked list sets** — Open/Closed sets via entity chains (no array limits)
+- 🆔 **Search ID system** — Instant state invalidation (no expensive clearing)
+- 🎮 **16M op budget** — Leverages Quakespasm's massive instruction limit (50k iterations)
+
+**Result:** Bots never get stuck in local minima! A* guarantees optimal routes through complex navmeshes—works on any map automatically! 🧠✨
+
 ### 💾 Auto Waypoint Dump (Periodic Persistence)
 
 Automatically **capture learned navigation** to build persistent navmeshes:

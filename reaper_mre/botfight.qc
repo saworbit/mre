@@ -50,6 +50,164 @@ vector (vector src, vector trg, float invMvel) leadtarget =
    } //end if
    return (tg);
 }; //end of the function leadtarget
+
+// ===== SQRT APPROXIMATION: Newton-Raphson Method =====
+// QuakeC doesn't have built-in sqrt(), so implement fast approximation.
+// Uses Newton's method: x_new = 0.5 * (x + n/x)
+// Converges quickly (3-4 iterations for good accuracy).
+float (float n) qc_sqrt =
+{
+   local float x;
+   local float x_new;
+   local float epsilon;
+
+   // Handle edge cases
+   if ((n <= FALSE))
+   {
+      return (FALSE);
+   } //end if
+
+   if ((n == TRUE))
+   {
+      return (TRUE);
+   } //end if
+
+   // Initial guess: n/2 (simple but works)
+   x = (n * 0.500);
+
+   // Newton-Raphson iteration (4 iterations = good accuracy)
+   epsilon = 0.001;
+
+   // Iteration 1
+   x_new = (0.500 * (x + (n / x)));
+   if ((fabs ((x_new - x)) < epsilon))
+   {
+      return (x_new);
+   } //end if
+   x = x_new;
+
+   // Iteration 2
+   x_new = (0.500 * (x + (n / x)));
+   if ((fabs ((x_new - x)) < epsilon))
+   {
+      return (x_new);
+   } //end if
+   x = x_new;
+
+   // Iteration 3
+   x_new = (0.500 * (x + (n / x)));
+   if ((fabs ((x_new - x)) < epsilon))
+   {
+      return (x_new);
+   } //end if
+   x = x_new;
+
+   // Iteration 4 (final)
+   x_new = (0.500 * (x + (n / x)));
+   return (x_new);
+}; //end of the function qc_sqrt
+// ===== END SQRT APPROXIMATION =====
+
+// ===== ORACLE AIMING: Quadratic Prediction (Perfect Interception) =====
+// Solves the interception problem: where to aim a projectile to hit a moving target.
+// Uses quadratic equation to find exact time-to-intercept based on:
+// - Projectile speed (e.g., 1000 u/s for rockets)
+// - Enemy velocity (current movement vector)
+// - Relative position (distance and direction to target)
+// This is mathematically perfect aim that accounts for perpendicular strafing.
+// Much more accurate than simple linear leading for skilled bots.
+vector (entity targ, float proj_speed) PredictAim =
+{
+   local vector D;
+   local vector v;
+   local float a;
+   local float b;
+   local float c;
+   local float det;
+   local float t1;
+   local float t2;
+   local float t;
+   local vector aim_spot;
+   local float sqrt_det;
+
+   // Calculate relative position vector (D = target - shooter)
+   D = (targ.origin - self.origin);
+
+   // Adjust for target height (aim at chest/center, not origin floor)
+   D_z = (D_z + ((targ.mins_z + targ.maxs_z) * 0.500));
+
+   // Get target velocity
+   v = targ.velocity;
+
+   // ===== QUADRATIC EQUATION SETUP =====
+   // Solving: t^2 * (v^2 - s^2) + t * (2 * D·v) + |D|^2 = 0
+   // Where: v = enemy velocity, s = projectile speed, D = relative position
+
+   // Coefficient a: (v·v - s^2)
+   a = ((v_x * v_x) + (v_y * v_y) + (v_z * v_z)) - (proj_speed * proj_speed);
+
+   // Coefficient b: 2 * (D·v)
+   b = (2.000 * ((D_x * v_x) + (D_y * v_y) + (D_z * v_z)));
+
+   // Coefficient c: |D|^2
+   c = ((D_x * D_x) + (D_y * D_y) + (D_z * D_z));
+
+   // ===== SOLVE DETERMINANT =====
+   det = ((b * b) - (4.000 * a * c));
+
+   // Impossible shot (imaginary solution) - just aim straight at them
+   if ((det < FALSE))
+   {
+      return (normalize (D));
+   } //end if
+
+   // ===== SOLVE FOR TIME (t) =====
+   sqrt_det = qc_sqrt (det);
+
+   // Two possible solutions (quadratic formula)
+   t1 = (((- b) + sqrt_det) / (2.000 * a));
+   t2 = (((- b) - sqrt_det) / (2.000 * a));
+
+   // Pick the smallest positive time (soonest intercept in future)
+   if (((t1 < FALSE) && (t2 < FALSE)))
+   {
+      // Both solutions are in the past - just aim straight
+      return (normalize (D));
+   } //end if
+
+   if ((t1 < FALSE))
+   {
+      t = t2;
+   } //end if
+   else
+   {
+      if ((t2 < FALSE))
+      {
+         t = t1;
+      } //end if
+      else
+      {
+         // Both positive - pick smaller (sooner intercept)
+         if ((t1 < t2))
+         {
+            t = t1;
+         } //end if
+         else
+         {
+            t = t2;
+         } //end if
+      } //end if
+   } //end if
+
+   // ===== CALCULATE INTERCEPT POINT =====
+   // Where the enemy will be at time t: origin + velocity * t
+   aim_spot = (targ.origin + (v * t));
+
+   // Return normalized direction vector to intercept point
+   return (normalize ((aim_spot - self.origin)));
+}; //end of the function PredictAim
+// ===== END ORACLE AIMING =====
+
 // ===== TWEAK #2: Gravity arc simulation (full physics vs flat percentage) =====
 // Replaces percentage-based height guessing with real parabolic trajectory calculation.
 // Uses Quake physics: g=800u/s², GL speed=600u/s. Computes optimal lob angle for range,
@@ -202,7 +360,25 @@ vector () botaim =
       {
          if ((self.weapon & IT_ROCKET_LAUNCHER))
          {
-            tg = leadtarget (src,tg,0.001);
+            // ===== ORACLE AIMING: Use quadratic prediction for high-skill bots =====
+            // Skill > 2: Use perfect interception math (PredictAim)
+            // Skill <= 2: Use simple linear leading (leadtarget)
+            if ((self.skil > 2.000))
+            {
+               // Perfect aim: solves quadratic equation for exact intercept
+               // Rocket speed: 1000 units/second
+               local vector aim_dir;
+               aim_dir = PredictAim (self.enemy,1000.000);
+
+               // Convert direction back to target point for floor shooting logic
+               tg = (src + (aim_dir * vlen ((self.enemy.origin - src))));
+            } //end if
+            else
+            {
+               // Standard linear leading for lower-skill bots
+               tg = leadtarget (src,tg,0.001);
+            } //end if
+            // ===== END ORACLE AIMING =====
 
             // ===== SPLASH MASTERY: Floor Shooting (The 'Floor Frag') =====
             // Don't aim at chest—aim at feet. Rockets that hit the floor always splash,

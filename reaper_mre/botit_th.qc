@@ -161,6 +161,20 @@ float (entity targ, entity inflictor) CanDamage;
 .float traffic_score;
 // Action Breadcrumbs: what the player did at this node (0=walk, 1=jump, 2=wait).
 .float action_flag;
+// A* Pathfinding: g-score (cost from start node to this node).
+.float g_score;
+// A* Pathfinding: h-score (heuristic estimated cost from this node to goal).
+.float h_score;
+// A* Pathfinding: f-score (g + h, total estimated cost through this node).
+.float f_score;
+// A* Pathfinding: parent node in the path (for reconstruction).
+.entity parent_node;
+// A* Pathfinding: search ID to invalidate old searches without clearing all nodes.
+.float search_id;
+// A* Pathfinding: next node in the Open Set linked list (.chain is used for pathfinding links).
+.entity open_next;
+// A* Pathfinding: next node in the Closed Set linked list.
+.entity closed_next;
 // Human Reaction Time: timestamp when bot can start aiming/firing after acquiring new enemy.
 .float reaction_finished;
 // Nemesis System: tracks who killed this bot for revenge seeking.
@@ -240,6 +254,8 @@ float HELPING;
 float NAMEBOTS;
 // Auto waypoint dump: tracks when to dump waypoints to console (0 = disabled, >0 = time of next dump)
 float WAYPOINT_DUMP_TIME;
+// A* Pathfinding: global search ID counter (increments each search to invalidate old state)
+float ASTAR_SEARCH_ID;
 
 void (entity noisemaker, entity noiseobject) signalnoise;
 float (entity e) hearnoise;

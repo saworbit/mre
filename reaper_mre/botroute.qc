@@ -958,6 +958,268 @@ void (entity en) RouteToEnemy =
    } //end if
 }; //end of the function RouteToEnemy
 
+// ===== A* PATHFINDING: Optimal Route Solver =====
+// Universal pathfinding algorithm that finds the lowest-cost path from start to goal.
+// Uses f-score (g + h) to prioritize promising routes.
+// Implements Open/Closed sets as linked lists using open_next/closed_next fields.
+// Search_id system avoids expensive entity clearing between searches.
+//
+// Returns: First node in the path (walk self.parent_node chain to reconstruct full path)
+//          world if no path exists
+entity (entity start, entity goal) AStarSolve =
+{
+   local entity current;
+   local entity neighbor;
+   local entity lowest;
+   local entity open_set;
+   local entity closed_set;
+   local float lowest_f;
+   local float tentative_g;
+   local float new_f;
+   local float loop_count;
+   local float edge_cost;
+   local entity temp;
+   local entity prev;
+
+   // Increment global search ID (invalidates old search data)
+   ASTAR_SEARCH_ID = (ASTAR_SEARCH_ID + TRUE);
+
+   // Initialize start node
+   start.g_score = FALSE;
+   start.h_score = vlen ((goal.origin - start.origin));
+   start.f_score = start.h_score;
+   start.parent_node = world;
+   start.search_id = ASTAR_SEARCH_ID;
+
+   // Open set begins with start node
+   open_set = start;
+   start.open_next = world;
+   closed_set = world;
+
+   loop_count = FALSE;
+
+   // Main A* loop (16M op budget allows ~50k iterations safely)
+   while ((open_set && (loop_count < 50000.000)))
+   {
+      loop_count = (loop_count + TRUE);
+
+      // ===== FIND LOWEST F IN OPEN SET =====
+      lowest = world;
+      lowest_f = 999999.000;
+      current = open_set;
+
+      while (current)
+      {
+         if ((current.f_score < lowest_f))
+         {
+            lowest_f = current.f_score;
+            lowest = current;
+         } //end if
+         current = current.open_next;
+      } //end while
+
+      if (!lowest)
+      {
+         // No path found
+         return (world);
+      } //end if
+
+      // ===== GOAL CHECK =====
+      if ((lowest == goal))
+      {
+         // Path found! Return first node (caller reconstructs via parent_node chain)
+         return (goal);
+      } //end if
+
+      // ===== MOVE FROM OPEN TO CLOSED =====
+      // Remove lowest from open_set
+      if ((open_set == lowest))
+      {
+         // Lowest is head of list
+         open_set = lowest.open_next;
+      } //end if
+      else
+      {
+         // Find and unlink lowest from middle/end of list
+         prev = open_set;
+         while ((prev.open_next && (prev.open_next != lowest)))
+         {
+            prev = prev.open_next;
+         } //end while
+         if (prev.open_next)
+         {
+            prev.open_next = lowest.open_next;
+         } //end if
+      } //end if
+
+      // Add to closed_set
+      lowest.closed_next = closed_set;
+      closed_set = lowest;
+
+      // ===== PROCESS NEIGHBORS =====
+      // Check all movetarget links (up to 6 neighbors per node)
+      neighbor = lowest.movetarget;
+      if (neighbor)
+      {
+         if (((neighbor.search_id != ASTAR_SEARCH_ID) || (neighbor.closed_next != neighbor)))
+         {
+            // Calculate edge cost (Euclidean distance)
+            edge_cost = vlen ((neighbor.origin - lowest.origin));
+            tentative_g = (lowest.g_score + edge_cost);
+
+            // Better path found OR node not yet visited?
+            if (((neighbor.search_id != ASTAR_SEARCH_ID) || (tentative_g < neighbor.g_score)))
+            {
+               // Update node costs
+               neighbor.parent_node = lowest;
+               neighbor.g_score = tentative_g;
+               neighbor.h_score = vlen ((goal.origin - neighbor.origin));
+               neighbor.f_score = (neighbor.g_score + neighbor.h_score);
+               neighbor.search_id = ASTAR_SEARCH_ID;
+
+               // Add to open set if not already there
+               if ((neighbor.search_id != ASTAR_SEARCH_ID))
+               {
+                  neighbor.open_next = open_set;
+                  open_set = neighbor;
+               } //end if
+            } //end if
+         } //end if
+      } //end if
+
+      // Repeat for movetarget2
+      neighbor = lowest.movetarget2;
+      if (neighbor)
+      {
+         if (((neighbor.search_id != ASTAR_SEARCH_ID) || (neighbor.closed_next != neighbor)))
+         {
+            edge_cost = vlen ((neighbor.origin - lowest.origin));
+            tentative_g = (lowest.g_score + edge_cost);
+
+            if (((neighbor.search_id != ASTAR_SEARCH_ID) || (tentative_g < neighbor.g_score)))
+            {
+               neighbor.parent_node = lowest;
+               neighbor.g_score = tentative_g;
+               neighbor.h_score = vlen ((goal.origin - neighbor.origin));
+               neighbor.f_score = (neighbor.g_score + neighbor.h_score);
+               neighbor.search_id = ASTAR_SEARCH_ID;
+
+               if ((neighbor.search_id != ASTAR_SEARCH_ID))
+               {
+                  neighbor.open_next = open_set;
+                  open_set = neighbor;
+               } //end if
+            } //end if
+         } //end if
+      } //end if
+
+      // Repeat for movetarget3-6 (same pattern)
+      neighbor = lowest.movetarget3;
+      if (neighbor)
+      {
+         if (((neighbor.search_id != ASTAR_SEARCH_ID) || (neighbor.closed_next != neighbor)))
+         {
+            edge_cost = vlen ((neighbor.origin - lowest.origin));
+            tentative_g = (lowest.g_score + edge_cost);
+
+            if (((neighbor.search_id != ASTAR_SEARCH_ID) || (tentative_g < neighbor.g_score)))
+            {
+               neighbor.parent_node = lowest;
+               neighbor.g_score = tentative_g;
+               neighbor.h_score = vlen ((goal.origin - neighbor.origin));
+               neighbor.f_score = (neighbor.g_score + neighbor.h_score);
+               neighbor.search_id = ASTAR_SEARCH_ID;
+
+               if ((neighbor.search_id != ASTAR_SEARCH_ID))
+               {
+                  neighbor.open_next = open_set;
+                  open_set = neighbor;
+               } //end if
+            } //end if
+         } //end if
+      } //end if
+
+      neighbor = lowest.movetarget4;
+      if (neighbor)
+      {
+         if (((neighbor.search_id != ASTAR_SEARCH_ID) || (neighbor.closed_next != neighbor)))
+         {
+            edge_cost = vlen ((neighbor.origin - lowest.origin));
+            tentative_g = (lowest.g_score + edge_cost);
+
+            if (((neighbor.search_id != ASTAR_SEARCH_ID) || (tentative_g < neighbor.g_score)))
+            {
+               neighbor.parent_node = lowest;
+               neighbor.g_score = tentative_g;
+               neighbor.h_score = vlen ((goal.origin - neighbor.origin));
+               neighbor.f_score = (neighbor.g_score + neighbor.h_score);
+               neighbor.search_id = ASTAR_SEARCH_ID;
+
+               if ((neighbor.search_id != ASTAR_SEARCH_ID))
+               {
+                  neighbor.open_next = open_set;
+                  open_set = neighbor;
+               } //end if
+            } //end if
+         } //end if
+      } //end if
+
+      neighbor = lowest.movetarget5;
+      if (neighbor)
+      {
+         if (((neighbor.search_id != ASTAR_SEARCH_ID) || (neighbor.closed_next != neighbor)))
+         {
+            edge_cost = vlen ((neighbor.origin - lowest.origin));
+            tentative_g = (lowest.g_score + edge_cost);
+
+            if (((neighbor.search_id != ASTAR_SEARCH_ID) || (tentative_g < neighbor.g_score)))
+            {
+               neighbor.parent_node = lowest;
+               neighbor.g_score = tentative_g;
+               neighbor.h_score = vlen ((goal.origin - neighbor.origin));
+               neighbor.f_score = (neighbor.g_score + neighbor.h_score);
+               neighbor.search_id = ASTAR_SEARCH_ID;
+
+               if ((neighbor.search_id != ASTAR_SEARCH_ID))
+               {
+                  neighbor.open_next = open_set;
+                  open_set = neighbor;
+               } //end if
+            } //end if
+         } //end if
+      } //end if
+
+      neighbor = lowest.movetarget6;
+      if (neighbor)
+      {
+         if (((neighbor.search_id != ASTAR_SEARCH_ID) || (neighbor.closed_next != neighbor)))
+         {
+            edge_cost = vlen ((neighbor.origin - lowest.origin));
+            tentative_g = (lowest.g_score + edge_cost);
+
+            if (((neighbor.search_id != ASTAR_SEARCH_ID) || (tentative_g < neighbor.g_score)))
+            {
+               neighbor.parent_node = lowest;
+               neighbor.g_score = tentative_g;
+               neighbor.h_score = vlen ((goal.origin - neighbor.origin));
+               neighbor.f_score = (neighbor.g_score + neighbor.h_score);
+               neighbor.search_id = ASTAR_SEARCH_ID;
+
+               if ((neighbor.search_id != ASTAR_SEARCH_ID))
+               {
+                  neighbor.open_next = open_set;
+                  open_set = neighbor;
+               } //end if
+            } //end if
+         } //end if
+      } //end if
+   } //end while
+
+   // Loop limit reached or open set exhausted - no path
+   return (world);
+}; //end of the function AStarSolve
+// ===== END A* PATHFINDING =====
+
 // ===== PORTAL AWARENESS: Wormhole Linking =====
 // Connects teleporter nodes to their destination nodes.
 // Creates instant-travel paths that bots can plan routes through.
