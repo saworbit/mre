@@ -784,6 +784,116 @@ void () updateBotCache =
    self.pendinglen = FALSE;
 }; //end of the function updateBotCache
 
+// ===== TACTICAL AI: Global Scavenger Hunt =====
+// When the bot has no local targets (alone/lost), scan the ENTIRE map
+// for high-value items (RL, LG, RA, Mega) and navigate towards them.
+// Gives bots "purpose" instead of random bouncing when idle.
+entity () FindMapGoal =
+{
+   local entity head;
+   local entity best_ent;
+   local float best_val;
+   local float val;
+   local float d;
+
+   best_ent = world;
+   best_val = -1000.000;
+
+   // Pass 1: Rocket Launcher (Priority #1 if we don't have it)
+   head = find (world,classname,"weapon_rocketlauncher");
+   while (head)
+   {
+      if ((head.solid != SOLID_NOT))
+      {
+         // Item is available (spawned)
+         d = vlen ((head.origin - self.origin));
+         val = (5000.000 - d);
+         // Closer is better
+         // If we already have it, drastic score penalty (only get it if VERY close)
+         if ((self.items & IT_ROCKET_LAUNCHER))
+         {
+            val = (val - 6000.000);
+         } //end if
+         if ((val > best_val))
+         {
+            best_val = val;
+            best_ent = head;
+         } //end if
+      } //end if
+      head = find (head,classname,"weapon_rocketlauncher");
+   } //end while
+
+   // Pass 2: Lightning Gun (Priority #2)
+   head = find (world,classname,"weapon_lightning");
+   while (head)
+   {
+      if ((head.solid != SOLID_NOT))
+      {
+         d = vlen ((head.origin - self.origin));
+         val = (4500.000 - d);
+         if ((self.items & IT_LIGHTNING))
+         {
+            val = (val - 6000.000);
+         } //end if
+         if ((val > best_val))
+         {
+            best_val = val;
+            best_ent = head;
+         } //end if
+      } //end if
+      head = find (head,classname,"weapon_lightning");
+   } //end while
+
+   // Pass 3: Red Armor (Always good if armor is below 100)
+   if ((self.armorvalue < 100.000))
+   {
+      head = find (world,classname,"item_armor2");
+      // Red Armor
+      while (head)
+      {
+         if ((head.solid != SOLID_NOT))
+         {
+            d = vlen ((head.origin - self.origin));
+            val = (6000.000 - d);
+            // High Priority
+            if ((val > best_val))
+            {
+               best_val = val;
+               best_ent = head;
+            } //end if
+         } //end if
+         head = find (head,classname,"item_armor2");
+      } //end while
+   } //end if
+
+   // Pass 4: Megahealth (if health is below 100)
+   if ((self.health < 100.000))
+   {
+      head = find (world,classname,"item_health");
+      while (head)
+      {
+         // Check healamount to ensure it's a Mega (usually 100)
+         if ((head.solid != SOLID_NOT))
+         {
+            if ((head.healamount > 90.000))
+            {
+               d = vlen ((head.origin - self.origin));
+               val = (5500.000 - d);
+               if ((val > best_val))
+               {
+                  best_val = val;
+                  best_ent = head;
+               } //end if
+            } //end if
+         } //end if
+         head = find (head,classname,"item_health");
+      } //end while
+   } //end if
+
+   return (best_ent);
+}; //end of the function FindMapGoal
+// ===== END TACTICAL AI: Global Scavenger Hunt =====
+
 void () aibot_chooseGoal =
 {
    local vector org;
@@ -1028,13 +1138,32 @@ void () aibot_chooseGoal =
          } //end if
       } //end if
    } //end if
+   // ===== MODIFIED FALLBACK LOGIC: Global Scavenger Hunt =====
+   // If no local items or paths found, try GLOBAL SEARCH first.
+   // Only revert to random roaming if the map is completely empty of good items.
    if ((best <= DONT_WANT))
    {
-      botTarget.goalentity = botTarget;
-      bestorg = chooseRoamTarget (FALSE);
+      local entity global_item;
+      global_item = FindMapGoal ();
+      if (global_item)
+      {
+         // Found a high-value item elsewhere in the map! Go get it.
+         botTarget.goalentity = global_item;
+         bestorg = global_item.origin;
+         // Give bot more time to travel there before giving up
+         self.search_time = (time + 5.000);
+      } //end if
+      else
+      {
+         // Map is empty/boring? Fallback to random wander.
+         botTarget.goalentity = botTarget;
+         bestorg = chooseRoamTarget (FALSE);
+         // Check again soon
+         self.search_time = (time + 0.500);
+      } //end if
       self.lefty = (self.lefty | FAR_SEEK);
-      self.search_time = (time + FL_SWIM);
    } //end if
+   // ===== END MODIFIED FALLBACK LOGIC =====
    if (VERBOSEBOT)
    {
       dprint (self.teamname);
