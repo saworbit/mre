@@ -24,6 +24,50 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 ## 🎬 Latest Features (2026-01)
 
+### 💪 Bully Mode (Aggressive Item Control)
+
+Powered-up bots **dominate territory** instead of playing cautious:
+
+- 🎯 **Inverted threat** — Enemy near item = BONUS when bot has Quad OR (100+ HP + RL)
+- 💥 **Tactical baiting** — "Come get some!" behavior when stacked (seeks combat near items)
+- 🏃 **Advantage pressing** — Rushes contested items instead of fleeing (leverages superior firepower)
+- 🛡️ **Fallback caution** — Weak/unpowered bots still avoid threats (smart context awareness)
+
+**Result:** Bot with Quad rushes Red Armor spawn even when enemy camps it—uses power advantage to dominate territory! 💪🔥
+
+### 😠 Nemesis System (Grudge Tracking)
+
+Bots now **take revenge** after being killed:
+
+- 🎯 **Personal vendetta** — Tracks who killed this bot (30-second grudge timer)
+- 🔥 **Revenge priority** — +2000 weight boost to hunt killer (ignores items/objectives)
+- 💀 **Respawn hunting** — Bot A frags Bot B → Bot B hunts Bot A for 30s
+- 🎮 **Human-like grudges** — Creates personal rivalries instead of emotionless combat
+
+**Result:** Bots ignore Quad Damage to chase down their killer—revenge-driven AI that feels genuinely emotional! 😡⚔️
+
+### 🌀 Folded Space Pathing (Instant Teleporters)
+
+Bots now **master teleporter shortcuts**:
+
+- ⚡ **Near-zero cost** — Teleporter routes cost 10 units vs 250 (instant travel)
+- 🗺️ **Wormhole routing** — Bots see map as "folded space" with shortcuts
+- 🏃 **Speedrun optimization** — Teleports across E1M7 instead of walking 800 units
+- 🧠 **Brilliant shortcuts** — Discovers cross-map routes humans might miss
+
+**Result:** Bots exploit teleporter networks like pro speedrunners—arrives first via "free" instant travel! 🚀✨
+
+### ⏱️ Optimized Spawn Camping (4-Second Window)
+
+Bots now use **mobile timing** instead of passive camping:
+
+- 🏃 **Aggressive roaming** — Patrols area instead of standing idle (4s window vs 10s)
+- 🎯 **Last-second dash** — Engages combat, then rushes spawn 3s before item appears
+- 🎮 **Human-like timing** — Looks like timing practice instead of sentry duty
+- 💀 **Harder to kill** — Mobile presence instead of predictable camping spot
+
+**Result:** Bots patrol Quad area fighting, then dash to exact position 3 seconds before spawn—mobile control! ⚡🎯
+
 ### ⏱️ Human Reaction Time (No More Aimbots)
 
 Bots now have **realistic input lag** when spotting enemies:

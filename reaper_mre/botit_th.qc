@@ -163,6 +163,9 @@ float (entity targ, entity inflictor) CanDamage;
 .float action_flag;
 // Human Reaction Time: timestamp when bot can start aiming/firing after acquiring new enemy.
 .float reaction_finished;
+// Nemesis System: tracks who killed this bot for revenge seeking.
+.entity nemesis;
+.float nemesis_time;
 .float skil;
 .float rocketlen;
 .entity rocketcache;

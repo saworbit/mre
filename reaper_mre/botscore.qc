@@ -61,6 +61,16 @@ void (entity killer, entity killed) countkill =
                } //end if
             } //end if
          } //end if
+
+         // ===== NEMESIS SYSTEM: Set Grudge =====
+         // When a bot kills another bot, the victim holds a grudge for 30 seconds.
+         // This creates revenge behavior and makes bot fights feel more personal.
+         if ((killed.classname == "dmbot"))
+         {
+            killed.nemesis = killer;
+            killed.nemesis_time = (time + 30.000);
+         } //end if
+         // ===== END NEMESIS SYSTEM =====
       } //end if
    } //end if
    if ((killed.classname == "player"))

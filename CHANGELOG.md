@@ -1,5 +1,26 @@
 ## Unreleased
 
+- **Bully Mode (Aggressive Item Control)** for dominant playstyle when powered up:
+  - **Inverted threat logic** in `reaper_mre/botgoal.qc`: itemweight function now checks if bot has Quad Damage OR (health >100 AND has Rocket Launcher). When conditions met, enemy presence near items becomes BONUS (+500 weight) instead of penalty—bot wants to bait enemies into combat instead of avoiding them.
+  - **Tactical baiting** in `reaper_mre/botgoal.qc`: When weak/unpowered, standard cautious behavior (threat penalty up to -80 weight). When stacked, enemy proximity becomes attraction—bot seeks combat opportunities near items to leverage advantage. Creates "Come get some!" playstyle when dominant.
+  - **Result:** Powered-up bots now aggressively control item spawns instead of fleeing contested areas. Bot with Quad rushes toward Red Armor even when enemy is camping it—uses superior firepower to dominate territory. Feels like confident human player pressing advantage instead of passive AI.
+
+- **Nemesis System (Grudge Tracking)** for revenge-seeking behavior:
+  - **Nemesis fields** in `reaper_mre/botit_th.qc`: Added `.entity nemesis` and `.float nemesis_time` entity fields to track who killed this bot and when grudge expires. Enables personal vendetta tracking across bot-to-bot combat.
+  - **Grudge setting** in `reaper_mre/botscore.qc`: countkill function sets `killed.nemesis = killer` and `killed.nemesis_time = time + 30.0` when bot kills bot. Creates 30-second revenge window where victim will irrationally prioritize killer over items/objectives.
+  - **Revenge priority** in `reaper_mre/botgoal.qc`: thingweight adds +2000 weight bonus when evaluating nemesis entity (if `e == self.nemesis` and grudge still active). Massive priority boost makes bot ignore items and hunt down killer—revenge takes precedence over tactical decisions.
+  - **Result:** Bots now take revenge! Bot A frags Bot B → Bot B respawns → Bot B hunts Bot A for 30 seconds, ignoring Quad/Mega. Creates personal rivalries that feel like human grudge matches instead of emotionless AI combat.
+
+- **Folded Space Pathing (Instant Teleporters)** for intelligent shortcut usage:
+  - **Teleporter cost reduction** in `reaper_mre/botroute.qc`: cacheRouteTarget changed teleporter path cost from 250 units to 10 units (near-zero). Treats teleporters as instant travel instead of expensive detour—bots see map as "folded space" with wormhole shortcuts.
+  - **Aggressive teleporter usage:** Low cost (10 vs 250) means teleporter routes now outcompete walking long distances. Bots actively seek teleporter shortcuts across map instead of avoiding them as inefficient—discovers brilliant cross-map routes humans might miss.
+  - **Result:** Bots master teleporter networks! Instead of walking 800 units around E1M7, bot teleports for "free" and arrives first. Creates speedrun-like routing optimization—bots exploit teleporters like pro players instead of treating them as last resort.
+
+- **Optimized Spawn Camping (4-Second Window)** for mobile control timing:
+  - **Spawn window reduction** in `reaper_mre/botgoal.qc`: aibot_chooseGoal changed spawn camping condition from `nextthink < time + 10.0` to `nextthink < time + 4.0`. Bots only commit to camping when item spawns in 4 seconds instead of 10—keeps them mobile and hunting until final moment.
+  - **Aggressive roaming:** 10-second window caused bots to stand idle at spawn points, making them easy targets. 4-second window means bots keep moving/fighting until item is about to spawn—harder to predict and kill, more threatening presence.
+  - **Result:** No more passive camping! Bots patrol area around Quad spawn, engage in combat, then dash to exact position 3 seconds before spawn. Looks like human timing practice instead of patient sentry duty—mobile control beats static camping.
+
 - **Human reaction time simulation** for realistic enemy engagement:
   - **Reaction delay field** in `reaper_mre/botit_th.qc`: Added `.float reaction_finished` entity field to track when bot can start aiming/firing after acquiring new enemy target. Enables natural input lag simulation instead of instant-snap "aimbot" behavior.
   - **Delay calculation** in `reaper_mre/bot_ai.qc`: When BotFoundTarget acquires enemy, sets `reaction_finished = time + (0.1 + random()*0.2*(4-skill))`. Easy bots (skill 0) get ~0.4s delay, Nightmare bots (skill 3) get ~0.1s delay. Scales linearly with skill for progressive difficulty—low-skill bots feel sluggish, high-skill bots feel sharp but not inhuman.

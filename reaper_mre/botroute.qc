@@ -496,7 +496,12 @@ void (entity node, entity targ, float len, entity item) cacheRouteTarget =
    rng = vlen ((node.origin - targ.origin));
    if ((targ.pathtype == TELEPORT))
    {
-      rng = 250.000;
+      // ===== FOLDED SPACE: Instant Teleporters =====
+      // Teleporters are instant shortcuts (0 distance cost).
+      // This makes bots see the map as "folded" and find brilliant shortcuts.
+      // OLD: rng = 250.000; (discouraged teleporter use)
+      rng = 10.000; // Near-zero cost (instant travel)
+      // ===== END FOLDED SPACE =====
    } //end if
    rng = ((rng + len) + LOOPTIME);
    // Blockage check: if the path is obstructed mid-route, inflate cost and cool down.

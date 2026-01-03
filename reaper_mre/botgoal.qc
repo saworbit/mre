@@ -113,6 +113,16 @@ float (entity e) thingweight =
    {
       weight = e.th_weight (e);
 
+      // ===== NEMESIS SYSTEM: Grudge Bias =====
+      // If this is my nemesis and the grudge is fresh, prioritize hunting them down.
+      // Massive priority boost makes bots ignore items and seek revenge.
+      if ((e == self.nemesis) && (time < self.nemesis_time))
+      {
+         // Massive priority boost. Ignore items, kill him.
+         weight = (weight + 2000.000);
+      } //end if
+      // ===== END NEMESIS SYSTEM =====
+
    } //end if
    else
    {
@@ -283,9 +293,23 @@ float (entity e) itemweight =
          risk_dist = vlen ((self.enemy.origin - e.origin));
          if ((risk_dist < 400.000))
          {
-            // Enemy within 400 units of item—subtract risk penalty (closer = more dangerous)
-            // 0.2 multiplier scales threat: 400u away = 0 penalty, 0u away = 80 penalty
-            threat = ((400.000 - risk_dist) * 0.200);
+            // ===== BULLY MODE: Aggressive Item Control =====
+            // If we are stacked (Quad OR (Health > 100 + Rockets)),
+            // treat the enemy presence as a BONUS (Bait them!)
+            if ((self.items & IT_QUAD) || ((self.health > 100.000) && (self.items & IT_ROCKET_LAUNCHER)))
+            {
+               // Add weight instead of subtracting!
+               // "Come get some!" - Bot wants to fight near items when powerful
+               threat = -500.000; // Negative threat = Bonus weight
+            }
+            else
+            {
+               // Standard behavior: Cautious/Smart avoid
+               // Enemy within 400 units of item—subtract risk penalty (closer = more dangerous)
+               // 0.2 multiplier scales threat: 400u away = 0 penalty, 0u away = 80 penalty
+               threat = ((400.000 - risk_dist) * 0.200);
+            }
+            // ===== END BULLY MODE =====
          } //end if
       } //end if
    } //end if
@@ -1265,7 +1289,12 @@ void () aibot_chooseGoal =
                   {
                      if ((e.nextthink > time))
                      {
-                        if ((e.nextthink < (time + 10.000)))
+                        // ===== OPTIMIZED SPAWN CAMPING: 4-Second Window =====
+                        // Only commit to camping if it spawns in 4 seconds or less.
+                        // Otherwise, keep roaming nearby. Makes bots mobile and harder to predict.
+                        // OLD: if ((e.nextthink < (time + 10.000))) // Too long, bot sits idle
+                        if ((e.nextthink < (time + 4.000)))
+                        // ===== END OPTIMIZED SPAWN CAMPING =====
                         {
                            // It's coming back! Camp it.
                            // Weight increases as spawn time approaches (Don't miss it!)
