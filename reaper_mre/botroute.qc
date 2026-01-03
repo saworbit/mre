@@ -974,8 +974,8 @@ void () DumpWaypoints =
    local float count;
 
    count = 0.000;
-   dprint ("\n\n// ===== CUT HERE: START WAYPOINTS =====\n");
-   dprint ("void() LoadMapWaypoints =\n{\n");
+   bprint ("\n\n// ===== CUT HERE: START WAYPOINTS =====\n");
+   bprint ("void() LoadMapWaypoints =\n{\n");
 
    head = find (world,classname,"BotPath");
    while (head)
@@ -983,18 +983,18 @@ void () DumpWaypoints =
       // Only dump dropped paths (ignore teleporter nodes or dynamic temps)
       if ((head.pathtype == DROPPED))
       {
-         dprint ("    SpawnSavedWaypoint('");
-         dprint (vtos (head.origin));
-         dprint ("');\n");
+         bprint ("    SpawnSavedWaypoint('");
+         bprint (vtos (head.origin));
+         bprint ("');\n");
          count = (count + 1.000);
       } //end if
       head = find (head,classname,"BotPath");
    } //end while
 
-   dprint ("};\n");
-   dprint ("// ===== CUT HERE: END WAYPOINTS =====\n");
-   dprint ("// Total Nodes: ");
-   dprint (ftos (count));
-   dprint ("\n\n");
+   bprint ("};\n");
+   bprint ("// ===== CUT HERE: END WAYPOINTS =====\n");
+   bprint ("// Total Nodes: ");
+   bprint (ftos (count));
+   bprint ("\n\n");
 }; //end of the function DumpWaypoints
 // ===== END PERSISTENCE SYSTEM =====
