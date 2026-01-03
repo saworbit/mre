@@ -238,6 +238,8 @@ float TELEFRAGFLAG;
 entity NOISEQUEUE;
 float HELPING;
 float NAMEBOTS;
+// Auto waypoint dump: tracks when to dump waypoints to console (0 = disabled, >0 = time of next dump)
+float WAYPOINT_DUMP_TIME;
 
 void (entity noisemaker, entity noiseobject) signalnoise;
 float (entity e) hearnoise;

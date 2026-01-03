@@ -1,7 +1,4 @@
 map dm1
-impulse 100
-impulse 205
-map dm1
 listen 8
 impulse 205
 map dm1
@@ -55,6 +52,9 @@ skill 3
 impulse 208
 skill 3
 impulse 208
+skill 3
+impulse 208
+impulse 100
 skill 3
 impulse 208
 impulse 100

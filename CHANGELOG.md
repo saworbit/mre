@@ -1,5 +1,12 @@
 ## Unreleased
 
+- **Auto Waypoint Dump (Periodic Persistence)** for capturing learned navigation:
+  - **Global timer** in `reaper_mre/botit_th.qc`: Added `WAYPOINT_DUMP_TIME` global variable to track when next auto dump should occur (0 = disabled, >0 = timestamp of next dump).
+  - **Console variable** in `reaper_mre/world.qc`: StartFrame() checks `waypoint_dump_interval` cvar (0 = off, >0 = seconds between dumps). Example: `waypoint_dump_interval 60` dumps every 60 seconds.
+  - **Auto dump logic** in `reaper_mre/world.qc`: When timer expires, calls DumpWaypoints() and wraps output with timestamp headers. Outputs to console via bprint for capture with `-condebug` launch flag or console logging.
+  - **Self-initializing:** First time interval is set, prints usage instructions to console: "Auto waypoint dump enabled: dumping every X seconds. Console logging recommended."
+  - **Result:** Bots/players generate waypoint networks as they play. System auto-dumps to console every N seconds. Users capture output to file, extract waypoint code between CUT HERE markers, compile into static navmesh. No more manual console commands—just play and collect! See `WAYPOINT_DUMP_GUIDE.md` for usage.
+
 - **The Cliff Fix (One-Way Paths)** for intelligent drop navigation:
   - **Height-based linking** in `reaper_mre/botroute.qc`: DropBotPath only links backward (bottom → top) if height difference <40 units or bot is swimming. Prevents bots from trying to walk up cliffs they jumped down—creates one-way drop paths for ledges while preserving climbable stairs/steps.
   - **Climbable step detection:** 40 units = safe climb threshold (18u step height, 45u max jump). Links backward for stairs but NOT for DM2 Quad ledge drops or E1M1 moat jumps.

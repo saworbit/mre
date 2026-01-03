@@ -24,6 +24,19 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 ## 🎬 Latest Features (2026-01)
 
+### 💾 Auto Waypoint Dump (Periodic Persistence)
+
+Automatically **capture learned navigation** to build persistent navmeshes:
+
+- ⏰ **Periodic dumps** — Set `waypoint_dump_interval 60` to auto-dump every 60 seconds
+- 📝 **Console output** — Dumps to console in QuakeC format (use `-condebug` to capture)
+- 🗺️ **Learning as you play** — Bots/players drop breadcrumbs → system saves them periodically
+- 📋 **Copy-paste ready** — Extract between CUT HERE markers, compile into static waypoints
+
+**Result:** Play the game, let bots explore. System auto-saves navigation every N seconds. Copy output to create instant pre-baked navmeshes! 🤖💾
+
+**Usage:** See [`WAYPOINT_DUMP_GUIDE.md`](WAYPOINT_DUMP_GUIDE.md) for full instructions.
+
 ### 🏔️ The Cliff Fix (One-Way Paths)
 
 Bots now understand **drops they can't climb back up**:

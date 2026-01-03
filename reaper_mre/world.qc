@@ -234,6 +234,8 @@ void () worldspawn =
 
 void () StartFrame =
 {
+   local float dump_interval;
+
    teamplay = cvar ("teamplay");
    skill = cvar ("skill");
    framecount = (framecount + TRUE);
@@ -246,6 +248,48 @@ void () StartFrame =
       dprint ("Bots have linked teleporter networks.\n");
    } //end if
    // ===== END PORTAL AWARENESS =====
+
+   // ===== AUTO WAYPOINT DUMP: Periodic Console Dump =====
+   // Check console var "waypoint_dump_interval" (0=disabled, >0=seconds between dumps)
+   // Example: "waypoint_dump_interval 60" = dump every 60 seconds
+   dump_interval = cvar ("waypoint_dump_interval");
+   if ((dump_interval > FALSE))
+   {
+      // Initialize timer on first check
+      if ((WAYPOINT_DUMP_TIME == FALSE))
+      {
+         WAYPOINT_DUMP_TIME = (time + dump_interval);
+         bprint ("Auto waypoint dump enabled: dumping every ");
+         bprint (ftos (dump_interval));
+         bprint (" seconds.\n");
+         bprint ("Console logging recommended. Set 'con_logcenterprint 1' to capture output.\n");
+      } //end if
+
+      // Time to dump?
+      if ((time >= WAYPOINT_DUMP_TIME))
+      {
+         bprint ("\n");
+         bprint ("======================================\n");
+         bprint ("AUTO WAYPOINT DUMP (");
+         bprint (ftos (time));
+         bprint ("s)\n");
+         bprint ("======================================\n");
+         DumpWaypoints ();
+         bprint ("======================================\n");
+         bprint ("END AUTO DUMP\n");
+         bprint ("======================================\n");
+         bprint ("\n");
+
+         // Schedule next dump
+         WAYPOINT_DUMP_TIME = (time + dump_interval);
+      } //end if
+   } //end if
+   else
+   {
+      // Disabled: reset timer
+      WAYPOINT_DUMP_TIME = FALSE;
+   } //end if
+   // ===== END AUTO WAYPOINT DUMP =====
 }; //end of the function StartFrame
 
 void () bodyque =
