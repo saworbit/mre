@@ -310,9 +310,48 @@ float () W_BestBotWeapon =
    local float it;
    local float rng;
    local float wlevel;
+   local float enemy_wep;
 
    it = self.items;
    rng = botrange (self.enemy);
+
+   // ===== TACTICAL AI: Weapon Counter-Tactics (Rock-Paper-Scissors) =====
+   // Adapt weapon choice based on enemy's current weapon for tactical advantage.
+   // RL counters LG (knockback disrupts tracking), LG counters RL (instant hitscan).
+   enemy_wep = self.enemy.weapon;
+
+   // Counter Lightning Gun with Rockets (knockback disrupts tracking)
+   if ((enemy_wep == IT_LIGHTNING))
+   {
+      if ((rng == RANGE_FAR))
+      {
+         if (((self.ammo_rockets >= 2.000) && (it & IT_ROCKET_LAUNCHER)))
+         {
+            return (IT_ROCKET_LAUNCHER);
+         } //end if
+      } //end if
+   } //end if
+
+   // Counter Rocket Launcher with Lightning Gun (instant hitscan)
+   if ((enemy_wep == IT_ROCKET_LAUNCHER))
+   {
+      if ((rng > RANGE_MELEE))
+      {
+         if (((self.ammo_cells >= 10.000) && (it & IT_LIGHTNING)))
+         {
+            wlevel = CheckWaterLevel ();
+            if ((wlevel < FL_SWIM))
+            {
+               return (IT_LIGHTNING);
+            } //end if
+            if ((self.items & IT_INVULNERABILITY))
+            {
+               return (IT_LIGHTNING);
+            } //end if
+         } //end if
+      } //end if
+   } //end if
+
    // Counter powered enemies: prefer SNG spam over risky splash when Quad/Pent is up.
    if ((self.enemy.items & (IT_QUAD + IT_INVULNERABILITY)))
    {

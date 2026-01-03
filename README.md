@@ -80,6 +80,8 @@ Advanced **path_corner chain prediction** for moving platforms:
 | Feature | Description |
 |---------|-------------|
 | 📊 **Risk-Aware Scoring** | Need-based item boosts minus threat penalty (proximity -80 max) |
+| 🎒 **Smart Backpack Scavenging** | Intelligent prioritization when starving for weapons/ammo (3000 weight if missing RL/LG) |
+| ⚔️ **Weapon Counter-Tactics** | Rock-paper-scissors logic: RL counters LG (knockback), LG counters RL (hitscan) |
 | 🏆 **Powerup Denial** | Amplified aggression when leading or enemy weak (<40 HP) |
 | 🔄 **Adaptive Goals** | Health when hurt, denial when leading, smart roam patterns |
 | 💰 **Weapon Conservation** | Rocket economy, Quad/Pent counters, ammo awareness |

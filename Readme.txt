@@ -46,6 +46,8 @@ This repository contains an enhanced version of the classic Reaper bot with mode
 - Predictive aim with splash height variance, vertical lead, and velocity-history smoothing
 - Human-like aim smoothing: Pitch slew rate (150-450°/s by skill) replaces aimbot snap-lock
 - Wall sliding + combat hopping: Vector slide movement plus active bunny-hopping (skill >1)
+- Smart backpack scavenging: Bots prioritize dropped backpacks (3000 weight if missing RL/LG, +2000 when ammo-starved)
+- Weapon counter-tactics: Rock-paper-scissors logic (RL counters LG with knockback, LG counters RL with hitscan)
 - Powerup denial logic for quad/pent/ring contesting (now amplified when leading/enemy weak)
 - Adaptive goal selection (health when hurt, denial when leading)
 - Weapon conservation (rocket economy, Quad/Pent counters)

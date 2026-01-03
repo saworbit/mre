@@ -213,6 +213,33 @@ float (entity e) itemweight =
       } //end if
    } //end if
 
+   // ===== TACTICAL AI: Smart Backpack Scavenging =====
+   // Bots intelligently prioritize dropped backpacks when starving for weapons/ammo.
+   // High reward if missing RL/LG (3000), desperation boost for ammo starvation (+2000).
+   // Works with risk-aware logic below to avoid suicide rushes for contested backpacks.
+   if ((e.classname == "backpack"))
+   {
+      weight = 1000.000;
+
+      // High reward if missing RL/LG
+      if (!(self.items & (IT_ROCKET_LAUNCHER | IT_LIGHTNING)))
+      {
+         weight = 3000.000;
+      } //end if
+
+      // Desperation for ammo
+      if ((self.ammo_rockets < 5.000))
+      {
+         if ((self.ammo_shells < 10.000))
+         {
+            if ((self.ammo_nails < 20.000))
+            {
+               weight = (weight + 2000.000);
+            } //end if
+         } //end if
+      } //end if
+   } //end if
+
    // ===== TWEAK #1: Risk-aware item scoring (smart own/deny) =====
    // Calculates threat (enemy proximity penalty) and need (critical item boost) to make
    // bots grab high-priority items (RL, Quad, low ammo) while avoiding contested zones.
