@@ -1,6 +1,7 @@
 # Build outputs / binaries
 *.dat
 *.exe
+!tools/fteqcc_win64/fteqcc64.exe
 *.dll
 *.pak
 *.PAK
