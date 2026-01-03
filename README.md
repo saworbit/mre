@@ -24,6 +24,39 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 ## 🎬 Latest Features (2026-01)
 
+### 🏔️ The Cliff Fix (One-Way Paths)
+
+Bots now understand **drops they can't climb back up**:
+
+- ⬇️ **Height-based linking** — Only links backward if <40 units (climbable stairs)
+- 🚫 **Cliff detection** — DM2 Quad ledge drops become one-way (no upward link)
+- 🏊 **Swimming exception** — Underwater paths link both ways (can swim up)
+- 🔄 **Smart routing** — Finds alternate routes or uses rocket jumps instead
+
+**Result:** No more bots running into cliff walls trying to walk up! They use proper routes or physics exploits to reach high ledges! 🧗‍♂️✨
+
+### 🧱 Broken Path Pruning (Obstacle Discrimination)
+
+Bots now **intelligently classify obstacles**:
+
+- 🚧 **Wall detection** — Infinite cost for world geometry (permanently prunes broken paths)
+- 🚪 **Door penalty** — +300 unit wait penalty (patient but not stuck)
+- 📦 **Dynamic obstacles** — 1.5× penalty for monsters/boxes (temporary blockage)
+- 🎯 **Smart classification** — Walls (infinite) > Doors (+300) > Monsters (1.5×)
+
+**Result:** Broken paths get pruned instantly! Bots stop trying to run through solid walls and find working routes! 🗺️🔧
+
+### 🌋 Hazard Costing (Lava Avoidance)
+
+Bots now **avoid deadly hazards**:
+
+- 🔥 **Midpoint check** — Detects lava/slime on path segments (+5000 penalty)
+- 🛡️ **Safety priority** — Takes any safe detour before hazardous route
+- 🏝️ **Last resort** — Only uses lava paths when NO other option exists
+- 🧠 **Smart survival** — Routes around E1M3 lava like human players
+
+**Result:** Bots take safe routes around hazards instead of suicidal shortest-path through lava! 🚶‍♂️💧
+
 ### 💪 Bully Mode (Aggressive Item Control)
 
 Powered-up bots **dominate territory** instead of playing cautious:

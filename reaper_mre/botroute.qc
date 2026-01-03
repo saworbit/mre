@@ -440,7 +440,22 @@ void () DropBotPath =
    } //end if
    NewCarriedPath ();
    oldpath.pathtype = DROPPED;
-   self.movetarget.movetarget = oldpath;
+
+   // ===== THE CLIFF FIX: One-Way Paths =====
+   // Only link BACK (Bottom -> Top) if it is a shallow step or we can swim.
+   // 18 units is step height. 45 is max jump. Use 40 to be safe.
+   // This prevents bots from trying to walk up cliffs they jumped down.
+   if ((self.flags & FL_SWIM) || ((oldpath.origin_z - self.movetarget.origin_z) < 40.000))
+   {
+      // Safe to link backward (climbable step or underwater)
+      self.movetarget.movetarget = oldpath;
+   } //end if
+   else
+   {
+      // It's a drop! One-way street. Do not link back up the cliff.
+      self.movetarget.movetarget = world;
+   } //end if
+   // ===== END CLIFF FIX =====
 
    // ===== SMART SPACING: Remember this node for spacing optimization =====
    self.last_dropped_node = oldpath;
@@ -504,6 +519,23 @@ void (entity node, entity targ, float len, entity item) cacheRouteTarget =
       // ===== END FOLDED SPACE =====
    } //end if
    rng = ((rng + len) + LOOPTIME);
+
+   // ===== HAZARD COSTING: Lava Avoidance =====
+   // Check midpoint of the path segment for liquid hazards.
+   // Bots should avoid routing through lava/slime unless there's no other way.
+   local vector mid;
+   local float mid_cont;
+   mid = ((node.origin + targ.origin) * 0.500);
+   mid_cont = pointcontents (mid);
+
+   if (((mid_cont == CONTENT_LAVA) || (mid_cont == CONTENT_SLIME)))
+   {
+      // Massive penalty for unsafe routes (+5000).
+      // Bots will only choose this if there is NO other way.
+      rng = (rng + 5000.000);
+   } //end if
+   // ===== END HAZARD COSTING =====
+
    // Blockage check: if the path is obstructed mid-route, inflate cost and cool down.
    if ((self.classname == "dmbot"))
    {
@@ -514,8 +546,30 @@ void (entity node, entity targ, float len, entity item) cacheRouteTarget =
          {
             if ((trace_ent.classname != "BotPath"))
             {
-               rng = (rng * 1.500);
-               self.reroute_time = (time + 0.500);
+               // ===== BROKEN PATH PRUNING: Obstacle Discrimination =====
+               // Different penalties for different obstacles instead of flat 1.5x
+               if ((trace_ent == world))
+               {
+                  // Hit a WALL (static level geometry) - path is broken!
+                  // Make it effectively infinite cost to prune this bad link
+                  rng = 100000.000;
+               } //end if
+               else
+               {
+                  if (((trace_ent.classname == "func_door") || (trace_ent.classname == "func_door_rotating")))
+                  {
+                     // It's just a door - add wait penalty (+300 units)
+                     rng = (rng + 300.000);
+                     self.reroute_time = (time + 0.500);
+                  } //end if
+                  else
+                  {
+                     // Some other blockage (monster, box) - mild penalty
+                     rng = (rng * 1.500);
+                     self.reroute_time = (time + 0.500);
+                  } //end if
+               } //end if
+               // ===== END BROKEN PATH PRUNING =====
             } //end if
          } //end if
       } //end if

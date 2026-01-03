@@ -1,5 +1,21 @@
 ## Unreleased
 
+- **The Cliff Fix (One-Way Paths)** for intelligent drop navigation:
+  - **Height-based linking** in `reaper_mre/botroute.qc`: DropBotPath only links backward (bottom → top) if height difference <40 units or bot is swimming. Prevents bots from trying to walk up cliffs they jumped down—creates one-way drop paths for ledges while preserving climbable stairs/steps.
+  - **Climbable step detection:** 40 units = safe climb threshold (18u step height, 45u max jump). Links backward for stairs but NOT for DM2 Quad ledge drops or E1M1 moat jumps.
+  - **Result:** Bots stop endlessly running into cliff walls trying to reach nodes above them. They find alternate routes or use rocket jumps instead—no more stuck loops at ledge bottoms.
+
+- **Broken Path Pruning (Obstacle Discrimination)** for intelligent route invalidation:
+  - **Wall detection** in `reaper_mre/botroute.qc`: cacheRouteTarget checks if traceline hits world geometry. If trace_ent == world, sets route cost to 100000 (infinite) to permanently prune broken paths—prevents bots from repeatedly trying impossible routes through walls.
+  - **Door penalty** in `reaper_mre/botroute.qc`: Door blockages get +300 unit wait penalty instead of infinite cost. Bots will wait for doors but won't waste time on walls.
+  - **Dynamic obstacles** in `reaper_mre/botroute.qc`: Monsters/boxes get mild 1.5× penalty (temporary blockage). Escalating penalties: walls (infinite) > doors (+300) > monsters (1.5×)—smart obstacle classification.
+  - **Result:** Broken paths caused by geometry changes or bad nodes get pruned immediately. Bots stop trying to run through solid walls and find working alternate routes instead.
+
+- **Hazard Costing (Lava Avoidance)** for safe pathfinding:
+  - **Midpoint hazard check** in `reaper_mre/botroute.qc`: cacheRouteTarget calculates path segment midpoint and checks pointcontents. If lava/slime detected, adds +5000 unit penalty—makes hazardous routes last resort only.
+  - **Massive penalty strategy:** +5000 cost ensures bots will take any safe detour before routing through lava. Only chooses hazard paths when literally NO other option exists (trapped on island, etc).
+  - **Result:** Bots avoid running through E1M3 lava or E2M2 slime to grab items. They take safe routes around hazards like human players instead of suicidal shortest-path navigation.
+
 - **Bully Mode (Aggressive Item Control)** for dominant playstyle when powered up:
   - **Inverted threat logic** in `reaper_mre/botgoal.qc`: itemweight function now checks if bot has Quad Damage OR (health >100 AND has Rocket Launcher). When conditions met, enemy presence near items becomes BONUS (+500 weight) instead of penalty—bot wants to bait enemies into combat instead of avoiding them.
   - **Tactical baiting** in `reaper_mre/botgoal.qc`: When weak/unpowered, standard cautious behavior (threat penalty up to -80 weight). When stacked, enemy proximity becomes attraction—bot seeks combat opportunities near items to leverage advantage. Creates "Come get some!" playstyle when dominant.
