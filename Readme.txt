@@ -27,6 +27,12 @@ This repository contains an enhanced version of the classic Reaper bot with mode
 - Pro movement: Context-aware high jumps and long jumps like human speedrunners
 - Health checks (no suicide <40 HP), 2s cooldown (prevents spam), synchronized jump timing
 
+**Previous: Navigation Persistence System** (2026-01)
+- Smart spacing optimization: 250u distance + LOS checks prevent node clumping (clean navigation networks)
+- Brain dump exporter: Export learned waypoints to console (impulse 100) for manual persistence
+- Waypoint loader: Import saved nodes to "bake" map knowledge (instant memory between sessions)
+- Console command hookup: impulse 100 triggers dump with user-friendly broadcast messages
+
 **Previous: Train Navigation Enhancements** (2026-01)
 - Path_corner chain traversal: Two-pass algorithm predicts train positions along multi-segment paths
 - Train path prediction: Movement/jump/reachability systems use path chain instead of velocity guess

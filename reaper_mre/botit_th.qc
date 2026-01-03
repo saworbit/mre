@@ -26,6 +26,9 @@ void () initBotLevel;
 float () CheckDropPath;
 
 void () DropBotPath;
+
+void () DumpWaypoints;
+
 float () BotFoundTarget;
 
 void (entity en2) secondEnemy;
@@ -139,6 +142,8 @@ float (entity targ, entity inflictor) CanDamage;
 .float lead_score;
 // Flags that current goal requires special movement (rocket jump for high items).
 .float check_climb;
+// Remembers the last breadcrumb node dropped for smart spacing optimization.
+.entity last_dropped_node;
 .float lasttime;
 .float pather;
 .float pathtype;

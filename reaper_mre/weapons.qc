@@ -1375,7 +1375,17 @@ void () ImpulseCommands =
    } //end if
    else
    {
-      botImpulseCommand ();
+      if ((self.impulse == 100.000))
+      {
+         bprint ("Dumping Waypoints to Console...\n");
+         DumpWaypoints ();
+         bprint ("Check your console log/condump!\n");
+
+      } //end if
+      else
+      {
+         botImpulseCommand ();
+      } //end if
    } //end if
    self.impulse = CAM_IDLE;
 }; //end of the function ImpulseCommands

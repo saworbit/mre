@@ -304,6 +304,31 @@ float () CheckDropPath =
    {
       return (FALSE);
    } //end if
+
+   // ===== SMART SPACING: Optimization (Clean Breadcrumbs) =====
+   // If we have a previous node, and we are still close to it AND can see it,
+   // don't drop a new one yet. This creates clean lines instead of clumps.
+   if (self.last_dropped_node)
+   {
+      // If node still exists (hasn't been cleaned up)
+      if ((self.last_dropped_node.classname == "BotPath"))
+      {
+         // Distance check (250 units is a good stride)
+         if ((vlen ((self.origin - self.last_dropped_node.origin)) < 250.000))
+         {
+            // Line of Sight check
+            traceline (self.origin,self.last_dropped_node.origin,TRUE,self);
+            if ((trace_fraction == 1.000))
+            {
+               // We are close and can see the last node. No need for another.
+               // Extend the "carried" timer so we don't give up too soon.
+               return (FALSE);
+            } //end if
+         } //end if
+      } //end if
+   } //end if
+   // ===== END SMART SPACING =====
+
    carriedPath = self.movetarget;
    upstreamPath = carriedPath.movetarget;
    lnd = pointcontents (carriedPath.origin);
@@ -401,6 +426,11 @@ void () DropBotPath =
    NewCarriedPath ();
    oldpath.pathtype = DROPPED;
    self.movetarget.movetarget = oldpath;
+
+   // ===== SMART SPACING: Remember this node for spacing optimization =====
+   self.last_dropped_node = oldpath;
+   // ====================================================================
+
    NUMPATHS = (NUMPATHS + SPAWNFLAG_SUPERSPIKE);
 }; //end of the function DropBotPath
 
@@ -889,3 +919,58 @@ void () LinkTeleporters =
    } //end while
 }; //end of the function LinkTeleporters
 // ===== END PORTAL AWARENESS =====
+
+// ===== PERSISTENCE SYSTEM: Brain Dump (Memory Between Sessions) =====
+
+// 1. THE LOADER
+// You will paste the console output into a file that calls this function.
+// This spawns a saved waypoint at the specified coordinates.
+void (vector org) SpawnSavedWaypoint =
+{
+   local entity node;
+
+   node = spawn ();
+   node.classname = "BotPath";
+   node.origin = org;
+   node.pathtype = DROPPED;  // Treat as a standard learned path
+   node.solid = SOLID_TRIGGER;
+   setsize (node,'-4 -4 -4','4 4 4');
+
+   // Optional: link it loosely to the network?
+   // Usually, the bots will "adopt" these nodes when they run near them
+   // via the standard 'FindAPath' logic.
+}; //end of the function SpawnSavedWaypoint
+
+// 2. THE EXPORTER
+// Call this via console (e.g. 'impulse 100') to dump everything.
+// Outputs QuakeC code to console that can be copied and saved.
+void () DumpWaypoints =
+{
+   local entity head;
+   local float count;
+
+   count = 0.000;
+   dprint ("\n\n// ===== CUT HERE: START WAYPOINTS =====\n");
+   dprint ("void() LoadMapWaypoints =\n{\n");
+
+   head = find (world,classname,"BotPath");
+   while (head)
+   {
+      // Only dump dropped paths (ignore teleporter nodes or dynamic temps)
+      if ((head.pathtype == DROPPED))
+      {
+         dprint ("    SpawnSavedWaypoint('");
+         dprint (vtos (head.origin));
+         dprint ("');\n");
+         count = (count + 1.000);
+      } //end if
+      head = find (head,classname,"BotPath");
+   } //end while
+
+   dprint ("};\n");
+   dprint ("// ===== CUT HERE: END WAYPOINTS =====\n");
+   dprint ("// Total Nodes: ");
+   dprint (ftos (count));
+   dprint ("\n\n");
+}; //end of the function DumpWaypoints
+// ===== END PERSISTENCE SYSTEM =====
