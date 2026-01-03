@@ -1187,7 +1187,32 @@ void () PlayerPostThink =
    // ===== SHADOW SYSTEM: Record Path =====
    // If the player is alive and moving, try to drop a waypoint.
    // We use the same 'CheckDropPath' logic bots use to ensure valid spacing.
-   if (self.health > 0 && (self.flags & FL_ONGROUND))
+
+   // ===== ACTION BREADCRUMBS: Jump Detection (The "Leap of Faith") =====
+   // If player presses Jump (button2) while on ground, they are initiating a jump.
+   // We must drop a "Jump Node" HERE so the bot knows to jump from this exact spot.
+   if ((self.button2) && (self.flags & FL_ONGROUND))
+   {
+      // Force a drop immediately (bypass search_time throttling)
+      // This ensures the node is exactly at the ledge/takeoff point.
+      if (CheckDropPath())
+      {
+         DropBotPath();
+
+         // Tag the node we just dropped!
+         if (self.movetarget.movetarget) // The 'oldpath' we just dropped
+         {
+            self.movetarget.movetarget.action_flag = 1; // 1 = JUMP
+
+            // Optional: Visual confirmation
+            // bprint("Jump Node Recorded!\n");
+         }
+      }
+      // Add a small delay so we don't spam multiple jump nodes for one jump
+      self.search_time = time + 0.5;
+   }
+   // ===== STANDARD RECORDING: Walking =====
+   else if (self.health > 0 && (self.flags & FL_ONGROUND))
    {
       // Check every 0.1 seconds (throttle to save CPU)
       if (time > self.search_time)

@@ -55,3 +55,6 @@ skill 3
 impulse 208
 skill 3
 impulse 208
+skill 3
+impulse 208
+impulse 100

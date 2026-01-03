@@ -1,5 +1,11 @@
 ## Unreleased
 
+- **Action breadcrumbs system** for teaching complex movement sequences:
+  - **Action flag field** in `reaper_mre/botit_th.qc`: New `.float action_flag` entity field stores required actions at waypoint nodes (0=walk, 1=jump, 2=wait). Enables "action tagging" where player behaviors become executable bot instructions—transforms navigation network from passive paths into active choreography.
+  - **Jump detection** in `reaper_mre/client.qc`: PlayerPostThink detects when player presses jump (button2) while grounded and immediately drops breadcrumb node tagged with action_flag=1. Uses forced drop (bypasses 0.1s throttle) to capture exact takeoff position with 0.5s cooldown to prevent spam—records precise jump points for parkour sequences like crate hopping or gap crossing.
+  - **Jump execution** in `reaper_mre/botmove.qc`: Botmovetogoal checks if goal node has action_flag==1 and triggers 270 u/s vertical jump when within 64u of node. Ensures bot jumps at player-taught takeoff points—replicates human jump timing for platform entry, ledge hopping, and gap crossing without manual jump scripting.
+  - **Result:** You can now "program" bot parkour simply by playing the game. Jump onto DM2 train → bot sees jump node → bot jumps at same spot. Hop up crate stairs to DM6 Red Armor → bots learn the exact sequence. Every gap you jump, bots will jump. Turns player into movement choreographer teaching advanced techniques through demonstration instead of code.
+
 - **Player learning system (Shadow)** for human-guided AI training:
   - **Player path carrier initialization** in `reaper_mre/client.qc`: Players now get BotPath movetarget on spawn (like bots) with CARRIED pathtype. Ensures player can drop breadcrumb nodes as they play—transforms human into "Master Teacher" for bot navigation learning.
   - **Player breadcrumb dropping** in `reaper_mre/client.qc`: PlayerPostThink throttles CheckDropPath/DropBotPath calls (0.1s intervals) with health >0 and FL_ONGROUND checks. Players automatically drop waypoints as they move—bots instantly adopt player routes, learning jumps/secrets/shortcuts by observation.

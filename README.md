@@ -24,6 +24,18 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 ## 🎬 Latest Features (2026-01)
 
+### 🎯 Action Breadcrumbs (The "Jump" Scent)
+
+Teach bots **exact movement sequences** through demonstration:
+
+- 🏃 **Jump tagging** — When you jump, waypoint is tagged with action_flag=1 (forced immediate drop at takeoff point)
+- 🎬 **Action execution** — Bots detect jump nodes and execute 270 u/s jump when within 64u of trigger point
+- 📍 **Precise timing** — 0.5s cooldown prevents spam, captures exact takeoff position for parkour sequences
+- 🎮 **Teach by playing** — Jump onto DM2 train → bot learns to jump there. Hop crate stairs → bot replicates sequence
+- 🧗 **Complex choreography** — Every gap you jump, every ledge you hop, bots will follow with identical timing
+
+**Result:** You're now a movement choreographer! Program bot parkour by simply playing the game—no manual scripting needed! 🎭🎪
+
 ### 👤 The Shadow System (Player Learning)
 
 Bots learn **directly from you** as you play:

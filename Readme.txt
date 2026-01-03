@@ -18,7 +18,14 @@ rocket bounce physics, corrected sounds, and chase cam feature.
 
 This repository contains an enhanced version of the classic Reaper bot with modern AI improvements:
 
-**Latest: The Shadow System (Player Learning)** (2026-01)
+**Latest: Action Breadcrumbs (The "Jump" Scent)** (2026-01)
+- Jump tagging: When you jump, waypoint tagged with action_flag=1 (forced immediate drop at takeoff)
+- Action execution: Bots detect jump nodes, execute 270 u/s jump when within 64u of trigger point
+- Precise timing: 0.5s cooldown prevents spam, captures exact takeoff position for parkour sequences
+- Teach by playing: Jump onto DM2 train → bot learns to jump there. Hop crate stairs → bot replicates
+- Complex choreography: Every gap you jump, every ledge you hop, bots follow with identical timing
+
+**Previous: The Shadow System (Player Learning)** (2026-01)
 - Human as teacher: Player drops breadcrumbs like bots (BotPath movetarget on spawn)
 - Automatic waypoint creation: PlayerPostThink drops nodes every 0.1s when alive + grounded
 - Shared navigation network: Player nodes integrate instantly into bot pathfinding

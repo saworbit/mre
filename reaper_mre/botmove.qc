@@ -1322,6 +1322,36 @@ void (float dist) Botmovetogoal =
    self.ideal_yaw = vectoyaw ((Botgoal.origin - self.origin));
    ChangeYaw ();
 
+   // ===== ACTION BREADCRUMBS: Execute Jump (The "Trigger") =====
+   // Check the scent of the node we are running towards.
+   if (Botgoal.action_flag == 1) // It's a JUMP Node!
+   {
+      local float d;
+      d = vlen(Botgoal.origin - self.origin);
+
+      // Are we close enough to the "Takeoff Point"? (within 64 units)
+      if (d < 64)
+      {
+         // Do we have a clear shot?
+         // (Optional: Look straight at goal to ensure jump trajectory)
+         self.ideal_yaw = vectoyaw(Botgoal.origin - self.origin);
+         ChangeYaw();
+
+         // EXECUTE JUMP
+         // We use the standard jump velocity (270)
+         // But we assume the node was placed at a valid jump spot by the player.
+         if (self.flags & FL_ONGROUND)
+         {
+            self.velocity_z = 270;
+            self.flags = self.flags - FL_ONGROUND;
+
+            // Bot talk: "Hup!"
+            if (random() < 0.1) sound(self, CHAN_VOICE, "player/plyrjmp8.wav", 1, ATTN_NORM);
+         }
+      }
+   }
+   // =======================================
+
    // ===== PLATFORM MASTERY: Elevator Patience =====
    // If our next step is a platform node, and it's high above us,
    // it means the lift is UP and we are DOWN. We must WAIT.

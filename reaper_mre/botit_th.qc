@@ -159,6 +159,8 @@ float (entity targ, entity inflictor) CanDamage;
 .float scent_time;
 // Traffic heatmap: how many times anyone has touched this node (main street vs back alley).
 .float traffic_score;
+// Action Breadcrumbs: what the player did at this node (0=walk, 1=jump, 2=wait).
+.float action_flag;
 .float skil;
 .float rocketlen;
 .entity rocketcache;
