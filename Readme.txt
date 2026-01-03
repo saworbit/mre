@@ -45,7 +45,7 @@ This repository contains an enhanced version of the classic Reaper bot with mode
 - Tactical decision-making: Risk-aware item scoring, conditional denial rush, stuck rotation
 - Predictive aim with splash height variance, vertical lead, and velocity-history smoothing
 - Human-like aim smoothing: Pitch slew rate (150-450°/s by skill) replaces aimbot snap-lock
-- Wall hugging/sliding: Vector projection enables smooth wall-slide movement during combat
+- Wall sliding + combat hopping: Vector slide movement plus active bunny-hopping (skill >1)
 - Powerup denial logic for quad/pent/ring contesting (now amplified when leading/enemy weak)
 - Adaptive goal selection (health when hurt, denial when leading)
 - Weapon conservation (rocket economy, Quad/Pent counters)

@@ -73,7 +73,7 @@ Advanced **path_corner chain prediction** for moving platforms:
 | 🎬 **Human-Like Aim Smoothing** | Pitch slew rate system (150-450°/s by skill) replaces aimbot snap-lock |
 | 🛡️ **Self-Risk Validation** | Aborts GL fire if self-splash risk < 128u |
 | 🔫 **Weapon-Aware Evasion** | Rocket zigzags, strafe flips, LG jump bias |
-| 🧱 **Wall Hugging / Sliding** | Vector projection slide along walls when blocked—no stop on contact |
+| 🧱 **Wall Sliding + Combat Hopping** | Vector slide + active bunny-hopping (20% vs RL, 10% combat, LG stable) |
 
 ### 🧠 Tactical AI
 

@@ -868,9 +868,11 @@ float (float dist) waterupdown =
    return (FALSE);
 }; //end of the function waterupdown
 
-// ===== TWEAK #4: Wall Hugging / Frictionless Sliding =====
-// Enables bots to slide along walls instead of stopping when strafing.
-// Critical for movement in narrow corridors and preventing "stuck" behavior during combat.
+// ===== BONUS TWEAK #5: Active Combat Hopping + Wall Sliding =====
+// The Ultimate Movement Function:
+// 1. Slides along walls (prevents getting stuck)
+// 2. Bunny-hops in combat (harder to hit)
+// 3. Stabilizes aim when using Lightning Gun (no jumping)
 void (float dist) strafemove =
 {
    local float ofs;
@@ -881,6 +883,7 @@ void (float dist) strafemove =
    local float slide_yaw;
    local vector org_start;
    local float abs_pat_var;
+   local float do_jump; // NEW: Jump decision flag
 
    if ((self.flags & FL_SWIM))
    {
@@ -957,14 +960,52 @@ void (float dist) strafemove =
       } //end if
    } //end if
 
-   // No-enemy patrol: wander with random yaw and occasional hop instead of strafing.
+   // --- NEW: Combat & Navigation Jumping (Bunny Hopping) ---
+   // Instead of only walking, we now actively try to jump to gain speed (Tweak #1)
+   // and dodge attacks, just like a human player.
+   do_jump = FALSE;
+
+   // Only jump if on ground and high enough skill
+   if (((self.flags & FL_ONGROUND) && (self.skil > 1)))
+   {
+       // 1. LG Stability: Don't jump if firing Lightning Gun (needs smooth tracking)
+       // Jumping with LG creates "bouncing aiming" which is bad for hitscan.
+       if ((self.weapon != IT_LIGHTNING))
+       {
+           // 2. Projectile Evasion: If enemy has RL/GL, jump frequently to throw off splash damage
+           if ((self.evade_mode == TRUE))
+           {
+               if ((random () < 0.200)) do_jump = TRUE;
+           } //end if
+           // 3. General Combat/Travel: Occasional hops to maintain speed/unpredictability
+           else
+           {
+               // Patrol/Travel: Hop less often to avoid noise
+               if (!self.enemy)
+               {
+                   if ((random () < 0.050)) do_jump = TRUE;
+               } //end if
+               // Combat: Hop more often
+               else
+               {
+                   if ((random () < 0.100)) do_jump = TRUE;
+               } //end if
+           } //end if
+       } //end if
+   } //end if
+
+   // Execute Jump
+   if (do_jump)
+   {
+       // 270 is standard jump velocity
+       if (Bot_tryjump (270.000,dist,FALSE)) return ;
+   } //end if
+   // --- END NEW JUMP LOGIC ---
+
+   // No-enemy patrol: wander logic
    if (!self.enemy)
    {
       self.ideal_yaw = (self.ideal_yaw + ((random () - 0.500) * 180.000));
-      if ((random () < 0.200))
-      {
-         Bot_tryjump (270.000,dist,FALSE);
-      } //end if
       walkmove (self.ideal_yaw,dist);
       return ;
    } //end if
@@ -981,47 +1022,35 @@ void (float dist) strafemove =
       return ;
    } //end if
 
-   // --- SLIDE LOGIC #1: Primary failed, try to slide along wall ---
-   // 1. Trace slightly ahead to find the wall we just hit
+   // --- SLIDE LOGIC #1 (from Step 4) ---
    self.angles_y = self.ideal_yaw + ofs;
    makevectors(self.angles);
    org_start = self.origin;
-   // Trace 16 units ahead to get the normal
    traceline(org_start, org_start + (v_forward * 16), TRUE, self);
 
    if (trace_fraction < 1.0)
    {
-       // 2. Calculate Slide Vector: Dir - (Normal * (Dir . Normal))
-       // This projects our movement vector onto the wall plane
        move_dir = v_forward;
        wall_normal = trace_plane_normal;
-
-       // Standard vector projection
        slide_dir = move_dir - (wall_normal * (move_dir * wall_normal));
        slide_dir = normalize(slide_dir);
        slide_yaw = vectoyaw(slide_dir);
-
-       // 3. Attempt to walk along the slide angle
-       if (walkmove(slide_yaw, dist))
-       {
-           return;
-       }
+       if (walkmove(slide_yaw, dist)) return ;
    }
-   // -----------------------------------------------------------
 
    if (self.enemy)
    {
       return ;
    } //end if
 
-   // Try alternate direction (flip strafe)
+   // Try alternate direction
    ofs = (-1 * ofs);
    if (walkmove ((self.ideal_yaw + ofs),dist))
    {
       return ;
    } //end if
 
-   // --- SLIDE LOGIC #2: Alternate failed, try to slide again ---
+   // --- SLIDE LOGIC #2 (from Step 4) ---
    self.angles_y = self.ideal_yaw + ofs;
    makevectors(self.angles);
    traceline(org_start, org_start + (v_forward * 16), TRUE, self);
@@ -1033,20 +1062,15 @@ void (float dist) strafemove =
        slide_dir = move_dir - (wall_normal * (move_dir * wall_normal));
        slide_dir = normalize(slide_dir);
        slide_yaw = vectoyaw(slide_dir);
-
-       if (walkmove(slide_yaw, dist))
-       {
-           return;
-       }
+       if (walkmove(slide_yaw, dist)) return ;
    }
-   // -----------------------------------------------------------
 
    if ((self.flags & (FL_INWATER + FL_ONGROUND)))
    {
       self.search_time = (self.search_time - 0.300);
    } //end if
 }; //end of the function strafemove
-// ===== END TWEAK #4 =====
+// ===== END BONUS TWEAK #5 =====
 
 void (float dist, float wlevel) BotUnderwaterMove =
 {
