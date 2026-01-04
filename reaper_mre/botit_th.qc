@@ -186,6 +186,9 @@ float (entity targ, entity inflictor) CanDamage;
 // Nemesis System: tracks who killed this bot for revenge seeking.
 .entity nemesis;
 .float nemesis_time;
+// Chat System: bot personality and spam prevention
+.float personality;      // Bot's personality type (PERS_RAGER, PERS_PRO, etc.)
+.float chat_cooldown;    // Timestamp when bot can chat again (prevents spam)
 .float skil;
 .float rocketlen;
 .entity rocketcache;
@@ -264,6 +267,12 @@ float WAYPOINT_DUMP_TIME;
 float ASTAR_SEARCH_ID;
 // Traffic heatmap decay: tracks when to apply 10% decay to traffic_score (prevents saturation)
 float last_traffic_decay_time;
+
+// ===== CHAT SYSTEM GLOBALS =====
+// NOTE: All personality constants (PERS_*) and global chat variables
+// (global_chat_time, global_chat_type, global_last_speaker) are now
+// declared in defs.qc for proper compile-time initialization.
+// ===== END CHAT SYSTEM GLOBALS =====
 
 void (entity noisemaker, entity noiseobject) signalnoise;
 float (entity e) hearnoise;

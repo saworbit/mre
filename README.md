@@ -24,6 +24,26 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 ## 🎬 Latest Features (2026-01)
 
+### 💬 Personality-Driven Chat System (ULTRA EXPANDED)
+
+Bots now **talk like real 90s FPS players** with 5 distinct personalities and bot-to-bot interactions:
+
+- 🎭 **5 Unique Personalities** — RAGER (toxic), PRO (tactical), NOOB (confused), CAMPER (defensive), MEMELORD (chaotic)
+- 💬 **144+ Messages** — 64+ idle comments, 80+ context-aware replies (kill/death/banter)
+- 🔁 **Bot-to-Bot Banter** — 12% reply chance creates fluid conversations between bots
+- ⏱️ **Realistic Timing** — Personality-based cooldowns (RAGERs spam 2-6s, PROs focus 6-14s)
+- 🎯 **Context-Aware** — Different messages for kills, deaths, idle roaming, and replies
+- 🔊 **Chat Sound** — Plays misc/talk.wav to signal messages (engine limitation workaround)
+
+**Personality Examples:**
+- 🔥 RAGER: "lag much?", "nice aimbot", "camping noob", "where are the admins?"
+- 🎯 PRO: "gg", "armor up", "quad in 10", "controlling the map"
+- 🤷 NOOB: "how do i rocket jump?", "oops", "this game is hard", "wrong weapon again"
+- 🏰 CAMPER: "tactical positioning wins games", "im not camping im defending"
+- 😂 MEMELORD: "git gud scrubs", "yeet", "u mad bro?", "this is fine", "leroy jenkins!"
+
+**Result:** Bot chat feels like authentic 90s Quake servers! Personalities create hilarious rivalries and toxic banter! 🎮💬🔥
+
 ### 🧮 Mathematical Solvers Suite
 
 Nightmare bots use **physics equations** for decision-making instead of heuristic guesses:

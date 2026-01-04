@@ -13,35 +13,13 @@
 // - Bot-to-bot roasting reaches maximum toxicity
 // Welcome to the golden age of chaotic FPS banter!
 // ===================================================================
-
-// ===== CHAT CONTEXT CONSTANTS =====
-float C_GREET   /* = 1.000 */;  // Join server greeting
-float C_KILL    /* = 2.000 */;  // Taunt after kill
-float C_DEATH   /* = 3.000 */;  // Excuse/complaint after death
-float C_REPLY   /* = 4.000 */;  // Reply to another bot's message
-float C_IDLE    /* = 5.000 */;  // Idle roaming comment
-float C_HURT    /* = 6.000 */;  // Taking damage reaction
+// NOTE: All constants (PERS_*, C_*) and global variables are now
+// declared in defs.qc for proper compile-time initialization.
 
 // ===== INITIALIZATION =====
-// Called once from worldspawn to set up constants
+// Called once from worldspawn to initialize global chat state
 void () InitChatSystem =
 {
-   // Personality types
-   PERS_NONE = FALSE;
-   PERS_RAGER = TRUE;
-   PERS_PRO = FL_SWIM;
-   PERS_NOOB = MOVETYPE_WALK;
-   PERS_CAMPER = MOVETYPE_STEP;
-   PERS_MEMELORD = MOVETYPE_FLY;
-
-   // Chat context types
-   C_GREET = TRUE;
-   C_KILL = FL_SWIM;
-   C_DEATH = MOVETYPE_WALK;
-   C_REPLY = MOVETYPE_STEP;
-   C_IDLE = MOVETYPE_FLY;
-   C_HURT = MOVETYPE_TOSS;
-
    // Initialize global chat state
    global_chat_time = FALSE;
    global_chat_type = FALSE;
