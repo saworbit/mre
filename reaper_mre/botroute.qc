@@ -1409,8 +1409,8 @@ void () LinkTeleporters =
 // 1. THE LOADER
 // You will paste the console output into a file that calls this function.
 // This spawns a saved waypoint at the specified coordinates.
-// PHASE 5 ENHANCEMENT: Added traffic/danger scores for persistent learning
-void (vector org, float traffic, float danger) SpawnSavedWaypoint =
+// PHASE 6 ENHANCEMENT: Added target linking for button->door smart triggers
+void (vector org, float traffic, float danger, string trig_target) SpawnSavedWaypoint =
 {
    local entity node;
 
@@ -1424,6 +1424,14 @@ void (vector org, float traffic, float danger) SpawnSavedWaypoint =
    // PHASE 5: Restore learned experience scores
    node.traffic_score = traffic;  // How often bots use this route
    node.danger_scent = danger;    // Death/damage history at this location
+
+   // PHASE 6: Restore the smart trigger link (for button/door sequences)
+   if (trig_target != "")
+   {
+      node.target = trig_target;
+      // Optional: Visualize linked nodes for debugging
+      // node.effects = EF_DIMLIGHT;
+   } //end if
 
    // Optional: link it loosely to the network?
    // Usually, the bots will "adopt" these nodes when they run near them
@@ -1445,8 +1453,8 @@ void () DumpWaypoints =
    total_danger = 0.000;
 
    bprint ("\n\n// ===== CUT HERE: START WAYPOINTS =====\n");
-   bprint ("// PHASE 5: Persistent Bot Memory (Traffic + Danger Scores)\n");
-   bprint ("// Format: SpawnSavedWaypoint(origin, traffic_score, danger_scent)\n");
+   bprint ("// PHASE 6: Smart Triggers (Target Linking for Button->Door Logic)\n");
+   bprint ("// Format: SpawnSavedWaypoint(origin, traffic_score, danger_scent, target)\n");
    bprint ("void() LoadMapWaypoints =\n{\n");
 
    head = find (world,classname,"BotPath");
@@ -1461,7 +1469,17 @@ void () DumpWaypoints =
          bprint (ftos (head.traffic_score));
          bprint (", ");
          bprint (ftos (head.danger_scent));
-         bprint (");\n");
+         bprint (", '");
+
+         // PHASE 6: Save the target string (for button/door linking)
+         if (head.target != "")
+         {
+            bprint (head.target);
+         }
+         //end if
+
+         bprint ("');\n");
+
          count = (count + 1.000);
          total_traffic = (total_traffic + head.traffic_score);
          total_danger = (total_danger + head.danger_scent);

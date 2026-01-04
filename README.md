@@ -24,6 +24,70 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 ## 🎬 Latest Features (2026-01)
 
+### 🚀 Critical Rocket Jump Fixes (2026-01-04)
+
+**FIXED:** Bots were firing rockets into the sky instead of at their feet!
+
+Two critical bugs have been eliminated:
+
+- ❌ **Bug #1: Wrong pitch in bot_rocket_jump()** — Used positive pitch (+85°, +45°) which made bots look UP instead of DOWN
+- ❌ **Bug #2: Wrong pitch in "Vertical Solve" RJ** — Line 1491 used +80° (looking UP) instead of -80° (looking DOWN) — **THIS WAS THE MAIN BUG!**
+
+**What's Fixed:**
+- 🎯 **Correct pitch angles** — Changed to NEGATIVE values (-85°, -45°, -80°) for proper downward aim
+- 🚀 **Both RJ systems work** — Smart trigger (skill >2) AND vertical solve (all skills) now execute correctly
+- 📏 **Extended range** — Horizontal trigger range tripled (100u → 300u) for proactive RJ attempts
+- 🏃 **Horizontal mobility** — Added distance check (>350u) to enable RJ for gaps and speed boosts, not just walls
+
+**Result:** Bots now rocket jump like pros! Looking DOWN at feet, firing rockets at ground, getting proper blast propulsion upward! 🎯🚀✅
+
+### 🌋 Mid-Air Hazard Avoidance (2026-01-04)
+
+**NEW:** Bots detect and avoid landing in lava/slime during jumps!
+
+- 🔮 **Trajectory prediction** — 0.15s lookahead predicts landing position
+- 📍 **Hazard detection** — Traces downward 128u, checks `pointcontents()` for CONTENT_LAVA/SLIME
+- 🔄 **Emergency steering** — Rotates velocity 90° perpendicular for sideways air-drift escape
+- 💨 **Momentum preservation** — Maintains vertical component (90% speed) while steering away
+
+**Result:** No more DM4 lava deaths! Bots air-steer away from hazards mid-jump instead of blindly landing in death! 🛡️💧
+
+### 🗺️ DM4 Waypoint System Integration (2026-01-04)
+
+**NEW:** Bots instantly know DM4 layout with 343 pre-loaded waypoints!
+
+- 📦 **343 waypoints** — Merged 181 base + 162 discovered routes for complete DM4 coverage
+- ⚡ **Auto-loading** — Waypoints load automatically at frame 5 (after entity spawn)
+- 🐍 **Python extraction tool** — `generate_dm4_waypoints.py` automates waypoint merging from logs
+- 🔧 **Build integration** — `maps/dm4.qc` compiled into progs.dat via progs.src
+
+**How to verify:**
+```bash
+# Check console output after map load:
+# "Loaded 343 waypoints for DM4"
+```
+
+**Result:** Bots have instant map knowledge! No learning period—they know all routes, shortcuts, and secrets immediately! 🧠💾
+
+### 🎯 PHASE 6: Smart Triggers (2026-01-04)
+
+**NEW:** Bots proactively solve button→door puzzles with waypoint target linking!
+
+- 🔗 **Waypoint target linking** — Waypoints remember associated buttons/levers via 4th parameter: `SpawnSavedWaypoint('x y z', traffic, danger, "button_name")`
+- 🎯 **Proactive button shooting** — Bots auto-fire buttons BEFORE hitting locked doors (no more running into walls!)
+- 🧠 **Learning system** — When bots manually press buttons during gameplay, target links save to waypoint dumps
+- 🔄 **Self-improving navigation** — Future bots automatically know button sequences from past discoveries
+- 🔍 **Smart detection** — Checks button state (`STATE_BOTTOM`), verifies line-of-sight, aims with `vectoyaw()`, fires when ready
+
+**How it works:**
+1. Bot approaches waypoint with target link (e.g., `"secret_button"`)
+2. Uses `find(world, targetname, Botgoal.target)` to locate button entity
+3. Checks if button is unpressed and visible
+4. Aims at button and shoots (`button0 = 1`)
+5. Door opens smoothly—no collision with locked doors!
+
+**Result:** Emergent secret-solving! Bots learn button→door sequences from gameplay and share knowledge through waypoint files. Creates human-like puzzle-solving without hardcoded solutions! 🚪🎯
+
 ### 💬 Personality-Driven Chat System (ULTRA EXPANDED)
 
 Bots now **talk like real 90s FPS players** with 5 distinct personalities and bot-to-bot interactions:
@@ -289,16 +353,18 @@ Nodes learn **who goes where**, creating emergent tactical flow:
 
 Bots now execute **proper rocket jumps** with professional-level control:
 
+- ✅ **FIXED: Correct pitch angles** — Changed to NEGATIVE values (-85°, -45°, -80°) for looking DOWN at feet instead of UP at sky (2026-01-04 critical bugfix)
 - ✅ **Health checks** — Won't suicide if HP < 40 (lowered for aggressive play)
 - ⏱️ **2-second cooldown** — Prevents spam and maintains balance
-- 🎯 **Directional aim control** — Dynamic pitch: 85° for high ledges, 45° for long gaps; yaw aims toward goal
+- 🎯 **Directional aim control** — Dynamic pitch: -85° for high ledges, -45° for long gaps; yaw aims toward goal
 - ⚡ **Synchronized timing** — Jump perfectly timed with rocket blast
 - 🚀 **Aggressive leap** — 3× forward velocity (-320 u/s) enables gap crossing to DM2 Quad and similar platforms
 - 🏔️ **Smart triggers** — Auto-RJ when ledges exceed 1.5× normal jump height (skill >2)
+- 📏 **Extended range** — Horizontal trigger range 300u (tripled from 100u), distance trigger >350u for horizontal mobility
 - 🎯 **Enhanced reachability** — Recognizes items up to 450u high as reachable, actively seeks and RJs to them
 - 🆘 **Safe unstuck escape** — Replaces dangerous "turn and fire" with controlled RJ
 
-**Result:** Bots reach unreachable platforms just like human speedrunners! 🏃‍♂️💨
+**Result:** Bots reach unreachable platforms just like human speedrunners! RJ system now works correctly with proper downward aim! 🏃‍♂️💨✅
 
 ### 🚂 Train Navigation Enhancements
 
@@ -323,13 +389,17 @@ Advanced **path_corner chain prediction** for moving platforms:
 | 💾 **Smart Spacing** | 250u distance + LOS checks prevent node clumping for clean navigation networks |
 | 📤 **Brain Dump** | Export learned waypoints to console (impulse 100) for manual persistence |
 | 📥 **Waypoint Loader** | Import saved nodes to "bake" map knowledge—bots remember instantly |
+| 🗺️ **DM4 Waypoint Integration** | 343 pre-loaded waypoints (181 base + 162 discovered), auto-loads at frame 5 (2026-01-04) |
+| 🐍 **Python Extraction Tool** | Automates waypoint merging from qconsole.log via generate_dm4_waypoints.py (2026-01-04) |
 | ☠️ **Danger & Glory** | Learns death zones (avoid) and power positions (seek)—emergent tactical evolution |
 | 🛗 **Platform Mastery** | Learns elevator paths, waits patiently at lift shafts, uses DM2 lift intelligently |
 | 📊 **Platform Prediction** | Velocity + state forecasting for timed jumps on moving plats |
 | 🎯 **Jump Arc Collision** | Mid-air platform detection for precise airborne landings |
 | 🔘 **Button Shoot + Wait** | Auto-fires shootables, monitors door state for fluid secrets |
+| 🎯 **Smart Triggers (Phase 6)** | Waypoint target linking—bots auto-shoot buttons before locked doors, learn sequences from gameplay (2026-01-04) |
 | 🛗 **Ride Auto-Follow** | Velocity inheritance + goal tracking for seamless platform travel |
 | 🆘 **Desperate Unstuck** | Escalates to rocket jump/super jump after 5+ stuck attempts |
+| 🏔️ **Ledge Jump Pursuit** | Detects enemies 32+ units below, executes forward jump to chase down ledges (2026-01-04) |
 
 ### ⚔️ Combat Mastery
 
@@ -374,9 +444,11 @@ Advanced **path_corner chain prediction** for moving platforms:
 | 🐰 **Bunny Hop Mechanics** | Skill-based strafe-jump acceleration (skill >2, +12 u/s boost, 600 u/s cap) |
 | 🎢 **Jump Smoothing** | 3-frame moving average eliminates jittery trajectories |
 | 🪂 **Mid-Air Correction** | 20% velocity damping when trajectory becomes unreachable |
+| 🌋 **Mid-Air Hazard Avoidance** | 0.15s trajectory prediction + 90° emergency steering away from lava/slime (2026-01-04) |
 | 🎯 **Finer Arc Simulation** | 0.05s timesteps for precise parabolic prediction |
 | 🏃 **Strafe Momentum** | 30% velocity carryover simulates realistic running jumps |
 | 🚧 **Multi-Trace Validation** | 2× sampling density catches walls/clips sparse checks miss |
+| 📏 **Horizontal Reachability** | Recognizes distant items (>350u) as RJ-accessible, applies 1.3× weight multiplier (2026-01-04) |
 
 ---
 
@@ -400,7 +472,11 @@ Advanced **path_corner chain prediction** for moving platforms:
    ```
    *(8 players on DM4 — adjust as needed)*
 
-3. **Enjoy!** 🎮
+3. **Verify waypoint loading (optional):**
+   - Check console output for "Loaded 343 waypoints for DM4"
+   - Confirms bots have instant map knowledge! 🗺️
+
+4. **Enjoy!** 🎮
 
 ### Custom Launch
 
@@ -1069,7 +1145,7 @@ impulse 102       // Remove bot
 |-----|------|----------|---------|
 | **dm2** | Claustrophobopolis | 🎯 Close combat, powerup denial | 4-6 |
 | **dm3** | Abandoned Base | 🏃 Movement, platform navigation | 6-8 |
-| **dm4** | The Bad Place | ⚔️ All-around combat, rocket jumps | 8-12 |
+| **dm4** | The Bad Place | ⚔️ All-around combat, rocket jumps, hazard avoidance, 343 waypoints! | 8-12 |
 | **dm5** | The Cistern | 🌊 Water navigation, vertical play | 4-8 |
 | **dm6** | The Dark Zone | 🔫 Long-range combat, train timing | 6-10 |
 

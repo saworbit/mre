@@ -22,8 +22,9 @@ waypoints = waypoints[-343:]
 
 # Generate the dm4.qc file
 output = """// ===== DM4 WAYPOINTS (343 nodes - merged from gameplay) =====
-// Generated from bot navigation data
+// Generated from bot navigation data - PHASE 6: Smart Triggers
 // Expanded from 181 base waypoints + 162 discovered routes
+// Format: SpawnSavedWaypoint(origin, traffic_score, danger_scent, target)
 
 void() LoadMapWaypoints_dm4 =
 {

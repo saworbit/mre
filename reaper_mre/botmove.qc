@@ -1432,6 +1432,41 @@ void (float dist) Botmovetogoal =
    }
    // =======================================
 
+   // ===== PHASE 6: SMART TRIGGERS (Proactive Button->Door Solving) =====
+   // Check if the waypoint we're approaching has a target link (e.g., button)
+   if (Botgoal.target != "")
+   {
+      local entity trig_ent;
+      // Find the entity with matching targetname
+      trig_ent = find (world,targetname,Botgoal.target);
+
+      // If we found a button that hasn't been pressed yet
+      if ((trig_ent.classname == "func_button"))
+      {
+         if ((trig_ent.state == STATE_BOTTOM))
+         {
+            // Do we have line of sight to the button?
+            traceline ((self.origin + self.view_ofs),trig_ent.origin,TRUE,self);
+
+            if ((trace_fraction == 1.000))
+            {
+               // AIM at the button (look up/down and left/right)
+               self.ideal_yaw = vectoyaw ((trig_ent.origin - self.origin));
+               // Note: pitch aiming would use vectoangles for full 3D aim
+               // For now, yaw is enough for most buttons
+               ChangeYaw ();
+
+               // SHOOT! (If attack is ready)
+               if ((time > self.attack_finished))
+               {
+                  self.button0 = 1.000;  // Press fire button
+               } //end if
+            } //end if
+         } //end if
+      } //end if
+   } //end if
+   // ===================================================
+
    // ===== PLATFORM MASTERY: Elevator Patience =====
    // If our next step is a platform node, and it's high above us,
    // it means the lift is UP and we are DOWN. We must WAIT.
