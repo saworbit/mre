@@ -42,9 +42,6 @@ entity trace_ent;
 float trace_inopen /* = 0.000 */;
 float trace_inwater /* = 0.000 */;
 entity msg_entity;
-float global_chat_time /* = 0.000 */;
-float global_chat_type /* = 0.000 */;
-entity global_last_speaker;
 
 void () main;
 
@@ -145,6 +142,9 @@ void end_sys_globals;
 .string noise3;
 .float personality;
 .float chat_cooldown;
+.float chat_time;       // Stores global chat timestamp (on world entity)
+.float chat_type;       // Stores global chat type (on world entity)
+.entity last_speaker;   // Stores global last speaker (on world entity)
 void end_sys_fields;
 float FALSE    = 0.000;
 float TRUE    = 1.000;
