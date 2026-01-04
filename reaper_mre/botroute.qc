@@ -1409,7 +1409,8 @@ void () LinkTeleporters =
 // 1. THE LOADER
 // You will paste the console output into a file that calls this function.
 // This spawns a saved waypoint at the specified coordinates.
-void (vector org) SpawnSavedWaypoint =
+// PHASE 5 ENHANCEMENT: Added traffic/danger scores for persistent learning
+void (vector org, float traffic, float danger) SpawnSavedWaypoint =
 {
    local entity node;
 
@@ -1420,21 +1421,32 @@ void (vector org) SpawnSavedWaypoint =
    node.solid = SOLID_TRIGGER;
    setsize (node,'-4 -4 -4','4 4 4');
 
+   // PHASE 5: Restore learned experience scores
+   node.traffic_score = traffic;  // How often bots use this route
+   node.danger_scent = danger;    // Death/damage history at this location
+
    // Optional: link it loosely to the network?
    // Usually, the bots will "adopt" these nodes when they run near them
    // via the standard 'FindAPath' logic.
 }; //end of the function SpawnSavedWaypoint
 
-// 2. THE EXPORTER
+// 2. THE EXPORTER (PHASE 5: Now includes traffic/danger scores)
 // Call this via console (e.g. 'impulse 100') to dump everything.
 // Outputs QuakeC code to console that can be copied and saved.
 void () DumpWaypoints =
 {
    local entity head;
    local float count;
+   local float total_traffic;
+   local float total_danger;
 
    count = 0.000;
+   total_traffic = 0.000;
+   total_danger = 0.000;
+
    bprint ("\n\n// ===== CUT HERE: START WAYPOINTS =====\n");
+   bprint ("// PHASE 5: Persistent Bot Memory (Traffic + Danger Scores)\n");
+   bprint ("// Format: SpawnSavedWaypoint(origin, traffic_score, danger_scent)\n");
    bprint ("void() LoadMapWaypoints =\n{\n");
 
    head = find (world,classname,"BotPath");
@@ -1445,8 +1457,14 @@ void () DumpWaypoints =
       {
          bprint ("    SpawnSavedWaypoint('");
          bprint (vtos (head.origin));
-         bprint ("');\n");
+         bprint ("', ");
+         bprint (ftos (head.traffic_score));
+         bprint (", ");
+         bprint (ftos (head.danger_scent));
+         bprint (");\n");
          count = (count + 1.000);
+         total_traffic = (total_traffic + head.traffic_score);
+         total_danger = (total_danger + head.danger_scent);
       } //end if
       head = find (head,classname,"BotPath");
    } //end while
@@ -1455,6 +1473,12 @@ void () DumpWaypoints =
    bprint ("// ===== CUT HERE: END WAYPOINTS =====\n");
    bprint ("// Total Nodes: ");
    bprint (ftos (count));
+   bprint ("\n");
+   bprint ("// Avg Traffic Score: ");
+   bprint (ftos ((total_traffic / count)));
+   bprint ("\n");
+   bprint ("// Avg Danger Scent: ");
+   bprint (ftos ((total_danger / count)));
    bprint ("\n\n");
 }; //end of the function DumpWaypoints
 // ===== END PERSISTENCE SYSTEM =====
