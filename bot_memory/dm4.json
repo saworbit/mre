@@ -1,0 +1,117 @@
+{
+  "map": "dm4",
+  "last_updated": "2026-01-04T17:46:51.438225",
+  "total_nodes": 10,
+  "nodes": [
+    {
+      "origin": [
+        -272.0,
+        160.0,
+        -152.0
+      ],
+      "traffic_score": 49.61664841182913,
+      "danger_scent": 17.952522255192875,
+      "last_updated": "2026-01-04T16:31:12.829507",
+      "sessions_seen": 1
+    },
+    {
+      "origin": [
+        128.0,
+        -64.0,
+        24.0
+      ],
+      "traffic_score": 97.69989047097482,
+      "danger_scent": 100.0,
+      "last_updated": "2026-01-04T16:31:12.829752",
+      "sessions_seen": 1
+    },
+    {
+      "origin": [
+        64.0,
+        320.0,
+        96.0
+      ],
+      "traffic_score": 25.30120481927711,
+      "danger_scent": 5.192878338278931,
+      "last_updated": "2026-01-04T16:31:12.829758",
+      "sessions_seen": 1
+    },
+    {
+      "origin": [
+        192.0,
+        -128.0,
+        16.0
+      ],
+      "traffic_score": 83.78970427163198,
+      "danger_scent": 80.41543026706232,
+      "last_updated": "2026-01-04T16:31:12.829762",
+      "sessions_seen": 1
+    },
+    {
+      "origin": [
+        -128.0,
+        256.0,
+        -88.0
+      ],
+      "traffic_score": 37.458926615553125,
+      "danger_scent": 99.85163204747774,
+      "last_updated": "2026-01-04T16:31:12.829765",
+      "sessions_seen": 1
+    },
+    {
+      "origin": [
+        256.0,
+        192.0,
+        48.0
+      ],
+      "traffic_score": 14.019715224534504,
+      "danger_scent": 13.204747774480714,
+      "last_updated": "2026-01-04T16:31:12.829769",
+      "sessions_seen": 1
+    },
+    {
+      "origin": [
+        -64.0,
+        -256.0,
+        -120.0
+      ],
+      "traffic_score": 62.10295728368018,
+      "danger_scent": 34.71810089020771,
+      "last_updated": "2026-01-04T16:31:12.829772",
+      "sessions_seen": 1
+    },
+    {
+      "origin": [
+        384.0,
+        64.0,
+        72.0
+      ],
+      "traffic_score": 100.0,
+      "danger_scent": 23.145400593471805,
+      "last_updated": "2026-01-04T16:31:12.829775",
+      "sessions_seen": 1
+    },
+    {
+      "origin": [
+        0.0,
+        128.0,
+        32.0
+      ],
+      "traffic_score": 73.8225629791895,
+      "danger_scent": 46.29080118694361,
+      "last_updated": "2026-01-04T16:31:12.829778",
+      "sessions_seen": 1
+    },
+    {
+      "origin": [
+        128.0,
+        384.0,
+        104.0
+      ],
+      "traffic_score": 48.083242059145675,
+      "danger_scent": 29.22848664688427,
+      "last_updated": "2026-01-04T16:31:12.829781",
+      "sessions_seen": 1
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Bot Memory Manager - Automated Waypoint Persistence System
 Modern Reaper Enhancements (MRE) - Phase 5 Tool
@@ -23,6 +24,13 @@ from datetime import datetime
 from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass, asdict
 from collections import defaultdict
+
+# Fix Windows console encoding for UTF-8
+if sys.platform == 'win32':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except:
+        pass  # Fallback: use ASCII symbols
 
 
 @dataclass

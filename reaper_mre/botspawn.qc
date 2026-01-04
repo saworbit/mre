@@ -469,6 +469,73 @@ void () PutBotInServer =
       NUMPATHERS = (NUMPATHERS + SPAWNFLAG_SUPERSPIKE);
    } //end if
    self.view_ofs = '0.000 0.000 22.000';
+
+   // ===== CHAT HOOK: PERSONALITY ASSIGNMENT =====
+   // Assign personality type to bot on spawn
+   if ((self.personality == FALSE))
+   {
+      local float r;
+
+      r = random ();
+
+      // Specific personalities for known names
+      if ((self.netname == "Reaper"))
+      {
+         self.personality = PERS_PRO;
+      }
+      else
+      {
+         if ((self.netname == "Sloth"))
+         {
+            self.personality = PERS_CAMPER;
+         }
+         else
+         {
+            if ((self.netname == "Hater"))
+            {
+               self.personality = PERS_RAGER;
+            }
+            else
+            {
+               // Random distribution for other bots
+               if ((r < 0.200))
+               {
+                  self.personality = PERS_RAGER;
+               }
+               else
+               {
+                  if ((r < 0.400))
+                  {
+                     self.personality = PERS_PRO;
+                  }
+                  else
+                  {
+                     if ((r < 0.600))
+                     {
+                        self.personality = PERS_NOOB;
+                     }
+                     else
+                     {
+                        if ((r < 0.800))
+                        {
+                           self.personality = PERS_MEMELORD;
+                        }
+                        else
+                        {
+                           self.personality = PERS_NONE; // Standard/Camper behavior
+                        } //end if
+                     } //end if
+                  } //end if
+               } //end if
+            } //end if
+         } //end if
+      } //end if
+   } //end if
+
+   // Set initial chat cooldown (2-5 seconds after spawn before first chat)
+   self.chat_cooldown = (time + (2.000 + (random () * 3.000)));
+   // =============================================
+
    makevectors (self.angles);
    spawn_tfog ((self.origin + (v_forward * LOOPTIME)));
    spawn_tdeath (self.origin,self);
