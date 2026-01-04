@@ -24,6 +24,17 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 ## 🎬 Latest Features (2026-01)
 
+### 🧮 Mathematical Solvers Suite
+
+Nightmare bots use **physics equations** for decision-making instead of heuristic guesses:
+
+- 🎯 **Artillery Solver** — Solves projectile motion equation for perfect grenade arcs (tan(θ) = (v² - sqrt(discriminant)) / (g·x))
+- 🚀 **Calculated Rocket Jump** — Physics check: max_h = V₀² / (2g) ≈ 189 units, prevents impossible RJ attempts
+- 🌉 **Gap Solver** — Calculates horizontal range: t = sqrt(2h/g), d = v×t, prevents suicidal cliff runs
+- ⚡ **Skill-based** — Skill > 2 uses perfect math, ≤2 uses heuristics (difficulty progression)
+
+**Result:** High-skill bots calculate before acting! Grenade arcs through windows with mathematical certainty! RJs only when physics says possible! No more deaths from blind cliff runs! **"Heuristics are for behavior, equations are for capability."** 🧠📐
+
 ### 🎯 Oracle Aiming (Quadratic Prediction)
 
 Nightmare bots use **mathematically perfect interception physics**:

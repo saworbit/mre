@@ -208,6 +208,68 @@ vector (entity targ, float proj_speed) PredictAim =
 }; //end of the function PredictAim
 // ===== END ORACLE AIMING =====
 
+// ===== ARTILLERY SOLVER: Perfect Grenade Arc (Quadratic Equation) =====
+// Solves projectile motion equation to find optimal grenade aim point.
+// Uses full quadratic solution: θ = (v² ± sqrt(v⁴ - g(g·x² + 2·y·v²))) / (g·x)
+// Returns optimal aim vector. Returns world origin if shot impossible.
+// High-skill bots (skill > 2) use this for perfect mortar-style grenade arcs.
+vector (vector target_pos) SolveGrenadeArc =
+{
+   local vector v_diff;
+   local float dx;
+   local float dy;
+   local float v;
+   local float g;
+   local float term1;
+   local float root;
+   local float tan_angle; // tan(θ) instead of θ
+   local vector dir;
+   local float t;
+   local vector aim_point;
+
+   // Calculate horizontal distance and height difference
+   v_diff = (target_pos - self.origin);
+   dy = v_diff_z; // Height difference (vertical)
+   v_diff_z = FALSE;
+   dx = vlen (v_diff); // Horizontal distance
+   dir = normalize (v_diff); // Horizontal direction
+
+   // Quake physics constants
+   v = 600.000; // Grenade speed (units/second)
+   g = 800.000; // Gravity (units/second²)
+
+   // Quadratic discriminant: v⁴ - g(g·x² + 2·y·v²)
+   term1 = ((((v * v) * v) * v) - (g * (((g * dx) * dx) + (((2.000 * dy) * v) * v))));
+
+   // Check if shot is possible (discriminant must be non-negative)
+   if ((term1 < FALSE))
+   {
+      // Impossible shot: use fallback aim
+      return ('0.000 0.000 0.000'); // Signal failure with zero vector
+   } //end if
+
+   // Take square root of discriminant
+   root = qc_sqrt (term1);
+
+   // Two solutions: high arc (+ root) or low arc (- root)
+   // Use LOW ARC for direct combat: tan(θ) = (v² - sqrt) / (g·x)
+   tan_angle = ((((v * v) - root) / (g * dx))); // tan(θ)
+
+   // Calculate flight time from horizontal distance
+   // For low arc: t ≈ x / (v × cos(θ)) ≈ x / v (approximation for small angles)
+   t = (dx / v);
+
+   // Calculate vertical offset needed: z_offset = tan(θ) × dx
+   local float z_offset;
+   z_offset = (tan_angle * dx);
+
+   // Construct aim point: horizontal direction × distance + vertical offset
+   aim_point = ((self.origin + (dir * dx)) + ('0.000 0.000 1.000' * z_offset));
+
+   return (aim_point);
+}; //end of the function SolveGrenadeArc
+// ===== END ARTILLERY SOLVER =====
+
 // ===== TWEAK #2: Gravity arc simulation (full physics vs flat percentage) =====
 // Replaces percentage-based height guessing with real parabolic trajectory calculation.
 // Uses Quake physics: g=800u/s², GL speed=600u/s. Computes optimal lob angle for range,
@@ -430,10 +492,34 @@ vector () botaim =
          } //end if
       } //end if
    } //end if
+   // ===== ARTILLERY SOLVER: Skill-based Grenade Aiming =====
    if ((self.weapon == IT_GRENADE_LAUNCHER))
    {
-      tg = adjustgrenade (tg);
+      if ((self.skil > 2.000))
+      {
+         // High-skill bots use perfect quadratic arc calculation
+         local vector arc_aim;
+         arc_aim = SolveGrenadeArc (tg);
+
+         // If shot is possible (non-zero vector), use Artillery Solver
+         if ((arc_aim != '0.000 0.000 0.000'))
+         {
+            // Use the mathematically perfect aim point
+            tg = arc_aim;
+         } //end if
+         else
+         {
+            // Impossible shot - fall back to approximate arc
+            tg = adjustgrenade (tg);
+         } //end if
+      } //end if
+      else
+      {
+         // Low-skill bots use approximate arc (adjustgrenade)
+         tg = adjustgrenade (tg);
+      } //end if
    } //end if
+   // ===== END ARTILLERY SOLVER =====
    sk = self.skil;
    if ((self.weapon == IT_LIGHTNING))
    {

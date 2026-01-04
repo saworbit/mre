@@ -3,6 +3,78 @@ float() bot_rocket_jump;
 // Forward declaration for problem solver (defined in bot_ai.qc)
 entity(entity door_ent) FindButtonForDoor;
 
+// ===== CALCULATED ROCKET JUMP: Physics Feasibility Check =====
+// Calculates maximum height achievable via rocket jump using physics equation.
+// Returns TRUE if target height is reachable, FALSE if impossible.
+// Formula: max_height = V₀² / (2g), where V₀ = jump_vel + rocket_boost
+// Prevents bots from attempting impossible RJs (e.g., 500-unit walls).
+float (float target_height) CanRocketJumpHeight =
+{
+   local float jump_vel;
+   local float rocket_boost;
+   local float total_vel;
+   local float max_height;
+   local float g;
+
+   // Quake physics constants
+   jump_vel = 270.000; // Standard jump velocity
+   rocket_boost = 280.000; // Rocket explosion boost (approximate, varies with distance)
+   g = 800.000; // Gravity
+
+   // Total initial velocity (jump + rocket)
+   total_vel = (jump_vel + rocket_boost);
+
+   // Calculate maximum height: h = V₀² / (2g)
+   max_height = (((total_vel * total_vel) / (2.000 * g)));
+
+   // Add 20-unit safety margin for precision errors
+   max_height = (max_height + 20.000);
+
+   // Check if target is within range
+   if ((target_height <= max_height))
+   {
+      return (TRUE); // Physically possible
+   } //end if
+
+   return (FALSE); // Impossible: target too high
+}; //end of the function CanRocketJumpHeight
+// ===== END CALCULATED ROCKET JUMP =====
+
+// ===== GAP SOLVER: Suicide Prevention (Horizontal Range Check) =====
+// Calculates if bot can make a horizontal jump across a gap without falling to death.
+// Uses physics: time_to_fall = sqrt(2h/g), max_distance = velocity × time
+// Returns TRUE if gap is crossable, FALSE if bot will fall into lava/void.
+// Prevents suicidal cliff runs by checking if horizontal speed can cover the gap.
+float (float gap_width, float drop_height) CanCrossGap =
+{
+   local float t;
+   local float max_dist;
+   local float run_speed;
+   local float g;
+
+   // Quake physics constants
+   run_speed = 320.000; // Bot running speed (units/second)
+   g = 800.000; // Gravity
+
+   // 1. Calculate time to fall: t = sqrt(2h / g) = sqrt(h / 400)
+   t = qc_sqrt ((drop_height / 400.000));
+
+   // 2. Calculate max horizontal distance: d = velocity × time
+   max_dist = (run_speed * t);
+
+   // 3. Add 20-unit safety buffer (bot collision radius + precision errors)
+   max_dist = (max_dist - 20.000);
+
+   // 4. Check if gap is within safe crossing range
+   if ((gap_width <= max_dist))
+   {
+      return (TRUE); // Safe to cross
+   } //end if
+
+   return (FALSE); // Too wide: bot will fall to death
+}; //end of the function CanCrossGap
+// ===== END GAP SOLVER =====
+
 void () halfwalkmove =
 {
    walkmove (self.strafeyaw,self.strafedist);
@@ -521,17 +593,24 @@ float /* ERROR: Could not determine return type */ (float vz, float dist, float 
       } //end if
    } //end if
 
-   // ===== SMART RJ TRIGGER: Proactive rocket jump for unreachable heights =====
-   // If target is too high for normal jump (>1.5x MAXJUMP), skilled bots use rocket jump
-   // to reach ledges that would otherwise be unreachable. Prevents fail-and-give-up loops.
-   if ((diffz > (MAXJUMP * 1.500)))
+   // ===== SMART RJ TRIGGER: Physics-Based Rocket Jump Decision =====
+   // If target is too high for normal jump (>MAXJUMP), check if RJ is physically possible.
+   // Uses precise physics calculation (V₀²/2g) instead of arbitrary 1.5× threshold.
+   // Prevents bots from attempting impossible RJs (e.g., 500-unit walls).
+   if ((diffz > MAXJUMP))
    {
       if (((self.ammo_rockets > 0) && (self.skil > 2.000)))
       {
-         if (bot_rocket_jump ())
+         // MATH CHECK: Can we actually reach this height with RJ?
+         if (CanRocketJumpHeight (diffz))
          {
-            return (TRUE);
+            // Physics says YES - attempt rocket jump
+            if (bot_rocket_jump ())
+            {
+               return (TRUE);
+            } //end if
          } //end if
+         // else: Physics says NO - target is impossible, don't try
       } //end if
    } //end if
    // ===== END SMART RJ TRIGGER =====
