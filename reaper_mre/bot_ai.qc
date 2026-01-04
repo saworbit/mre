@@ -125,13 +125,7 @@ float () RunAway =
    } //end if
    if ((self.enemy.items & IT_INVULNERABILITY))
    {
-      if ((runawayspeakchance <= 0.100))
-      {
-         bprint (self.netname);
-         bprint (": Run for it, ");
-         bprint (self.enemy.netname);
-         bprint (" is the freaking Anti-Christ!\n");
-      } //end if
+      // OLD CHAT REMOVED - using botchat.qc personality system
       return (TRUE);
    } //end if
    if ((self.enemy.health < 55.000))
@@ -152,29 +146,14 @@ float () RunAway =
    } //end if
    if ((self.health < 15.000))
    {
-      if ((runawayspeakchance <= 0.010))
-      {
-         bprint (self.netname);
-         bprint (": I'm confess, I Cheat!\n");
-      } //end if
-      if (((runawayspeakchance <= 0.002) && (runawayspeakchance > 0.001)))
-      {
-         bprint (self.netname);
-         bprint (": Run Away!\n");
-      } //end if
+      // OLD CHAT REMOVED - using botchat.qc personality system
       return (TRUE);
    } //end if
    if ((weap & ((IT_SHOTGUN + IT_AXE) + IT_NAILGUN)))
    {
       if ((self.enemy.items & IT_QUAD))
       {
-         if ((runawayspeakchance <= 0.100))
-         {
-            bprint (self.netname);
-            bprint (": Run for it, ");
-            bprint (self.enemy.netname);
-            bprint (" has Quad Damage!\n");
-         } //end if
+         // OLD CHAT REMOVED - using botchat.qc personality system
          return (FALSE);
       } //end if
       if ((self.enemy.weapon & ((IT_ROCKET_LAUNCHER + IT_LIGHTNING) + IT_SUPER_NAILGUN)))
@@ -186,11 +165,7 @@ float () RunAway =
    {
       if ((self.health < TE_LAVASPLASH))
       {
-         if ((runawayspeakchance <= 0.200))
-         {
-            bprint (self.netname);
-            bprint (": I'm being assraped by convicts!");
-         } //end if
+         // OLD CHAT REMOVED - using botchat.qc personality system
          return (TRUE);
       } //end if
    } //end if
@@ -281,41 +256,7 @@ float () BotFoundTarget =
    self.kill_streak = CAM_IDLE;
    self.death_streak = CAM_IDLE;
    self.taunt_streak = CAM_IDLE;
-   if ((huntspeakchance <= 0.010))
-   {
-      bprint (self.netname);
-      bprint (": I'm gonna make you my bitch ");
-      bprint (self.enemy.netname);
-      bprint ("!\n");
-   } //end if
-   if (((huntspeakchance <= 0.030) && (huntspeakchance > 0.010)))
-   {
-      bprint (self.netname);
-      bprint (": Don't Fuck with Daddy ");
-      bprint (self.enemy.netname);
-      bprint ("!\n");
-   } //end if
-   if (((huntspeakchance <= 0.050) && (huntspeakchance > 0.030)))
-   {
-      bprint (self.netname);
-      bprint (": Come meet my lil' friend ");
-      bprint (self.enemy.netname);
-      bprint ("!\n");
-   } //end if
-   if (((huntspeakchance <= 0.090) && (huntspeakchance > 0.050)))
-   {
-      bprint (self.netname);
-      bprint (": Looks like ");
-      bprint (self.enemy.netname);
-      bprint (" just shit his pants!\n");
-   } //end if
-   if (((huntspeakchance <= 0.005) && (huntspeakchance > 0.004)))
-   {
-      bprint (self.netname);
-      bprint (": ");
-      bprint (self.enemy.netname);
-      bprint (" has 5 seconds to beg for mercy, Times up!\n");
-   } //end if
+   // OLD CHAT SYSTEM REMOVED - Replaced by botchat.qc personality system
    return (TRUE);
 }; //end of the function BotFoundTarget
 
@@ -934,12 +875,7 @@ void (float dist) ai_botrun =
                   // Fire grenade at our own feet (or slightly towards enemy)
                   W_FireGrenade ();
 
-                  // Taunt: "Catch!"
-                  if ((random () < 0.200))
-                  {
-                     bprint (self.netname);
-                     bprint (": Catch!\n");
-                  } //end if
+                  // OLD CHAT REMOVED - using botchat.qc personality system
 
                   self.attack_finished = (time + 1.000);
                } //end if

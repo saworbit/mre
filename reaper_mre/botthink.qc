@@ -1,6 +1,8 @@
 
 void (entity e) clearCache;
 float (entity b) TrueReachable;  // Forward declaration for air reachability checks
+void (float ctx, entity targ) BotChat;  // Forward declaration for chat system (defined in botchat.qc)
+
 float () CheckWaterLevel =
 {
    local float pnt;
@@ -652,6 +654,25 @@ void () BotPostThink =
       } //end if
    } //end if
    // ===== END TWEAK #3 =====
+
+   // ===== CHAT HOOK: IDLE/REPLY (INCREASED RATES) =====
+   // Check if bot should reply to recent chat or make idle comment
+   // Only when alive
+   if ((self.health > FALSE))
+   {
+      // Reply check (12% per think - MUCH more responsive bot-to-bot banter)
+      if ((random () < 0.120))
+      {
+         BotChat (MOVETYPE_STEP,world); // MOVETYPE_STEP = C_REPLY = 4
+      } //end if
+
+      // Idle comment (1.5% per think - 3x more ambient chat)
+      if ((random () < 0.015))
+      {
+         BotChat (MOVETYPE_FLY,world); // MOVETYPE_FLY = C_IDLE = 5
+      } //end if
+   } //end if
+   // =================================
 
    fraglimit = cvar ("fraglimit");
    if ((fraglimit && (self.frags >= fraglimit)))

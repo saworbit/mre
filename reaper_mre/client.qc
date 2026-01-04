@@ -6,6 +6,9 @@ void () player_stand1;
 void (vector org) spawn_tfog;
 
 void (vector org, entity death_owner) spawn_tdeath;
+
+// Forward declaration for chat system (defined in botchat.qc)
+void (float ctx, entity targ) BotChat;
 float modelindex_eyes /* = 0.000 */;
 float modelindex_player /* = 0.000 */;
 float intermission_running /* = 0.000 */;
@@ -1468,6 +1471,23 @@ void (entity targ, entity attacker) ClientObituary =
                } //end if
             } //end if
             countkill (attacker,targ);
+
+            // ===== CHAT HOOK: KILL =====
+            // If attacker is a bot (and not suicide), taunt victim (35% chance)
+            if ((attacker.classname == "dmbot"))
+            {
+               local entity oself;
+
+               oself = self;
+               self = attacker; // Switch context to bot
+               if ((random () < 0.350))
+               {
+                  BotChat (FL_SWIM,targ); // FL_SWIM = C_KILL = 2
+               } //end if
+               self = oself; // Restore context
+            } //end if
+            // ===========================
+
             rnum = attacker.weapon;
             if ((rnum == IT_AXE))
             {

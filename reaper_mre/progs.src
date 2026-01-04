@@ -36,6 +36,7 @@ shalrath.qc
 enforcer.qc
 oldone.qc
 botmath.qc
+botchat.qc
 botfight.qc
 botthink.qc
 botspawn.qc

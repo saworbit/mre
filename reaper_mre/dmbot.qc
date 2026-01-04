@@ -1,3 +1,5 @@
+// Forward declaration for chat system (defined in botchat.qc)
+void (float ctx, entity targ) BotChat;
 
 void () bot_start = [12.000, bot_walk]
 {
@@ -637,6 +639,15 @@ void () BotDie =
    {
       return ;
    } //end if
+
+   // ===== CHAT HOOK: DEATH =====
+   // Bot complains/makes excuses when dying (40% chance)
+   if ((random () < 0.400))
+   {
+      BotChat (MOVETYPE_WALK,world); // MOVETYPE_WALK = C_DEATH = 3
+   } //end if
+   // ============================
+
    // Death streak: track consecutive deaths for adaptive skill tuning.
    self.death_streak = (self.death_streak + TRUE);
    self.kill_streak = CAM_IDLE;

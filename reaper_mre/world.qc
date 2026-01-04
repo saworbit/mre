@@ -6,6 +6,9 @@ void () clientInitMaxClients;
 // Forward declaration for portal awareness (defined in botroute.qc)
 void () LinkTeleporters;
 
+// Forward declaration for chat system (defined in botchat.qc)
+void () InitChatSystem;
+
 void () main =
 {
    dprint ("main function\n");
@@ -128,6 +131,8 @@ void () worldspawn =
    lastspawn = world;
    InitBodyQue ();
    CamSpawn ();
+   // Initialize chat system constants and globals
+   InitChatSystem ();
    // PHASE 1 FIX: Don't override sv_gravity - read server's value instead
    // Special maps can set their own gravity in worldspawn if needed
    // setBotGravity() will read whatever the server has configured
