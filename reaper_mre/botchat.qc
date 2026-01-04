@@ -20,10 +20,14 @@
 // Called once from worldspawn to initialize global chat state
 void () InitChatSystem =
 {
+   // Create dedicated entity for chat state (can't use world entity)
+   chat_state = spawn();
+   chat_state.classname = "chat_state";
+
    // Initialize global chat state
-   world.chat_time = FALSE;
-   world.chat_type = FALSE;
-   world.last_speaker = world;
+   chat_state.chat_time = FALSE;
+   chat_state.chat_type = FALSE;
+   chat_state.last_speaker = world;
 }; //end of the function InitChatSystem
 
 // ===== HELPER: PRINT MESSAGE =====
@@ -274,9 +278,9 @@ void (entity victim) ChatKill =
          {
             ChatPrint ("axed");
          } //end if
-         world.chat_time = time;
-         world.chat_type = C_KILL;
-         world.last_speaker = self;
+         chat_state.chat_time = time;
+         chat_state.chat_type = C_KILL;
+         chat_state.last_speaker = self;
          return ;
       } //end if
 
@@ -290,9 +294,9 @@ void (entity victim) ChatKill =
          {
             ChatPrint ("splash damage baby");
          } //end if
-         world.chat_time = time;
-         world.chat_type = C_KILL;
-         world.last_speaker = self;
+         chat_state.chat_time = time;
+         chat_state.chat_type = C_KILL;
+         chat_state.last_speaker = self;
          return ;
       } //end if
 
@@ -306,18 +310,18 @@ void (entity victim) ChatKill =
          {
             ChatPrint ("fried");
          } //end if
-         world.chat_time = time;
-         world.chat_type = C_KILL;
-         world.last_speaker = self;
+         chat_state.chat_time = time;
+         chat_state.chat_type = C_KILL;
+         chat_state.last_speaker = self;
          return ;
       } //end if
 
       if ((self.weapon == IT_GRENADE_LAUNCHER))
       {
          ChatPrint ("eat grenades");
-         world.chat_time = time;
-         world.chat_type = C_KILL;
-         world.last_speaker = self;
+         chat_state.chat_time = time;
+         chat_state.chat_type = C_KILL;
+         chat_state.last_speaker = self;
          return ;
       } //end if
    } //end if
@@ -544,9 +548,9 @@ void (entity victim) ChatKill =
    } //end if
 
    // Register this event for replies
-   world.chat_time = time;
-   world.chat_type = C_KILL;
-   world.last_speaker = self;
+   chat_state.chat_time = time;
+   chat_state.chat_type = C_KILL;
+   chat_state.last_speaker = self;
 }; //end of the function ChatKill
 
 // ===== 3. DEATH EXCUSES (The Rager Excuse Generator 3000) =====
@@ -743,9 +747,9 @@ void (entity killer) ChatDeath =
    } //end if
 
    // Register this event for replies
-   world.chat_time = time;
-   world.chat_type = C_DEATH;
-   world.last_speaker = self;
+   chat_state.chat_time = time;
+   chat_state.chat_type = C_DEATH;
+   chat_state.last_speaker = self;
 }; //end of the function ChatDeath
 
 // ===== 4. IDLE BANTER (Roaming) - MASSIVELY EXPANDED =====
@@ -1208,19 +1212,19 @@ void () CheckChatReply =
    local float r;
 
    // If no recent chat activity, bail out (expanded window from 2s to 3s for more interactions)
-   if ((time > (world.chat_time + 3.000)))
+   if ((time > (chat_state.chat_time + 3.000)))
    {
       return ;
    } //end if
 
    // Don't reply to yourself
-   if ((world.last_speaker == self))
+   if ((chat_state.last_speaker == self))
    {
       return ;
    } //end if
 
    // No chat event registered
-   if ((world.chat_time == FALSE))
+   if ((chat_state.chat_time == FALSE))
    {
       return ;
    } //end if
@@ -1234,7 +1238,7 @@ void () CheckChatReply =
    } //end if
 
    // === SCENARIO: SOMEONE GOT A KILL ===
-   if ((world.chat_type == C_KILL))
+   if ((chat_state.chat_type == C_KILL))
    {
       if ((self.personality == PERS_RAGER))
       {
@@ -1418,15 +1422,15 @@ void () CheckChatReply =
       } //end if
 
       // Clear to prevent spam loop
-      world.chat_time = FALSE;
+      chat_state.chat_time = FALSE;
    }
    else
    {
       // === SCENARIO: SOMEONE DIED COMPLAINING ===
-      if ((world.chat_type == C_DEATH))
+      if ((chat_state.chat_type == C_DEATH))
       {
          // If last speaker was a RAGER complaining
-         if ((world.last_speaker.personality == PERS_RAGER))
+         if ((chat_state.last_speaker.personality == PERS_RAGER))
          {
             if ((self.personality == PERS_PRO))
             {
@@ -1578,7 +1582,7 @@ void () CheckChatReply =
          else
          {
             // If last speaker was a NOOB
-            if ((world.last_speaker.personality == PERS_NOOB))
+            if ((chat_state.last_speaker.personality == PERS_NOOB))
             {
                if ((self.personality == PERS_PRO))
                {
@@ -1680,7 +1684,7 @@ void () CheckChatReply =
             else
             {
                // === NEW: Respond to PRO death (rare but respectful) ===
-               if ((world.last_speaker.personality == PERS_PRO))
+               if ((chat_state.last_speaker.personality == PERS_PRO))
                {
                   if ((self.personality == PERS_PRO))
                   {
@@ -1713,7 +1717,7 @@ void () CheckChatReply =
                else
                {
                   // === NEW: Respond to CAMPER death (schadenfreude) ===
-                  if ((world.last_speaker.personality == PERS_CAMPER))
+                  if ((chat_state.last_speaker.personality == PERS_CAMPER))
                   {
                      if ((self.personality == PERS_RAGER))
                      {
@@ -1746,7 +1750,7 @@ void () CheckChatReply =
                   else
                   {
                      // === NEW: Respond to MEMELORD death (meme on meme violence) ===
-                     if ((world.last_speaker.personality == PERS_MEMELORD))
+                     if ((chat_state.last_speaker.personality == PERS_MEMELORD))
                      {
                         if ((self.personality == PERS_MEMELORD))
                         {
@@ -1772,12 +1776,12 @@ void () CheckChatReply =
          } //end if
 
          // Clear to prevent spam loop
-         world.chat_time = FALSE;
+         chat_state.chat_time = FALSE;
       }
       else
       {
          // === NEW: SCENARIO: RESPOND TO IDLE BANTER ===
-         if ((world.chat_type == C_IDLE))
+         if ((chat_state.chat_type == C_IDLE))
          {
             if ((self.personality == PERS_RAGER))
             {
@@ -1853,7 +1857,7 @@ void () CheckChatReply =
             } //end if
 
             // Clear to prevent spam loop
-            world.chat_time = FALSE;
+            chat_state.chat_time = FALSE;
          } //end if
       } //end if
    } //end if
@@ -1946,3 +1950,4 @@ void (float ctx, entity targ) BotChat =
       } //end if
    } //end if
 }; //end of the function BotChat
+

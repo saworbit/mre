@@ -140,12 +140,13 @@ void end_sys_globals;
 .string noise1;
 .string noise2;
 .string noise3;
+void end_sys_fields;
 .float personality;
 .float chat_cooldown;
-.float chat_time;       // Stores global chat timestamp (on world entity)
-.float chat_type;       // Stores global chat type (on world entity)
-.entity last_speaker;   // Stores global last speaker (on world entity)
-void end_sys_fields;
+.float chat_time;       // Stores global chat timestamp (on chat_state entity)
+.float chat_type;       // Stores global chat type (on chat_state entity)
+.entity last_speaker;   // Stores global last speaker (on chat_state entity)
+entity chat_state;      // Dedicated entity for storing global chat state
 float FALSE    = 0.000;
 float TRUE    = 1.000;
 float FL_FLY    = 1.000;
