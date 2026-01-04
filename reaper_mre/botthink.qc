@@ -638,19 +638,50 @@ void () BotPostThink =
    {
       // Bot is airborne and has an active navigation goal—simulate landing position
       local vector pred_pos;
+      local vector steer_dir;
+      local float hazard_ahead;
       pred_pos = (self.origin + (self.velocity * think_delay));
 
-      // Check if goal would still be reachable from predicted landing spot
-      // TrueReachable uses strict physics checks (jump arcs, collision traces)
-      if (!TrueReachable (self.goalentity))
+      // HAZARD AVOIDANCE: Check if landing in lava/slime
+      // Trace downward from predicted position to find landing surface
+      traceline (pred_pos, (pred_pos - '0.000 0.000 128.000'), TRUE, self);
+      hazard_ahead = FALSE;
+      if ((trace_fraction < 1.000))
       {
-         // Goal unreachable from current trajectory—dampen horizontal velocity for correction
-         // 0.8 multiplier reduces speed gently, allowing bot to adjust aim without full stop
-         // Preserves vertical velocity (gravity) so jump arc timing stays intact
-         self.velocity_x = (self.velocity_x * 0.800);
-         self.velocity_y = (self.velocity_y * 0.800);
-         // NOTE: Repeated checks create gradual steering—bot "air-brakes" toward safer angles.
-         // This simulates human player adjusting strafe mid-jump when they misjudge distance.
+         // Found ground - check if it's hazardous
+         local float content;
+         content = pointcontents ((trace_endpos + '0.000 0.000 8.000'));
+         if (((content == CONTENT_LAVA) || (content == CONTENT_SLIME)))
+         {
+            hazard_ahead = TRUE;
+         } //end if
+      } //end if
+
+      // If heading toward hazard, steer perpendicular to current direction
+      if (hazard_ahead)
+      {
+         // Emergency air-steer AWAY from hazard
+         // Rotate velocity 90 degrees to side (perpendicular escape)
+         steer_dir = '0.000 0.000 0.000';
+         steer_dir_x = (0 - self.velocity_y); // Rotate velocity vector 90°
+         steer_dir_y = self.velocity_x;
+         steer_dir_z = self.velocity_z; // Keep vertical momentum
+         self.velocity = (steer_dir * 0.900); // 90% speed to maintain some momentum
+      } //end if
+      else
+      {
+         // Check if goal would still be reachable from predicted landing spot
+         // TrueReachable uses strict physics checks (jump arcs, collision traces)
+         if (!TrueReachable (self.goalentity))
+         {
+            // Goal unreachable from current trajectory—dampen horizontal velocity for correction
+            // 0.8 multiplier reduces speed gently, allowing bot to adjust aim without full stop
+            // Preserves vertical velocity (gravity) so jump arc timing stays intact
+            self.velocity_x = (self.velocity_x * 0.800);
+            self.velocity_y = (self.velocity_y * 0.800);
+            // NOTE: Repeated checks create gradual steering—bot "air-brakes" toward safer angles.
+            // This simulates human player adjusting strafe mid-jump when they misjudge distance.
+         } //end if
       } //end if
    } //end if
    // ===== END TWEAK #3 =====

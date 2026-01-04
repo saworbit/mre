@@ -421,5 +421,9 @@ void (entity client, string s) centerprint = #73;
 void (vector pos, string samp, float vol, float atten) ambientsound = #74; 
 string (string s) precache_model2 = #75; 
 string (string s) precache_sound2 = #76; 
-string (string s) precache_file2 = #77; 
-void (entity e) setspawnparms = #78; 
+string (string s) precache_file2 = #77;
+void (entity e) setspawnparms = #78;
+
+// ===== MAP WAYPOINT LOADERS (Forward Declarations) =====
+void () LoadMapWaypoints_dm4;
+// ===== END FORWARD DECLARATIONS =====

@@ -540,7 +540,8 @@ float /* ERROR: Could not determine return type */ (float vz, float dist, float 
    // If target is too high for normal jump (>MAXJUMP), check if RJ is physically possible.
    // Uses precise physics calculation (V₀²/2g) instead of arbitrary 1.5× threshold.
    // Prevents bots from attempting impossible RJs (e.g., 500-unit walls).
-   if ((diffz > MAXJUMP))
+   // REFACTOR: Added check for Horizontal Speed/Gaps (dis > 350) to trigger dynamic RJs
+   if ((diffz > MAXJUMP) || ((dis > 350.000) && (self.weapon == IT_ROCKET_LAUNCHER)))
    {
       if (((self.ammo_rockets > 0) && (self.skil > 2.000)))
       {
@@ -785,14 +786,15 @@ float() bot_rocket_jump =
 
    // 3. Dynamic Pitch Selection
    // Default to vertical jump (high ledges)
-   pitch_aim = 85.000;
+   // NEGATIVE pitch = looking DOWN (positive = up, which fires rocket into sky!)
+   pitch_aim = -85.000;
 
    // Check if we need distance (gap crossing) instead of just height
    // If target is far away (>300u) and not too high above us (<64u)
    if (((dist > 300.000) && ((self.goalentity.origin_z - self.origin_z) < 64.000)))
    {
       // Shallow angle: shoots rocket behind bot to push them forward
-      pitch_aim = 45.000;
+      pitch_aim = -45.000;
    } //end if
 
    // 4. Set Aim Angles
@@ -1469,7 +1471,8 @@ void (float dist) Botmovetogoal =
    vert_dist = (self.goalentity.origin_z - self.origin_z);
    horiz_dist = vlen ((self.goalentity.origin - self.origin));
    // If target is close horizontally (<100) but high vertically (>60)
-   if ((horiz_dist < 100.000))
+   // REFACTOR: Increased horiz_dist from 100 to 300 to allow RJs from further away
+   if ((horiz_dist < 300.000))
    {
       if ((vert_dist > 60.000))
       {
@@ -1484,8 +1487,8 @@ void (float dist) Botmovetogoal =
                   if ((time > self.rj_cooldown))
                   {
                      // Execute rocket jump!
-                     // Look straight down
-                     self.angles_x = 80.000;
+                     // Look straight DOWN (NEGATIVE pitch = down, positive = up!)
+                     self.angles_x = -80.000;
                      makevectors (self.angles);
                      // Fire!
                      W_FireRocket ();

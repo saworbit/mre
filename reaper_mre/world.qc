@@ -245,6 +245,24 @@ void () StartFrame =
    {
       LinkTeleporters ();
       dprint ("Bots have linked teleporter networks.\n");
+
+      // Load saved waypoints for this map (if available)
+      local string map;
+      map = mapname;
+      bprint ("Checking for waypoints: mapname = '");
+      bprint (map);
+      bprint ("'\n");
+      if ((map == "dm4"))
+      {
+         LoadMapWaypoints_dm4 ();
+         bprint ("Loaded 181 waypoints for DM4\n");
+      } //end if
+      else
+      {
+         bprint ("No waypoint file for map: ");
+         bprint (map);
+         bprint ("\n");
+      } //end else
    } //end if
    // ===== END PORTAL AWARENESS =====
 

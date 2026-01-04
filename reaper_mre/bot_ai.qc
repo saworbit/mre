@@ -674,6 +674,24 @@ void (float dist, float turn) aibot_run_slide =
    {
       return ;
    } //end if
+
+   // ===== VERTICAL PURSUIT FIX: Ledge Jumping =====
+   // If strafing failed (blocked by wall or ledge) and enemy is BELOW us,
+   // try jumping to pursue. (Fixes getting stuck on dm4 top ledges)
+   if ((self.enemy.origin_z < (self.origin_z - 32.000)))
+   {
+      // Only jump if facing roughly towards the enemy
+      if (infrontofbot (self.enemy))
+      {
+         // Attempt a forward jump (300 u/s) to clear the ledge
+         if (Bot_tryjump (300.000,dis,FALSE))
+         {
+            return ;
+         } //end if
+      } //end if
+   } //end if
+   // ===============================================
+
    self.strafetime = FALSE;
    if ((self.lefty & STRAFE_DIR))
    {

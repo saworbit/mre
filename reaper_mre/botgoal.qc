@@ -411,11 +411,12 @@ float (entity e) itemweight =
    {
       if (!OK_HIGH)
       {
-         // ===== ENHANCED TWEAK: Rocket Jump Reachability (Gap Crosser) =====
-         // If item is high (up to 450 units), but we have a Rocket Launcher,
-         // Health, and Ammo, we MARK IT AS REACHABLE instead of ignoring it.
-         // This enables bots to reach Quad Damage on DM2 and similar high ledges.
+         // ===== ENHANCED TWEAK: Rocket Jump Reachability (Gap Crosser + Horizontal RJ) =====
+         // If item is high (up to 450 units) OR far horizontally (>350 units), but we have
+         // a Rocket Launcher, Health, and Ammo, we MARK IT AS REACHABLE instead of ignoring it.
+         // This enables bots to reach Quad Damage on DM2, cross gaps on DM3, and use RJ for mobility.
          local float can_rj;
+         local float horiz_dist;
          can_rj = FALSE;
          if (((self.items & IT_ROCKET_LAUNCHER) && (self.ammo_rockets >= 1.000)))
          {
@@ -425,6 +426,16 @@ float (entity e) itemweight =
             } //end if
          } //end if
 
+         // Calculate horizontal distance to item (ignore Z axis for gap measurement)
+         local vector item_xy;
+         local vector bot_xy;
+         bot_xy = self.origin;
+         bot_xy_z = 0;
+         item_xy = e.origin;
+         item_xy_z = 0;
+         horiz_dist = vlen((item_xy - bot_xy));
+
+         // Check VERTICAL reachability (high ledges)
          if ((e.absmin_z > (self.origin_z + MAXJUMP)))
          {
             // If we can RJ and it's within "Rocket Jump Height" (approx 450u)
@@ -436,8 +447,26 @@ float (entity e) itemweight =
             } //end if
             else
             {
-               // Truly unreachable
+               // Truly unreachable vertically
                weight = DONT_WANT;
+            } //end if
+         } //end if
+
+         // Check HORIZONTAL reachability (distant items across gaps or open areas)
+         // NEW: With horizontal RJ trigger (dis > 350), distant items become accessible
+         if ((horiz_dist > 350.000))
+         {
+            if (can_rj)
+            {
+               // Item is far but RJ-accessible for speed/gap crossing
+               // Boost weight because bot will use dynamic RJ to reach it
+               weight = (weight * 1.300);
+            } //end if
+            else
+            {
+               // Too far without RJ capability - reduce priority
+               // (Don't set DONT_WANT because pathfinding might find route)
+               weight = (weight * 0.700);
             } //end if
          } //end if
          // ===== END ENHANCED TWEAK =====
