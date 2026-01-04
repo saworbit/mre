@@ -27,7 +27,7 @@ void () endEnemy =
    self.nextthink = (time + 0.100);
    self.search_time = (time - TRUE);
    self.enemyrun = FALSE;
-   self.goalentity.goalentity = self.goalentity;
+   Stack_Pop_Safe();  // Restore previous goal from stack (Phase 8: Target Stack)
    if ((olden.classname == "player"))
    {
       if ((olden.enemy == self))
@@ -36,6 +36,95 @@ void () endEnemy =
       } //end if
    } //end if
 }; //end of the function endEnemy
+
+// ===== PHASE 8: Target Stack (Brain Memory) =====
+// LIFO stack for goal management - bots remember interrupted goals
+// and restore them after combat instead of forgetting and wandering.
+
+// Stack_Push: Save current goal and push onto stack (LIFO order)
+// Called when: Bot spots enemy while pursuing item/location
+void () Stack_Push =
+{
+   // Shift stack: level 2 → level 3, level 1 → level 2
+   self.goal_stack3 = self.goal_stack2;
+   self.goal_stack2 = self.goal_stack1;
+   // Save current goal to level 1 (top of stack)
+   self.goal_stack1 = self.goalentity.goalentity;
+}; //end of Stack_Push
+
+// Stack_Pop: Restore previous goal from stack (LIFO order)
+// Called when: Combat ends, restore pre-combat goal
+void () Stack_Pop =
+{
+   // Restore goal from level 1 (top of stack)
+   self.goalentity.goalentity = self.goal_stack1;
+   // Shift stack down: level 2 → level 1, level 3 → level 2
+   self.goal_stack1 = self.goal_stack2;
+   self.goal_stack2 = self.goal_stack3;
+   self.goal_stack3 = world;  // Clear deepest level
+}; //end of Stack_Pop
+
+// Stack_Clear: Wipe all stack entries
+// Called when: Bot respawns after death
+void () Stack_Clear =
+{
+   self.goal_stack1 = world;
+   self.goal_stack2 = world;
+   self.goal_stack3 = world;
+}; //end of Stack_Clear
+
+// Stack_Pop_Safe: Pop and validate goals until valid one found or stack empty
+// Skips invalid goals (picked up items, dead enemies, removed entities)
+// Called when: Combat ends, need to restore valid pre-combat goal
+void () Stack_Pop_Safe =
+{
+   local entity tempgoal;
+   local float valid_goal_found;
+
+   valid_goal_found = FALSE;
+
+   // Try up to 3 times (depth of stack)
+   while ((!valid_goal_found) && (self.goal_stack1 != world))
+   {
+      tempgoal = self.goal_stack1;
+      Stack_Pop();  // Pop goal from stack
+
+      // Validate goal is still worth pursuing
+      if (tempgoal != world)
+      {
+         // Skip if entity was removed
+         if (tempgoal.classname == "")
+         {
+            continue;  // Try next stack entry
+         }
+         // Skip if item already picked up
+         if ((tempgoal.flags & FL_ITEM))
+         {
+            if (tempgoal.model == "")
+            {
+               continue;  // Item picked up, try next stack entry
+            }
+         }
+         // Skip if enemy is dead
+         if ((tempgoal.classname == "player") || (tempgoal.classname == "dmbot"))
+         {
+            if (tempgoal.deadflag != DEAD_NO)
+            {
+               continue;  // Enemy dead, try next stack entry
+            }
+         }
+         // Goal is valid! Restore it
+         self.goalentity.goalentity = tempgoal;
+         valid_goal_found = TRUE;
+      }
+   }
+
+   // If no valid goal found in stack, fall back to choosing new goal
+   if (!valid_goal_found)
+   {
+      self.goalentity.goalentity = self.goalentity;  // Reset to idle
+   }
+}; //end of Stack_Pop_Safe
 
 // ===== PHASE 7: Threat Scoring for Projectile Dodge Prioritization =====
 // Calculates enemy threat score based on health, armor, weapon, and powerups.
@@ -368,6 +457,7 @@ void () BotHuntTarget =
    {
       self.lefty = (self.lefty - ONTRAIN);
    } //end if
+   Stack_Push();  // Save current goal before redirecting to enemy (Phase 8: Target Stack)
    self.goalentity.goalentity = self.enemy;
    if ((self.enemy.enemy == world))
    {

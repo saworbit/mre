@@ -148,6 +148,9 @@ void end_sys_fields;
 .entity last_speaker;   // Stores global last speaker (on chat_state entity)
 entity chat_state;      // Dedicated entity for storing global chat state
 .entity avoid;          // Projectile being actively dodged (Phase 7: Active Projectile Dodging)
+.entity goal_stack1;    // Goal memory level 1 (Phase 8: Target Stack - Brain Memory)
+.entity goal_stack2;    // Goal memory level 2 (Phase 8: Target Stack - Brain Memory)
+.entity goal_stack3;    // Goal memory level 3 (Phase 8: Target Stack - Brain Memory)
 float FALSE    = 0.000;
 float TRUE    = 1.000;
 float FL_FLY    = 1.000;
@@ -428,4 +431,10 @@ void (entity e) setspawnparms = #78;
 
 // ===== MAP WAYPOINT LOADERS (Forward Declarations) =====
 void () LoadMapWaypoints_dm4;
+
+// ===== PHASE 8: Target Stack Functions (Forward Declarations) =====
+void () Stack_Push;
+void () Stack_Pop;
+void () Stack_Clear;
+void () Stack_Pop_Safe;
 // ===== END FORWARD DECLARATIONS =====

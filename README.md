@@ -24,6 +24,28 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 ## 🎬 Latest Features (2026-01)
 
+### 🧠 PHASE 8: Target Stack (Brain Memory) (2026-01-05)
+
+**NEW:** Bots now remember interrupted goals across combat encounters!
+
+Before Phase 8, bots would **forget** what they were doing when an enemy appeared:
+- ❌ Bot pursuing Mega Health → spots enemy → fights → **forgets Mega Health** → wanders aimlessly
+
+After Phase 8, bots have **actual memory** that persists through combat:
+- ✅ Bot pursuing Mega Health → spots enemy → **saves Mega to stack** → fights → **restores Mega from stack** → resumes pursuit!
+
+**Technical Implementation:**
+- 🗂️ **3-deep LIFO goal stack** — Remembers up to 3 levels of interrupted goals (`.goal_stack1`, `.goal_stack2`, `.goal_stack3`)
+- 💾 **Stack_Push()** — Saves current goal when enemy spotted, shifts stack downward
+- 🔄 **Stack_Pop_Safe()** — Restores previous goal with validation (skips picked-up items, dead enemies)
+- 🆕 **Stack_Clear()** — Wipes stack on bot respawn for fresh start
+- 🎯 **Smart integration** — BotHuntTarget() pushes goals, endEnemy() pops them
+
+**Multi-Level Interruptions:**
+Handles complex scenarios like combat → combat → combat. Bot pursuing RA → enemy #1 spotted → **saves RA** → enemy #2 spotted → **saves enemy #1** → kills enemy #2 → **restores enemy #1** → kills enemy #1 → **restores RA** → gets RA!
+
+**Result:** Bots complete missions instead of getting distracted! No more wandering aimlessly after fights. Massive intelligence upgrade that makes bots feel purposeful and goal-oriented. Build size: 450,666 bytes (+912 bytes). 🧠💾✅
+
 ### 🚀 Critical Rocket Jump Fixes (2026-01-04)
 
 **FIXED:** Bots were firing rockets into the sky instead of at their feet!
@@ -420,6 +442,7 @@ Advanced **path_corner chain prediction** for moving platforms:
 
 | Feature | Description |
 |---------|-------------|
+| 🧠 **Target Stack (Phase 8)** | 3-deep LIFO goal memory—bots remember interrupted missions across combat (pursuing Mega → enemy → fight → **restore Mega**) |
 | 📊 **Risk-Aware Scoring** | Need-based item boosts minus threat penalty (proximity -80 max) |
 | 🎒 **Smart Backpack Scavenging** | Intelligent prioritization when starving for weapons/ammo (3000 weight if missing RL/LG) |
 | ⚔️ **Weapon Counter-Tactics** | Rock-paper-scissors logic: RL counters LG (knockback), LG counters RL (hitscan) |

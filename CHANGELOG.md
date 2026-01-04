@@ -1,5 +1,16 @@
 ## 2026-01-05
 
+- **PHASE 8: Target Stack (Brain Memory)** for intelligent goal restoration after combat:
+  - **LIFO goal stack** in `reaper_mre/defs.qc` (lines 151-153): Added 3-deep goal memory using entity fields (`.goal_stack1`, `.goal_stack2`, `.goal_stack3`) after `end_sys_fields` marker. Bots now remember up to 3 levels of interrupted goals instead of forgetting them when enemy spotted.
+  - **Stack_Push() function** in `reaper_mre/bot_ai.qc` (lines 46-53): Saves current goal before redirecting to enemy. Shifts stack (level 2 → level 3, level 1 → level 2), then stores current `goalentity.goalentity` to level 1 (top of stack). Called when bot spots enemy during item pursuit.
+  - **Stack_Pop() function** in `reaper_mre/bot_ai.qc` (lines 57-65): Restores previous goal from stack. Pops level 1 to `goalentity.goalentity`, shifts stack down (level 2 → level 1, level 3 → level 2), clears level 3. Basic LIFO restoration without validation.
+  - **Stack_Clear() function** in `reaper_mre/bot_ai.qc` (lines 69-74): Wipes all 3 stack levels by setting to `world`. Called in `client.qc` (line 499) during `PutClientInServer()` to ensure fresh stack on bot respawn/initial spawn.
+  - **Stack_Pop_Safe() function** in `reaper_mre/bot_ai.qc` (lines 79-127): Intelligent goal restoration with validation. Iterates through stack up to 3 times, skipping invalid goals: removed entities (`classname == ""`), picked-up items (`FL_ITEM` with empty `model`), dead players/bots (`deadflag != DEAD_NO`). Falls back to idle goal reset if no valid goals found.
+  - **BotHuntTarget() integration** in `reaper_mre/bot_ai.qc` (line 460): Added `Stack_Push()` call immediately before `self.goalentity.goalentity = self.enemy` to save current goal before combat redirection. Ensures pre-combat goal is preserved when enemy spotted.
+  - **endEnemy() integration** in `reaper_mre/bot_ai.qc` (line 30): Replaced `self.goalentity.goalentity = self.goalentity` (goal reset) with `Stack_Pop_Safe()` call. When combat ends, bots now restore previous goal instead of wandering/choosing new random goal.
+  - **Forward declarations** in `reaper_mre/defs.qc` (lines 435-439): Added forward declarations for all 4 stack functions to enable calls from `client.qc` (compiles before `bot_ai.qc` in `progs.src`). Prevents "Unknown value" compilation errors.
+  - **Result:** Bots now remember interrupted missions! Example flow: Bot pursuing Mega Health → spots enemy → **saves Mega to stack** → fights → kills → **restores Mega from stack** → resumes pursuit. No more forgetting goals and wandering aimlessly after combat. Handles multi-level interruptions (combat → combat → combat, pops 3× to original goal). Build size: 450,666 bytes (+912 bytes for goal stack system). 🧠💾✅
+
 - **DM4 Waypoint Expansion (452 nodes)** from Phase 7 gameplay testing:
   - **109 new waypoints discovered**: Expanded from 343 to 452 nodes through Phase 7 gameplay session. New routes include high-traffic combat zones and ledge positions used during projectile dodging tests.
   - **Python script enhancements** in `tools/generate_dm4_waypoints.py`: Fixed QuakeC string escape handling (doubled single quotes `''` → single quote `'`), proper empty string conversion (`,  ')` → `, "")` for target parameter, updated to extract 452 waypoints instead of 343.

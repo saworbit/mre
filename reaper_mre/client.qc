@@ -496,6 +496,7 @@ void () PutClientInServer =
    self.invincible_finished = FALSE;
    self.effects = FALSE;
    self.invincible_time = FALSE;
+   Stack_Clear();  // Clear goal stack on respawn (Phase 8: Target Stack)
    DecodeLevelParms ();
    W_SetCurrentAmmo ();
    self.attack_finished = time;
