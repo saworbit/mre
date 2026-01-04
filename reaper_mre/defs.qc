@@ -147,6 +147,7 @@ void end_sys_fields;
 .float chat_type;       // Stores global chat type (on chat_state entity)
 .entity last_speaker;   // Stores global last speaker (on chat_state entity)
 entity chat_state;      // Dedicated entity for storing global chat state
+.entity avoid;          // Projectile being actively dodged (Phase 7: Active Projectile Dodging)
 float FALSE    = 0.000;
 float TRUE    = 1.000;
 float FL_FLY    = 1.000;

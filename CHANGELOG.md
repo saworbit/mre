@@ -1,5 +1,14 @@
 ## 2026-01-05
 
+- **PHASE 7: Active Projectile Dodging** for FrikBot-inspired evasion AI:
+  - **Threat scoring system** in `reaper_mre/bot_ai.qc` (`bot_size_player()` function, lines 44-86): Calculates enemy threat score based on health (base), armor (additive), weapon type (1.2× SNG, 1.3× RL, 1.5× LG multipliers), and powerups (4× quad damage, 2× pentagram). Higher score = prioritize dodging their projectiles.
+  - **Active projectile scanning** in `reaper_mre/bot_ai.qc` (`bot_dodge_stuff()` function, lines 93-225): Scans for incoming grenades (classname "grenade") and missiles (classname "missile") within 240 units. Uses 0.15s trajectory prediction to detect projectiles moving toward bot. Prioritizes grenades (1.0/dist rating) over rockets (0.5/dist rating) for optimal survival.
+  - **Perpendicular escape vectors** in `reaper_mre/bot_ai.qc`: Calculates 90° perpendicular dodge direction based on projectile velocity vector. Randomly chooses left/right perpendicular to avoid predictable patterns. Uses `anglemod()` to determine which side to dodge and sets `self.lefty STRAFE_DIR` flag accordingly.
+  - **Reaper movement adaptation**: Replaced FrikBot's `frik_walkmove()` with Reaper's native strafe system. Uses `self.lefty STRAFE_DIR` flag (set/clear) instead of FrikBot's `self.keys` bitflags. Integrates seamlessly with existing Reaper movement code.
+  - **Combat priority integration** in `reaper_mre/bot_ai.qc` (lines 828-837): Calls `bot_dodge_stuff()` BEFORE circle strafing logic at line 839. When projectile detected, dodge movement takes priority and returns early, skipping circle strafe. When no threat, falls through to normal orbital combat behavior.
+  - **Entity tracking** in `reaper_mre/defs.qc` (line 150): Added `.entity avoid;` field after `end_sys_fields` marker to track which projectile is being actively dodged. Prevents redundant dodge calculations for same projectile across multiple frames.
+  - **Result:** Bots now actively dodge incoming grenades and rockets with perpendicular evasion! Threat-aware prioritization (high-skill quad-damage RL players = top priority). Projectile dodging overrides circle strafing for survival. Build size: 444,194 bytes (+1,660 bytes for dodge system). 🚀🛡️
+
 - **CRITICAL BUGFIX: Chat system runtime crash resolution** for QuakeC world entity restrictions:
   - **Root cause identified**: QuakeC does not allow direct assignment to entity fields on the world entity. ChatDeath() function attempted `world.chat_time = time;` which triggered "assignment to world entity" fatal error during bot death events, crashing the game mid-session.
   - **Dedicated chat_state entity** in `reaper_mre/defs.qc` (line 149): Added `entity chat_state;` global declaration to hold chat state instead of using world entity. QuakeC allows assignments to spawned entities but restricts world entity field modifications.

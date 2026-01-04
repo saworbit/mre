@@ -413,7 +413,7 @@ Advanced **path_corner chain prediction** for moving platforms:
 | 🎯 **Floor Shooting (RL)** | Aims at enemy feet instead of chest for guaranteed splash damage (80+ even on miss) |
 | 🧱 **Corner Clipping (RL/GL)** | Fires splash weapons at walls/floors within 110u of hidden enemies |
 | 🛡️ **Suicide Prevention (RL)** | Prioritizes SSG/SNG/LG at melee range to avoid point-blank rocket deaths |
-| 🔫 **Weapon-Aware Evasion** | Rocket zigzags, strafe flips, LG jump bias |
+| 🔫 **Active Projectile Dodging** | Scans for grenades/missiles within 240u, calculates perpendicular escape vectors, prioritizes threats by owner skill + distance (Phase 7: FrikBot-inspired) |
 | 🧱 **Wall Sliding + Combat Hopping** | Vector slide + active bunny-hopping (20% vs RL, 10% combat, LG stable) |
 
 ### 🧠 Tactical AI

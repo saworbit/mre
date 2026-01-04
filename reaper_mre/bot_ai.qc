@@ -37,6 +37,194 @@ void () endEnemy =
    } //end if
 }; //end of the function endEnemy
 
+// ===== PHASE 7: Threat Scoring for Projectile Dodge Prioritization =====
+// Calculates enemy threat score based on health, armor, weapon, and powerups.
+// Higher score = more dangerous enemy = prioritize dodging their projectiles.
+// Returns: Threat score (0 = not a player, higher = more dangerous)
+float (entity e) bot_size_player =
+{
+   if ((e.classname != "player"))
+   {
+      return (0.000);
+   } //end if
+
+   // Base threat from health + armor
+   local float sz;
+   sz = (e.health + e.armorvalue);
+
+   // Weapon multipliers (more dangerous weapons = higher threat)
+   if ((e.weapon == IT_LIGHTNING))
+   {
+      sz = (sz * 1.500);
+   } //end if
+   else
+   {
+      if ((e.weapon == IT_ROCKET_LAUNCHER))
+      {
+         sz = (sz * 1.300);
+      } //end if
+      else
+      {
+         if ((e.weapon == IT_SUPER_NAILGUN))
+         {
+            sz = (sz * 1.200);
+         } //end if
+      } //end if
+   } //end if
+
+   // Powerup multipliers (quad/pent = extreme threat)
+   if ((e.items & IT_QUAD))
+   {
+      sz = (sz * 4.000);
+   } //end if
+   if ((e.items & IT_INVULNERABILITY))
+   {
+      sz = (sz * 2.000);
+   } //end if
+
+   return (sz);
+}; //end of the function bot_size_player
+
+// ===== PHASE 7: Active Projectile Dodging =====
+// Scans for incoming grenades/missiles and executes perpendicular evasion.
+// Prioritizes grenades over rockets, factors in owner threat level.
+// Adapted from FrikBot with Reaper movement system integration.
+// Returns: TRUE if dodging, FALSE if no threat detected
+float () bot_dodge_stuff =
+{
+   // Only dodge if we have an enemy (in combat mode)
+   if ((self.enemy == world))
+   {
+      return (FALSE);
+   } //end if
+
+   local entity item;
+   local float bestdist;
+   local float bestrating;
+   local float rating;
+   local float dist;
+   local vector org;
+
+   bestdist = 10000.000;
+   bestrating = 0.000;
+   item = world;
+
+   // ===== SCAN FOR GRENADES (highest priority) =====
+   local entity grenade;
+   grenade = find (world,classname,"grenade");
+   while ((grenade != world))
+   {
+      // Only dodge grenades moving toward us
+      org = (((grenade.origin + (grenade.velocity * 0.150)) - self.origin) - (self.velocity * 0.150));
+      if (((vlen (org) < vlen ((grenade.origin - self.origin))) && (vlen (org) < 240.000)))
+      {
+         // Calculate threat rating based on distance and owner
+         dist = vlen (org);
+         rating = (1.000 / dist);
+         if ((grenade.owner != world))
+         {
+            rating = (rating * bot_size_player (grenade.owner));
+         } //end if
+
+         // Track most threatening grenade
+         if ((rating > bestrating))
+         {
+            bestrating = rating;
+            bestdist = dist;
+            item = grenade;
+         } //end if
+      } //end if
+      grenade = find (grenade,classname,"grenade");
+   } //end while
+
+   // ===== SCAN FOR MISSILES (lower priority than grenades) =====
+   local entity missile;
+   missile = find (world,classname,"missile");
+   while ((missile != world))
+   {
+      // Only dodge missiles moving toward us
+      org = (((missile.origin + (missile.velocity * 0.150)) - self.origin) - (self.velocity * 0.150));
+      if (((vlen (org) < vlen ((missile.origin - self.origin))) && (vlen (org) < 240.000)))
+      {
+         // Calculate threat rating based on distance and owner
+         dist = vlen (org);
+         rating = (0.500 / dist);
+         if ((missile.owner != world))
+         {
+            rating = (rating * bot_size_player (missile.owner));
+         } //end if
+
+         // Track most threatening missile
+         if ((rating > bestrating))
+         {
+            bestrating = rating;
+            bestdist = dist;
+            item = missile;
+         } //end if
+      } //end if
+      missile = find (missile,classname,"missile");
+   } //end while
+
+   // ===== NO THREAT DETECTED =====
+   if ((item == world))
+   {
+      self.avoid = world;
+      return (FALSE);
+   } //end if
+
+   // ===== EXECUTE DODGE MOVEMENT =====
+   // Already dodging this projectile - don't recalculate
+   if ((self.avoid == item))
+   {
+      return (TRUE);
+   } //end if
+
+   // Calculate perpendicular escape vector based on projectile velocity
+   local vector norm;
+   local float dodge_dir;
+
+   norm = normalize (item.velocity);
+   // Choose left or right perpendicular based on which side is safer
+   // Perpendicular vector: rotate 90° either direction
+   if ((random () > 0.500))
+   {
+      dodge_dir = (vectoyaw (norm) + 90.000);
+   } //end if
+   else
+   {
+      dodge_dir = (vectoyaw (norm) - 90.000);
+   } //end if
+
+   // ===== REAPER MOVEMENT ADAPTATION =====
+   // Set strafe direction using Reaper's lefty flag system
+   // Determine which perpendicular direction to dodge based on angle
+   local float angle_diff;
+   angle_diff = anglemod ((dodge_dir - self.angles_y));
+
+   if ((angle_diff < 180.000))
+   {
+      // Dodge to the right - set STRAFE_DIR flag
+      if (!(self.lefty & STRAFE_DIR))
+      {
+         self.lefty = (self.lefty | STRAFE_DIR);
+      } //end if
+   } //end if
+   else
+   {
+      // Dodge to the left - clear STRAFE_DIR flag
+      if ((self.lefty & STRAFE_DIR))
+      {
+         self.lefty = (self.lefty - STRAFE_DIR);
+      } //end if
+   } //end if
+
+   // Mark this projectile as being actively dodged
+   self.avoid = item;
+
+   return (TRUE);
+}; //end of the function bot_dodge_stuff
+// ===== END PHASE 7: Active Projectile Dodging =====
+
 // ===== PROBLEM SOLVER: Button/Door Solver =====
 // Finds the button that triggers the given door entity.
 // Returns world if no button found (might be shootable or auto-opening).
@@ -636,6 +824,17 @@ void (float dist, float turn) aibot_run_slide =
          } //end if
       } //end if
    } //end if
+
+   // ===== PHASE 7: Active Projectile Dodging =====
+   // Check for incoming projectiles and dodge if threat detected
+   // Takes priority over circle strafing for survival
+   if (bot_dodge_stuff ())
+   {
+      // Projectile dodge in progress - skip circle strafing this frame
+      // The dodge system has already set self.lefty STRAFE_DIR for evasion
+      return ;
+   } //end if
+   // ===== END PHASE 7: Dodge Check =====
 
    // ===== CUNNING AI: Circle Strafing (Orbit Mode) =====
    // OLD: Flipped direction every 0.4s (erratic zigzag)
