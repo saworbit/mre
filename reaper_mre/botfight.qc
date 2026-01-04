@@ -51,224 +51,7 @@ vector (vector src, vector trg, float invMvel) leadtarget =
    return (tg);
 }; //end of the function leadtarget
 
-// ===== SQRT APPROXIMATION: Newton-Raphson Method =====
-// QuakeC doesn't have built-in sqrt(), so implement fast approximation.
-// Uses Newton's method: x_new = 0.5 * (x + n/x)
-// Converges quickly (3-4 iterations for good accuracy).
-float (float n) qc_sqrt =
-{
-   local float x;
-   local float x_new;
-   local float epsilon;
-
-   // Handle edge cases
-   if ((n <= FALSE))
-   {
-      return (FALSE);
-   } //end if
-
-   if ((n == TRUE))
-   {
-      return (TRUE);
-   } //end if
-
-   // Initial guess: n/2 (simple but works)
-   x = (n * 0.500);
-
-   // Newton-Raphson iteration (4 iterations = good accuracy)
-   epsilon = 0.001;
-
-   // Iteration 1
-   x_new = (0.500 * (x + (n / x)));
-   if ((fabs ((x_new - x)) < epsilon))
-   {
-      return (x_new);
-   } //end if
-   x = x_new;
-
-   // Iteration 2
-   x_new = (0.500 * (x + (n / x)));
-   if ((fabs ((x_new - x)) < epsilon))
-   {
-      return (x_new);
-   } //end if
-   x = x_new;
-
-   // Iteration 3
-   x_new = (0.500 * (x + (n / x)));
-   if ((fabs ((x_new - x)) < epsilon))
-   {
-      return (x_new);
-   } //end if
-   x = x_new;
-
-   // Iteration 4 (final)
-   x_new = (0.500 * (x + (n / x)));
-   return (x_new);
-}; //end of the function qc_sqrt
-// ===== END SQRT APPROXIMATION =====
-
-// ===== ORACLE AIMING: Quadratic Prediction (Perfect Interception) =====
-// Solves the interception problem: where to aim a projectile to hit a moving target.
-// Uses quadratic equation to find exact time-to-intercept based on:
-// - Projectile speed (e.g., 1000 u/s for rockets)
-// - Enemy velocity (current movement vector)
-// - Relative position (distance and direction to target)
-// This is mathematically perfect aim that accounts for perpendicular strafing.
-// Much more accurate than simple linear leading for skilled bots.
-vector (entity targ, float proj_speed) PredictAim =
-{
-   local vector D;
-   local vector v;
-   local float a;
-   local float b;
-   local float c;
-   local float det;
-   local float t1;
-   local float t2;
-   local float t;
-   local vector aim_spot;
-   local float sqrt_det;
-
-   // Calculate relative position vector (D = target - shooter)
-   D = (targ.origin - self.origin);
-
-   // Adjust for target height (aim at chest/center, not origin floor)
-   D_z = (D_z + ((targ.mins_z + targ.maxs_z) * 0.500));
-
-   // Get target velocity
-   v = targ.velocity;
-
-   // ===== QUADRATIC EQUATION SETUP =====
-   // Solving: t^2 * (v^2 - s^2) + t * (2 * D·v) + |D|^2 = 0
-   // Where: v = enemy velocity, s = projectile speed, D = relative position
-
-   // Coefficient a: (v·v - s^2)
-   a = ((v_x * v_x) + (v_y * v_y) + (v_z * v_z)) - (proj_speed * proj_speed);
-
-   // Coefficient b: 2 * (D·v)
-   b = (2.000 * ((D_x * v_x) + (D_y * v_y) + (D_z * v_z)));
-
-   // Coefficient c: |D|^2
-   c = ((D_x * D_x) + (D_y * D_y) + (D_z * D_z));
-
-   // ===== SOLVE DETERMINANT =====
-   det = ((b * b) - (4.000 * a * c));
-
-   // Impossible shot (imaginary solution) - just aim straight at them
-   if ((det < FALSE))
-   {
-      return (normalize (D));
-   } //end if
-
-   // ===== SOLVE FOR TIME (t) =====
-   sqrt_det = qc_sqrt (det);
-
-   // Two possible solutions (quadratic formula)
-   t1 = (((- b) + sqrt_det) / (2.000 * a));
-   t2 = (((- b) - sqrt_det) / (2.000 * a));
-
-   // Pick the smallest positive time (soonest intercept in future)
-   if (((t1 < FALSE) && (t2 < FALSE)))
-   {
-      // Both solutions are in the past - just aim straight
-      return (normalize (D));
-   } //end if
-
-   if ((t1 < FALSE))
-   {
-      t = t2;
-   } //end if
-   else
-   {
-      if ((t2 < FALSE))
-      {
-         t = t1;
-      } //end if
-      else
-      {
-         // Both positive - pick smaller (sooner intercept)
-         if ((t1 < t2))
-         {
-            t = t1;
-         } //end if
-         else
-         {
-            t = t2;
-         } //end if
-      } //end if
-   } //end if
-
-   // ===== CALCULATE INTERCEPT POINT =====
-   // Where the enemy will be at time t: origin + velocity * t
-   aim_spot = (targ.origin + (v * t));
-
-   // Return normalized direction vector to intercept point
-   return (normalize ((aim_spot - self.origin)));
-}; //end of the function PredictAim
-// ===== END ORACLE AIMING =====
-
-// ===== ARTILLERY SOLVER: Perfect Grenade Arc (Quadratic Equation) =====
-// Solves projectile motion equation to find optimal grenade aim point.
-// Uses full quadratic solution: θ = (v² ± sqrt(v⁴ - g(g·x² + 2·y·v²))) / (g·x)
-// Returns optimal aim vector. Returns world origin if shot impossible.
-// High-skill bots (skill > 2) use this for perfect mortar-style grenade arcs.
-vector (vector target_pos) SolveGrenadeArc =
-{
-   local vector v_diff;
-   local float dx;
-   local float dy;
-   local float v;
-   local float g;
-   local float term1;
-   local float root;
-   local float tan_angle; // tan(θ) instead of θ
-   local vector dir;
-   local float t;
-   local vector aim_point;
-
-   // Calculate horizontal distance and height difference
-   v_diff = (target_pos - self.origin);
-   dy = v_diff_z; // Height difference (vertical)
-   v_diff_z = FALSE;
-   dx = vlen (v_diff); // Horizontal distance
-   dir = normalize (v_diff); // Horizontal direction
-
-   // Quake physics constants
-   v = 600.000; // Grenade speed (units/second)
-   g = 800.000; // Gravity (units/second²)
-
-   // Quadratic discriminant: v⁴ - g(g·x² + 2·y·v²)
-   term1 = ((((v * v) * v) * v) - (g * (((g * dx) * dx) + (((2.000 * dy) * v) * v))));
-
-   // Check if shot is possible (discriminant must be non-negative)
-   if ((term1 < FALSE))
-   {
-      // Impossible shot: use fallback aim
-      return ('0.000 0.000 0.000'); // Signal failure with zero vector
-   } //end if
-
-   // Take square root of discriminant
-   root = qc_sqrt (term1);
-
-   // Two solutions: high arc (+ root) or low arc (- root)
-   // Use LOW ARC for direct combat: tan(θ) = (v² - sqrt) / (g·x)
-   tan_angle = ((((v * v) - root) / (g * dx))); // tan(θ)
-
-   // Calculate flight time from horizontal distance
-   // For low arc: t ≈ x / (v × cos(θ)) ≈ x / v (approximation for small angles)
-   t = (dx / v);
-
-   // Calculate vertical offset needed: z_offset = tan(θ) × dx
-   local float z_offset;
-   z_offset = (tan_angle * dx);
-
-   // Construct aim point: horizontal direction × distance + vertical offset
-   aim_point = ((self.origin + (dir * dx)) + ('0.000 0.000 1.000' * z_offset));
-
-   return (aim_point);
-}; //end of the function SolveGrenadeArc
-// ===== END ARTILLERY SOLVER =====
+// PHASE 4 REFACTOR: qc_sqrt, PredictAim, SolveGrenadeArc moved to botmath.qc
 
 // ===== TWEAK #2: Gravity arc simulation (full physics vs flat percentage) =====
 // Replaces percentage-based height guessing with real parabolic trajectory calculation.
@@ -854,11 +637,25 @@ void () W_BotAttack =
 {
    local float r;
    local float addt;
+   local float panic_fire;
 
-   // ===== HUMAN REACTION TIME: Block Firing During Delay =====
-   // Don't fire at enemy until reaction time has passed
-   if ((time < self.reaction_finished)) return;
-   // ===== END HUMAN REACTION TIME =====
+   // ===== PHASE 3 FIX: PANIC FIRE (Reaction Time Defense) =====
+   // During reaction delay, bots can "spray and pray" if enemy is close
+   panic_fire = FALSE;
+   if ((time < self.reaction_finished))
+   {
+      // Only panic fire if enemy is close (< 300 units)
+      if ((vlen ((self.enemy.origin - self.origin)) < 300.000))
+      {
+         panic_fire = TRUE;
+         // Continue to weapon firing with massive aim error below
+      } //end if
+      else
+      {
+         return ; // Too far to panic fire, just wait
+      } //end if
+   } //end if
+   // ===== END PHASE 3 FIX =====
 
    if (!W_CheckNoAmmo ())
    {
@@ -877,7 +674,21 @@ void () W_BotAttack =
    {
       addt = (addt + (random () * 0.300));
    } //end if
-   makevectors (self.v_angle);
+
+   // PHASE 3 FIX: Apply panic fire aim error
+   if (panic_fire)
+   {
+      // Force massive aim error (25 degrees random spread)
+      local vector panic_aim;
+      panic_aim = self.v_angle;
+      panic_aim_x = (panic_aim_x + ((random () * 50.000) - 25.000));
+      panic_aim_y = (panic_aim_y + ((random () * 50.000) - 25.000));
+      makevectors (panic_aim);
+   } //end if
+   else
+   {
+      makevectors (self.v_angle);
+   } //end if
    self.show_hostile = (time + TRUE);
    if ((self.weapon == IT_AXE))
    {

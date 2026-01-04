@@ -301,13 +301,24 @@ float (entity e) itemweight =
                // Add weight instead of subtracting!
                // "Come get some!" - Bot wants to fight near items when powerful
                threat = -500.000; // Negative threat = Bonus weight
+               // PHASE 3 FIX: Commit to this behavior for 3 seconds
+               self.bully_commit_time = (time + 3.000);
             }
             else
             {
-               // Standard behavior: Cautious/Smart avoid
-               // Enemy within 400 units of item—subtract risk penalty (closer = more dangerous)
-               // 0.2 multiplier scales threat: 400u away = 0 penalty, 0u away = 80 penalty
-               threat = ((400.000 - risk_dist) * 0.200);
+               if ((time < self.bully_commit_time))
+               {
+                  // PHASE 3 FIX: Sustain aggression even if Quad just dropped
+                  // Prevents instant decision flipping (hysteresis)
+                  threat = -500.000;
+               } //end if
+               else
+               {
+                  // Standard behavior: Cautious/Smart avoid
+                  // Enemy within 400 units of item—subtract risk penalty (closer = more dangerous)
+                  // 0.2 multiplier scales threat: 400u away = 0 penalty, 0u away = 80 penalty
+                  threat = ((400.000 - risk_dist) * 0.200);
+               } //end if
             }
             // ===== END BULLY MODE =====
          } //end if

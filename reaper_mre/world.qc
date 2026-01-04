@@ -128,15 +128,9 @@ void () worldspawn =
    lastspawn = world;
    InitBodyQue ();
    CamSpawn ();
-   if ((self.model == "maps/e1m8.bsp"))
-   {
-      cvar_set ("sv_gravity","100");
-
-   } //end if
-   else
-   {
-      cvar_set ("sv_gravity","800");
-   } //end if
+   // PHASE 1 FIX: Don't override sv_gravity - read server's value instead
+   // Special maps can set their own gravity in worldspawn if needed
+   // setBotGravity() will read whatever the server has configured
    W_Precache ();
    precache_sound ("demon/dland2.wav");
    precache_sound ("misc/h2ohit1.wav");
@@ -290,6 +284,26 @@ void () StartFrame =
       WAYPOINT_DUMP_TIME = FALSE;
    } //end if
    // ===== END AUTO WAYPOINT DUMP =====
+
+   // ===== PHASE 1 FIX: TRAFFIC HEATMAP DECAY =====
+   // Every 60 seconds, reduce traffic_score by 10% to prevent saturation
+   // Without decay, all nodes eventually become "highways" and the heatmap loses meaning
+   if ((time > (last_traffic_decay_time + 60.000)))
+   {
+      local entity node;
+
+      node = find (world,classname,"BotPath");
+      while (node)
+      {
+         if ((node.traffic_score > FALSE))
+         {
+            node.traffic_score = floor ((node.traffic_score * 0.900));
+         } //end if
+         node = find (node,classname,"BotPath");
+      } //end while
+      last_traffic_decay_time = time;
+   } //end if
+   // ===== END TRAFFIC HEATMAP DECAY =====
 }; //end of the function StartFrame
 
 void () bodyque =

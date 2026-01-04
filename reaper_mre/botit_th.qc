@@ -116,6 +116,8 @@ float (entity targ, entity inflictor) CanDamage;
 .float stuck_count;
 // Rocket jump cooldown timer: prevents spam RJ (2s delay between attempts).
 .float rj_cooldown;
+// PHASE 3 FIX: Rocket jump verification timer for failure recovery
+.float rj_verify_time;
 // Button shoot wait timer: tracks when bot last shot a button/shootable to pause for door opening.
 .float button_wait_time;
 // Weapon-aware evasion mode: 0 = none, 1 = zigzag (rockets), 2 = jump (lightning).
@@ -138,6 +140,8 @@ float (entity targ, entity inflictor) CanDamage;
 .entity movetarget5;
 .entity movetarget6;
 .entity lastbot;
+// PHASE 2 FIX: Cached nearest waypoint node (optimizes A* start node lookup)
+.entity current_node;
 // Tracks whether the bot is comfortably leading and should play denial-first.
 .float lead_score;
 // Flags that current goal requires special movement (rocket jump for high items).
@@ -177,6 +181,8 @@ float (entity targ, entity inflictor) CanDamage;
 .entity closed_next;
 // Human Reaction Time: timestamp when bot can start aiming/firing after acquiring new enemy.
 .float reaction_finished;
+// PHASE 3 FIX: Bully mode commitment timer (prevents instant decision flipping)
+.float bully_commit_time;
 // Nemesis System: tracks who killed this bot for revenge seeking.
 .entity nemesis;
 .float nemesis_time;
@@ -256,6 +262,8 @@ float NAMEBOTS;
 float WAYPOINT_DUMP_TIME;
 // A* Pathfinding: global search ID counter (increments each search to invalidate old state)
 float ASTAR_SEARCH_ID;
+// Traffic heatmap decay: tracks when to apply 10% decay to traffic_score (prevents saturation)
+float last_traffic_decay_time;
 
 void (entity noisemaker, entity noiseobject) signalnoise;
 float (entity e) hearnoise;

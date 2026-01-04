@@ -86,8 +86,13 @@ void () setBotGravity =
    local float rawgrav;
    local float guard;
 
-   // Read raw gravity for logging, then clamp to a sane default to prevent infinite loops.
+   // PHASE 1 FIX: Dynamic Physics Initialization
+   // Read server gravity instead of hardcoding 800
    rawgrav = cvar ("sv_gravity");
+   if ((rawgrav <= CAM_IDLE))
+   {
+      rawgrav = 800.000; // Safety fallback for unset servers
+   } //end if
    GRAVITY = (rawgrav * 0.100);
    dprint ("sv_gravity raw is ");
    tmp = ftos (rawgrav);
@@ -102,6 +107,13 @@ void () setBotGravity =
    tmp = ftos (GRAVITY);
    dprint (tmp);
    dprint ("\n");
+
+   // Initialize standard Quake run speed
+   BOTSPEED = 320.000;
+
+   // Reset global timers to prevent stale state from previous maps
+   WAYPOINT_DUMP_TIME = CAM_IDLE;
+   ASTAR_SEARCH_ID = CAM_IDLE;
    newmax = CAM_IDLE;
    vel = 270.000;
    MAXJUMP = CONTENT_EMPTY;

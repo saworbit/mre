@@ -3,77 +3,7 @@ float() bot_rocket_jump;
 // Forward declaration for problem solver (defined in bot_ai.qc)
 entity(entity door_ent) FindButtonForDoor;
 
-// ===== CALCULATED ROCKET JUMP: Physics Feasibility Check =====
-// Calculates maximum height achievable via rocket jump using physics equation.
-// Returns TRUE if target height is reachable, FALSE if impossible.
-// Formula: max_height = V₀² / (2g), where V₀ = jump_vel + rocket_boost
-// Prevents bots from attempting impossible RJs (e.g., 500-unit walls).
-float (float target_height) CanRocketJumpHeight =
-{
-   local float jump_vel;
-   local float rocket_boost;
-   local float total_vel;
-   local float max_height;
-   local float g;
-
-   // Quake physics constants
-   jump_vel = 270.000; // Standard jump velocity
-   rocket_boost = 280.000; // Rocket explosion boost (approximate, varies with distance)
-   g = 800.000; // Gravity
-
-   // Total initial velocity (jump + rocket)
-   total_vel = (jump_vel + rocket_boost);
-
-   // Calculate maximum height: h = V₀² / (2g)
-   max_height = (((total_vel * total_vel) / (2.000 * g)));
-
-   // Add 20-unit safety margin for precision errors
-   max_height = (max_height + 20.000);
-
-   // Check if target is within range
-   if ((target_height <= max_height))
-   {
-      return (TRUE); // Physically possible
-   } //end if
-
-   return (FALSE); // Impossible: target too high
-}; //end of the function CanRocketJumpHeight
-// ===== END CALCULATED ROCKET JUMP =====
-
-// ===== GAP SOLVER: Suicide Prevention (Horizontal Range Check) =====
-// Calculates if bot can make a horizontal jump across a gap without falling to death.
-// Uses physics: time_to_fall = sqrt(2h/g), max_distance = velocity × time
-// Returns TRUE if gap is crossable, FALSE if bot will fall into lava/void.
-// Prevents suicidal cliff runs by checking if horizontal speed can cover the gap.
-float (float gap_width, float drop_height) CanCrossGap =
-{
-   local float t;
-   local float max_dist;
-   local float run_speed;
-   local float g;
-
-   // Quake physics constants
-   run_speed = 320.000; // Bot running speed (units/second)
-   g = 800.000; // Gravity
-
-   // 1. Calculate time to fall: t = sqrt(2h / g) = sqrt(h / 400)
-   t = qc_sqrt ((drop_height / 400.000));
-
-   // 2. Calculate max horizontal distance: d = velocity × time
-   max_dist = (run_speed * t);
-
-   // 3. Add 20-unit safety buffer (bot collision radius + precision errors)
-   max_dist = (max_dist - 20.000);
-
-   // 4. Check if gap is within safe crossing range
-   if ((gap_width <= max_dist))
-   {
-      return (TRUE); // Safe to cross
-   } //end if
-
-   return (FALSE); // Too wide: bot will fall to death
-}; //end of the function CanCrossGap
-// ===== END GAP SOLVER =====
+// PHASE 4 REFACTOR: CanRocketJumpHeight, CanCrossGap moved to botmath.qc
 
 void () halfwalkmove =
 {
@@ -251,7 +181,7 @@ float (vector jmpv) Botwaterjump =
 // Predicts where a train will be at future time by traversing its path_corner chain.
 // Two-pass algorithm: (1) calculate total path distance for cycling, (2) interpolate
 // position along chain based on time. Handles looping paths via modulo arithmetic,
-// detects cycles with first_corner tracking, and limits to 16 segments for safety.
+// detects cycles with first_corner tracking, and limits to 64 segments for safety.
 vector (entity train, float t_future) predict_train_pos =
 {
    local entity curr;
@@ -290,7 +220,7 @@ vector (entity train, float t_future) predict_train_pos =
    seg_count = 0;
 
    // First pass: accumulate total chain distance (for cycling)
-   while (curr && seg_count < 16) {  // Max 16 segments to prevent infinite loops
+   while (curr && seg_count < 64) {  // PHASE 4 FIX: Max 64 segments (was 16) for complex train paths
       next_pos = curr.origin;
       seg_dist = vlen(next_pos - last_pos);
       total_dist = (total_dist + seg_dist);
@@ -313,7 +243,7 @@ vector (entity train, float t_future) predict_train_pos =
    dist_accum = 0;
    seg_count = 0;
 
-   while (curr && seg_count < 16) {
+   while (curr && seg_count < 64) {  // PHASE 4 FIX: Max 64 segments (was 16)
       next_pos = curr.origin;
       seg_dist = vlen(next_pos - last_pos);
 
@@ -514,6 +444,19 @@ float /* ERROR: Could not determine return type */ (float vz, float dist, float 
    local vector start;
    local string tmp;
    local entity botTarget;
+
+   // ===== PHASE 3 FIX: ROCKET JUMP FAILURE RECOVERY =====
+   // Check if RJ verification is pending
+   if ((self.rj_verify_time && (time > self.rj_verify_time)))
+   {
+      self.rj_verify_time = CAM_IDLE;
+      // If we didn't get vertical lift (failed jump), reset cooldown
+      if ((self.velocity_z < 50.000))
+      {
+         self.rj_cooldown = time; // Reset cooldown immediately for retry
+      } //end if
+   } //end if
+   // ===== END PHASE 3 FIX =====
 
    if (!(self.flags & (FL_ONGROUND + FL_SWIM)))
    {
@@ -887,6 +830,9 @@ float() bot_rocket_jump =
    // Set cooldown (prevents spam) and reset stuck counter (successful escape)
    self.rj_cooldown = (time + 2.000);
    self.stuck_count = 0;
+
+   // PHASE 3 FIX: Verify success in 0.1 seconds (failure recovery)
+   self.rj_verify_time = (time + 0.100);
 
    return (TRUE);
 }; //end of the function bot_rocket_jump

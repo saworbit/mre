@@ -64,34 +64,35 @@ float (entity a, entity b) IsUpstream =
    return (FALSE);
 }; //end of the function IsUpstream
 
-void (entity node, entity targ, float len, entity item) cacheRouteTarget;
+// PHASE 2 FIX: Add depth parameter for recursion safety
+void (entity node, entity targ, float len, entity item, float depth) cacheRouteTarget;
 
 void (entity a, entity b, float recurse) updateRouteCache =
 {
-   RECURSEDEPTH = recurse;
+   // PHASE 2 FIX: Pass depth as parameter instead of using global RECURSEDEPTH
    if ((b.rocketlen > FALSE))
    {
-      cacheRouteTarget (b,a,b.rocketlen,b.rocketcache);
+      cacheRouteTarget (b,a,b.rocketlen,b.rocketcache,recurse);
    } //end if
    if ((b.lightninglen > FALSE))
    {
-      cacheRouteTarget (b,a,b.lightninglen,b.lightningcache);
+      cacheRouteTarget (b,a,b.lightninglen,b.lightningcache,recurse);
    } //end if
    if ((b.armorlen > FALSE))
    {
-      cacheRouteTarget (b,a,b.armorlen,b.armorcache);
+      cacheRouteTarget (b,a,b.armorlen,b.armorcache,recurse);
    } //end if
    if ((b.poweruplen > FALSE))
    {
-      cacheRouteTarget (b,a,b.poweruplen,b.powerupcache);
+      cacheRouteTarget (b,a,b.poweruplen,b.powerupcache,recurse);
    } //end if
    if ((b.naillen > FALSE))
    {
-      cacheRouteTarget (b,a,b.naillen,b.nailcache);
+      cacheRouteTarget (b,a,b.naillen,b.nailcache,recurse);
    } //end if
    if ((b.grenadelen > FALSE))
    {
-      cacheRouteTarget (b,a,b.grenadelen,b.grenadecache);
+      cacheRouteTarget (b,a,b.grenadelen,b.grenadecache,recurse);
    } //end if
 }; //end of the function updateRouteCache
 
@@ -283,26 +284,49 @@ float () FindAPath_AStar =
       return (FindAPath_Greedy ());
    } //end if
 
-   // Find nearest BotPath to bot (start node)
+   // ===== PHASE 2 FIX: A* START NODE CACHING =====
+   // Check cached node first to avoid expensive findradius() calls (O(N) → O(1))
    start_node = world;
-   best_start_dist = 999999.000;
-   e = findradius (self.origin,(SEARCH_RADIUS * 2.000));
-   while (e)
+   if (self.current_node)
    {
-      if ((e.pathtype == DROPPED))
+      // Is the cached node still valid and close? (within 250 units)
+      if ((vlen ((self.current_node.origin - self.origin)) < 250.000))
       {
-         dist = vlen ((e.origin - self.origin));
-         if ((dist < best_start_dist))
+         // Verify visibility to ensure we haven't walked through a wall
+         traceline (self.origin,self.current_node.origin,TRUE,self);
+         if ((trace_fraction == TRUE))
          {
-            if (BotReachable (e,self))
-            {
-               start_node = e;
-               best_start_dist = dist;
-            } //end if
+            start_node = self.current_node;
          } //end if
       } //end if
-      e = e.chain;
-   } //end while
+   } //end if
+
+   // Fallback: If cache missed, do the expensive search
+   if (!start_node)
+   {
+      best_start_dist = 999999.000;
+      e = findradius (self.origin,(SEARCH_RADIUS * 2.000));
+      while (e)
+      {
+         if ((e.pathtype == DROPPED))
+         {
+            dist = vlen ((e.origin - self.origin));
+            if ((dist < best_start_dist))
+            {
+               if (BotReachable (e,self))
+               {
+                  start_node = e;
+                  best_start_dist = dist;
+               } //end if
+            } //end if
+         } //end if
+         e = e.chain;
+      } //end while
+
+      // Update cache for next time
+      self.current_node = start_node;
+   } //end if
+   // ===== END PHASE 2 FIX =====
 
    // Find nearest BotPath to goal (goal node)
    goal_node = world;
@@ -585,7 +609,8 @@ void () DropBotPath =
    NUMPATHS = (NUMPATHS + SPAWNFLAG_SUPERSPIKE);
 }; //end of the function DropBotPath
 
-void (entity node, float len, entity item) cacheRouteMsg;
+// PHASE 2 FIX: Add depth parameter for recursion safety
+void (entity node, float len, entity item, float depth) cacheRouteMsg;
 
 // Helper: Check if bot's current enemy is weak (<40 HP) without variable shadowing
 float () BotHasWeakEnemy =
@@ -609,7 +634,8 @@ float () BotHasWeakEnemy =
    return (FALSE);
 }; //end of the function BotHasWeakEnemy
 
-void (entity node, entity targ, float len, entity item) cacheRouteTarget =
+// PHASE 2 FIX: Accept depth parameter for recursion safety
+void (entity node, entity targ, float len, entity item, float depth) cacheRouteTarget =
 {
    local float rng;
    local entity enemy;
@@ -735,23 +761,22 @@ void (entity node, entity targ, float len, entity item) cacheRouteTarget =
          } //end if
       } //end if
    } //end if
-   RECURSEDEPTH = (RECURSEDEPTH + SPAWNFLAG_LASER);
-   if ((RECURSEDEPTH < 24.000))
+   // PHASE 2 FIX: Use depth parameter instead of global RECURSEDEPTH
+   if ((depth < 24.000))
    {
-      cacheRouteMsg (targ,rng,item);
+      cacheRouteMsg (targ,rng,item,(depth + SPAWNFLAG_LASER));
 
    } //end if
    else
    {
       node.endpoint = TRUE;
    } //end if
-   RECURSEDEPTH = (RECURSEDEPTH - SPAWNFLAG_LASER);
 }; //end of the function cacheRouteTarget
 
 void (entity node, entity targ, float len, entity item) cacheRoute =
 {
-   RECURSEDEPTH = SPAWNFLAG_SUPERSPIKE;
-   cacheRouteTarget (node,targ,len,item);
+   // PHASE 2 FIX: Pass depth = 1 to start recursion
+   cacheRouteTarget (node,targ,len,item,SPAWNFLAG_SUPERSPIKE);
    if ((other.classname == "dmbot"))
    {
       if ((other.rocketcache == item))
@@ -801,7 +826,8 @@ void (entity node, entity targ, float len, entity item) cacheRoute =
    } //end if
 }; //end of the function cacheRoute
 
-void (entity node, float len, entity item) cacheRouteMsg =
+// PHASE 2 FIX: Accept depth parameter for recursion safety
+void (entity node, float len, entity item, float depth) cacheRouteMsg =
 {
    local float h;
    local float bestlen;
@@ -867,18 +893,19 @@ void (entity node, float len, entity item) cacheRouteMsg =
          } //end if
       } //end if
    } //end if
+   // PHASE 2 FIX: Pass depth to all recursive calls
    if (node.movetarget)
    {
       if ((bestlen > FALSE))
       {
          if ((len + h) < bestlen)
          {
-            cacheRouteTarget (node,node.movetarget,len,item);
+            cacheRouteTarget (node,node.movetarget,len,item,depth);
          } //end if
       } //end if
       else
       {
-         cacheRouteTarget (node,node.movetarget,len,item);
+         cacheRouteTarget (node,node.movetarget,len,item,depth);
       } //end else
    } //end if
    if (node.movetarget2)
@@ -887,12 +914,12 @@ void (entity node, float len, entity item) cacheRouteMsg =
       {
          if ((len + h) < bestlen)
          {
-            cacheRouteTarget (node,node.movetarget2,len,item);
+            cacheRouteTarget (node,node.movetarget2,len,item,depth);
          } //end if
       } //end if
       else
       {
-         cacheRouteTarget (node,node.movetarget2,len,item);
+         cacheRouteTarget (node,node.movetarget2,len,item,depth);
       } //end else
    } //end if
    if (node.movetarget3)
@@ -901,12 +928,12 @@ void (entity node, float len, entity item) cacheRouteMsg =
       {
          if ((len + h) < bestlen)
          {
-            cacheRouteTarget (node,node.movetarget3,len,item);
+            cacheRouteTarget (node,node.movetarget3,len,item,depth);
          } //end if
       } //end if
       else
       {
-         cacheRouteTarget (node,node.movetarget3,len,item);
+         cacheRouteTarget (node,node.movetarget3,len,item,depth);
       } //end else
    } //end if
    if (node.movetarget4)
@@ -915,12 +942,12 @@ void (entity node, float len, entity item) cacheRouteMsg =
       {
          if ((len + h) < bestlen)
          {
-            cacheRouteTarget (node,node.movetarget4,len,item);
+            cacheRouteTarget (node,node.movetarget4,len,item,depth);
          } //end if
       } //end if
       else
       {
-         cacheRouteTarget (node,node.movetarget4,len,item);
+         cacheRouteTarget (node,node.movetarget4,len,item,depth);
       } //end else
    } //end if
    if (node.movetarget5)
@@ -929,12 +956,12 @@ void (entity node, float len, entity item) cacheRouteMsg =
       {
          if ((len + h) < bestlen)
          {
-            cacheRouteTarget (node,node.movetarget5,len,item);
+            cacheRouteTarget (node,node.movetarget5,len,item,depth);
          } //end if
       } //end if
       else
       {
-         cacheRouteTarget (node,node.movetarget5,len,item);
+         cacheRouteTarget (node,node.movetarget5,len,item,depth);
       } //end else
    } //end if
    if (node.movetarget6)
@@ -943,12 +970,12 @@ void (entity node, float len, entity item) cacheRouteMsg =
       {
          if ((len + h) < bestlen)
          {
-            cacheRouteTarget (node,node.movetarget6,len,item);
+            cacheRouteTarget (node,node.movetarget6,len,item,depth);
          } //end if
       } //end if
       else
       {
-         cacheRouteTarget (node,node.movetarget6,len,item);
+         cacheRouteTarget (node,node.movetarget6,len,item,depth);
       } //end else
    } //end if
 }; //end of the function cacheRouteMsg
@@ -975,7 +1002,7 @@ void (entity en) RouteToEnemy =
    local entity e;
    local vector last_vel;
 
-   RECURSEDEPTH = SECRET_NO_SHOOT;
+   // PHASE 2 FIX: No need for global RECURSEDEPTH, pass as parameter
    e = find (world,classname,"BotPath");
    while (e)
    {
@@ -989,7 +1016,7 @@ void (entity en) RouteToEnemy =
    {
       if (en.movetarget.movetarget)
       {
-         cacheRouteTarget (en.movetarget,en.movetarget.movetarget,FALSE,en);
+         cacheRouteTarget (en.movetarget,en.movetarget.movetarget,FALSE,en,SECRET_NO_SHOOT);
          // Velocity shift replan: if the target changes speed sharply, bump cached paths.
          last_vel = en.route_vel_last;
          en.route_vel_last = en.velocity;
@@ -1018,30 +1045,30 @@ void (entity en) RouteToEnemy =
             {
                if ((e.enemycache == en))
                {
-                  RECURSEDEPTH = FL_CLIENT;
+                  // PHASE 2 FIX: Pass depth parameter instead of global
                   if (e.movetarget)
                   {
-                     cacheRouteTarget (e,e.movetarget,e.enemylen,en);
+                     cacheRouteTarget (e,e.movetarget,e.enemylen,en,FL_CLIENT);
                   } //end if
                   if (e.movetarget2)
                   {
-                     cacheRouteTarget (e,e.movetarget2,e.enemylen,en);
+                     cacheRouteTarget (e,e.movetarget2,e.enemylen,en,FL_CLIENT);
                   } //end if
                   if (e.movetarget3)
                   {
-                     cacheRouteTarget (e,e.movetarget3,e.enemylen,en);
+                     cacheRouteTarget (e,e.movetarget3,e.enemylen,en,FL_CLIENT);
                   } //end if
                   if (e.movetarget4)
                   {
-                     cacheRouteTarget (e,e.movetarget4,e.enemylen,en);
+                     cacheRouteTarget (e,e.movetarget4,e.enemylen,en,FL_CLIENT);
                   } //end if
                   if (e.movetarget5)
                   {
-                     cacheRouteTarget (e,e.movetarget5,e.enemylen,en);
+                     cacheRouteTarget (e,e.movetarget5,e.enemylen,en,FL_CLIENT);
                   } //end if
                   if (e.movetarget6)
                   {
-                     cacheRouteTarget (e,e.movetarget6,e.enemylen,en);
+                     cacheRouteTarget (e,e.movetarget6,e.enemylen,en,FL_CLIENT);
                   } //end if
                } //end if
             } //end if
