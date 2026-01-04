@@ -1,10 +1,11 @@
-// ===== DM4 WAYPOINTS (343 nodes - merged from gameplay) =====
-// Generated from bot navigation data - PHASE 6: Smart Triggers
-// Expanded from 181 base waypoints + 162 discovered routes
+// ===== DM4 WAYPOINTS (452 nodes - merged from gameplay) =====
+// Generated from bot navigation data - PHASE 7: Active Projectile Dodging
+// Expanded from 343 base waypoints + 109 discovered routes during Phase 7 testing
 // Format: SpawnSavedWaypoint(origin, traffic_score, danger_scent, target)
 
 void() LoadMapWaypoints_dm4 =
 {
+    SpawnSavedWaypoint('269.9 -1221.0 -59.8', 7, 0, "");
     SpawnSavedWaypoint('121.5 -344.7 -46.0', 0, 0, "");
     SpawnSavedWaypoint('-64.0 512.0 -295.9', 0, 0, "");
     SpawnSavedWaypoint(' 28.9  72.5 -293.5', 0, 0, "");
@@ -348,5 +349,113 @@ void() LoadMapWaypoints_dm4 =
     SpawnSavedWaypoint('257.4 -262.8 -296.0', 0, 0, "");
     SpawnSavedWaypoint('-84.8 443.5 -296.0', 0, 0, "");
     SpawnSavedWaypoint('203.8 -241.4 -296.0', 0, 0, "");
+    SpawnSavedWaypoint('-71.1 -268.3 -72.0', 100, 0, "");
+    SpawnSavedWaypoint('-76.4 -434.0 -72.0', 53, 0, "");
+    SpawnSavedWaypoint('175.0 -333.5 -57.4', 12, 0, "");
+    SpawnSavedWaypoint('837.5 -352.0  24.0', 100,   2.5, "");
+    SpawnSavedWaypoint('-55.9 179.2 -296.0', 90,   2.5, "");
+    SpawnSavedWaypoint('-80.5 -290.0 -72.0', 97,   2.5, "");
+    SpawnSavedWaypoint('815.5 -622.7 -174.0', 25, 0, "");
+    SpawnSavedWaypoint('-30.4 105.3 -296.0', 90, 0, "");
+    SpawnSavedWaypoint('272.0 -952.0  25.0', 13, 0, "");
+    SpawnSavedWaypoint('577.2 -208.0 -292.7', 86, 0, "");
+    SpawnSavedWaypoint(' 63.9 -236.4 -292.2', 13, 0, "");
+    SpawnSavedWaypoint('823.1 -473.8 -126.0', 9, 0, "");
+    SpawnSavedWaypoint('292.0 -761.6  24.0', 100, 0, "");
+    SpawnSavedWaypoint('380.9 -261.7 -296.0', 90,   2.5, "");
+    SpawnSavedWaypoint('776.7 -176.0  18.2', 100, 0, "");
+    SpawnSavedWaypoint('-43.0 -613.2 -72.0', 52, 0, "");
+    SpawnSavedWaypoint('723.9 -909.0 -232.0', 46, 0, "");
+    SpawnSavedWaypoint('322.1 -627.7   2.0', 100, 0, "");
+    SpawnSavedWaypoint('342.4 -261.0 -296.0', 90, 0, "");
+    SpawnSavedWaypoint('265.4 -490.2  20.2', 100, 0, "");
+    SpawnSavedWaypoint('212.5 -1170.4 -66.6', 16, 0, "");
+    SpawnSavedWaypoint('368.0 -10.6 -296.0', 87, 0, "");
+    SpawnSavedWaypoint('304.4 -258.4 -296.0', 69, 0, "");
+    SpawnSavedWaypoint('353.5 -1155.6 -30.0', 35, 0, "");
+    SpawnSavedWaypoint('456.1 -420.3 -104.0', 89, 0, "");
+    SpawnSavedWaypoint('315.3 -1036.1   2.0', 47, 0, "");
+    SpawnSavedWaypoint('291.9 -761.9 -104.0', 26, 0, "");
+    SpawnSavedWaypoint('300.9 -1035.0 -104.0', 30, 0, "");
+    SpawnSavedWaypoint('305.1 -476.8  24.0', 100, 0, "");
+    SpawnSavedWaypoint('-23.1 101.5 -296.0', 90, 5, "");
+    SpawnSavedWaypoint('253.8 -1124.2 -104.0', 90, 0, "");
+    SpawnSavedWaypoint('304.5 -717.7  24.0', 82, 0, "");
+    SpawnSavedWaypoint('342.6 -1024.0   2.0', 89, 0, "");
+    SpawnSavedWaypoint('-225.6 427.7 -296.0', 100, 5, "");
+    SpawnSavedWaypoint('603.7 -196.1 -296.0', 29, 0, "");
+    SpawnSavedWaypoint('179.4 -409.3 -104.0', 46, 0, "");
+    SpawnSavedWaypoint('-216.3 314.2 -337.8', 6, 0, "");
+    SpawnSavedWaypoint('-68.5 -255.1 -72.0', 100,   2.5, "");
+    SpawnSavedWaypoint('-45.8 107.7 -296.0', 90, 0, "");
+    SpawnSavedWaypoint('112.0 -1136.0 -103.0', 41, 0, "");
+    SpawnSavedWaypoint('319.8 -890.7  18.2', 34, 5, "");
+    SpawnSavedWaypoint('304.6 -724.5  24.0', 62, 10, "");
+    SpawnSavedWaypoint('548.6 -209.9 -296.0', 2, 0, "");
+    SpawnSavedWaypoint('350.6 -27.3 -296.0', 100,   2.5, "");
+    SpawnSavedWaypoint('-139.0 442.8 -296.0', 77, 0, "");
+    SpawnSavedWaypoint('-89.5 185.4 -296.0', 17, 0, "");
+    SpawnSavedWaypoint('594.6 -39.3 -296.0', 4, 5, "");
+    SpawnSavedWaypoint('1027.9 -553.0  24.2', 90, 0, "");
+    SpawnSavedWaypoint('446.6 -260.8 -296.0', 65, 0, "");
+    SpawnSavedWaypoint('841.3 -362.8  24.0', 100, 10, "");
+    SpawnSavedWaypoint('-70.1 -268.5 -72.0', 87, 0, "");
+    SpawnSavedWaypoint('-44.2 -607.8 -72.0', 15, 0, "");
+    SpawnSavedWaypoint('-132.4 455.7 -296.0', 35, 5, "");
+    SpawnSavedWaypoint('655.6  -9.4 -296.0', 4, 20, "");
+    SpawnSavedWaypoint('797.6 -206.8  24.0', 64, 0, "");
+    SpawnSavedWaypoint('-80.2 -380.1 -72.0', 35, 0, "");
+    SpawnSavedWaypoint('758.6 -685.6 -206.0', 38, 0, "");
+    SpawnSavedWaypoint('-78.5 354.1 -296.0', 55, 0, "");
+    SpawnSavedWaypoint('384.6 -13.8 -296.0', 65, 0, "");
+    SpawnSavedWaypoint('165.0 -266.9 -72.0', 66, 0, "");
+    SpawnSavedWaypoint('1039.6 -573.9  24.0', 80, 0, "");
+    SpawnSavedWaypoint('-70.4 -271.6 -72.0', 54, 0, "");
+    SpawnSavedWaypoint('279.5 -1028.2 -104.0', 41, 0, "");
+    SpawnSavedWaypoint('314.5 -467.2  24.0', 100, 0, "");
+    SpawnSavedWaypoint('603.3 -210.9  24.0', 79, 0, "");
+    SpawnSavedWaypoint('407.3 -394.5 -104.0', 35, 0, "");
+    SpawnSavedWaypoint('837.7 -356.4  24.0', 88, 5, "");
+    SpawnSavedWaypoint('817.6 -330.5  24.0', 27, 0, "");
+    SpawnSavedWaypoint('434.8 -922.9 -126.0', 16, 0, "");
+    SpawnSavedWaypoint('-26.5 104.8 -296.0', 42, 0, "");
+    SpawnSavedWaypoint('198.6 -406.7 -104.0', 22, 0, "");
+    SpawnSavedWaypoint('-62.8 370.7 -296.0', 35, 5, "");
+    SpawnSavedWaypoint('564.8 -272.0 -296.0', 34, 0, "");
+    SpawnSavedWaypoint('593.1 -220.8  24.0', 48, 10, "");
+    SpawnSavedWaypoint('299.8 -758.5  24.0', 100, 0, "");
+    SpawnSavedWaypoint('123.3 -275.2 -56.0', 13, 0, "");
+    SpawnSavedWaypoint('489.4 -267.7 -296.0', 90, 5, "");
+    SpawnSavedWaypoint('189.8 -359.0 -20.7', 22, 20, "");
+    SpawnSavedWaypoint('-50.7 304.4 -296.0', 42, 10, "");
+    SpawnSavedWaypoint('-63.7 475.2 -296.0', 18, 0, "");
+    SpawnSavedWaypoint('160.9 -245.4 -72.0', 53, 20, "");
+    SpawnSavedWaypoint(' -4.4 549.5 -296.0', 0, 20, "");
+    SpawnSavedWaypoint('368.0 -35.2 -296.0', 32, 10, "");
+    SpawnSavedWaypoint('231.8 -262.2 -296.0', 44, 0, "");
+    SpawnSavedWaypoint('860.5 -493.1  24.0', 59, 0, "");
+    SpawnSavedWaypoint('776.0 -808.0 -231.0', 51, 0, "");
+    SpawnSavedWaypoint('656.5 -174.2  24.0', 49, 0, "");
+    SpawnSavedWaypoint('805.9 -199.5  24.0', 29, 10, "");
+    SpawnSavedWaypoint('509.7 -452.4  24.0', 16, 0, "");
+    SpawnSavedWaypoint('-71.1 -268.3 -72.0', 23, 10, "");
+    SpawnSavedWaypoint('374.8 -40.1 -292.7', 45, 0, "");
+    SpawnSavedWaypoint('217.5 -11.0 -104.0', 10, 20, "");
+    SpawnSavedWaypoint('816.1 -269.0  24.0', 0, 10, "");
+    SpawnSavedWaypoint('305.0 -610.8  20.2', 33, 10, "");
+    SpawnSavedWaypoint('112.0 -1136.0 -103.0', 5, 10, "");
+    SpawnSavedWaypoint('372.8 -409.9 -104.0', 1, 0, "");
+    SpawnSavedWaypoint('284.8 -464.8  24.0', 92, 10, "");
+    SpawnSavedWaypoint('174.9 -221.8 -72.0', 40, 0, "");
+    SpawnSavedWaypoint('733.3 -904.7 -232.0', 26, 20, "");
+    SpawnSavedWaypoint('300.7 -758.6  24.0', 25, 10, "");
+    SpawnSavedWaypoint(' -1.8 520.6 -296.0', 5, 20, "");
+    SpawnSavedWaypoint('305.3 -488.5  24.0', 27, 0, "");
+    SpawnSavedWaypoint('253.1 -476.9  24.0', 32, 0, "");
+    SpawnSavedWaypoint(' 32.9 418.6 -296.0', 9, 0, "");
+    SpawnSavedWaypoint('305.0 -726.4  24.0', 5, 0, "");
+    SpawnSavedWaypoint('304.2 -569.5 -104.0', 9, 10, "");
+    SpawnSavedWaypoint('362.9 -648.2 -107.8', 29, 0, "");
+    SpawnSavedWaypoint('119.9 -208.5 -72.0', 6, 0, "");
 };
 // ===== END DM4 WAYPOINTS =====

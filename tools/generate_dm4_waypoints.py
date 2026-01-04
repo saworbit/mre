@@ -13,17 +13,21 @@ for line in lines:
         match = re.search(r"SpawnSavedWaypoint\([^)]+\)", line)
         if match:
             wp = match.group(0)
-            # Replace double apostrophes with single quotes
+            # QuakeC escapes single quotes by doubling them in console output
+            # Convert: ''x y z'' -> 'x y z' (coordinate strings use single quotes)
+            # Convert: '' (empty string) -> "" (target parameter uses double quotes)
             wp = wp.replace("''", "'")
+            # Fix empty string target parameter: ', ')' -> ', "")'
+            wp = wp.replace(", ')", ', "")')
             waypoints.append(wp)
 
-# Get the last 343 waypoints (the latest complete dump)
-waypoints = waypoints[-343:]
+# Get the last 452 waypoints (the latest complete dump)
+waypoints = waypoints[-452:]
 
 # Generate the dm4.qc file
-output = """// ===== DM4 WAYPOINTS (343 nodes - merged from gameplay) =====
-// Generated from bot navigation data - PHASE 6: Smart Triggers
-// Expanded from 181 base waypoints + 162 discovered routes
+output = """// ===== DM4 WAYPOINTS (452 nodes - merged from gameplay) =====
+// Generated from bot navigation data - PHASE 7: Active Projectile Dodging
+// Expanded from 343 base waypoints + 109 discovered routes during Phase 7 testing
 // Format: SpawnSavedWaypoint(origin, traffic_score, danger_scent, target)
 
 void() LoadMapWaypoints_dm4 =

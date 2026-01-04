@@ -1,5 +1,12 @@
 ## 2026-01-05
 
+- **DM4 Waypoint Expansion (452 nodes)** from Phase 7 gameplay testing:
+  - **109 new waypoints discovered**: Expanded from 343 to 452 nodes through Phase 7 gameplay session. New routes include high-traffic combat zones and ledge positions used during projectile dodging tests.
+  - **Python script enhancements** in `tools/generate_dm4_waypoints.py`: Fixed QuakeC string escape handling (doubled single quotes `''` → single quote `'`), proper empty string conversion (`,  ')` → `, "")` for target parameter, updated to extract 452 waypoints instead of 343.
+  - **Traffic and danger data preserved**: All waypoints retain traffic scores (0-100) and danger scent values (0-20) learned from bot deaths and navigation patterns.
+  - **Auto-loading system** in `reaper_mre/world.qc`: Continues to load all waypoints at frame 5 for instant map knowledge.
+  - **Result:** Bots have even more complete DM4 knowledge! 452 waypoints provide enhanced route diversity, especially in combat hotspots. Build size: 449,754 bytes (+5,560 bytes for 109 waypoints). 🗺️📈
+
 - **PHASE 7: Active Projectile Dodging** for FrikBot-inspired evasion AI:
   - **Threat scoring system** in `reaper_mre/bot_ai.qc` (`bot_size_player()` function, lines 44-86): Calculates enemy threat score based on health (base), armor (additive), weapon type (1.2× SNG, 1.3× RL, 1.5× LG multipliers), and powerups (4× quad damage, 2× pentagram). Higher score = prioritize dodging their projectiles.
   - **Active projectile scanning** in `reaper_mre/bot_ai.qc` (`bot_dodge_stuff()` function, lines 93-225): Scans for incoming grenades (classname "grenade") and missiles (classname "missile") within 240 units. Uses 0.15s trajectory prediction to detect projectiles moving toward bot. Prioritizes grenades (1.0/dist rating) over rockets (0.5/dist rating) for optimal survival.

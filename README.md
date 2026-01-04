@@ -54,17 +54,17 @@ Two critical bugs have been eliminated:
 
 ### 🗺️ DM4 Waypoint System Integration (2026-01-04)
 
-**NEW:** Bots instantly know DM4 layout with 343 pre-loaded waypoints!
+**NEW:** Bots instantly know DM4 layout with 452 pre-loaded waypoints!
 
-- 📦 **343 waypoints** — Merged 181 base + 162 discovered routes for complete DM4 coverage
+- 📦 **452 waypoints** — Expanded from 343 base + 109 routes discovered during Phase 7 testing
 - ⚡ **Auto-loading** — Waypoints load automatically at frame 5 (after entity spawn)
-- 🐍 **Python extraction tool** — `generate_dm4_waypoints.py` automates waypoint merging from logs
+- 🐍 **Python extraction tool** — `generate_dm4_waypoints.py` automates waypoint merging from logs with proper QuakeC string escape handling
 - 🔧 **Build integration** — `maps/dm4.qc` compiled into progs.dat via progs.src
 
 **How to verify:**
 ```bash
 # Check console output after map load:
-# "Loaded 343 waypoints for DM4"
+# "Loaded 452 waypoints for DM4"
 ```
 
 **Result:** Bots have instant map knowledge! No learning period—they know all routes, shortcuts, and secrets immediately! 🧠💾
@@ -389,7 +389,7 @@ Advanced **path_corner chain prediction** for moving platforms:
 | 💾 **Smart Spacing** | 250u distance + LOS checks prevent node clumping for clean navigation networks |
 | 📤 **Brain Dump** | Export learned waypoints to console (impulse 100) for manual persistence |
 | 📥 **Waypoint Loader** | Import saved nodes to "bake" map knowledge—bots remember instantly |
-| 🗺️ **DM4 Waypoint Integration** | 343 pre-loaded waypoints (181 base + 162 discovered), auto-loads at frame 5 (2026-01-04) |
+| 🗺️ **DM4 Waypoint Integration** | 452 pre-loaded waypoints (343 base + 109 from Phase 7), auto-loads at frame 5 (2026-01-05) |
 | 🐍 **Python Extraction Tool** | Automates waypoint merging from qconsole.log via generate_dm4_waypoints.py (2026-01-04) |
 | ☠️ **Danger & Glory** | Learns death zones (avoid) and power positions (seek)—emergent tactical evolution |
 | 🛗 **Platform Mastery** | Learns elevator paths, waits patiently at lift shafts, uses DM2 lift intelligently |
@@ -473,7 +473,7 @@ Advanced **path_corner chain prediction** for moving platforms:
    *(8 players on DM4 — adjust as needed)*
 
 3. **Verify waypoint loading (optional):**
-   - Check console output for "Loaded 343 waypoints for DM4"
+   - Check console output for "Loaded 452 waypoints for DM4"
    - Confirms bots have instant map knowledge! 🗺️
 
 4. **Enjoy!** 🎮
@@ -1145,7 +1145,7 @@ impulse 102       // Remove bot
 |-----|------|----------|---------|
 | **dm2** | Claustrophobopolis | 🎯 Close combat, powerup denial | 4-6 |
 | **dm3** | Abandoned Base | 🏃 Movement, platform navigation | 6-8 |
-| **dm4** | The Bad Place | ⚔️ All-around combat, rocket jumps, hazard avoidance, 343 waypoints! | 8-12 |
+| **dm4** | The Bad Place | ⚔️ All-around combat, rocket jumps, hazard avoidance, 452 waypoints! | 8-12 |
 | **dm5** | The Cistern | 🌊 Water navigation, vertical play | 4-8 |
 | **dm6** | The Dark Zone | 🔫 Long-range combat, train timing | 6-10 |
 
