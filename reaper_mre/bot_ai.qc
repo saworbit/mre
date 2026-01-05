@@ -810,8 +810,144 @@ float /* ERROR: Could not determine return type */ () BotFindTarget =
    return (BotfindBot ());
 }; //end of the function BotFindTarget
 
+// ===== SIMULATED PERCEPTION: The Hearing Module =====
+// Detects nearby enemies that are invisible but "audible" through noise-making actions.
+// In real Quake, players hear weapon fire, footsteps, jumps, and powerup hums.
+// Bots use this to pre-aim at doorways where enemies approach, mimicking human awareness.
+void () BotListen =
+{
+   local entity head;
+   local float dist;
+   local float heard;
+
+   // Only listen when idle (don't interfere with active combat)
+   if ((self.enemy != world))
+   {
+      return ;
+   } //end if
+
+   // Scan for players first
+   head = find (world,classname,"player");
+   while (head)
+   {
+      if ((head != self) && (head.health > FALSE))
+      {
+         if (!visible (head))
+         {
+            // Only react to invisible enemies (hearing through walls)
+            dist = vlen ((head.origin - self.origin));
+
+            // Sound travel limit (Quake sounds drop off around 500-800u)
+            if ((dist < 600.000))
+            {
+               heard = FALSE;
+
+               // NOISE SOURCE 1: Weapon fire (LOUD - unmistakable)
+               if ((head.weaponframe > FALSE))
+               {
+                  heard = TRUE;
+               } //end if
+
+               // NOISE SOURCE 2: Jumping/Landing (medium volume)
+               if (!(head.flags & FL_ONGROUND))
+               {
+                  heard = TRUE;
+               } //end if
+
+               // NOISE SOURCE 3: Fast movement (running footsteps)
+               if ((vlen (head.velocity) > 200.000))
+               {
+                  heard = TRUE;
+               } //end if
+
+               // NOISE SOURCE 4: Powerups (Quad/Pent hum is VERY loud!)
+               if ((head.items & (IT_QUAD | IT_INVULNERABILITY)))
+               {
+                  if ((dist < 800.000))
+                  {
+                     heard = TRUE;
+                  } //end if
+               } //end if
+
+               if (heard)
+               {
+                  // SMART REACTION: Don't target (can't shoot walls).
+                  // Instead, FACE the sound source so we're ready when they appear.
+                  self.ideal_yaw = vectoyaw ((head.origin - self.origin));
+                  ChangeYaw ();
+
+                  // OPTIONAL: Pre-fire rockets if enemy is very close (wallbang attempt)
+                  // This creates "spam" behavior seen in pro play (fire at doorways)
+                  if ((dist < 200.000) && (self.weapon == IT_ROCKET_LAUNCHER))
+                  {
+                     self.button0 = TRUE;
+                  } //end if
+
+                  return ;
+               } //end if
+            } //end if
+         } //end if
+      } //end if
+      head = find (head,classname,"player");
+   } //end while
+
+   // Scan for bots (same logic as players)
+   head = find (world,classname,"dmbot");
+   while (head)
+   {
+      if ((head != self) && (head.health > FALSE))
+      {
+         if (!visible (head))
+         {
+            dist = vlen ((head.origin - self.origin));
+
+            if ((dist < 600.000))
+            {
+               heard = FALSE;
+
+               // Same noise detection as players
+               if ((head.weaponframe > FALSE))
+               {
+                  heard = TRUE;
+               } //end if
+               if (!(head.flags & FL_ONGROUND))
+               {
+                  heard = TRUE;
+               } //end if
+               if ((vlen (head.velocity) > 200.000))
+               {
+                  heard = TRUE;
+               } //end if
+               if ((head.items & (IT_QUAD | IT_INVULNERABILITY)))
+               {
+                  if ((dist < 800.000))
+                  {
+                     heard = TRUE;
+                  } //end if
+               } //end if
+
+               if (heard)
+               {
+                  self.ideal_yaw = vectoyaw ((head.origin - self.origin));
+                  ChangeYaw ();
+
+                  if ((dist < 200.000) && (self.weapon == IT_ROCKET_LAUNCHER))
+                  {
+                     self.button0 = TRUE;
+                  } //end if
+
+                  return ;
+               } //end if
+            } //end if
+         } //end if
+      } //end if
+      head = find (head,classname,"dmbot");
+   } //end while
+}; //end of the function BotListen
+
 void () ai_botstand =
 {
+   BotListen ();
    if (BotFindTarget ())
    {
       return ;
@@ -820,6 +956,7 @@ void () ai_botstand =
 
 void () ai_botturn =
 {
+   BotListen ();
    if (BotFindTarget ())
    {
       return ;
