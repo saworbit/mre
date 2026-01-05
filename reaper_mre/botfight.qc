@@ -758,6 +758,43 @@ void () W_BotAttack =
                {
                   if ((self.weapon == IT_GRENADE_LAUNCHER))
                   {
+                     // ===== BUGFIX: Minimum safe distance for GL (prevent close-range suicide) =====
+                     // At close range (<200u), grenade arc calculations produce aim points below
+                     // the bot's own feet, causing suicide grenades during circle strafing.
+                     // Force weapon switch or abort firing when enemy is too close.
+                     local float enemy_dist;
+                     enemy_dist = vlen ((self.enemy.origin - self.origin));
+
+                     if ((enemy_dist < 200.000))
+                     {
+                        // Too close for safe GL use! Abort firing and force weapon switch
+                        // This prevents the bot from lobbing grenades at its own feet
+                        self.attack_finished = ((time + 0.100) + addt);  // Quick retry with different weapon
+
+                        // Force immediate weapon switch to close-range weapon (SSG/SNG/LG)
+                        if ((self.ammo_shells >= 2.000))
+                        {
+                           self.weapon = IT_SUPER_SHOTGUN;
+                        } //end if
+                        else
+                        {
+                           if ((self.ammo_nails >= 1.000))
+                           {
+                              self.weapon = IT_SUPER_NAILGUN;
+                           } //end if
+                           else
+                           {
+                              if ((self.ammo_cells >= 1.000))
+                              {
+                                 self.weapon = IT_LIGHTNING;
+                              } //end if
+                           } //end if
+                        } //end if
+
+                        return ;  // Abort GL firing, use safer weapon next frame
+                     } //end if
+                     // ===== END BUGFIX: Minimum safe distance =====
+
                      bot_rocket1 ();
 
                      // ===== TWEAK #3: Self-risk validation (no suicide splash) =====

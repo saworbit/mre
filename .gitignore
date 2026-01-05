@@ -9,6 +9,9 @@
 *.zip
 *.exe.db
 
+# Quake engine generated files
+launch/quake-spasm/history.txt
+
 # Quake data / assets
 id1/
 
