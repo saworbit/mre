@@ -1465,6 +1465,17 @@ float (float dist) trysidestep =
    // Resets counter after escape. Prevents infinite spin-death in geometry traps.
    if ((self.stuck_count > 5))
    {
+      // ===== STUCK DETECTION LOGGING (LOG_CRITICAL+) =====
+      if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+      {
+         bprint ("[");
+         bprint (self.netname);
+         bprint ("] STUCK: Desperate escape (count=");
+         bprint (ftos (self.stuck_count));
+         bprint (")\n");
+      } //end if
+      // ===== END STUCK LOGGING =====
+
       // Check if standing on a moving train—surf away with velocity boost
       local vector train_check;
       local entity ground_ent;
@@ -1475,6 +1486,14 @@ float (float dist) trysidestep =
 
       if ((ground_ent.classname == "train"))
       {
+         // ===== UNSTUCK METHOD LOGGING (LOG_CRITICAL+) =====
+         if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+         {
+            bprint ("[");
+            bprint (self.netname);
+            bprint ("] UNSTUCK: Train surf escape\n");
+         } //end if
+         // ===== END UNSTUCK LOGGING =====
          // Boost velocity with train momentum (1.5x multiplier for escape power)
          self.velocity = (self.velocity + (ground_ent.velocity * 1.500));
          self.stuck_count = 0;
@@ -1484,10 +1503,26 @@ float (float dist) trysidestep =
       // No train—try enhanced rocket jump if available
       if (bot_rocket_jump ())
       {
+         // ===== UNSTUCK METHOD LOGGING (LOG_CRITICAL+) =====
+         if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+         {
+            bprint ("[");
+            bprint (self.netname);
+            bprint ("] UNSTUCK: Rocket jump escape\n");
+         } //end if
+         // ===== END UNSTUCK LOGGING =====
          return (TRUE);
       } //end if
 
       // No rockets—try super jump instead
+      // ===== UNSTUCK METHOD LOGGING (LOG_CRITICAL+) =====
+      if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+      {
+         bprint ("[");
+         bprint (self.netname);
+         bprint ("] UNSTUCK: Super jump escape\n");
+      } //end if
+      // ===== END UNSTUCK LOGGING =====
       Bot_tryjump (350.000,dist,FALSE);  // High jump attempt
       self.stuck_count = 0;
       return (TRUE);

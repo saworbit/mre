@@ -1396,6 +1396,7 @@ void () ImpulseCommands =
                bprint ("===========================================\n");
                bprint ("All bot decisions will be logged to console.\n");
                bprint ("Use 'impulse 95' again to disable.\n");
+               bprint ("Use 'impulse 96' to cycle verbosity levels.\n");
                bprint ("Check qconsole.log for full analysis.\n");
                bprint ("\n");
             } //end if
@@ -1408,15 +1409,62 @@ void () ImpulseCommands =
          } //end if
          else
          {
-            if ((self.impulse == 99.000))
+            if ((self.impulse == 96.000) && (self.classname == "player"))
             {
-               // ===== AI CAMERAMAN ACTIVATION =====
-               // Convert player to spectator camera with AI director mode (impulse 99)
-               CamClientInit ();
+               // ===== BOT DEBUG VERBOSITY CYCLER ===== (Player-only)
+               // Cycle: OFF → CRITICAL → NORMAL → TACTICAL → VERBOSE → DEBUG → OFF
+               bot_debug_level = bot_debug_level + 1.000;
+               if ((bot_debug_level > LOG_DEBUG))
+               {
+                  bot_debug_level = LOG_OFF;
+               } //end if
+
+               bprint ("\n");
+               bprint ("Bot debug verbosity: ");
+               if ((bot_debug_level == LOG_OFF))
+               {
+                  bprint ("OFF (no logging)\n");
+                  bot_debug_enabled = FALSE;
+               } //end if
+               else if ((bot_debug_level == LOG_CRITICAL))
+               {
+                  bprint ("CRITICAL (stuck/failures/suicides only)\n");
+                  bot_debug_enabled = TRUE;
+               } //end if
+               else if ((bot_debug_level == LOG_NORMAL))
+               {
+                  bprint ("NORMAL (target/goal changes)\n");
+                  bot_debug_enabled = TRUE;
+               } //end if
+               else if ((bot_debug_level == LOG_TACTICAL))
+               {
+                  bprint ("TACTICAL (+ weapon/combos/dodges)\n");
+                  bot_debug_enabled = TRUE;
+               } //end if
+               else if ((bot_debug_level == LOG_VERBOSE))
+               {
+                  bprint ("VERBOSE (+ movement/routing/perception)\n");
+                  bot_debug_enabled = TRUE;
+               } //end if
+               else if ((bot_debug_level == LOG_DEBUG))
+               {
+                  bprint ("DEBUG (everything - very spammy!)\n");
+                  bot_debug_enabled = TRUE;
+               } //end if
+               bprint ("\n");
             } //end if
             else
             {
-               botImpulseCommand ();
+               if ((self.impulse == 99.000))
+               {
+                  // ===== AI CAMERAMAN ACTIVATION =====
+                  // Convert player to spectator camera with AI director mode (impulse 99)
+                  CamClientInit ();
+               } //end if
+               else
+               {
+                  botImpulseCommand ();
+               } //end if
             } //end if
          } //end if
       } //end if

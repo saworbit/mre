@@ -300,7 +300,70 @@ void () bot_axed4 = [140.000, bot_run]
 
 void () dmbot_melee =
 {
-   self.weapon = W_BestBotWeapon ();
+   local float old_weapon;
+   local float new_weapon;
+   local string old_name;
+   local string new_name;
+
+   old_weapon = self.weapon;
+   new_weapon = W_BestBotWeapon ();
+
+   // ===== WEAPON SWITCH LOGGING (LOG_TACTICAL+) =====
+   if ((bot_debug_enabled && (bot_debug_level >= LOG_TACTICAL)))
+   {
+      if ((old_weapon != new_weapon))
+      {
+         // Convert weapon IDs to names for logging
+         if ((old_weapon == IT_AXE))
+            old_name = "Axe";
+         else if ((old_weapon == IT_SHOTGUN))
+            old_name = "SG";
+         else if ((old_weapon == IT_SUPER_SHOTGUN))
+            old_name = "SSG";
+         else if ((old_weapon == IT_NAILGUN))
+            old_name = "NG";
+         else if ((old_weapon == IT_SUPER_NAILGUN))
+            old_name = "SNG";
+         else if ((old_weapon == IT_GRENADE_LAUNCHER))
+            old_name = "GL";
+         else if ((old_weapon == IT_ROCKET_LAUNCHER))
+            old_name = "RL";
+         else if ((old_weapon == IT_LIGHTNING))
+            old_name = "LG";
+         else
+            old_name = "?";
+
+         if ((new_weapon == IT_AXE))
+            new_name = "Axe";
+         else if ((new_weapon == IT_SHOTGUN))
+            new_name = "SG";
+         else if ((new_weapon == IT_SUPER_SHOTGUN))
+            new_name = "SSG";
+         else if ((new_weapon == IT_NAILGUN))
+            new_name = "NG";
+         else if ((new_weapon == IT_SUPER_NAILGUN))
+            new_name = "SNG";
+         else if ((new_weapon == IT_GRENADE_LAUNCHER))
+            new_name = "GL";
+         else if ((new_weapon == IT_ROCKET_LAUNCHER))
+            new_name = "RL";
+         else if ((new_weapon == IT_LIGHTNING))
+            new_name = "LG";
+         else
+            new_name = "?";
+
+         bprint ("[");
+         bprint (self.netname);
+         bprint ("] WEAPON: ");
+         bprint (old_name);
+         bprint (" → ");
+         bprint (new_name);
+         bprint (" (tactical)\n");
+      } //end if
+   } //end if
+   // ===== END WEAPON SWITCH LOGGING =====
+
+   self.weapon = new_weapon;
    W_BotAttack ();
 }; //end of the function dmbot_melee
 

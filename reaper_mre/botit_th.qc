@@ -9,6 +9,16 @@ entity bodyque_head;
 // ===== BOT DEBUG LOGGING =====
 float bot_debug_enabled /* = 0.000 */;  // Toggle with impulse 95
 
+// Verbosity levels (impulse 96 to cycle)
+float LOG_OFF      = 0.000;   // No logging
+float LOG_CRITICAL = 1.000;   // Stuck, failures, suicides only
+float LOG_NORMAL   = 2.000;   // Target/goal changes (default)
+float LOG_TACTICAL = 3.000;   // + Weapon switches, combos, dodges
+float LOG_VERBOSE  = 4.000;   // + Movement, routing, perception
+float LOG_DEBUG    = 5.000;   // Everything (deep debugging)
+
+float bot_debug_level /* = 0.000 */;  // Current verbosity level (0 = off)
+
 void () setWatcherMode;
 
 void () CamClientInit;  // AI Cameraman activation

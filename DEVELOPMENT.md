@@ -257,12 +257,95 @@ void () MyFunction =
 quakespasm.exe -condebug +developer 1
 ```
 
-### Bot Debug Output (impulse 95)
-Shows real-time decision making:
+### Bot Debug Logging System
+
+The MRE debug system provides hierarchical verbosity levels for analyzing bot behavior.
+
+#### Quick Start
+```bash
+# In-game console:
+impulse 95      # Toggle logging on/off
+impulse 96      # Cycle through verbosity levels
+```
+
+#### Verbosity Levels (impulse 96)
+
+**LOG_OFF (0)** - No logging
+- All debug output disabled
+- Use for normal gameplay
+
+**LOG_CRITICAL (1)** - Stuck, failures, suicides only
+- Stuck detection and escape attempts
+- AI failures and critical errors
+- Use for diagnosing navigation issues
+
+**LOG_NORMAL (2)** - Target/goal changes (default)
+- Target selection changes
+- Goal selection changes
+- Use for basic behavior analysis
+
+**LOG_TACTICAL (3)** - + Weapon switches, combos, dodges
+- Weapon switching rationale (tactical, GL-suicide-prevent)
+- Juggler combo executions (RL → LG shaft-combo, RL → SSG burst-combo)
+- Use for combat effectiveness analysis
+
+**LOG_VERBOSE (4)** - + Movement, routing, perception
+- Simulated Perception (hearing) activations
+- Movement decisions
+- Route planning changes
+- Use for full behavior analysis
+
+**LOG_DEBUG (5)** - Everything (very spammy!)
+- All debug information
+- Frame-by-frame decisions
+- Use for deep debugging only
+
+#### Example Output
+
+**Weapon Switches (LOG_TACTICAL):**
+```
+[Cheater] WEAPON: GL → SSG (GL-suicide-prevent)
+[Assmunch] WEAPON: RL → LG (tactical)
+```
+
+**Juggler Combos (LOG_TACTICAL):**
+```
+[Drooly] COMBO: RL → LG (Juggler shaft-combo)
+[Wanton] COMBO: RL → SSG (Juggler burst-combo)
+```
+
+**Hearing Events (LOG_VERBOSE):**
+```
+[Cheater] HEAR: Assmunch (weapon-fire)
+[Drooly] HEAR: Wanton (door)
+```
+
+**Stuck Detection (LOG_CRITICAL):**
+```
+[Assmunch] STUCK: Desperate escape (count=6)
+[Assmunch] UNSTUCK: Rocket jump escape
+```
+
+**Target/Goal Changes (LOG_NORMAL):**
 ```
 [BotName] TARGET: EnemyName (score=X, HP=Y, dist=Zu)
 [BotName] GOAL: item_name (score=X, dist=Yu)
 ```
+
+#### Analyzing Logs
+
+Use the Python analyzer to extract patterns:
+```bash
+python c:\reaperai\tools\analyze_bot_logs.py c:\reaperai\launch\quake-spasm\qconsole.log
+```
+
+Analyzer provides:
+- Time-normalized switch rates
+- Weapon switch rationale breakdown
+- Juggler combo frequency
+- Hearing activation patterns
+- Stuck/unstuck method usage
+- Suggestions for tuning improvements
 
 ### Common Warnings (Safe to Ignore)
 ```

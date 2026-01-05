@@ -774,18 +774,36 @@ void () W_BotAttack =
                         // Force immediate weapon switch to close-range weapon (SSG/SNG/LG)
                         if ((self.ammo_shells >= 2.000))
                         {
+                           if ((bot_debug_enabled && (bot_debug_level >= LOG_TACTICAL)))
+                           {
+                              bprint ("[");
+                              bprint (self.netname);
+                              bprint ("] WEAPON: GL → SSG (GL-suicide-prevent)\n");
+                           } //end if
                            self.weapon = IT_SUPER_SHOTGUN;
                         } //end if
                         else
                         {
                            if ((self.ammo_nails >= 1.000))
                            {
+                              if ((bot_debug_enabled && (bot_debug_level >= LOG_TACTICAL)))
+                              {
+                                 bprint ("[");
+                                 bprint (self.netname);
+                                 bprint ("] WEAPON: GL → SNG (GL-suicide-prevent)\n");
+                              } //end if
                               self.weapon = IT_SUPER_NAILGUN;
                            } //end if
                            else
                            {
                               if ((self.ammo_cells >= 1.000))
                               {
+                                 if ((bot_debug_enabled && (bot_debug_level >= LOG_TACTICAL)))
+                                 {
+                                    bprint ("[");
+                                    bprint (self.netname);
+                                    bprint ("] WEAPON: GL → LG (GL-suicide-prevent)\n");
+                                 } //end if
                                  self.weapon = IT_LIGHTNING;
                               } //end if
                            } //end if
@@ -850,6 +868,14 @@ void () W_BotAttack =
                               // Prefer Lightning Gun (instant hitscan, high DPS)
                               if ((self.ammo_cells >= 10.000))
                               {
+                                 // ===== JUGGLER COMBO LOGGING (LOG_TACTICAL+) =====
+                                 if ((bot_debug_enabled && (bot_debug_level >= LOG_TACTICAL)))
+                                 {
+                                    bprint ("[");
+                                    bprint (self.netname);
+                                    bprint ("] COMBO: RL → LG (Juggler shaft-combo)\n");
+                                 } //end if
+                                 // ===== END COMBO LOGGING =====
                                  // Switch to LG via impulse (Quake weapon switch system)
                                  self.impulse = 8.000;
                                  // Quick follow-up: reduce attack cooldown for instant combo
@@ -862,6 +888,14 @@ void () W_BotAttack =
                                  // Fallback: Super Shotgun (reliable burst damage)
                                  if ((self.ammo_shells >= 5.000))
                                  {
+                                    // ===== JUGGLER COMBO LOGGING (LOG_TACTICAL+) =====
+                                    if ((bot_debug_enabled && (bot_debug_level >= LOG_TACTICAL)))
+                                    {
+                                       bprint ("[");
+                                       bprint (self.netname);
+                                       bprint ("] COMBO: RL → SSG (Juggler burst-combo)\n");
+                                    } //end if
+                                    // ===== END COMBO LOGGING =====
                                     self.impulse = 3.000;
                                     self.attack_finished = (time + 0.100);
                                     self.juggler_cooldown = (time + 2.000);

@@ -69,21 +69,25 @@ float (entity e) hearnoise =
    } //end if
    if ((NOISEQUEUE.goalentity == e))
    {
-      dprint (self.teamname);
-      dprint (self.classname);
-      dprint (" heard ");
-      dprint (NOISEQUEUE.goalentity.netname);
-      if ((NOISEQUEUE.movetarget.classname == "player"))
+      // ===== SIMULATED PERCEPTION (HEARING) LOGGING (LOG_VERBOSE+) =====
+      if ((bot_debug_enabled && (bot_debug_level >= LOG_VERBOSE)))
       {
-         dprint (" shoot\n");
-
+         bprint ("[");
+         bprint (self.netname);
+         bprint ("] HEAR: ");
+         bprint (NOISEQUEUE.goalentity.netname);
+         if ((NOISEQUEUE.movetarget.classname == "player"))
+         {
+            bprint (" (weapon-fire)\n");
+         } //end if
+         else
+         {
+            bprint (" (");
+            bprint (NOISEQUEUE.movetarget.classname);
+            bprint (")\n");
+         } //end if
       } //end if
-      else
-      {
-         dprint (" trigger ");
-         dprint (NOISEQUEUE.movetarget.classname);
-         dprint ("\n");
-      } //end if
+      // ===== END HEARING LOGGING =====
       // Streak taunts: on hot streaks, occasionally mock the target with varied lines.
       if ((self.taunt_streak > 2.000))
       {
