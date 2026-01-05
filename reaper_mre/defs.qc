@@ -151,6 +151,8 @@ entity chat_state;      // Dedicated entity for storing global chat state
 .entity goal_stack1;    // Goal memory level 1 (Phase 8: Target Stack - Brain Memory)
 .entity goal_stack2;    // Goal memory level 2 (Phase 8: Target Stack - Brain Memory)
 .entity goal_stack3;    // Goal memory level 3 (Phase 8: Target Stack - Brain Memory)
+.float aggression_score;  // Opponent profiling: Tracks enemy aggression level (0-10)
+.float last_enemy_dist;   // Opponent profiling: Previous distance to enemy for comparison
 float FALSE    = 0.000;
 float TRUE    = 1.000;
 float FL_FLY    = 1.000;

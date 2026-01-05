@@ -1401,6 +1401,40 @@ void (float dist) ai_botrun =
          objerror ("bad bot target in bot_ai! 4\n");
       } //end if
       setorigin (self.goalentity,self.enemy.origin);
+
+      // ===== THE PROFILER: Opponent Aggression Tracking =====
+      // Track enemy movement patterns to adapt tactics dynamically.
+      // Aggressive players rush in → bot sets traps and retreats.
+      // Passive players camp → bot pushes aggressively to flush them out.
+      if ((self.last_enemy_dist > 0.000))
+      {
+         // Are they getting closer to us?
+         if ((rng < self.last_enemy_dist))
+         {
+            // Enemy is APPROACHING (aggressive behavior)
+            self.enemy.aggression_score = (self.enemy.aggression_score + 0.100);
+         } //end if
+         else
+         {
+            // Enemy is RETREATING or CAMPING (passive behavior)
+            self.enemy.aggression_score = (self.enemy.aggression_score - 0.050);
+         } //end else
+
+         // Cap aggression score to 0-10 range
+         if ((self.enemy.aggression_score > 10.000))
+         {
+            self.enemy.aggression_score = 10.000;
+         } //end if
+         if ((self.enemy.aggression_score < 0.000))
+         {
+            self.enemy.aggression_score = 0.000;
+         } //end if
+      } //end if
+
+      // Store current distance for next frame comparison
+      self.last_enemy_dist = rng;
+      // ======================================================
+
       // Cache visible enemy velocity to extend chase prediction past line-of-sight breaks.
       self.last_enemy_vel = self.enemy.velocity;
       self.search_time = (time + MOVETYPE_PUSH);
@@ -1472,6 +1506,65 @@ void (float dist) ai_botrun =
          return ;
       } //end if
    } //end if
+
+   // ===== THE PROFILER: Tactical Adaptations =====
+   // Adapt combat strategy based on opponent's profiled aggression level
+   if ((self.enemy != world))
+   {
+      // AGAINST AGGRESSIVE ENEMIES (score > 7.0): Retreat & Set Traps
+      // These are rushers who charge in - back up and punish their aggression
+      if ((self.enemy.aggression_score > 7.000))
+      {
+         // Increase retreat tendency by boosting enemyrun
+         // (Higher enemyrun makes RunAway() trigger more easily)
+         self.enemyrun = (self.enemyrun + 2.000);
+
+         // Drop grenades more frequently when retreating from rushers
+         // (Parting Gift logic below will execute if we do retreat)
+
+         // ===== PROFILING DEBUG LOGGING (LOG_TACTICAL+) =====
+         if ((bot_debug_enabled && (bot_debug_level >= LOG_TACTICAL)))
+         {
+            bprint ("[");
+            bprint (self.netname);
+            bprint ("] PROFILE: ");
+            bprint (self.enemy.netname);
+            bprint (" is AGGRESSIVE (");
+            bprint (ftos (self.enemy.aggression_score));
+            bprint (") → Retreat & Trap\n");
+         } //end if
+         // ==================================================
+      } //end if
+      // AGAINST PASSIVE ENEMIES (score < 3.0): Flush Them Out
+      // These are campers/cautious players - charge in aggressively
+      else
+      {
+         if ((self.enemy.aggression_score < 3.000))
+         {
+            // Reduce retreat tendency - force aggressive push
+            self.enemyrun = (self.enemyrun - 1.000);
+            if ((self.enemyrun < 0.000))
+            {
+               self.enemyrun = 0.000;
+            } //end if
+
+            // ===== PROFILING DEBUG LOGGING (LOG_TACTICAL+) =====
+            if ((bot_debug_enabled && (bot_debug_level >= LOG_TACTICAL)))
+            {
+               bprint ("[");
+               bprint (self.netname);
+               bprint ("] PROFILE: ");
+               bprint (self.enemy.netname);
+               bprint (" is PASSIVE (");
+               bprint (ftos (self.enemy.aggression_score));
+               bprint (") → Push Aggressively\n");
+            } //end if
+            // ==================================================
+         } //end if
+      } //end else
+   } //end if
+   // ==============================================
+
    self.lefty = (self.lefty + TRUE);
    if (RunAway ())
    {

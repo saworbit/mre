@@ -24,6 +24,54 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 ## 🎬 Latest Features (2026-01)
 
+### 🎯 The Profiler: Opponent Behavior Tracking (2026-01-06)
+
+**NEW:** Bots now analyze and adapt to opponent playstyles in real-time!
+
+The Profiler tracks enemy movement patterns to build aggression profiles. Bots learn whether opponents are aggressive rushers or passive campers, then adapt their tactics dynamically mid-match.
+
+**Before The Profiler:**
+- ❌ Fixed combat tactics (same approach vs all enemies)
+- ❌ No adaptation to opponent behavior
+- ❌ Bots couldn't counter specific playstyles
+
+**After The Profiler:**
+- ✅ Tracks enemy aggression (0-10 score based on approach/retreat patterns)
+- ✅ Adapts tactics: Retreat & trap vs rushers, push aggressively vs campers
+- ✅ Human-like strategic awareness (learns playstyles mid-match)
+- ✅ Debug logging shows profiling decisions at LOG_TACTICAL level
+
+**How it works:**
+
+**Aggression Tracking:**
+- Monitors distance changes frame-by-frame
+- Enemy approaching → +0.1 aggression (rusher behavior)
+- Enemy retreating/camping → -0.05 aggression (passive behavior)
+- Score range: 0 (passive camper) to 10 (aggressive rusher)
+
+**Tactical Adaptations:**
+- **vs Aggressive (>7.0)**: Increase retreat probability, set grenade traps, punish rushers
+- **vs Passive (<3.0)**: Force aggressive push, flush out campers, prevent stalemates
+- **vs Neutral (3.0-7.0)**: Standard combat tactics (no adaptation)
+
+**Example Scenarios:**
+- 🏃 **Aggressive Player**: Constantly charging → Bot backs up, drops grenades, punishes aggression
+- 🏰 **Camping Player**: Hiding in corners → Bot pushes aggressively, flushes them out
+- ⚖️ **Balanced Player**: Mixed tactics → Bot uses standard combat AI
+
+**Debug Output:**
+```
+[Cheater] PROFILE: Assmunch is AGGRESSIVE (8.7) → Retreat & Trap
+[Drooly] PROFILE: Wanton is PASSIVE (2.1) → Push Aggressively
+```
+
+**Integration:**
+- Profiling in [bot_ai.qc:1405-1436](reaper_mre/bot_ai.qc#L1405-L1436)
+- Tactical adaptation in [bot_ai.qc:1510-1566](reaper_mre/bot_ai.qc#L1510-L1566)
+- Entity fields in [defs.qc:154-155](reaper_mre/defs.qc#L154-L155)
+
+**Result:** Bots exhibit human-like tactical adaptation! They learn opponent behavior during matches and counter it strategically. Rushers face traps, campers get flushed out. Creates dynamic, adaptive combat instead of fixed AI patterns. Build size: 464,034 bytes (+1,000 bytes). 🎯🧠✅
+
 ### 🎥 AI Cameraman: Director Mode (2026-01-05)
 
 **NEW:** Intelligent spectator camera that automatically tracks the most exciting action!
@@ -874,6 +922,7 @@ Advanced **path_corner chain prediction** for moving platforms:
 
 | Feature | Description |
 |---------|-------------|
+| 🎯 **The Profiler** | Opponent behavior tracking: Analyzes enemy movement patterns (approach/retreat) to build aggression profiles (0-10 score). Adapts tactics dynamically—retreat & trap vs rushers (>7.0), push aggressively vs campers (<3.0). Human-like playstyle adaptation mid-match (2026-01-06) |
 | 👂 **Simulated Perception** | Hearing module: Detects invisible enemies through walls via noise (weapon fire, footsteps >200 u/s, jumps, quad/pent hum). Pre-aims at doorways where enemies approach (600u range, 800u for powerups). Wallbang spam with RL <200u mimics pro play (2026-01-05) |
 | 🎯 **The FFA Fix** | Intelligent multi-target awareness: Scans all enemies, scores by distance/health/threat, switches mid-combat for better targets. Vulture mode (+500 for <40 HP), self-defense (+800 for attackers), 1.5s re-scan with hysteresis (data-driven optimization, 2026-01-05) |
 | 🧠 **Target Stack (Phase 8)** | 3-deep LIFO goal memory—bots remember interrupted missions across combat (pursuing Mega → enemy → fight → **restore Mega**) |

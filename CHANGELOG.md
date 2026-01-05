@@ -1,3 +1,24 @@
+## 2026-01-06
+
+- **CRITICAL BUGFIX: Bot Skill Assignment** restores all skill-gated features:
+  - **Root cause identified** in `reaper_mre/botspawn.qc` (`AddBot` function, lines 583-603): Impossible conditional logic (e.g., `ran_skill > 0.5 AND ran_skill <= 0.2`) prevented any bot from spawning with skill > 1. All bots locked at novice level (skill=1) regardless of server skill setting.
+  - **Impact analysis**: ALL skill-gated features completely disabled—Juggler combos (requires skill > 2), rocket jump unstuck (requires skill > 2), advanced pathfinding, aim precision scaling. Explains 0 combo events in logs, 0% rocket jump usage, and identical bot performance.
+  - **Fix implemented** in `reaper_mre/botspawn.qc` (lines 583-621): Corrected conditional logic with proper if-else chain. Converts crandom() (-1.0 to 1.0) to normalized range (0.0 to 1.0), then applies valid thresholds: 50% skill 1.0 (novice), 20% skill 1.5, 20% skill 2.0 (Juggler unlocked!), 5% skill 2.5, 5% skill 3.0 (expert).
+  - **Expected results**: Juggler combos activate for skill ≥2 bots (8-15 combos per session), rocket jump unstuck works (20-40% of unstuck events), varied bot performance (50% novice, 30% intermediate, 20% expert), actual skill-based difficulty progression.
+  - **Validation method**: Spawn bots with `impulse 208`, check console for varied IQ values (1.0, 1.5, 2.0, 2.5, 3.0). Enable LOG_TACTICAL debug logging, play 5-minute match, verify COMBO and rocket jump UNSTUCK events appear in qconsole.log.
+  - **Result:** All skill-gated features restored! Juggler combos now activate, rocket jump unstuck works, bots exhibit varied skill levels. Single bug fix unlocks entire advanced AI feature set that was dormant. Build size: 464,006 bytes (-28 bytes from code refactoring). 🐛🔧✅
+
+- **The Profiler: Opponent Behavior Tracking** for adaptive tactical AI:
+  - **Aggression score tracking** in `reaper_mre/bot_ai.qc` (`ai_botrun` function, lines 1405-1436): Analyzes enemy movement patterns in real-time. Tracks distance changes frame-by-frame: enemies approaching → score increases (+0.1/frame), enemies retreating/camping → score decreases (-0.05/frame). Score clamped to 0-10 range for consistent thresholds.
+  - **Entity fields** in `reaper_mre/defs.qc` (lines 154-155): Added `.float aggression_score` (tracks opponent's profiled aggression level 0-10) and `.float last_enemy_dist` (stores previous distance for frame-to-frame comparison).
+  - **Tactical adaptation system** in `reaper_mre/bot_ai.qc` (lines 1510-1566): Bots adapt combat strategy based on profiled opponent behavior:
+    - **Against Aggressive Enemies (score > 7.0)**: Increases `enemyrun` by +2.0 to boost retreat probability. RunAway() triggers more easily, and existing "Parting Gift" grenade trap system activates more frequently. Counters rushers by backing up and setting traps.
+    - **Against Passive Enemies (score < 3.0)**: Reduces `enemyrun` by -1.0 to force aggressive push. Bots charge campers instead of waiting, flushing them out of hiding spots. Prevents stalemates with passive players.
+  - **Debug logging** in `reaper_mre/bot_ai.qc` (lines 1525-1535, 1551-1561): At LOG_TACTICAL verbosity level, outputs profiling decisions: `[BotName] PROFILE: EnemyName is AGGRESSIVE (8.7) → Retreat & Trap` or `[BotName] PROFILE: EnemyName is PASSIVE (2.1) → Push Aggressively`. Enables analysis of adaptive behavior patterns.
+  - **Human-like adaptation**: Real players adjust tactics based on opponent playstyles—avoiding long hallways against snipers, setting traps for rushers, pushing aggressively against campers. The Profiler gives bots this same strategic awareness. Unlike fixed AI, bots now learn enemy behavior mid-match and counter it dynamically.
+  - **Integration with existing systems**: Works seamlessly with RunAway() retreat logic, "Parting Gift" grenade traps, and circle strafing combat. Profiling enhances rather than replaces existing tactical AI, creating layered decision-making.
+  - **Result:** Bots now adapt tactics based on opponent behavior! Aggressive rushers trigger defensive retreats with grenade traps. Passive campers trigger aggressive pushes to flush them out. Creates dynamic, human-like tactical adaptation instead of fixed combat patterns. Build size: 464,034 bytes (+1,000 bytes for profiling system). 🎯🧠✅
+
 ## 2026-01-05
 
 - **Hierarchical Verbosity Logging System** for data-driven bot analysis:

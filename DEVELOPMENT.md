@@ -314,6 +314,12 @@ impulse 96      # Cycle through verbosity levels
 [Wanton] COMBO: RL → SSG (Juggler burst-combo)
 ```
 
+**Opponent Profiling (LOG_TACTICAL):**
+```
+[Cheater] PROFILE: Assmunch is AGGRESSIVE (8.7) → Retreat & Trap
+[Drooly] PROFILE: Wanton is PASSIVE (2.1) → Push Aggressively
+```
+
 **Hearing Events (LOG_VERBOSE):**
 ```
 [Cheater] HEAR: Assmunch (weapon-fire)
