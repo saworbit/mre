@@ -1,5 +1,13 @@
 ## 2026-01-05
 
+- **PHASE 11: Water Survival (Drowning Prevention)** for FrikBot-inspired air management:
+  - **CheckWaterSurvival() function** in `reaper_mre/botmove.qc` (lines 908-938): Adapted from FrikBot's "Up Periscope" logic. Detects when bot is fully underwater (`waterlevel > 2`) AND running out of air (`time > air_finished - 2`). Checks 2 seconds before drowning to give time to surface.
+  - **Air detection trace** in `reaper_mre/botmove.qc` (line 918): Uses `traceline()` to scan 600 units upward from bot's position. Checks `trace_inopen` to determine if air exists above. Only attempts surfacing when air is reachable (prevents pointless swim in submerged rooms).
+  - **Emergency surface mechanics** in `reaper_mre/botmove.qc` (lines 924-930): Forces upward swim using `button2 = 1` (jump/swim button), adds upward velocity (`velocity_z = 200`), and tilts view upward (`v_angle_x = -45`) to assist physics engine. Mimics human player surfacing behavior.
+  - **Movement pipeline integration** in `reaper_mre/botmove.qc` (`Botmovetogoal` function, line 1475): Added `CheckWaterSurvival()` call immediately after `CheckForHazards()` at start of movement pipeline. Runs every frame to ensure drowning bots get immediate surfacing response.
+  - **Preserves existing water systems**: Complements existing `BotUnderwaterMove()` (line 1240), `Botwaterjump()` (line 156), `waterupdown()` (line 941), and `waterdownz()` functions. Water survival adds missing air management layer to Reaper's water navigation suite.
+  - **Result:** Bots no longer suffocate in deep water! When air runs low, bots immediately detect air above and force emergency surface swim. Prevents drowning deaths in maps with deep water zones (e23m6, e4m8, etc.). Fills critical gap—previous water code had NO air_finished checking. Build size: 451,282 bytes (no size change from Phase 10). 🌊💨✅
+
 - **PHASE 10: Graduated Need Assessment** for FrikBot-inspired item urgency escalation:
   - **Graduated health thresholds** in `reaper_mre/botgoal.qc` (`itemweight()` function, lines 248-257): Replaced linear health scaling (max +15 at 20 HP) with FrikBot's aggressive stepped system. Critical health (<20 HP) now gives +150 weight (10× improvement), low health (<50 HP) gives +50 weight. Escalating urgency ensures dying bots prioritize health over combat items.
   - **Megahealth detection bonus** in `reaper_mre/botgoal.qc` (lines 259-263): Added +50 weight bonus when health item has megahealth spawnflag (`item.spawnflags & 2`). Megahealth always valuable even at full HP, stacks with health threshold bonuses (critical bot at megahealth = +200 total).

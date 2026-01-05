@@ -901,6 +901,43 @@ void () CheckForHazards =
 }; //end of the function CheckForHazards
 // ===== END PHASE 9: GROUND HAZARD DETECTION =====
 
+// ===== PHASE 11: WATER SURVIVAL (Drowning Prevention) =====
+// Detects when bot is underwater and running out of air, forcing surface swim.
+// Prevents bots from suffocating in deep water by checking air_finished field.
+// Inspired by FrikBot's "Up Periscope" logic, adapted to Reaper's movement system.
+void() CheckWaterSurvival =
+{
+   // Are we fully underwater?
+   if (self.waterlevel > 2)
+   {
+      // Are we running out of air? (air_finished is standard QuakeC field)
+      // Check 2 seconds before drowning to give time to surface
+      if (time > self.air_finished - 2)
+      {
+         // Trace upward to see if there's air above us
+         traceline(self.origin, self.origin + '0 0 600', TRUE, self);
+
+         if (trace_inopen)
+         {
+            // AIR DETECTED ABOVE - SURFACE NOW!
+            // Force upward swim using jump button (same as player surfacing)
+            self.button2 = 1;
+
+            // Add upward velocity to help break surface
+            self.velocity_z = 200;
+
+            // Look up slightly to assist physics engine
+            self.v_angle_x = -45;
+
+            // Optional: Clear any combat/movement commands while surfacing
+            // (comment out if we want bots to shoot while drowning - less realistic)
+            // self.button0 = 0;
+         }
+      }
+   }
+};
+// ===== END PHASE 11: WATER SURVIVAL =====
+
 float (float dist) waterupdown =
 {
    local float wlevel;
@@ -1430,6 +1467,12 @@ void (float dist) Botmovetogoal =
    // This prevents bots from casually walking into hazards (Layer 1 - Prevention).
    // Phase 4's mid-air system (Layer 2) handles aerial hazards during flight.
    CheckForHazards ();
+   // =============================================================
+
+   // ===== PHASE 11: WATER SURVIVAL CHECK (Drowning Prevention) =====
+   // Check if bot is underwater and running out of air, force surface if needed.
+   // This prevents bots from suffocating in deep water zones.
+   CheckWaterSurvival ();
    // =============================================================
 
    // ===== DYNAMIC STUCK WIGGLE: Micro-Jump on Velocity Stall =====

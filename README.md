@@ -24,6 +24,37 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 ## 🎬 Latest Features (2026-01)
 
+### 🌊 PHASE 11: Water Survival (Drowning Prevention) (2026-01-05)
+
+**NEW:** Bots now detect drowning and emergency-surface when running out of air underwater!
+
+Phase 11 adapts FrikBot's "Up Periscope" logic to add missing air management to Reaper's water navigation suite:
+
+**Before Phase 11:**
+- ❌ Bots had NO air_finished checking anywhere in the codebase
+- ❌ Bots would drown in deep water zones (e23m6, e4m8, etc.)
+- ❌ Existing water code (BotUnderwaterMove, waterupdown) only handled navigation, not survival
+
+**After Phase 11:**
+- ✅ Detects when fully underwater (`waterlevel > 2`) AND air running low (`time > air_finished - 2`)
+- ✅ Traces upward 600 units to check if air exists above (`trace_inopen`)
+- ✅ Forces emergency surface swim when drowning imminent
+- ✅ Checks 2 seconds before drowning to give time to surface
+
+**How it works:**
+1. 🤿 **Underwater detection** → Checks if bot is fully submerged (waterlevel > 2)
+2. 💨 **Air check** → Detects when air will run out in 2 seconds (air_finished - 2)
+3. 🔍 **Air trace** → Scans 600 units upward to see if air exists above
+4. 🏊 **Emergency surface** → Forces upward swim using:
+   - `button2 = 1` (jump/swim button - same as human player)
+   - `velocity_z = 200` (adds upward velocity)
+   - `v_angle_x = -45` (looks up to assist physics)
+5. 🔁 **Every frame** → Runs in movement pipeline after hazard checks
+
+**Integration:** CheckWaterSurvival() runs at the start of Botmovetogoal() (line 1475) immediately after CheckForHazards(), ensuring drowning bots get instant surfacing response before other movement systems execute.
+
+**Result:** Bots now survive deep water! When air runs low, bots immediately detect air above and force emergency swim to surface. Prevents suffocation deaths in water-heavy maps. Complements existing water navigation with critical air management layer. Build size: 451,282 bytes (no size change from Phase 10). 🌊💨✅
+
 ### 🏥 PHASE 10: Graduated Need Assessment (2026-01-05)
 
 **NEW:** Bots now exhibit human-like desperation for health and armor when hurt!
