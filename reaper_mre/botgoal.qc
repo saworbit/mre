@@ -236,14 +236,42 @@ float (entity e) itemweight =
          } //end if
       } //end if
    } //end if
-   // Low-health bias: nudge item_health higher when the bot is hurt.
-   if ((self.health < 50.000))
+   // ===== PHASE 10: Graduated Need Assessment =====
+   // FrikBot-inspired graduated urgency thresholds replace linear scaling.
+   // Critical health (< 20 HP) gets massive +150 boost, low health (< 50 HP) gets +50.
+   // Megahealth detection adds +50 bonus when item has megahealth spawnflag.
+   // Low armor (< 50) gets scaled boost up to +40 when naked.
+   if ((e.classname == "item_health"))
    {
-      if ((e.classname == "item_health"))
+      if ((weight > DONT_WANT))
+      {
+         // Critical health: massive boost (was linear +15 max, now +150)
+         if ((self.health < 20.000))
+         {
+            weight = (weight + 150.000);  // Desperate!
+         }
+         // Low health: moderate boost
+         else if ((self.health < 50.000))
+         {
+            weight = (weight + 50.000);   // Hurt
+         }
+
+         // Megahealth bonus (spawnflags & 2)
+         if ((e.spawnflags & 2.000))
+         {
+            weight = (weight + 50.000);   // Always valuable
+         }
+      } //end if
+   } //end if
+
+   // Low-armor bias: graduated armor need assessment
+   if ((self.armorvalue < 50.000))
+   {
+      if ((e.classname == "item_armor1") || (e.classname == "item_armor2") || (e.classname == "item_armorInv"))
       {
          if ((weight > DONT_WANT))
          {
-            weight = (weight + ((50.000 - self.health) * 0.500));
+            weight = (weight + ((50.000 - self.armorvalue) * 0.800));  // Up to +40 when naked
          } //end if
       } //end if
    } //end if

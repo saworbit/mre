@@ -24,6 +24,39 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 ## 🎬 Latest Features (2026-01)
 
+### 🏥 PHASE 10: Graduated Need Assessment (2026-01-05)
+
+**NEW:** Bots now exhibit human-like desperation for health and armor when hurt!
+
+Phase 10 replaces Reaper's linear health scaling (weak +15 max bonus) with FrikBot's aggressive graduated thresholds for realistic survival instincts:
+
+**Before Phase 10 (Linear Scaling):**
+- ❌ Bot at 20 HP gets only +15 weight for health items
+- ❌ Bot at 10 HP might still chase Rocket Launcher instead of health
+- ❌ Naked bot (0 armor) has same item priorities as armored bot
+
+**After Phase 10 (Graduated Thresholds):**
+- ✅ Bot at <20 HP gets **+150 weight** for health items (10× improvement!)
+- ✅ Bot at <50 HP gets **+50 weight** for health items
+- ✅ Naked bot (<50 armor) gets up to **+40 weight** for armor items
+- ✅ Megahealth always gets **+50 bonus** even at full HP
+
+**How it works:**
+1. 🩸 **Critical Health (<20 HP)** → +150 weight → Health dominates all scoring
+2. 🤕 **Low Health (<50 HP)** → +50 weight → Health prioritized over weapons
+3. 💎 **Megahealth Bonus** → +50 weight → Always valuable (stacks with health bonuses)
+4. 🛡️ **Low Armor (<50)** → Up to +40 weight → Scales from naked to moderate armor
+5. 🧠 **Preserved Intelligence** → All existing systems intact (Risk-aware, Bully mode, RJ reachability)
+
+**Example Behavior:**
+- 💀 Bot at 15 HP near health pack → **+150 weight** → Ignores distant RL, beelines for health
+- 🔥 Bot at 40 HP finds megahealth → **+50 (low HP) + +50 (mega bonus) = +100 total** → High priority
+- 🏃 Naked bot sees Green Armor → **+40 weight** → Seeks armor before combat items
+
+**Integration:** FrikBot's granular thresholds enhance Reaper's existing sophisticated scoring (threat assessment, smart backpack scavenging, RJ reachability) instead of replacing it. Best-of-both-worlds item AI!
+
+**Result:** Bots make survival-first decisions like human players! Critical health bots frantically seek healing, naked bots prioritize armor acquisition, megahealth attracts even healthy bots. Build size: 451,282 bytes (+192 bytes). 🏥🛡️✅
+
 ### 🌋 PHASE 9: Ground Hazard Detection (2026-01-05)
 
 **NEW:** Bots now proactively avoid lava pools, gaps, and cliff edges with ground-level hazard scanning!
