@@ -835,6 +835,42 @@ void () W_BotAttack =
                         W_FireRocket ();
                         self.attack_finished = ((time + 0.800) + addt);
 
+                        // ===== THE JUGGLER: Rocket → LG/SSG Weapon Combos =====
+                        // After rocket fire at close-mid range, instantly switch to hitscan weapon
+                        // to exploit enemy's airborne helplessness from knockback. Classic "shaft combo"
+                        // from tournament play. Only high-skill bots (>2) execute this mechanic.
+                        if (((self.skil > 2.000) && (time > self.juggler_cooldown)))
+                        {
+                           local float combo_dist;
+                           combo_dist = vlen ((self.enemy.origin - self.origin));
+
+                           // Combo range: 400u (close-mid range where knockback is effective)
+                           if ((combo_dist < 400.000))
+                           {
+                              // Prefer Lightning Gun (instant hitscan, high DPS)
+                              if ((self.ammo_cells >= 10.000))
+                              {
+                                 // Switch to LG via impulse (Quake weapon switch system)
+                                 self.impulse = 8.000;
+                                 // Quick follow-up: reduce attack cooldown for instant combo
+                                 self.attack_finished = (time + 0.100);
+                                 // Set cooldown: prevent spam (2-second cooldown)
+                                 self.juggler_cooldown = (time + 2.000);
+                              } //end if
+                              else
+                              {
+                                 // Fallback: Super Shotgun (reliable burst damage)
+                                 if ((self.ammo_shells >= 5.000))
+                                 {
+                                    self.impulse = 3.000;
+                                    self.attack_finished = (time + 0.100);
+                                    self.juggler_cooldown = (time + 2.000);
+                                 } //end if
+                              } //end if
+                           } //end if
+                        } //end if
+                        // ===== END THE JUGGLER =====
+
                      } //end if
                      else
                      {

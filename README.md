@@ -24,6 +24,40 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 ## 🎬 Latest Features (2026-01)
 
+### 🎯 The Juggler: Weapon Combo System (2026-01-05)
+
+**NEW:** High-skill bots now execute tournament-level weapon combos! Rocket → Lightning Gun/SSG combos exploit knockback physics.
+
+Mimics iconic "shaft combo" from competitive Quake: fire rocket at close range to knock enemy airborne, instantly switch to hitscan weapon (LG/SSG), track helpless opponent who cannot dodge while mid-air. Only high-skill bots (skill >2) execute this pro-level mechanic.
+
+**Before The Juggler:**
+- ❌ Bots only used single-weapon attacks (no combo chains)
+- ❌ Rocket knockback advantage wasted—no follow-up damage
+- ❌ Combat felt robotic—fire, wait, fire, wait (no dynamic adaptation)
+
+**After The Juggler:**
+- ✅ Rocket fire triggers instant weapon switch at close-mid range (<400u)
+- ✅ Prefers Lightning Gun (10+ cells) for hitscan tracking, falls back to SSG (5+ shells)
+- ✅ Reduces attack cooldown to 0.1s for instant combo execution
+- ✅ 2-second cooldown prevents spam while allowing combos during sustained fights
+
+**How it works:**
+1. 🚀 **Rocket fire** → Bot fires rocket at enemy within 400 units
+2. 💥 **Knockback physics** → Enemy gets launched airborne by rocket explosion
+3. ⚡ **Instant switch** → Bot switches to LG/SSG via impulse (`self.impulse = 8` for LG)
+4. 🎯 **Quick follow-up** → Attack cooldown reduced to 0.1s (from 0.8s) for instant combo
+5. 🔒 **Cooldown gate** → 2-second cooldown prevents continuous weapon switching
+
+**Example Behavior:**
+- ⚡ **Rocket → LG combo:** Enemy at 350u → Bot fires rocket → Enemy airborne from knockback → Bot switches to LG → Tracks with hitscan while enemy helpless → Devastating DPS chain
+- 💥 **Rocket → SSG combo:** Low on cells but 5+ shells → Rocket → SSG burst → Reliable fallback when LG unavailable
+
+**Skill-based gating:** Low-skill bots (≤2) fire rockets normally. High-skill bots (>2) execute combos, creating clear difficulty progression. Preserves game balance while adding tournament-level depth for challenging opponents.
+
+**Integration:** Combo detection in [botfight.qc:838-872](reaper_mre/botfight.qc#L838-L872) runs immediately after rocket fire. Cooldown tracking in [defs.qc:330](reaper_mre/defs.qc#L330).
+
+**Result:** High-skill bots now fight like tournament players! Rocket → LG/SSG combos transform combat from static weapon usage to dynamic combo chains. Exploits knockback physics for guaranteed follow-up damage. Build size: 452,454 bytes (+332 bytes). 🎯⚡✅
+
 ### ⏰ The Timekeeper: Strategic Powerup Control (2026-01-05)
 
 **NEW:** Bots now predict powerup spawn times and pre-rotate to spawn points like tournament players!

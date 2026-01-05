@@ -1,5 +1,15 @@
 ## 2026-01-05
 
+- **The Juggler (Weapon Combo System)** for tournament-level rocket → hitscan combos:
+  - **Cooldown tracking field** in `reaper_mre/defs.qc` (line 330): Added `.float juggler_cooldown` field to prevent weapon combo spam. 2-second cooldown between combos ensures tactical usage rather than continuous switching.
+  - **Combo detection logic** in `reaper_mre/botfight.qc` (`W_BotAttack()` function, lines 838-872): After firing rocket launcher, immediately checks for combo opportunity. Only high-skill bots (skill >2) execute combos, maintaining difficulty progression.
+  - **Distance-based activation** in `reaper_mre/botfight.qc` (line 848): Combo triggers only within 400 units (close-mid range) where rocket knockback creates airborne helplessness. Beyond 400u, rocket is fired normally without follow-up.
+  - **Weapon priority system** in `reaper_mre/botfight.qc` (lines 850-869): Prefers Lightning Gun (10+ cells) for instant hitscan damage, falls back to Super Shotgun (5+ shells) for reliable burst. Impulse-based switching (`self.impulse = 8` for LG, `3` for SSG) uses Quake's weapon selection system.
+  - **Quick follow-up timing** in `reaper_mre/botfight.qc` (line 856): Reduces `attack_finished` to `time + 0.1` (from standard 0.8s rocket cooldown) for instant combo execution. Exploits brief window where enemy is airborne from rocket knockback.
+  - **Classic "shaft combo" emulation**: Mimics iconic tournament technique where pro players fire rocket at close range, instantly switch to lightning gun, and track airborne opponent who cannot dodge hitscan. Devastating at 300-400 unit range where both weapons are effective.
+  - **Skill-based gating preserves balance**: Low-skill bots (≤2) only fire rockets normally. High-skill bots (>2) execute combos, creating clear difficulty gap. Cooldown prevents spam abuse while allowing combos every 2 seconds during sustained fights.
+  - **Result:** High-skill bots now execute weapon combos like tournament players! Rocket → LG/SSG combos exploit knockback physics to land guaranteed hitscan follow-up damage. Transforms high-skill combat from simple weapon selection to dynamic combo chains. Build size: 452,454 bytes (+332 bytes for combo logic). 🎯⚡✅
+
 - **The Timekeeper (Strategic Powerup Control)** for pro-level spawn timing:
   - **Predicted spawn tracking** in `reaper_mre/defs.qc` (line 329): Added `.float predicted_spawn` field to track when powerups will respawn. Set in `reaper_mre/items.qc` (lines 1087, 1093) during powerup pickup—Quad respawns at `time + 60s`, Pent/Ring at `time + 300s`.
   - **Pre-rotation logic** in `reaper_mre/bot_ai.qc` (`aibot_checkforGoodies()` function, lines 1394-1435): Bots now detect invisible powerups (quad/pent/ring) that will spawn within 10 seconds. When detected, assigns massive weight (`MUST_HAVE + 500`) to override combat goals and trigger camping behavior.
