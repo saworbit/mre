@@ -1384,15 +1384,40 @@ void () ImpulseCommands =
       } //end if
       else
       {
-         if ((self.impulse == 400.000))
+         if ((self.impulse == 95.000) && (self.classname == "player"))
          {
-            // ===== AI CAMERAMAN ACTIVATION =====
-            // Convert player to spectator camera with AI director mode
-            CamClientInit ();
+            // ===== BOT DEBUG LOGGING TOGGLE ===== (Player-only)
+            bot_debug_enabled = !bot_debug_enabled;
+            if (bot_debug_enabled)
+            {
+               bprint ("\n");
+               bprint ("===========================================\n");
+               bprint ("  BOT DEBUG LOGGING ENABLED\n");
+               bprint ("===========================================\n");
+               bprint ("All bot decisions will be logged to console.\n");
+               bprint ("Use 'impulse 95' again to disable.\n");
+               bprint ("Check qconsole.log for full analysis.\n");
+               bprint ("\n");
+            } //end if
+            else
+            {
+               bprint ("\n");
+               bprint ("Bot debug logging DISABLED.\n");
+               bprint ("\n");
+            } //end if
          } //end if
          else
          {
-            botImpulseCommand ();
+            if ((self.impulse == 99.000))
+            {
+               // ===== AI CAMERAMAN ACTIVATION =====
+               // Convert player to spectator camera with AI director mode (impulse 99)
+               CamClientInit ();
+            } //end if
+            else
+            {
+               botImpulseCommand ();
+            } //end if
          } //end if
       } //end if
    } //end if
