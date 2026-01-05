@@ -1202,8 +1202,34 @@ entity (entity start, entity goal) AStarSolve =
       {
          if (((neighbor.search_id != ASTAR_SEARCH_ID) || (neighbor.closed_next != neighbor)))
          {
-            // Calculate edge cost (Euclidean distance)
+            // ===== TACTICAL PATHFINDING: The "Fear" Engine =====
+            // Calculate base edge cost (Euclidean distance)
             edge_cost = vlen ((neighbor.origin - lowest.origin));
+
+            // PENALTY: Danger Scent (death zones)
+            // If bots die here often, artificially increase the "length" of this path.
+            // Multiplier 10.0 means 1 death makes the path seem 10 units longer.
+            if ((neighbor.danger_scent > 0.000))
+            {
+               edge_cost = (edge_cost + (neighbor.danger_scent * 10.000));
+            } //end if
+
+            // BONUS/PENALTY: Traffic Score (adaptive based on health)
+            // Strong bots (≥50 HP): Seek traffic (map control) → REDUCE cost
+            // Weak bots (<50 HP): Avoid traffic (danger) → INCREASE cost
+            if ((neighbor.traffic_score > 0.000))
+            {
+               if ((self.health < 50.000))
+               {
+                  edge_cost = (edge_cost + (neighbor.traffic_score * 5.000)); // Avoid fight
+               } //end if
+               else
+               {
+                  edge_cost = (edge_cost - (neighbor.traffic_score * 2.000)); // Seek fight
+               } //end if
+            } //end if
+            // ===================================================
+
             tentative_g = (lowest.g_score + edge_cost);
 
             // Better path found OR node not yet visited?
@@ -1232,7 +1258,27 @@ entity (entity start, entity goal) AStarSolve =
       {
          if (((neighbor.search_id != ASTAR_SEARCH_ID) || (neighbor.closed_next != neighbor)))
          {
+            // ===== TACTICAL PATHFINDING: The "Fear" Engine =====
             edge_cost = vlen ((neighbor.origin - lowest.origin));
+
+            if ((neighbor.danger_scent > 0.000))
+            {
+               edge_cost = (edge_cost + (neighbor.danger_scent * 10.000));
+            } //end if
+
+            if ((neighbor.traffic_score > 0.000))
+            {
+               if ((self.health < 50.000))
+               {
+                  edge_cost = (edge_cost + (neighbor.traffic_score * 5.000));
+               } //end if
+               else
+               {
+                  edge_cost = (edge_cost - (neighbor.traffic_score * 2.000));
+               } //end if
+            } //end if
+            // ===================================================
+
             tentative_g = (lowest.g_score + edge_cost);
 
             if (((neighbor.search_id != ASTAR_SEARCH_ID) || (tentative_g < neighbor.g_score)))
@@ -1258,7 +1304,27 @@ entity (entity start, entity goal) AStarSolve =
       {
          if (((neighbor.search_id != ASTAR_SEARCH_ID) || (neighbor.closed_next != neighbor)))
          {
+            // ===== TACTICAL PATHFINDING: The "Fear" Engine =====
             edge_cost = vlen ((neighbor.origin - lowest.origin));
+
+            if ((neighbor.danger_scent > 0.000))
+            {
+               edge_cost = (edge_cost + (neighbor.danger_scent * 10.000));
+            } //end if
+
+            if ((neighbor.traffic_score > 0.000))
+            {
+               if ((self.health < 50.000))
+               {
+                  edge_cost = (edge_cost + (neighbor.traffic_score * 5.000));
+               } //end if
+               else
+               {
+                  edge_cost = (edge_cost - (neighbor.traffic_score * 2.000));
+               } //end if
+            } //end if
+            // ===================================================
+
             tentative_g = (lowest.g_score + edge_cost);
 
             if (((neighbor.search_id != ASTAR_SEARCH_ID) || (tentative_g < neighbor.g_score)))
@@ -1283,7 +1349,27 @@ entity (entity start, entity goal) AStarSolve =
       {
          if (((neighbor.search_id != ASTAR_SEARCH_ID) || (neighbor.closed_next != neighbor)))
          {
+            // ===== TACTICAL PATHFINDING: The "Fear" Engine =====
             edge_cost = vlen ((neighbor.origin - lowest.origin));
+
+            if ((neighbor.danger_scent > 0.000))
+            {
+               edge_cost = (edge_cost + (neighbor.danger_scent * 10.000));
+            } //end if
+
+            if ((neighbor.traffic_score > 0.000))
+            {
+               if ((self.health < 50.000))
+               {
+                  edge_cost = (edge_cost + (neighbor.traffic_score * 5.000));
+               } //end if
+               else
+               {
+                  edge_cost = (edge_cost - (neighbor.traffic_score * 2.000));
+               } //end if
+            } //end if
+            // ===================================================
+
             tentative_g = (lowest.g_score + edge_cost);
 
             if (((neighbor.search_id != ASTAR_SEARCH_ID) || (tentative_g < neighbor.g_score)))
@@ -1308,7 +1394,27 @@ entity (entity start, entity goal) AStarSolve =
       {
          if (((neighbor.search_id != ASTAR_SEARCH_ID) || (neighbor.closed_next != neighbor)))
          {
+            // ===== TACTICAL PATHFINDING: The "Fear" Engine =====
             edge_cost = vlen ((neighbor.origin - lowest.origin));
+
+            if ((neighbor.danger_scent > 0.000))
+            {
+               edge_cost = (edge_cost + (neighbor.danger_scent * 10.000));
+            } //end if
+
+            if ((neighbor.traffic_score > 0.000))
+            {
+               if ((self.health < 50.000))
+               {
+                  edge_cost = (edge_cost + (neighbor.traffic_score * 5.000));
+               } //end if
+               else
+               {
+                  edge_cost = (edge_cost - (neighbor.traffic_score * 2.000));
+               } //end if
+            } //end if
+            // ===================================================
+
             tentative_g = (lowest.g_score + edge_cost);
 
             if (((neighbor.search_id != ASTAR_SEARCH_ID) || (tentative_g < neighbor.g_score)))
@@ -1333,7 +1439,27 @@ entity (entity start, entity goal) AStarSolve =
       {
          if (((neighbor.search_id != ASTAR_SEARCH_ID) || (neighbor.closed_next != neighbor)))
          {
+            // ===== TACTICAL PATHFINDING: The "Fear" Engine =====
             edge_cost = vlen ((neighbor.origin - lowest.origin));
+
+            if ((neighbor.danger_scent > 0.000))
+            {
+               edge_cost = (edge_cost + (neighbor.danger_scent * 10.000));
+            } //end if
+
+            if ((neighbor.traffic_score > 0.000))
+            {
+               if ((self.health < 50.000))
+               {
+                  edge_cost = (edge_cost + (neighbor.traffic_score * 5.000));
+               } //end if
+               else
+               {
+                  edge_cost = (edge_cost - (neighbor.traffic_score * 2.000));
+               } //end if
+            } //end if
+            // ===================================================
+
             tentative_g = (lowest.g_score + edge_cost);
 
             if (((neighbor.search_id != ASTAR_SEARCH_ID) || (tentative_g < neighbor.g_score)))

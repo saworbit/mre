@@ -68,6 +68,56 @@ Bots now move like skilled players with corner cutting, smooth strafing, and dyn
 
 **Result:** Bots move like pros! Corner smoothing creates racing-line navigation, strafe hysteresis eliminates vibration, analog turning provides natural aim. Professional-grade movement fluidity. Build size: 453,342 bytes (+888 bytes). 🏎️✨✅
 
+### 🧠 The Fear Engine: Tactical Pathfinding (2026-01-05)
+
+**NEW:** Danger-aware A* pathfinding chooses safest routes instead of just shortest!
+
+Bots now avoid death zones and adapt routing based on health. Wounded bots take safe detours, healthy bots seek combat zones. Emerges from death experience.
+
+**Before Fear Engine:**
+- ❌ A* always chose shortest path (pure distance)
+- ❌ Bots repeatedly died in same dangerous corridors
+- ❌ No learning from death zones
+- ❌ Weak/strong bots used identical routes
+
+**After Fear Engine:**
+- ✅ A* considers danger + traffic (tactical cost)
+- ✅ Bots route around high-death areas
+- ✅ Learn from deaths (danger scent accumulation)
+- ✅ Health-adaptive routing (weak avoid, strong seek)
+
+**How it works:**
+
+**Tactical Edge Cost Formula:**
+```
+base_cost = distance(current → neighbor)
++ danger_penalty = danger_scent × 10.0
++ traffic_modifier = traffic_score × (health < 50 HP ? +5.0 : -2.0)
+= total_edge_cost (used in A* pathfinding)
+```
+
+**Danger Scent Penalty:**
+- 📈 **Learning from deaths** → Each bot death increments danger_scent at death location
+- 🚫 **Route avoidance** → +10.0 cost per death makes path "artificially longer"
+- 🗺️ **Example**: Hallway with 3 deaths = +30 cost → Bot takes longer flank route instead
+
+**Traffic Score (Health-Adaptive):**
+- 💪 **Strong bots (≥50 HP)** → Seek traffic areas (-2.0 cost = map control)
+- 🩹 **Weak bots (<50 HP)** → Avoid traffic areas (+5.0 cost = survival)
+- 🎯 **Strategic positioning** → Condition-based routing creates emergent tactics
+
+**Example Behaviors:**
+- 🏥 **Wounded bot**: Needs health pack 200u away through high-traffic corridor (+50 traffic penalty = 250 cost) OR 300u detour through quiet back route (300 cost) → Takes detour for safety
+- 💪 **Healthy bot**: Seeks Red Armor 400u away through active combat zone (-20 traffic bonus = 380 cost) → Aggressively pursues map control
+- ☠️ **Death zone**: Lava pit corridor killed 5 bots (+50 danger penalty) → All bots route around despite being shorter
+
+**Integration:**
+- A* modification in [botroute.qc:1207-1231, 1262-1280, 1308-1326, 1353-1371, 1398-1416, 1443-1461](reaper_mre/botroute.qc#L1207-L1461)
+- Applied to all 6 neighbor checks in AStarSolve function
+- Uses existing danger_scent and traffic_score waypoint fields
+
+**Result:** Bots exhibit survival instincts! Avoid death zones, adapt routes to health condition, learn from experience. Transforms A* from blind distance optimizer to tactical risk-aware navigator. Build size: 454,862 bytes (+912 bytes). 🧠🗺️✅
+
 ### 🎯 The FFA Fix: Best Target Logic (2026-01-05)
 
 **NEW:** Intelligent multi-opponent awareness for Free-For-All deathmatch!
