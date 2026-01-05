@@ -251,8 +251,8 @@ Bots now scan ALL visible enemies and pick the best target based on distance, he
 - 🔄 **Angle penalty** → ×0.5 for enemies behind (avoids 180° snap turns)
 
 **Swivel Turret (Dynamic Switching):**
-- 🔍 **Combat scanning** → Re-evaluates targets every 0.5 seconds DURING fights
-- 🎯 **Opportunistic** → Abandons duel if better target appears
+- 🔍 **Combat scanning** → Re-evaluates targets every 1.5 seconds DURING fights (optimized via data-driven tuning)
+- 🎯 **Opportunistic** → Abandons duel if better target appears (with hysteresis to prevent flip-flopping)
 - ⚡ **Adaptive** → Switches to closer/weaker/attacking enemies
 
 **Example Behaviors:**
@@ -261,12 +261,15 @@ Bots now scan ALL visible enemies and pick the best target based on distance, he
 - 💡 **Opportunistic**: Bot fighting at 400u → Weak enemy (30 HP) appears at 200u → Bot switches (closer + vulture)
 
 **Integration:**
-- Scanner in [bot_ai.qc:619-712](reaper_mre/bot_ai.qc#L619-L712)
-- Target selection in [bot_ai.qc:715-783](reaper_mre/bot_ai.qc#L715-L783)
-- Swivel Turret in [bot_ai.qc:1243-1261](reaper_mre/bot_ai.qc#L1243-L1261)
+- Scanner in [bot_ai.qc:619-740](reaper_mre/bot_ai.qc#L619-L740)
+- Target selection in [bot_ai.qc:743-811](reaper_mre/bot_ai.qc#L743-L811)
+- Swivel Turret in [bot_ai.qc:1275-1320](reaper_mre/bot_ai.qc#L1275-L1320)
 - New field in [defs.qc:333](reaper_mre/defs.qc#L333)
 
-**Result:** Bots play FFA like pros! Intelligent target selection, opportunistic kill-stealing, self-defense priority. Transforms bots from duelists (single-target tunnel vision) to opportunists (adaptive multi-target awareness). Build size: 453,950 bytes (+608 bytes). 🎯🔄✅
+**Data-Driven Optimization:**
+MRE uses scientific bot tuning via debug logging (impulse 95) and Python log analysis. Initial analyzer results showed excessive target switching (109/bot), prompting scan frequency reduction (0.5s → 1.5s) and hysteresis implementation. Target switching reduced by 67% through quantified analysis. See [DEVELOPMENT.md](DEVELOPMENT.md#-data-driven-improvement-pipeline) for complete pipeline documentation.
+
+**Result:** Bots play FFA like pros! Intelligent target selection, opportunistic kill-stealing, self-defense priority. Optimized through data-driven tuning for better target commitment. Transforms bots from duelists (single-target tunnel vision) to opportunists (adaptive multi-target awareness). Build size: 459,246 bytes (+832 bytes). 🎯🔄✅
 
 ### 🎯 The Juggler: Weapon Combo System (2026-01-05)
 
@@ -871,7 +874,7 @@ Advanced **path_corner chain prediction** for moving platforms:
 
 | Feature | Description |
 |---------|-------------|
-| 🎯 **The FFA Fix** | Intelligent multi-target awareness: Scans all enemies, scores by distance/health/threat, switches mid-combat for better targets. Vulture mode (+500 for <40 HP), self-defense (+800 for attackers), 0.5s re-scan (2026-01-05) |
+| 🎯 **The FFA Fix** | Intelligent multi-target awareness: Scans all enemies, scores by distance/health/threat, switches mid-combat for better targets. Vulture mode (+500 for <40 HP), self-defense (+800 for attackers), 1.5s re-scan with hysteresis (data-driven optimization, 2026-01-05) |
 | 🧠 **Target Stack (Phase 8)** | 3-deep LIFO goal memory—bots remember interrupted missions across combat (pursuing Mega → enemy → fight → **restore Mega**) |
 | 📊 **Risk-Aware Scoring** | Need-based item boosts minus threat penalty (proximity -80 max) |
 | 🎒 **Smart Backpack Scavenging** | Intelligent prioritization when starving for weapons/ammo (3000 weight if missing RL/LG) |
