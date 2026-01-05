@@ -71,17 +71,19 @@ Every 2 seconds, the camera:
 
 **Activation:**
 ```
-impulse 400    # Become AI Cameraman spectator (instant activation!)
+# IMPORTANT: Spawn bots first with "impulse 208", THEN activate camera!
+impulse 99     # Become AI Cameraman spectator (instant activation!)
 ```
 
 **Manual Override Controls:**
 ```
-impulse 300    # Flyby mode (manual target)
-impulse 301    # Follow mode (over-shoulder)
-impulse 303    # Free-flight camera
-impulse 310    # Toggle info display
-impulse 317    # Cycle to next player
-impulse 400    # Return to AI Director mode
+impulse 50     # Flyby mode (cinematic tracking)
+impulse 51     # Follow mode (over-shoulder)
+impulse 53     # Free-flight camera (fly around freely)
+impulse 60     # Toggle info display
+impulse 61     # Cycle to next player
+impulse 98     # EXIT camera (return to player mode)
+impulse 99     # Return to AI Director mode
 ```
 
 **Integration:**
@@ -92,6 +94,41 @@ impulse 400    # Return to AI Director mode
 - Activation in [weapons.qc:1387-1391](reaper_mre/weapons.qc#L1387-L1391)
 
 **Result:** The world's first AI-powered Quake spectator camera! Automatically tracks exciting combat, underdog stories, powerup plays, and pro movement. Shows off MRE's advanced AI features (Fear Engine tactical routing, FFA target selection, weapon combos). Set it and watch the bots battle like a tournament broadcast! Build size: 457,342 bytes (+2,480 bytes). 🎬🤖✅
+
+### 🐛 Bot Debug Logging Toggle Fix (2026-01-05)
+
+**BUGFIX:** impulse 95 debug toggle now works reliably! Fixed interference from bot AI think cycles.
+
+**The Problem:**
+Users couldn't disable debug logging after enabling it. Entering `impulse 95` to toggle off appeared to do nothing - debug output continued flooding the console.
+
+**Root Cause:**
+- `ImpulseCommands()` executes for ALL entities (players + bots)
+- Bots run the same call chain: `PlayerPostThink()` → `W_WeaponFrame()` → `ImpulseCommands()`
+- `bot_debug_enabled` is a **global flag** (not per-entity)
+- When bot AI executed `impulse 95` during its think cycle, it toggled the global flag
+- User would enable → bot would disable → user tried to disable but actually enabled again
+- Result: Flag appeared stuck in "on" state
+
+**The Fix:**
+Added player-only check in [weapons.qc:1387](reaper_mre/weapons.qc#L1387):
+```c
+if ((self.impulse == 95.000) && (self.classname == "player"))
+```
+
+Now only human players (`classname == "player"`) can toggle debug logging. Bots (`classname == "dmbot"`) are excluded from this impulse.
+
+**Bot Debug Logging Usage:**
+```
+impulse 95     # Toggle bot decision logging on/off
+```
+
+Debug output shows:
+- `[BotName] TARGET: EnemyName (score=X, HP=Y, dist=Zu)` - Target selection decisions
+- `[BotName] GOAL: item_name (score=X, dist=Yu)` - Goal selection decisions
+- Useful for analyzing AI behavior, finding bugs, and tuning bot intelligence
+
+**Result:** Debug toggle now works perfectly! Developers can enable logging for AI analysis, then cleanly disable it when done. No more bot interference. Build size: 458,998 bytes (+24 bytes). 🐛🔧✅
 
 ### 🏎️ Movement Smoothing Suite (2026-01-05)
 
