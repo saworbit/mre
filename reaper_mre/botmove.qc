@@ -840,6 +840,67 @@ float() bot_rocket_jump =
 }; //end of the function bot_rocket_jump
 // ===== END ENHANCED ROCKET JUMP =====
 
+// ===== PHASE 9: GROUND HAZARD DETECTION (Layer 1 - Proactive Safety) =====
+// Adapted from FrikBot's "Look Before You Leap" system - prevents bots from casually
+// walking into lava pools, broken bridges, and cliff edges. Complements existing Phase 4
+// mid-air hazard avoidance (reactive aerial steering) with ground-level prevention.
+// Two-layer defense: Layer 1 (this) stops hazard entry, Layer 2 (Phase 4) saves airborne bots.
+void () CheckForHazards =
+{
+   local vector spot;
+   local float gap_depth;
+   local float content_type;
+
+   // Only check if we are on the ground
+   if (!(self.flags & FL_ONGROUND))
+   {
+      return ;
+   } //end if
+
+   // 1. Look ahead (based on ideal_yaw - where bot is trying to move)
+   makevectors (self.angles);
+   spot = (self.origin + (v_forward * 60.000));  // Look 60 units ahead
+   spot_z = self.origin_z;
+
+   // 2. Look Down (trace 250 units to find floor or void)
+   traceline (spot,(spot - '0.000 0.000 250.000'),TRUE,self);
+
+   // 3. Analyze what we found
+   gap_depth = (self.origin_z - trace_endpos_z);
+   content_type = pointcontents (trace_endpos);
+
+   // CASE A: The "Gap" (Empty space or very deep drop)
+   if (((trace_fraction == 1.000) || (gap_depth > 60.000)))
+   {
+      // There is a dropoff ahead!
+
+      // Is it a "Death Pit" (Slime/Lava/Void)?
+      if (((content_type <= CONTENT_SLIME) || (trace_fraction == 1.000)))
+      {
+         // STOP! Don't run in!
+         self.velocity = '0.000 0.000 0.000';
+         return ;
+      } //end if
+
+      // Is it a jumpable gap? (only if moving fast enough)
+      if ((vlen (self.velocity) > 200.000))
+      {
+         self.button2 = 1.000;  // Jump key
+      } //end if
+   } //end if
+
+   // CASE B: The "Hazard Floor" (Walking directly into lava/slime)
+   else
+   {
+      if ((content_type <= CONTENT_SLIME))
+      {
+         // The floor ahead is lava/slime
+         self.button2 = 1.000;  // Try to jump over it
+      } //end if
+   } //end if
+}; //end of the function CheckForHazards
+// ===== END PHASE 9: GROUND HAZARD DETECTION =====
+
 float (float dist) waterupdown =
 {
    local float wlevel;
@@ -1363,6 +1424,13 @@ void (float dist) Botmovetogoal =
 
    prev_origin = self.oldorigin;
    self.oldorigin = self.origin;
+
+   // ===== PHASE 9: PROACTIVE HAZARD CHECK (Before Movement) =====
+   // Check ground ahead for gaps, lava, and death pits BEFORE committing to movement.
+   // This prevents bots from casually walking into hazards (Layer 1 - Prevention).
+   // Phase 4's mid-air system (Layer 2) handles aerial hazards during flight.
+   CheckForHazards ();
+   // =============================================================
 
    // ===== DYNAMIC STUCK WIGGLE: Micro-Jump on Velocity Stall =====
    // If the bot is trying to move but velocity is near zero, don't wait 1 second.

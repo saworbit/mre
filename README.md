@@ -24,6 +24,32 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 ## 🎬 Latest Features (2026-01)
 
+### 🌋 PHASE 9: Ground Hazard Detection (2026-01-05)
+
+**NEW:** Bots now proactively avoid lava pools, gaps, and cliff edges with ground-level hazard scanning!
+
+Phase 9 implements FrikBot's "Look Before You Leap" system as **Layer 1** of a two-layer hazard defense:
+- **Layer 1 (Phase 9)** — PROACTIVE ground checks prevent hazard entry before movement
+- **Layer 2 (Phase 4)** — REACTIVE aerial steering saves bots already in flight
+
+**How it works:**
+1. 🔍 **Look ahead** — Traces 60 units forward based on movement direction (`ideal_yaw`)
+2. ⬇️ **Look down** — Traces 250 units downward to find floor (or void)
+3. 🧪 **Analyze floor** — Uses `pointcontents()` to detect CONTENT_LAVA (-5) or CONTENT_SLIME (-4)
+4. 🛑 **Stop at death pits** — Zeroes velocity when detecting void or lava/slime pit (prevents cliff deaths)
+5. 🏃 **Auto-jump gaps** — Triggers jump when detecting >60u gap while moving fast (>200 u/s)
+6. 🦘 **Jump over hazards** — Triggers jump when detecting lava/slime floor directly ahead
+
+**Hazard Detection Cases:**
+- ⚫ **Death Pit (Void)** → `trace_fraction == 1.0` → STOP! Zero velocity
+- 🌋 **Lava/Slime Pit** → Deep gap + hazard content → STOP! Zero velocity
+- 🕳️ **Jumpable Gap** → >60u deep, safe floor, moving fast → AUTO-JUMP!
+- 🔥 **Hazard Floor** → Lava/slime at ground level → JUMP OVER IT!
+
+**Integration:** CheckForHazards() runs at the start of Botmovetogoal() (line 1432) every frame before physics movement, ensuring bots check ground safety before committing to movement direction.
+
+**Result:** Bots no longer casually walk into lava pools or fall off cliffs! Proactive ground scanning complements Phase 4's mid-air system for comprehensive hazard avoidance. Build size: 451,090 bytes (+424 bytes). 🛡️🌋✅
+
 ### 🧠 PHASE 8: Target Stack (Brain Memory) (2026-01-05)
 
 **NEW:** Bots now remember interrupted goals across combat encounters!
