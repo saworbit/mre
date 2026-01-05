@@ -267,7 +267,7 @@ Bots now scan ALL visible enemies and pick the best target based on distance, he
 - New field in [defs.qc:333](reaper_mre/defs.qc#L333)
 
 **Data-Driven Optimization:**
-MRE uses scientific bot tuning via debug logging (impulse 95) and Python log analysis. Initial analyzer results showed excessive target switching (109/bot), prompting scan frequency reduction (0.5s → 1.5s) and hysteresis implementation. Target switching reduced by 67% through quantified analysis. See [DEVELOPMENT.md](DEVELOPMENT.md#-data-driven-improvement-pipeline) for complete pipeline documentation.
+MRE uses scientific bot tuning via debug logging (impulse 95) and Python log analysis. Initial analyzer results showed excessive target switching (109/bot) and low engagement (14.1%). Implemented scan frequency reduction (0.5s → 1.5s) and hysteresis logic. **Validated results:** Target switching reduced 40% (109 → 64.8/bot), engagement increased 4.3× (14.1% → 60.5%). Bots now fight 60% of the time instead of 14%. See [DEVELOPMENT.md](DEVELOPMENT.md#-data-driven-improvement-pipeline) for complete pipeline documentation.
 
 **Result:** Bots play FFA like pros! Intelligent target selection, opportunistic kill-stealing, self-defense priority. Optimized through data-driven tuning for better target commitment. Transforms bots from duelists (single-target tunnel vision) to opportunists (adaptive multi-target awareness). Build size: 459,246 bytes (+832 bytes). 🎯🔄✅
 

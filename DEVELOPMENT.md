@@ -385,8 +385,8 @@ copy progs.dat ..\launch\quake-spasm\reaper_mre\progs.dat /Y
 python ..\tools\analyze_bot_logs.py ..\launch\quake-spasm\qconsole.log
 
 # Compare metrics:
-# OLD: 109 switches per bot
-# NEW: ~36 switches per bot (67% reduction) ✓
+# OLD: 109 switches per bot, 14.1% engagement
+# NEW: 64.8 switches per bot (40% reduction), 60.5% engagement (4.3× increase) ✓
 ```
 
 **Step 6: Commit with Data**
@@ -424,15 +424,16 @@ Build: 459,246 bytes"
 1. **Reduced scan frequency**: 0.5s → 1.5s (3× longer commitment)
 2. **Added hysteresis**: Require clear advantage (attacking, closer, weaker)
 
-**Expected Impact:**
-- Target switching: 109 → ~36 per bot (67% reduction)
-- Combat effectiveness: More kills completed
-- Engagement rate: Should increase as bots commit to fights
+**Actual Results (Validated 2026-01-05):**
+- Target switching: 109 → 64.8 per bot (40% reduction)
+- Combat effectiveness: Significantly improved (bots complete more kills)
+- Engagement rate: 14.1% → 60.5% (4.3× increase!) ⭐ **Key win**
 
 **Validation Method:**
 - Play test with impulse 95 enabled
 - Re-run analyzer on new logs
 - Compare switching metrics before/after
+- **Outcome:** Pipeline validated - data-driven approach works!
 
 ### Debug Logging Reference
 
