@@ -1084,11 +1084,13 @@ void () powerup_touch =
       if (((self.classname == "item_artifact_invulnerability") || (self.classname == "item_artifact_invisibility")))
       {
          self.nextthink = (time + (60.000 * CAM_FREE));
+         self.predicted_spawn = (time + (60.000 * CAM_FREE));  // Timekeeper: Track pent/ring spawn time
 
       } //end if
       else
       {
          self.nextthink = (time + 60.000);
+         self.predicted_spawn = (time + 60.000);  // Timekeeper: Track quad spawn time
       } //end if
       self.think = SUB_regen;
    } //end if

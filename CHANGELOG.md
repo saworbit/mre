@@ -1,5 +1,19 @@
 ## 2026-01-05
 
+- **The Timekeeper (Strategic Powerup Control)** for pro-level spawn timing:
+  - **Predicted spawn tracking** in `reaper_mre/defs.qc` (line 329): Added `.float predicted_spawn` field to track when powerups will respawn. Set in `reaper_mre/items.qc` (lines 1087, 1093) during powerup pickup—Quad respawns at `time + 60s`, Pent/Ring at `time + 300s`.
+  - **Pre-rotation logic** in `reaper_mre/bot_ai.qc` (`aibot_checkforGoodies()` function, lines 1394-1435): Bots now detect invisible powerups (quad/pent/ring) that will spawn within 10 seconds. When detected, assigns massive weight (`MUST_HAVE + 500`) to override combat goals and trigger camping behavior.
+  - **Pro player emulation**: Standard bots only chase visible items (reactive). The Timekeeper makes bots predict spawn timing and pre-rotate to spawn points 5-10 seconds early (proactive). Mimics high-level Quake play where players memorize spawn timers and abandon fights to secure powerups.
+  - **Goal priority override**: 10-second pre-rotation window with +500 weight bonus ensures bots stop fighting and run to empty spawn point before powerup appears. After pickup, normal combat/item AI resumes.
+  - **Result:** Bots now control powerup spawns like tournament players! They memorize quad/pent/ring timers, pre-rotate to spawns before items appear, and camp spawn points instead of wandering randomly. Transforms powerup control from opportunistic to strategic. Build size: 452,122 bytes (+336 bytes for spawn prediction). ⏰🎯✅
+
+- **Rocket Jump Ceiling Safety Check** for tight-space suicide prevention:
+  - **Ceiling clearance validation** in `reaper_mre/botmove.qc` (`bot_rocket_jump()` function, lines 787-794): Added 96-unit upward traceline before RJ execution. Checks for overhead obstacles (low ceilings, beams, platforms) that would block upward blast.
+  - **Abort on blocked ceiling**: When `trace_fraction < 1.0` (ceiling detected within 96 units), immediately aborts RJ and returns `FALSE`. Prevents suicide from rocket explosion hitting ceiling and dealing full damage to bot in confined space.
+  - **Why 96 units**: Rocket splash radius is ~120 units, but vertical component of RJ blast needs clearance. 96-unit check provides safety margin for typical room heights while avoiding false positives on very high ceilings.
+  - **Complements existing safety**: Stacks with existing RJ safety gates—health check (>40 HP), ammo check (≥1 rocket), 2-second cooldown, goal height validation. Ceiling check adds final layer for environmental hazards.
+  - **Result:** Bots no longer commit RJ suicide in tight spaces! Before: bots would RJ in low-ceiling corridors, blast hits ceiling, bot takes full damage and dies. After: ceiling check aborts RJ, bot finds alternate route or waits for better positioning. Build size: 452,122 bytes (+8 lines for ceiling check). 🚀🛡️✅
+
 - **CRITICAL BUGFIX: Grenade Launcher Close-Range Suicide Prevention** for combat safety:
   - **Root cause identified** in `reaper_mre/botfight.qc`: Grenade arc calculation functions (`adjustgrenade()` at line 62, `SolveGrenadeArc()` in `botmath.qc` line 166) produce aim points below bot's feet at close range (<200 units). Arc formulas work correctly at medium-long range but fail when travel time becomes tiny, causing bots to lob grenades at ground directly beneath them during circle strafing.
   - **Minimum safe distance check** in `reaper_mre/botfight.qc` (lines 761-796): Added 200-unit distance gate before GL firing. When enemy closer than 200u, bot immediately aborts grenade fire and switches to close-range weapon (SSG > SNG > LG priority). Prevents arc calculation from running when it would produce self-destructive aim points.

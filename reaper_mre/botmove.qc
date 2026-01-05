@@ -784,6 +784,15 @@ float() bot_rocket_jump =
    // Save current view to restore later
    old_angles = self.angles;
 
+   // 2b. Ceiling Clearance Check (from link-based RJ system)
+   // Prevents RJ in tight spaces where upward blast would hit ceiling and kill bot
+   traceline(self.origin, self.origin + '0.000 0.000 96.000', TRUE, self);
+   if (trace_fraction < 1.000)
+   {
+      // Blocked by ceiling—abort RJ to prevent suicide
+      return (FALSE);
+   } //end if
+
    // 3. Dynamic Pitch Selection
    // Default to vertical jump (high ledges)
    // NEGATIVE pitch = looking DOWN (positive = up, which fires rocket into sky!)

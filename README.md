@@ -24,6 +24,66 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 ## 🎬 Latest Features (2026-01)
 
+### ⏰ The Timekeeper: Strategic Powerup Control (2026-01-05)
+
+**NEW:** Bots now predict powerup spawn times and pre-rotate to spawn points like tournament players!
+
+Standard bots only chase visible items (reactive). The Timekeeper makes bots memorize spawn timers and camp spawn points 5-10 seconds before powerups appear (proactive), emulating pro Quake play.
+
+**Before Timekeeper:**
+- ❌ Bots only pursued visible powerups (opportunistic control)
+- ❌ Ignored empty spawn points even when quad/pent about to spawn
+- ❌ No spawn timing memory—played like casual players
+
+**After Timekeeper:**
+- ✅ Tracks powerup respawn times: Quad = 60s, Pent/Ring = 300s
+- ✅ Detects invisible powerups scheduled to spawn within 10 seconds
+- ✅ Assigns massive weight (`MUST_HAVE + 500`) to override combat goals
+- ✅ Bots abandon fights and run to empty spawn points before items appear
+
+**How it works:**
+1. 📝 **Spawn tracking** → When powerup picked up, stores respawn time in `.predicted_spawn` field
+2. 🔍 **Invisible item scanning** → Item scanner checks invisible powerups (quad/pent/ring)
+3. ⏱️ **10-second window** → If `predicted_spawn < time + 10`, powerup spawning soon
+4. 🎯 **Priority override** → Assigns +500 weight bonus to force camping behavior
+5. 🏃 **Pre-rotation** → Bot stops fighting, runs to spawn point, camps until item appears
+
+**Example Behavior:**
+- ⚡ Quad spawns in 8 seconds → Bot sees empty spawn point → +500 weight → Abandons combat → Runs to quad spawn → Waits → Grabs quad as it appears
+- 🛡️ Pent timer at 4 seconds → Bot ignores nearby rockets → Pre-rotates to pent spawn → Secures pentagram before enemies arrive
+
+**Integration:** Pre-rotation logic in [bot_ai.qc:1394-1435](reaper_mre/bot_ai.qc#L1394-L1435) runs during item scanning. Spawn times set in [items.qc:1087, 1093](reaper_mre/items.qc#L1087-L1093) during powerup pickup.
+
+**Result:** Bots now control powerups like skilled humans! They memorize spawn timers, pre-rotate to spawns, and camp strategic positions instead of wandering randomly. Transforms powerup control from luck-based to skill-based. Build size: 452,122 bytes (+336 bytes). ⏰🎯✅
+
+### 🚀 Rocket Jump Ceiling Safety Check (2026-01-05)
+
+**NEW:** Bots no longer commit suicide by rocket jumping into low ceilings!
+
+Added 96-unit ceiling clearance check before RJ execution to prevent blast damage in tight spaces.
+
+**Before Ceiling Check:**
+- ❌ Bots would RJ in low-ceiling corridors
+- ❌ Rocket blast hits ceiling, full damage reflects to bot
+- ❌ Instant death from environmental suicide
+
+**After Ceiling Check:**
+- ✅ Traces 96 units upward before executing RJ
+- ✅ Aborts RJ if ceiling detected (`trace_fraction < 1.0`)
+- ✅ Bot finds alternate route or waits for better positioning
+
+**How it works:**
+1. 🔍 **Upward trace** → `traceline(origin, origin + '0 0 96', TRUE, self)` before RJ
+2. 🚫 **Abort on blocked** → If `trace_fraction < 1.0`, ceiling detected within 96 units
+3. ✅ **Safe execution** → Only executes RJ when clear vertical space confirmed
+4. 🛡️ **Stacks with safety** → Combines with existing health check (>40 HP), ammo check, 2s cooldown
+
+**Why 96 units:** Rocket splash radius is ~120 units, but vertical blast component needs clearance. 96-unit check provides safety margin for typical rooms while avoiding false positives on high ceilings.
+
+**Integration:** Ceiling check in [botmove.qc:787-794](reaper_mre/botmove.qc#L787-L794) runs immediately before pitch/yaw selection in `bot_rocket_jump()` function.
+
+**Result:** Bots survive RJ attempts in confined spaces! Low-ceiling RJs are aborted, preventing environmental suicides. Complements existing RJ safety gates for comprehensive protection. Build size: 452,122 bytes (+8 lines). 🚀🛡️✅
+
 ### 🌊 PHASE 11: Water Survival (Drowning Prevention) (2026-01-05)
 
 **NEW:** Bots now detect drowning and emergency-surface when running out of air underwater!

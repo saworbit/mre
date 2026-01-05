@@ -1391,9 +1391,31 @@ float (float minweight) aibot_checkforGoodies =
             } //end if
             else
             {
+               // ===== TIMEKEEPER: Pre-Rotation to Powerup Spawns =====
+               // Pro players camp powerup spawns 5-10 seconds before they appear.
+               // Check if this is an invisible powerup that's about to spawn.
                if ((e.solid != SOLID_TRIGGER))
                {
-                  weight = DONT_WANT;
+                  // Item is invisible (already taken)
+                  // Check if it's a high-value powerup about to respawn
+                  if ((((e.classname == "item_artifact_super_damage") || (e.classname == "item_artifact_invulnerability")) || (e.classname == "item_artifact_invisibility")))
+                  {
+                     // Is it scheduled to spawn soon?
+                     if (((e.predicted_spawn > time) && (e.predicted_spawn < (time + 10.000))))
+                     {
+                        // YES! Camp the spawn point like a pro player
+                        // Massive weight to override combat and other goals
+                        weight = (MUST_HAVE + 500.000);
+                     } //end if
+                     else
+                     {
+                        weight = DONT_WANT;
+                     } //end if
+                  } //end if
+                  else
+                  {
+                     weight = DONT_WANT;
+                  } //end if
 
                } //end if
                else
@@ -1410,6 +1432,7 @@ float (float minweight) aibot_checkforGoodies =
                      } //end if
                   } //end if
                } //end if
+               // ===== END TIMEKEEPER =====
             } //end if
          } //end if
       } //end if

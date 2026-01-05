@@ -326,6 +326,7 @@ float C_HURT    = 6.000;
 .float super_time;
 .float super_sound;
 .float rad_time;
+.float predicted_spawn;  // Timekeeper: When this item will respawn (for pre-rotation)
 .float fly_sound;
 .float axhitme;
 .float show_hostile;
