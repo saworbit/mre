@@ -708,26 +708,32 @@ entity() FindBestEnemy =
         head = find (head,classname,"dmbot");
     } //end while
 
-    // ===== DEBUG LOGGING: Target Selection =====
-    if (bot_debug_enabled && best_enemy != world)
+    // ===== DEBUG LOGGING: Target Selection (Change-Only) =====
+    // Only log when target CHANGES (reduces spam from 90% to ~5% of lines)
+    if (bot_debug_enabled && (best_enemy != self.last_logged_enemy))
     {
         bprint ("[");
         bprint (self.netname);
         bprint ("] TARGET: ");
-        bprint (best_enemy.netname);
-        bprint (" (score=");
-        bprint (ftos(best_score));
-        bprint (", HP=");
-        bprint (ftos(best_enemy.health));
-        bprint (", dist=");
-        bprint (ftos(vlen(best_enemy.origin - self.origin)));
-        bprint ("u)\n");
-    } //end if
-    else if (bot_debug_enabled && best_enemy == world)
-    {
-        bprint ("[");
-        bprint (self.netname);
-        bprint ("] TARGET: None visible\n");
+
+        if (best_enemy != world)
+        {
+            bprint (best_enemy.netname);
+            bprint (" (score=");
+            bprint (ftos(best_score));
+            bprint (", HP=");
+            bprint (ftos(best_enemy.health));
+            bprint (", dist=");
+            bprint (ftos(vlen(best_enemy.origin - self.origin)));
+            bprint ("u)\n");
+        }
+        else
+        {
+            bprint ("None visible\n");
+        }
+
+        // Remember what we logged
+        self.last_logged_enemy = best_enemy;
     } //end if
 
     return best_enemy;
@@ -1269,16 +1275,47 @@ void (float dist) ai_botrun =
       if ((time > self.scan_time))
       {
          local entity better_target;
+         local float switch_justified;
+         local float curr_dist;
+         local float new_dist;
+
          better_target = FindBestEnemy ();
 
          if ((better_target != world) && (better_target != self.enemy))
          {
-            // We found someone better/more dangerous than our current target!
-            self.enemy = better_target;
-            BotFoundTarget (); // Play shout sound, reset reaction time
+            // ===== HYSTERESIS: Require clear advantage before switching =====
+            // Prevents flip-flopping between similar targets (fixes high switching rate)
+            switch_justified = FALSE;
+
+            // REASON 1: New target is attacking us (self-defense - always switch)
+            if ((better_target.enemy == self))
+            {
+               switch_justified = TRUE;
+            } //end if
+
+            // REASON 2: New target is MUCH closer (300+ units)
+            curr_dist = vlen (self.enemy.origin - self.origin);
+            new_dist = vlen (better_target.origin - self.origin);
+            if ((new_dist < (curr_dist - 300.000)))
+            {
+               switch_justified = TRUE;
+            } //end if
+
+            // REASON 3: New target is MUCH weaker (30+ HP less)
+            if ((better_target.health < (self.enemy.health - 30.000)))
+            {
+               switch_justified = TRUE;
+            } //end if
+
+            // Only switch if we have a clear reason
+            if (switch_justified)
+            {
+               self.enemy = better_target;
+               BotFoundTarget (); // Play shout sound, reset reaction time
+            } //end if
          } //end if
 
-         self.scan_time = (time + 0.500); // Check twice a second
+         self.scan_time = (time + 1.500); // Check every 1.5s (reduced from 0.5s to fix high switching)
       } //end if
       // ===================================================
    } //end if
