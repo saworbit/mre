@@ -605,82 +605,181 @@ float () BotfindBot =
    } //end while
    return (FALSE);
 }; //end of the function BotfindBot
+
+// ============================================================
+// FFA AWARENESS: "Best Target" Scanner (The FFA Fix)
+// ============================================================
+// Scans ALL visible enemies and picks the one that makes the most sense to kill.
+// PRIORITIES:
+// 1. Someone shooting me (Threat - self-defense)
+// 2. Someone dying (Vulture - easy kill)
+// 3. Someone close (Convenience - target of opportunity)
+// This replaces the "first visible enemy" logic with intelligent multi-target scoring.
+// ============================================================
+entity() FindBestEnemy =
+{
+    local entity head;
+    local entity best_enemy;
+    local float score;
+    local float best_score;
+    local float dist;
+
+    best_enemy = world;
+    best_score = -1.000; // Minimum threshold
+
+    // SCAN PLAYERS
+    head = find (world,classname,"player");
+    while (head)
+    {
+        if ((head != self) && (head.health > 0.000) && !(head.flags & FL_NOTARGET))
+        {
+            if (enemyvisible (head))
+            {
+                // Base Score: 1000 max, drops with distance
+                dist = vlen (head.origin - self.origin);
+                score = (1000.000 - dist);
+
+                // MODIFIER 1: The "Vulture" (Low Health Priority)
+                // If enemy has < 40 HP, boost score significantly.
+                // We want to steal this kill.
+                if ((head.health < 40.000))
+                {
+                    score = (score + 500.000);
+                } //end if
+
+                // MODIFIER 2: The "Self-Defense" (Attacker Priority)
+                // If this guy is currently shooting me, he is #1 priority.
+                if ((head.enemy == self))
+                {
+                    score = (score + 800.000);
+                } //end if
+
+                // MODIFIER 3: Angle check (Don't snap 180 degrees unless necessary)
+                if (!infrontofbot (head))
+                {
+                    score = (score * 0.500);
+                } //end if
+
+                // Pick the winner
+                if ((score > best_score))
+                {
+                    best_score = score;
+                    best_enemy = head;
+                } //end if
+            } //end if
+        } //end if
+        head = find (head,classname,"player");
+    } //end while
+
+    // SCAN BOTS (Don't forget to check other bots!)
+    head = find (world,classname,"dmbot");
+    while (head)
+    {
+        if ((head != self) && (head.health > 0.000))
+        {
+            if (enemyvisible (head))
+            {
+                // Same scoring logic...
+                dist = vlen (head.origin - self.origin);
+                score = (1000.000 - dist);
+
+                if ((head.health < 40.000))
+                {
+                    score = (score + 500.000);
+                } //end if
+
+                if ((head.enemy == self))
+                {
+                    score = (score + 800.000);
+                } //end if
+
+                if (!infrontofbot (head))
+                {
+                    score = (score * 0.500);
+                } //end if
+
+                if ((score > best_score))
+                {
+                    best_score = score;
+                    best_enemy = head;
+                } //end if
+            } //end if
+        } //end if
+        head = find (head,classname,"dmbot");
+    } //end while
+
+    return best_enemy;
+}; //end of the function FindBestEnemy
+// ============================================================
+
 float /* ERROR: Could not determine return type */ () BotFindTarget =
 {
    local entity client;
    local float len;
-   local float bw;
 
-   client = checkclient ();
-   if (!client)
+   // ===== FFA FIX: Use "Best Target" Scanner =====
+   // Instead of picking the first visible enemy (checkclient),
+   // scan ALL visible enemies and pick the best one based on:
+   // - Distance (closer = better)
+   // - Health (lower = easier kill)
+   // - Threat (attacking me = highest priority)
+   client = FindBestEnemy ();
+
+   if (client)
    {
-      return (BotfindBot ());
-   } //end if
-   if ((client.classname == "watcher"))
-   {
-      return (BotfindBot ());
-   } //end if
-   if ((client == self.enemy))
-   {
-      return (FALSE);
-   } //end if
-   if (teamplay)
-   {
-      if ((self.team == client.team))
+      // Found a "Best" enemy!
+
+      // Check for teamplay (don't attack teammates)
+      if (teamplay)
       {
-         return (BotfindBot ());
-      } //end if
-   } //end if
-   if ((client.flags & FL_NOTARGET))
-   {
-      return (BotfindBot ());
-   } //end if
-   if (!enemyvisible (client))
-   {
-      return (BotfindBot ());
-   } //end if
-   if (!infrontofbot (client))
-   {
-      if (!hearnoise (client))
-      {
-         return (BotfindBot ());
-      } //end if
-   } //end if
-   if (((self.origin_z > (client.origin_z + 120.000)) || ((self.origin_z + 120.000) < client.origin_z)))
-   {
-      self.enemy = client;
-      if (RunAway ())
-      {
-         self.enemy = world;
-         return (BotfindBot ());
-      } //end if
-   } //end if
-   if ((client.items & IT_INVISIBILITY))
-   {
-      return (BotfindBot ());
-   } //end if
-   if ((self.skil < TRUE))
-   {
-      len = (random () * MUST_HAVE);
-      // Streak-biased search: hot streak tightens threshold, cold streak loosens it.
-      if ((self.kill_streak > 2.000))
-      {
-         len = (len * 0.500);
-      } //end if
-      else
-      {
-         if ((self.death_streak > 2.000))
+         if ((self.team == client.team))
          {
-            len = (len * 2.000);
+            return (BotfindBot ());
          } //end if
-      } //end else
-      if ((len > 25.000))
-      {
-         return (FALSE);
       } //end if
+
+      // Check for invisibility
+      if ((client.items & IT_INVISIBILITY))
+      {
+         return (BotfindBot ());
+      } //end if
+
+      // Skill-based randomness: Low-skill bots sometimes miss targets
+      if ((self.skil < TRUE))
+      {
+         len = (random () * MUST_HAVE);
+         // Streak-biased search: hot streak tightens threshold, cold streak loosens it.
+         if ((self.kill_streak > 2.000))
+         {
+            len = (len * 0.500);
+         } //end if
+         else
+         {
+            if ((self.death_streak > 2.000))
+            {
+               len = (len * 2.000);
+            } //end if
+         } //end else
+         if ((len > 25.000))
+         {
+            return (FALSE);
+         } //end if
+      } //end if
+
+      // If we found a "Best" enemy, and it's different from our current one...
+      if ((client != self.enemy))
+      {
+         // SWITCH!
+         self.enemy = client;
+         return (BotFoundTarget ());
+      } //end if
+
+      // If it's the same enemy, just keep fighting (return TRUE to say "we have a target")
+      return (TRUE);
    } //end if
-   self.enemy = client;
-   return (BotFoundTarget ());
+
+   // No good target found, try finding a bot target
+   return (BotfindBot ());
 }; //end of the function BotFindTarget
 
 void () ai_botstand =
@@ -1140,6 +1239,26 @@ void (float dist) ai_botrun =
       // Cache visible enemy velocity to extend chase prediction past line-of-sight breaks.
       self.last_enemy_vel = self.enemy.velocity;
       self.search_time = (time + MOVETYPE_PUSH);
+
+      // ===== FFA FIX: The "Swivel Turret" (Dynamic Target Switching) =====
+      // In FFA, don't commit to a duel. If a new, better target appears
+      // (like someone running up behind us or a weak enemy nearby), SWITCH.
+      // This runs during combat (not just when idle) for multi-opponent awareness.
+      if ((time > self.scan_time))
+      {
+         local entity better_target;
+         better_target = FindBestEnemy ();
+
+         if ((better_target != world) && (better_target != self.enemy))
+         {
+            // We found someone better/more dangerous than our current target!
+            self.enemy = better_target;
+            BotFoundTarget (); // Play shout sound, reset reaction time
+         } //end if
+
+         self.scan_time = (time + 0.500); // Check twice a second
+      } //end if
+      // ===================================================
    } //end if
    if ((self.search_time < time))
    {

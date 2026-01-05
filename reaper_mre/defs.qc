@@ -330,6 +330,7 @@ float C_HURT    = 6.000;
 .float juggler_cooldown;  // The Juggler: Prevents weapon combo spam
 .float strafe_state_time;  // Strafe Hysteresis: When bot can change strafe direction
 .float strafe_dir_lock;    // Strafe Hysteresis: Current locked strafe direction (1=right, -1=left, 0=none)
+.float scan_time;          // FFA Fix (Swivel Turret): Next time to re-evaluate best target
 .float fly_sound;
 .float axhitme;
 .float show_hostile;
