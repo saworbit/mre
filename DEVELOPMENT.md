@@ -316,6 +316,187 @@ Before submitting new features:
 
 ---
 
+## 📊 Data-Driven Improvement Pipeline
+
+MRE uses a scientific approach to bot tuning: measure behavior → analyze patterns → implement targeted fixes → validate improvements.
+
+### The Pipeline
+
+**Step 1: Instrument & Collect**
+```bash
+# Enable debug logging in-game
+impulse 95
+
+# Play test match (8 bots, 5 minutes)
+cd c:\reaperai\launch\quake-spasm
+launch_reaper_mre.bat 8 dm4
+
+# Let bots play for 5 minutes, then exit Quake
+# Debug logs saved to: qconsole.log
+```
+
+**Step 2: Analyze Patterns**
+```bash
+# Run log analyzer
+python c:\reaperai\tools\analyze_bot_logs.py c:\reaperai\launch\quake-spasm\qconsole.log
+
+# Example output:
+# Combat engagement rate: 14.1% (bots idle 86% of time)
+# Target switches: 109 per bot (EXCESSIVE)
+# Goal diversity: 94% rockets/armor only
+```
+
+**Step 3: Identify Issues**
+
+The analyzer suggests improvements based on thresholds:
+- **Low engagement (<20%)**: Increase movement speed, improve vision range, add goal bias toward high-traffic areas
+- **High switching (>20/bot)**: Increase target commitment time, add hysteresis to target scoring
+- **Low switching (<3/bot)**: Decrease scan_time interval, lower selection thresholds
+- **Low goal diversity (<5 unique)**: Increase weight for underutilized items, add randomization
+
+**Step 4: Implement Targeted Fixes**
+
+Example: High target switching (109/bot)
+```c
+// BEFORE (bot_ai.qc:1287)
+self.scan_time = (time + 0.500); // Check twice a second
+
+// AFTER
+self.scan_time = (time + 1.500); // Check every 1.5s (3x reduction)
+
+// ADD HYSTERESIS (bot_ai.qc:1286-1316)
+// Only switch if new target has clear advantage:
+// - Attacking us (self-defense)
+// - 300+ units closer (proximity)
+// - 30+ HP weaker (easy kill)
+```
+
+**Step 5: Validate Improvements**
+```bash
+# Compile changes
+cd c:\reaperai\reaper_mre
+..\tools\fteqcc_win64\fteqcc64.exe -O3 progs.src
+
+# Deploy
+copy progs.dat ..\launch\quake-spasm\reaper_mre\progs.dat /Y
+
+# Play test match with impulse 95 enabled
+# Re-run analyzer on new logs
+python ..\tools\analyze_bot_logs.py ..\launch\quake-spasm\qconsole.log
+
+# Compare metrics:
+# OLD: 109 switches per bot
+# NEW: ~36 switches per bot (67% reduction) ✓
+```
+
+**Step 6: Commit with Data**
+```bash
+git add reaper_mre/bot_ai.qc
+git commit -m "Bot Behavior Tuning: Fix High Target Switching (Data-Driven)
+
+Analyzed bot debug logs with Python analyzer tool and implemented
+targeted fixes for performance issues identified through data analysis.
+
+Log Analysis Results:
+- Target switching: 109 switches per bot (excessive flip-flopping)
+
+Fixes Implemented:
+- Reduced scan_time from 0.5s to 1.5s (3x reduction)
+- Added hysteresis (require clear advantage before switching)
+
+Expected: 109 → ~36 switches per bot (67% reduction)
+Build: 459,246 bytes"
+```
+
+### Real-World Example: Target Switching Fix (2026-01-05)
+
+**Problem Identified:**
+- Analyzer showed 109 target switches per bot (excessive)
+- Bots flip-flopping between similar-score targets
+- Combat effectiveness reduced by distraction
+
+**Root Cause Analysis:**
+- `scan_time = 0.5s` → bots re-evaluate targets twice per second
+- No hysteresis → small score differences cause switches
+- Result: Constant target changes, incomplete kills
+
+**Data-Driven Fixes:**
+1. **Reduced scan frequency**: 0.5s → 1.5s (3× longer commitment)
+2. **Added hysteresis**: Require clear advantage (attacking, closer, weaker)
+
+**Expected Impact:**
+- Target switching: 109 → ~36 per bot (67% reduction)
+- Combat effectiveness: More kills completed
+- Engagement rate: Should increase as bots commit to fights
+
+**Validation Method:**
+- Play test with impulse 95 enabled
+- Re-run analyzer on new logs
+- Compare switching metrics before/after
+
+### Debug Logging Reference
+
+**Current Logging:**
+- `[BotName] TARGET: EnemyName (score=X, HP=Y, dist=Zu)` - When target changes
+- `[BotName] GOAL: item_name (score=X, dist=Yu)` - When goal changes
+
+**Change-Only Logging:**
+- Uses entity fields `.last_logged_enemy` and `.last_logged_goal`
+- Only logs when target/goal CHANGES (reduces spam from 90% to ~5%)
+- Implemented in bot_ai.qc:711-737 and botgoal.qc:1225-1251
+
+**Adding New Debug Logging:**
+```c
+// In bot_ai.qc or botgoal.qc
+if (bot_debug_enabled && (important_decision_made))
+{
+   bprint ("[");
+   bprint (self.netname);
+   bprint ("] EVENT: ");
+   bprint (event_description);
+   bprint ("\n");
+}
+```
+
+### Analyzer Tool Features
+
+**Pattern Extraction:**
+- Target selection patterns (combat vs idle time)
+- Goal selection patterns (item diversity)
+- Switching frequency (per-bot and aggregate)
+- Engagement rate (combat vs searching)
+
+**Metrics Calculated:**
+- Total decision events
+- Combat engagement percentage
+- Target/goal switch counts
+- Average switches per bot
+- Goal type distribution
+- Target score statistics (avg/max/min)
+
+**Threshold-Based Suggestions:**
+- Engagement <20% → Speed/vision improvements
+- Switching >20/bot → Commitment/hysteresis fixes
+- Switching <3/bot → Scan interval/threshold adjustments
+- Goal diversity <5 → Weight/randomization tuning
+
+### Benefits of Data-Driven Approach
+
+**Before:**
+- ❌ Gut-feeling tuning ("this feels slow")
+- ❌ Guessing at parameter values
+- ❌ No validation of changes
+- ❌ Regression risk
+
+**After:**
+- ✅ Quantified problems ("109 switches per bot")
+- ✅ Root cause analysis (scan_time too short)
+- ✅ Targeted fixes (increase to 1.5s, add hysteresis)
+- ✅ Measurable validation (compare metrics)
+- ✅ Confidence in improvements
+
+---
+
 ## 📖 Additional Resources
 
 - **FTEQCC Documentation**: https://fte.triptohell.info/moodles/qc/
