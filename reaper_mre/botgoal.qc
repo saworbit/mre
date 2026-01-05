@@ -1222,6 +1222,28 @@ entity () FindMapGoal =
       } //end while
    } //end if
 
+   // ===== DEBUG LOGGING: Goal Selection =====
+   if (bot_debug_enabled && best_ent != world)
+   {
+      bprint ("[");
+      bprint (self.netname);
+      bprint ("] GOAL: ");
+      bprint (best_ent.classname);
+      bprint (" (score=");
+      bprint (ftos(best_val));
+      bprint (", dist=");
+      bprint (ftos(vlen(best_ent.origin - self.origin)));
+      bprint ("u)\n");
+   } //end if
+   else if (bot_debug_enabled && best_ent == world)
+   {
+      bprint ("[");
+      bprint (self.netname);
+      bprint ("] GOAL: None found (best_val=");
+      bprint (ftos(best_val));
+      bprint (")\n");
+   } //end if
+
    return (best_ent);
 }; //end of the function FindMapGoal
 // ===== END TACTICAL AI: Global Scavenger Hunt =====

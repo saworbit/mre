@@ -708,6 +708,28 @@ entity() FindBestEnemy =
         head = find (head,classname,"dmbot");
     } //end while
 
+    // ===== DEBUG LOGGING: Target Selection =====
+    if (bot_debug_enabled && best_enemy != world)
+    {
+        bprint ("[");
+        bprint (self.netname);
+        bprint ("] TARGET: ");
+        bprint (best_enemy.netname);
+        bprint (" (score=");
+        bprint (ftos(best_score));
+        bprint (", HP=");
+        bprint (ftos(best_enemy.health));
+        bprint (", dist=");
+        bprint (ftos(vlen(best_enemy.origin - self.origin)));
+        bprint ("u)\n");
+    } //end if
+    else if (bot_debug_enabled && best_enemy == world)
+    {
+        bprint ("[");
+        bprint (self.netname);
+        bprint ("] TARGET: None visible\n");
+    } //end if
+
     return best_enemy;
 }; //end of the function FindBestEnemy
 // ============================================================

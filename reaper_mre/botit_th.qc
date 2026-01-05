@@ -6,9 +6,13 @@ float fMaxClients /* = 0.000 */;
 entity bodyque_head;
 .float LoggedIn;
 
+// ===== BOT DEBUG LOGGING =====
+float bot_debug_enabled /* = 0.000 */;  // Toggle with impulse 95
+
 void () setWatcherMode;
 
 void () CamClientInit;  // AI Cameraman activation
+void () CamClientExit;  // AI Cameraman exit (return to player)
 
 void (entity bot) bot_triggered;
 

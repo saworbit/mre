@@ -838,8 +838,9 @@ void () CamImpulses =
             } //end if
             else
             {
-               if ((self.impulse == 300.000))
+               if ((self.impulse == 50.000))
                {
+                  // FLYBY MODE - Cinematic camera following target
                   if ((self.enemy != self))
                   {
                      CamInitFlybyMode (self.enemy);
@@ -859,8 +860,9 @@ void () CamImpulses =
                } //end if
                else
                {
-                  if ((self.impulse == 301.000))
+                  if ((self.impulse == 51.000))
                   {
+                     // FOLLOW MODE - Over-shoulder camera
                      if ((self.enemy != self))
                      {
                         self.state = CAM_FOLLOW;
@@ -900,8 +902,9 @@ void () CamImpulses =
                      } //end if
                      else
                      {
-                        if ((self.impulse == 303.000))
+                        if ((self.impulse == 53.000))
                         {
+                           // FREE-FLIGHT MODE - Fly camera freely
                            self.state = CAM_FREE;
                            self.movetype = MOVETYPE_FLY;
                            self.enemy = self;
@@ -935,8 +938,9 @@ void () CamImpulses =
                               } //end if
                               else
                               {
-                                 if ((self.impulse == 310.000))
+                                 if ((self.impulse == 60.000))
                                  {
+                                    // TOGGLE INFO DISPLAY
                                     self.aflag = !self.aflag;
 
                                  } //end if
@@ -989,8 +993,9 @@ void () CamImpulses =
                                                    } //end if
                                                    else
                                                    {
-                                                      if ((self.impulse == 317.000))
+                                                      if ((self.impulse == 61.000))
                                                       {
+                                                         // CYCLE TO NEXT PLAYER
                                                          if ((self.enemy != self))
                                                          {
                                                             ent = CamCycle (world);
@@ -1049,8 +1054,15 @@ void () CamImpulses =
       } //end if
    } //end if
 
+   // ===== AI CAMERAMAN: Exit to Player Mode =====
+   if ((self.impulse == 98.000))
+   {
+      CamClientExit ();
+      return;  // Exit immediately after calling respawn
+   } //end if
+
    // ===== AI CAMERAMAN: Return to Director Mode =====
-   if ((self.impulse == 400.000))
+   if ((self.impulse == 99.000))
    {
       bprint ("AI Cameraman re-activated!\n");
       self.state = CAM_DIRECTOR;
@@ -1772,6 +1784,20 @@ void () CamThink =
    CamImpulses ();
 }; //end of the function CamThink
 
+// ===== AI CAMERAMAN: Exit Camera Mode =====
+// Returns camera spectator back to player mode
+void () CamClientExit =
+{
+   bprint ("\n");
+   bprint ("Exiting camera mode...\n");
+   bprint ("Respawning as player!\n");
+   bprint ("\n");
+
+   // Restore to player by calling respawn
+   self.classname = "player";
+   PutClientInServer ();
+}; //end of the function CamClientExit
+
 void () CamClientInit =
 {
    local entity ent;
@@ -1817,17 +1843,18 @@ void () CamClientInit =
 
    bprint ("\n");
    bprint ("===========================================\n");
-   bprint ("  AI CAMERAMAN ACTIVATED (impulse 400)\n");
+   bprint ("  AI CAMERAMAN ACTIVATED (impulse 99)\n");
    bprint ("===========================================\n");
    bprint ("Auto-tracking most exciting action!\n");
    bprint ("\n");
    bprint ("Controls:\n");
-   bprint ("  impulse 300 = Flyby mode (manual target)\n");
-   bprint ("  impulse 301 = Follow mode\n");
-   bprint ("  impulse 303 = Free-flight camera\n");
-   bprint ("  impulse 310 = Toggle info display\n");
-   bprint ("  impulse 317 = Cycle to next player\n");
-   bprint ("  impulse 400 = Return to AI Director\n");
+   bprint ("  impulse 50 = Flyby mode (cinematic)\n");
+   bprint ("  impulse 51 = Follow mode (over-shoulder)\n");
+   bprint ("  impulse 53 = Free-flight camera\n");
+   bprint ("  impulse 60 = Toggle info display\n");
+   bprint ("  impulse 61 = Cycle to next player\n");
+   bprint ("  impulse 98 = EXIT camera (return to player)\n");
+   bprint ("  impulse 99 = Return to AI Director\n");
    bprint ("\n");
 }; //end of the function CamClientInit
 
