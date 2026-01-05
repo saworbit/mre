@@ -8,6 +8,8 @@ entity bodyque_head;
 
 void () setWatcherMode;
 
+void () CamClientInit;  // AI Cameraman activation
+
 void (entity bot) bot_triggered;
 
 void (entity killer, entity killed) countkill;
