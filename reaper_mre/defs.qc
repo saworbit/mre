@@ -328,6 +328,8 @@ float C_HURT    = 6.000;
 .float rad_time;
 .float predicted_spawn;  // Timekeeper: When this item will respawn (for pre-rotation)
 .float juggler_cooldown;  // The Juggler: Prevents weapon combo spam
+.float strafe_state_time;  // Strafe Hysteresis: When bot can change strafe direction
+.float strafe_dir_lock;    // Strafe Hysteresis: Current locked strafe direction (1=right, -1=left, 0=none)
 .float fly_sound;
 .float axhitme;
 .float show_hostile;

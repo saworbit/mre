@@ -24,6 +24,50 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 ## 🎬 Latest Features (2026-01)
 
+### 🏎️ Movement Smoothing Suite (2026-01-05)
+
+**NEW:** Three distinct smoothing upgrades transform robotic movement into human-like fluidity!
+
+Bots now move like skilled players with corner cutting, smooth strafing, and dynamic turn speeds. Eliminates robotic jerks and vibrations.
+
+**Before Smoothing:**
+- ❌ Bots hit waypoints → turn 90° → robotic cornering
+- ❌ Combat strafing creates seizure-like left-right vibration
+- ❌ Constant 20°/frame turn speed (aimbot-like snapping)
+
+**After Smoothing:**
+- ✅ Corner cutting: Bots curve through doorways like racing drivers
+- ✅ Smooth strafing: 0.5s commitment arcs instead of frame-jitter
+- ✅ Analog turning: Slow tracking (5°/frame), fast flicks (45°/frame)
+
+**How it works:**
+
+**1. The Racing Line (Corner Smoothing)**
+- 🏁 **Lookahead blending** → When within 120u of waypoint, checks for next node
+- 🎯 **Aim interpolation** → Blends 70% current + 30% next waypoint
+- 🏎️ **Early turning** → Starts curve before reaching waypoint (like racing apexes)
+- 🚪 **Smooth corners** → Curves through doorways instead of hitting frames
+
+**2. Strafe Hysteresis (Anti-Vibration)**
+- 🔒 **Direction commitment** → Locks strafe direction for 0.5 seconds
+- 🛑 **Smart breakout** → Only breaks lock if stuck (velocity <20 u/s)
+- 📊 **Flip tracking** → Monitors direction changes, resets timer on flips
+- 🎯 **Smooth arcs** → Combat strafing becomes fluid arcs, not jitter
+
+**3. Analog Turning (Mouse Smoothing)**
+- 🎯 **Micro-adjustments** → <10° angles: 5°/frame (smooth tracking)
+- 🔄 **Medium turns** → 10-45° angles: 20°/frame (normal cornering)
+- ⚡ **Snap turns** → >45° angles: 45°/frame (fast acquisition)
+- 🖱️ **Human-like** → Mimics mouse acceleration patterns
+
+**Integration:**
+- Racing Line in [botmove.qc:1523-1551](reaper_mre/botmove.qc#L1523-L1551)
+- Strafe Hysteresis in [botmove.qc:1100-1120, 1178-1208](reaper_mre/botmove.qc#L1100-L1208)
+- Analog Turning in [botmove.qc:1286-1327](reaper_mre/botmove.qc#L1286-L1327)
+- New fields in [defs.qc:331-332](reaper_mre/defs.qc#L331-L332)
+
+**Result:** Bots move like pros! Corner smoothing creates racing-line navigation, strafe hysteresis eliminates vibration, analog turning provides natural aim. Professional-grade movement fluidity. Build size: 453,342 bytes (+888 bytes). 🏎️✨✅
+
 ### 🎯 The Juggler: Weapon Combo System (2026-01-05)
 
 **NEW:** High-skill bots now execute tournament-level weapon combos! Rocket → Lightning Gun/SSG combos exploit knockback physics.
@@ -649,6 +693,9 @@ Advanced **path_corner chain prediction** for moving platforms:
 
 | Feature | Description |
 |---------|-------------|
+| 🏎️ **The Racing Line** | Corner smoothing: Blends aim 70% current + 30% next waypoint within 120u for smooth curves through doorways (2026-01-05) |
+| 🎯 **Strafe Hysteresis** | Anti-vibration: 0.5s direction commitment prevents seizure-like jitter, creates smooth combat arcs (2026-01-05) |
+| 🖱️ **Analog Turning** | Dynamic yaw speed: 5°/frame tracking, 20°/frame cornering, 45°/frame flicks for human-like aim (2026-01-05) |
 | 🐰 **Bunny Hop Mechanics** | Skill-based strafe-jump acceleration (skill >2, +12 u/s boost, 600 u/s cap) |
 | 🎢 **Jump Smoothing** | 3-frame moving average eliminates jittery trajectories |
 | 🪂 **Mid-Air Correction** | 20% velocity damping when trajectory becomes unreachable |

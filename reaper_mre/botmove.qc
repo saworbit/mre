@@ -1097,6 +1097,28 @@ void (float dist) strafemove =
       } //end if
    } //end if
 
+   // ===== SMOOTHING: Strafe Hysteresis (Anti-Vibration) =====
+   // Force the bot to commit to a strafe direction for at least 0.5 seconds
+   // unless hitting a solid wall. This prevents seizure-like left-right vibration.
+   if ((time < self.strafe_state_time))
+   {
+       // We are locked in.
+       // Only break lock if we are literally stuck (velocity near 0)
+       if ((vlen (self.velocity) > 20.000))
+       {
+           // Force the 'ofs' to match our locked direction
+           if ((self.strafe_dir_lock == 1.000))
+           {
+               ofs = 90.000;
+           } //end if
+           else
+           {
+               ofs = -90.000;
+           } //end if
+       } //end if
+   } //end if
+   // =======================================
+
    // --- NEW: Combat & Navigation Jumping (Bunny Hopping) ---
    // Instead of only walking, we now actively try to jump to gain speed (Tweak #1)
    // and dodge attacks, just like a human player.
@@ -1152,6 +1174,38 @@ void (float dist) strafemove =
    {
       ofs = (-1 * ofs);
    } //end if
+
+   // ===== SMOOTHING: Direction Change Tracking =====
+   // Check if we are changing strafe direction, and reset commitment timer
+   if ((self.strafe_dir_lock == 0.000)) // Init
+   {
+       self.strafe_state_time = (time + 0.500);
+       if ((ofs > 0.000))
+       {
+           self.strafe_dir_lock = 1.000;
+       } //end if
+       else
+       {
+           self.strafe_dir_lock = -1.000;
+       } //end if
+   } //end if
+   else
+   {
+       if (((ofs > 0.000) && (self.strafe_dir_lock == -1.000)) || ((ofs < 0.000) && (self.strafe_dir_lock == 1.000)))
+       {
+           // We are flipping. Reset timer.
+           self.strafe_state_time = (time + 0.500);
+           if ((ofs > 0.000))
+           {
+               self.strafe_dir_lock = 1.000;
+           } //end if
+           else
+           {
+               self.strafe_dir_lock = -1.000;
+           } //end if
+       } //end if
+   } //end if
+   // =======================================
 
    // --- Attempt Primary Move ---
    if (walkmove ((self.ideal_yaw + ofs),dist))
@@ -1282,6 +1336,49 @@ void (float dist) strafemove =
    } //end if
 }; //end of the function strafemove
 // ===== END BONUS TWEAK #5 =====
+
+// ============================================================
+// SMOOTHING: "Analog" Turning (Mouse Smoothing)
+// ============================================================
+// Pro players adjust turn speed dynamically: slow micro-adjustments
+// when tracking, fast flicks when acquiring new targets.
+// This replaces robotic constant-speed turns with human-like smoothing.
+// ============================================================
+void() Bot_SmoothTurn =
+{
+    local float delta;
+
+    // Calculate difference between current angle and ideal angle
+    delta = anglemod (self.ideal_yaw - self.angles_y);
+    if ((delta > 180.000))
+    {
+        delta = (delta - 360.000);
+    } //end if
+
+    // DYNAMIC SPEED
+    // If delta is small (< 10 degrees), turn SLOWLY (smooth tracking)
+    if ((fabs (delta) < 10.000))
+    {
+        self.yaw_speed = 5.000; // Very smooth, mouse-like micro-adjustments
+    } //end if
+    // If delta is medium (cornering), use normal speed
+    else
+    {
+        if ((fabs (delta) < 45.000))
+        {
+            self.yaw_speed = 20.000;
+        } //end if
+        // If delta is huge (180 flick), turn FAST
+        else
+        {
+            self.yaw_speed = 45.000; // Snap turn
+        } //end if
+    } //end if
+
+    ChangeYaw ();
+    self.yaw_speed = 20.000; // Reset to default for other calculations
+}; //end of the function Bot_SmoothTurn
+// ============================================================
 
 void (float dist, float wlevel) BotUnderwaterMove =
 {
@@ -1519,8 +1616,36 @@ void (float dist) Botmovetogoal =
       self.stuck_time = CAM_IDLE;
    } //end if
    Botgoal = self.goalentity;
-   self.ideal_yaw = vectoyaw ((Botgoal.origin - self.origin));
-   ChangeYaw ();
+
+   // ===== SMOOTHING: The "Racing Line" (Corner Smoothing) =====
+   // Pro players don't hit waypoints then turn 90°. They "cut the corner,"
+   // starting the turn before reaching the waypoint by blending aim toward next node.
+   local vector aim_point;
+   aim_point = Botgoal.origin;
+
+   // If we are getting close to the current node (within 120 units),
+   // and that node has a target (the next node in the chain)...
+   if ((vlen (self.origin - Botgoal.origin) < 120.000))
+   {
+       if (Botgoal.target)
+       {
+           local entity next_node;
+           next_node = find (world,targetname,Botgoal.target);
+
+           if (next_node)
+           {
+               // Blend our aim: 70% current node, 30% next node.
+               // This causes the bot to curve into the turn early.
+               aim_point = ((Botgoal.origin * 0.700) + (next_node.origin * 0.300));
+           } //end if
+       } //end if
+   } //end if
+   // =======================================
+
+   self.ideal_yaw = vectoyaw ((aim_point - self.origin));
+
+   // DYNAMIC YAW SPEED (Analog Turning - See Section 3)
+   Bot_SmoothTurn ();
 
    // ===== ACTION BREADCRUMBS: Execute Jump (The "Trigger") =====
    // Check the scent of the node we are running towards.

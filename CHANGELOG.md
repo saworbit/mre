@@ -1,5 +1,13 @@
 ## 2026-01-05
 
+- **Movement Smoothing Suite** for human-like fluidity across three systems:
+  - **The Racing Line (Corner Smoothing)** in `reaper_mre/botmove.qc` (`Botmovetogoal()` function, lines 1523-1551): Bots now "cut corners" like racing drivers instead of hitting waypoints then turning 90°. When within 120 units of current waypoint and a next node exists, blends aim point (70% current + 30% next). Creates smooth cornering arcs through doorways instead of hitting frames.
+  - **Strafe Hysteresis (Anti-Vibration)** in `reaper_mre/botmove.qc` (`strafemove()` function, lines 1100-1120 enforcement + 1178-1208 tracking): Eliminates seizure-like left-right vibration during combat strafing. Bots commit to strafe direction for 0.5 seconds unless stuck (velocity <20 u/s). Direction tracking monitors flips and resets timer. Creates smooth arcs instead of frame-by-frame jitter.
+  - **Analog Turning (Mouse Smoothing)** in `reaper_mre/botmove.qc` (`Bot_SmoothTurn()` function, lines 1286-1327): Dynamic yaw speed based on angle delta replaces robotic constant-speed turns. Small angles (<10°) turn at 5°/frame for smooth tracking, medium angles (10-45°) at 20°/frame for cornering, large angles (>45°) at 45°/frame for snap turns. Human-like aiming dynamics.
+  - **New entity fields** in `reaper_mre/defs.qc` (lines 331-332): Added `.float strafe_state_time` (tracks when bot can change strafe direction) and `.float strafe_dir_lock` (current locked direction: 1=right, -1=left, 0=none) for hysteresis system.
+  - **Integration with existing systems**: Racing Line integrated with Analog Turning for dynamic cornering speed. Strafe Hysteresis works with existing evasion/zigzag logic without conflicts. Smooth turn replaces all ChangeYaw() calls in movement pipeline.
+  - **Result:** Bots now move like skilled human players! Corner smoothing creates fluid doorway navigation, strafe hysteresis eliminates vibration for smooth combat arcs, analog turning provides natural aim adjustments. Transforms robotic movement into professional-grade fluidity. Build size: 453,342 bytes (+888 bytes for three smoothing systems). 🏎️✨✅
+
 - **The Juggler (Weapon Combo System)** for tournament-level rocket → hitscan combos:
   - **Cooldown tracking field** in `reaper_mre/defs.qc` (line 330): Added `.float juggler_cooldown` field to prevent weapon combo spam. 2-second cooldown between combos ensures tactical usage rather than continuous switching.
   - **Combo detection logic** in `reaper_mre/botfight.qc` (`W_BotAttack()` function, lines 838-872): After firing rocket launcher, immediately checks for combo opportunity. Only high-skill bots (skill >2) execute combos, maintaining difficulty progression.
