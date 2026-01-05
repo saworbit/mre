@@ -24,6 +24,75 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 ## 🎬 Latest Features (2026-01)
 
+### 🎥 AI Cameraman: Director Mode (2026-01-05)
+
+**NEW:** Intelligent spectator camera that automatically tracks the most exciting action!
+
+The AI Cameraman is a smart cinematographer that understands Quake combat. It automatically switches between bots based on real-time "excitement scoring" - prioritizing close-quarters battles, underdog scenarios, powerup plays, and high-skill movement. Perfect for spectating bot matches hands-free!
+
+**Before AI Cameraman:**
+- ❌ Manual camera control required (impulse commands, target cycling)
+- ❌ Missing action while watching wrong player
+- ❌ No awareness of combat intensity or drama
+- ❌ Static spectator modes (noclip, follow single player)
+
+**After AI Cameraman:**
+- ✅ Fully automatic action tracking (set it and forget it!)
+- ✅ AI scores every bot by excitement level every 2 seconds
+- ✅ Smooth cinematic transitions between targets
+- ✅ Shows off MRE's advanced AI (Fear Engine, FFA logic, combos)
+
+**How it works:**
+
+**Action Scoring System:**
+The AI rates each bot's "excitement level" based on multiple factors:
+- 🔥 **Active combat**: +300 for fighting, +200 bonus for close-quarters (<250u)
+- 💀 **Health drama**: +150 if bot is wounded (<40 HP), +100 if enemy is low
+- 🚀 **Movement skill**: +80 for fast movement (>400 u/s bunny hopping/rocket jumps)
+- ⚡ **Powerup potential**: +250 quad damage, +150 pentagram, +100 invisibility ring
+- 🎯 **Weapon loadout**: +50 for rockets, +40 for lightning gun
+- 🧠 **Tactical AI**: +120 for survival tactics (wounded bots avoiding combat = interesting!)
+- 🏆 **Leader status**: +10 per frag for high scorers
+- 🔥 **Hot streak**: +100 bonus for 10+ frags
+
+**Example Scenarios:**
+- **CQC Duel**: Bot A vs Bot B at 200u range → Bot A scores 500+ (combat + CQC) → Camera tracks the fight
+- **Underdog Drama**: Wounded bot (25 HP) fleeing through corridors → Scores 450 (health drama + tactical retreat) → Camera follows survival attempt
+- **Quad Rampage**: Bot picks up quad damage → Scores 550+ (quad + combat) → Camera showcases carnage
+- **Pro Movement**: Bot bunny hopping at 500 u/s while rocket jumping → Scores 380 (movement skill) → Camera highlights skills
+
+**AI Director Logic:**
+Every 2 seconds, the camera:
+1. Scans ALL players and bots
+2. Calculates excitement score for each
+3. Switches to highest-scoring target
+4. Uses smooth flyby positioning for cinematic tracking
+5. Shows target name on screen (optional)
+
+**Activation:**
+```
+impulse 400    # Become AI Cameraman spectator (instant activation!)
+```
+
+**Manual Override Controls:**
+```
+impulse 300    # Flyby mode (manual target)
+impulse 301    # Follow mode (over-shoulder)
+impulse 303    # Free-flight camera
+impulse 310    # Toggle info display
+impulse 317    # Cycle to next player
+impulse 400    # Return to AI Director mode
+```
+
+**Integration:**
+- Director mode in [kascam.qc:9](reaper_mre/kascam.qc#L9)
+- Action scoring in [kascam.qc:31-129](reaper_mre/kascam.qc#L31-L129)
+- AI think loop in [kascam.qc:1627-1702](reaper_mre/kascam.qc#L1627-L1702)
+- CamThink integration in [kascam.qc:1749-1755](reaper_mre/kascam.qc#L1749-L1755)
+- Activation in [weapons.qc:1387-1391](reaper_mre/weapons.qc#L1387-L1391)
+
+**Result:** The world's first AI-powered Quake spectator camera! Automatically tracks exciting combat, underdog stories, powerup plays, and pro movement. Shows off MRE's advanced AI features (Fear Engine tactical routing, FFA target selection, weapon combos). Set it and watch the bots battle like a tournament broadcast! Build size: 457,342 bytes (+2,480 bytes). 🎬🤖✅
+
 ### 🏎️ Movement Smoothing Suite (2026-01-05)
 
 **NEW:** Three distinct smoothing upgrades transform robotic movement into human-like fluidity!

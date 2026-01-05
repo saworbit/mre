@@ -6,6 +6,7 @@ float CAM_HAND    = 4.000;
 float CAM_FREE    = 5.000;
 float CAM_NOCLIP    = 6.000;
 float CAM_DEATH    = 7.000;
+float CAM_DIRECTOR = 8.000;  // AI Cameraman mode - auto-tracks best action
 entity (entity ent) CamCycle =
 {
    if ((ent == world))
@@ -26,6 +27,106 @@ entity (entity ent) CamCycle =
    } //end if
    return (ent);
 }; //end of the function CamCycle
+
+// ===== AI CAMERAMAN: Action Scoring System =====
+// Rates each bot by "excitement level" for intelligent camera tracking
+float (entity ent) CamActionScore =
+{
+   local float score;
+   local float dist_to_action;
+
+   score = 0;
+
+   // Dead/invalid entities get no score
+   if (!ent || ent.deadflag != DEAD_NO || ent.health <= 0)
+   {
+      return 0;
+   }
+
+   // COMBAT BONUS: Currently in a fight
+   if (ent.enemy != world && ent.enemy.health > 0)
+   {
+      score = score + 300;  // Active combat = high priority
+
+      // Close-quarters combat is more exciting
+      dist_to_action = vlen(ent.origin - ent.enemy.origin);
+      if (dist_to_action < 250)
+      {
+         score = score + 200;  // CQC bonus
+      }
+
+      // Low health combat = desperation (very exciting!)
+      if (ent.health < 40)
+      {
+         score = score + 150;  // Underdog bonus
+      }
+      if (ent.enemy.health < 40)
+      {
+         score = score + 100;  // Finishing blow bonus
+      }
+   }
+
+   // MOVEMENT BONUS: High-skill movement
+   if (vlen(ent.velocity) > 400)
+   {
+      score = score + 80;  // Fast movement (bunny hopping, rocket jumps)
+   }
+
+   // POWERUP BONUS: Has quad/pent/ring
+   if (ent.items & IT_QUAD)
+   {
+      score = score + 250;  // Quad damage = carnage potential
+   }
+   if (ent.items & IT_INVULNERABILITY)
+   {
+      score = score + 150;  // Pentagram = unstoppable
+   }
+   if (ent.items & IT_INVISIBILITY)
+   {
+      score = score + 100;  // Ring = stealth plays
+   }
+
+   // WEAPON BONUS: Has rockets (high action potential)
+   if (ent.weapon == IT_ROCKET_LAUNCHER && ent.ammo_rockets > 0)
+   {
+      score = score + 50;
+   }
+   if (ent.weapon == IT_LIGHTNING && ent.ammo_cells > 5)
+   {
+      score = score + 40;
+   }
+
+   // TACTICAL BONUS: Show off Fear Engine routing (MRE feature!)
+   // Bots making tactical decisions based on danger/traffic
+   if (ent.classname == "dmbot")
+   {
+      // If bot is wounded and avoiding combat (tactical retreat)
+      if (ent.health < 50 && !ent.enemy)
+      {
+         score = score + 120;  // Survival tactics = interesting AI
+      }
+
+      // If bot is seeking powerup (strategic play)
+      if (ent.goalentity && ent.goalentity.classname == "item_artifact_super_damage")
+      {
+         score = score + 150;  // Quad pursuit
+      }
+   }
+
+   // LEADER BONUS: Top scorer gets attention
+   if (ent.frags > 5)
+   {
+      score = score + (ent.frags * 10);  // Scale with skill
+   }
+
+   // STREAK BONUS: High frag count = hot action
+   if (ent.frags > 10)
+   {
+      score = score + 100;  // High scorer!
+   }
+
+   return score;
+}; //end of the function CamActionScore
 
 void (entity ent) CamVectors =
 {
@@ -947,6 +1048,17 @@ void () CamImpulses =
          } //end if
       } //end if
    } //end if
+
+   // ===== AI CAMERAMAN: Return to Director Mode =====
+   if ((self.impulse == 400.000))
+   {
+      bprint ("AI Cameraman re-activated!\n");
+      self.state = CAM_DIRECTOR;
+      self.enemy = self;
+      self.search_time = time;  // Start scanning immediately
+      self.aflag = TRUE;  // Enable target announcements
+   } //end if
+
    self.impulse = REGULARTARGET;
 }; //end of the function CamImpulses
 
@@ -1523,6 +1635,83 @@ void () CamDeathThink =
    } //end if
 }; //end of the function CamDeathThink
 
+// ===== AI CAMERAMAN: Director Mode Think Function =====
+// Automatically tracks the most exciting action based on scoring
+void () CamDirectorThink =
+{
+   local entity best_target;
+   local entity scan_ent;
+   local float best_score;
+   local float current_score;
+
+   // Re-evaluate targets every 2 seconds or when current target dies
+   if (time < self.search_time && self.enemy != world && self.enemy.deadflag == DEAD_NO)
+   {
+      // Keep tracking current target with flyby camera
+      self.dest1 = CamFlybyTarget(self.enemy);
+      if (!CamVisibleEnt(self.enemy))
+      {
+         // Lost sight, force re-evaluation
+         self.search_time = time;
+      }
+      return;
+   }
+
+   // SCAN ALL ENTITIES for best action
+   best_target = world;
+   best_score = 0;
+
+   // Scan players
+   scan_ent = find(world, classname, "player");
+   while (scan_ent)
+   {
+      current_score = CamActionScore(scan_ent);
+      if (current_score > best_score)
+      {
+         best_score = current_score;
+         best_target = scan_ent;
+      }
+      scan_ent = find(scan_ent, classname, "player");
+   }
+
+   // Scan bots
+   scan_ent = find(world, classname, "dmbot");
+   while (scan_ent)
+   {
+      current_score = CamActionScore(scan_ent);
+      if (current_score > best_score)
+      {
+         best_score = current_score;
+         best_target = scan_ent;
+      }
+      scan_ent = find(scan_ent, classname, "dmbot");
+   }
+
+   // If we found an exciting target, switch to them
+   if (best_target != world && best_target != self.enemy)
+   {
+      // Smooth transition via flyby mode
+      CamInitFlybyMode(best_target);
+      self.state = CAM_DIRECTOR;  // Stay in director mode
+
+      // Show what's happening (optional: disable if too spammy)
+      if (self.aflag)  // Only if camera reports enabled
+      {
+         local string msg;
+         msg = "AI Camera: Tracking ";
+         camcenterprint2(self, msg, best_target.netname);
+      }
+
+      // Check again in 2 seconds
+      self.search_time = time + 2.0;
+   }
+   else if (best_target == world)
+   {
+      // No action found, go idle and scan again soon
+      self.search_time = time + 1.0;
+   }
+}; //end of the function CamDirectorThink
+
 void () CamThink =
 {
    CamUpdValues ();
@@ -1564,6 +1753,17 @@ void () CamThink =
                {
                   CamDeathThink ();
                   CamUpdatePos (MUST_HAVE,150.000);
+
+               } //end if
+               else
+               {
+                  if ((self.state == CAM_DIRECTOR))
+                  {
+                     // AI CAMERAMAN MODE - Auto-track best action!
+                     CamDirectorThink ();
+                     // Use flyby positioning for smooth tracking
+                     CamUpdatePos (REGULARTARGET,500.000);
+                  } //end if
                } //end if
             } //end if
          } //end if
@@ -1608,8 +1808,27 @@ void () CamClientInit =
    self.pausetime = time;
    self.delay = time;
    self.attack_state = FALSE;
-   CamGoIdle ();
-   bprint ("Camera running\n");
+
+   // ===== START IN AI CAMERAMAN MODE =====
+   self.state = CAM_DIRECTOR;
+   self.enemy = self;
+   self.search_time = time;  // Start scanning immediately
+   self.dest2 = self.dest1;
+
+   bprint ("\n");
+   bprint ("===========================================\n");
+   bprint ("  AI CAMERAMAN ACTIVATED (impulse 400)\n");
+   bprint ("===========================================\n");
+   bprint ("Auto-tracking most exciting action!\n");
+   bprint ("\n");
+   bprint ("Controls:\n");
+   bprint ("  impulse 300 = Flyby mode (manual target)\n");
+   bprint ("  impulse 301 = Follow mode\n");
+   bprint ("  impulse 303 = Free-flight camera\n");
+   bprint ("  impulse 310 = Toggle info display\n");
+   bprint ("  impulse 317 = Cycle to next player\n");
+   bprint ("  impulse 400 = Return to AI Director\n");
+   bprint ("\n");
 }; //end of the function CamClientInit
 
 void () CamSpawn =

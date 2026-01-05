@@ -1384,7 +1384,16 @@ void () ImpulseCommands =
       } //end if
       else
       {
-         botImpulseCommand ();
+         if ((self.impulse == 400.000))
+         {
+            // ===== AI CAMERAMAN ACTIVATION =====
+            // Convert player to spectator camera with AI director mode
+            CamClientInit ();
+         } //end if
+         else
+         {
+            botImpulseCommand ();
+         } //end if
       } //end if
    } //end if
    self.impulse = CAM_IDLE;
