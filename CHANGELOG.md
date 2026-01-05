@@ -1,5 +1,13 @@
 ## 2026-01-05
 
+- **CRITICAL BUGFIX: Grenade Launcher Close-Range Suicide Prevention** for combat safety:
+  - **Root cause identified** in `reaper_mre/botfight.qc`: Grenade arc calculation functions (`adjustgrenade()` at line 62, `SolveGrenadeArc()` in `botmath.qc` line 166) produce aim points below bot's feet at close range (<200 units). Arc formulas work correctly at medium-long range but fail when travel time becomes tiny, causing bots to lob grenades at ground directly beneath them during circle strafing.
+  - **Minimum safe distance check** in `reaper_mre/botfight.qc` (lines 761-796): Added 200-unit distance gate before GL firing. When enemy closer than 200u, bot immediately aborts grenade fire and switches to close-range weapon (SSG > SNG > LG priority). Prevents arc calculation from running when it would produce self-destructive aim points.
+  - **Why 200 units**: Grenade arc calculations become unreliable below 200u (travel time = dist/600 → 0.33s at 200u). Splash radius is 120u, so 200u provides safety margin. SSG effective range 150-250u makes it perfect GL replacement at close range.
+  - **Automatic weapon switching** in `reaper_mre/botfight.qc`: When distance check triggers, bot checks ammo availability and switches to: Super Shotgun (2+ shells) → Super Nailgun (1+ nails) → Lightning Gun (1+ cells). Sets quick retry timer (0.1s) to fire with new weapon next frame.
+  - **Preserved existing safety**: Keeps existing self-risk validation at lines 800-821 that checks predicted bounce/explosion distance. Distance check runs BEFORE bounce prediction for early abort, avoiding wasted calculations on impossible shots.
+  - **Result:** Bots no longer commit suicide with grenades during close-quarters combat! GL automatically switches to SSG/SNG/LG when enemy gets too close for safe arc aiming. Grenade launcher remains deadly effective at medium-long range where arc calculations work correctly. Build size: 451,786 bytes (+504 bytes for distance check + weapon switch logic). 💣🛡️✅
+
 - **PHASE 11: Water Survival (Drowning Prevention)** for FrikBot-inspired air management:
   - **CheckWaterSurvival() function** in `reaper_mre/botmove.qc` (lines 908-938): Adapted from FrikBot's "Up Periscope" logic. Detects when bot is fully underwater (`waterlevel > 2`) AND running out of air (`time > air_finished - 2`). Checks 2 seconds before drowning to give time to surface.
   - **Air detection trace** in `reaper_mre/botmove.qc` (line 918): Uses `traceline()` to scan 600 units upward from bot's position. Checks `trace_inopen` to determine if air exists above. Only attempts surfacing when air is reachable (prevents pointless swim in submerged rooms).

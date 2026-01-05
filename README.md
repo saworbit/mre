@@ -522,6 +522,7 @@ Advanced **path_corner chain prediction** for moving platforms:
 | 🎯 **Predictive Aim** | Splash height variance + vertical lead + velocity smoothing |
 | 🎬 **Human-Like Aim Smoothing** | Pitch slew rate system (150-450°/s by skill) replaces aimbot snap-lock |
 | 🛡️ **Self-Risk Validation** | Aborts GL fire if self-splash risk < 128u |
+| 💣 **GL Close-Range Safety** | Auto-switches GL→SSG/SNG/LG when enemy <200u to prevent suicide grenades (arc math fails at close range) |
 | 🎯 **Floor Shooting (RL)** | Aims at enemy feet instead of chest for guaranteed splash damage (80+ even on miss) |
 | 🧱 **Corner Clipping (RL/GL)** | Fires splash weapons at walls/floors within 110u of hidden enemies |
 | 🛡️ **Suicide Prevention (RL)** | Prioritizes SSG/SNG/LG at melee range to avoid point-blank rocket deaths |
