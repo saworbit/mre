@@ -331,6 +331,8 @@ float C_HURT    = 6.000;
 .float strafe_state_time;  // Strafe Hysteresis: When bot can change strafe direction
 .float strafe_dir_lock;    // Strafe Hysteresis: Current locked strafe direction (1=right, -1=left, 0=none)
 .float scan_time;          // FFA Fix (Swivel Turret): Next time to re-evaluate best target
+.entity last_logged_enemy; // Debug Logging: Tracks last logged target (only log changes)
+.entity last_logged_goal;  // Debug Logging: Tracks last logged goal (only log changes)
 .float fly_sound;
 .float axhitme;
 .float show_hostile;

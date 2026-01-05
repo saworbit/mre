@@ -1222,26 +1222,32 @@ entity () FindMapGoal =
       } //end while
    } //end if
 
-   // ===== DEBUG LOGGING: Goal Selection =====
-   if (bot_debug_enabled && best_ent != world)
+   // ===== DEBUG LOGGING: Goal Selection (Change-Only) =====
+   // Only log when goal CHANGES (eliminates repeated spam while traveling)
+   if (bot_debug_enabled && (best_ent != self.last_logged_goal))
    {
       bprint ("[");
       bprint (self.netname);
       bprint ("] GOAL: ");
-      bprint (best_ent.classname);
-      bprint (" (score=");
-      bprint (ftos(best_val));
-      bprint (", dist=");
-      bprint (ftos(vlen(best_ent.origin - self.origin)));
-      bprint ("u)\n");
-   } //end if
-   else if (bot_debug_enabled && best_ent == world)
-   {
-      bprint ("[");
-      bprint (self.netname);
-      bprint ("] GOAL: None found (best_val=");
-      bprint (ftos(best_val));
-      bprint (")\n");
+
+      if (best_ent != world)
+      {
+         bprint (best_ent.classname);
+         bprint (" (score=");
+         bprint (ftos(best_val));
+         bprint (", dist=");
+         bprint (ftos(vlen(best_ent.origin - self.origin)));
+         bprint ("u)\n");
+      }
+      else
+      {
+         bprint ("None found (best_val=");
+         bprint (ftos(best_val));
+         bprint (")\n");
+      }
+
+      // Remember what we logged
+      self.last_logged_goal = best_ent;
    } //end if
 
    return (best_ent);
