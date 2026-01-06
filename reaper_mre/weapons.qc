@@ -1375,7 +1375,7 @@ void () ImpulseCommands =
    } //end if
    else
    {
-      if ((self.impulse == 100.000))
+      if ((self.impulse == 100.000) && (self.classname == "player"))
       {
          bprint ("Dumping Waypoints to Console...\n");
          DumpWaypoints ();

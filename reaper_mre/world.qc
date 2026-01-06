@@ -255,7 +255,12 @@ void () StartFrame =
       if ((map == "dm4"))
       {
          LoadMapWaypoints_dm4 ();
-         bprint ("Loaded 181 waypoints for DM4\n");
+         bprint ("Loaded 452 waypoints for DM4\n");
+      } //end if
+      else if ((map == "dm2"))
+      {
+         LoadMapWaypoints_dm2 ();
+         bprint ("Loaded 362 waypoints for DM2\n");
       } //end if
       else
       {

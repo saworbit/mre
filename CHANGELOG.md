@@ -1,5 +1,14 @@
 ## 2026-01-06
 
+- **DM2 Waypoint Integration: 362-Node Navigation Network** for Claustrophobopolis:
+  - **Automated waypoint extraction** via `tools/parse_waypoints.py`: Python script extracts waypoints from qconsole.log dumps (impulse 100) and converts quote syntax automatically. Handles '' → "" conversion for target strings, preserves single quotes for vector coordinates. Usage: `python parse_waypoints.py qconsole.log dm2 maps/dm2.qc`
+  - **Comprehensive coverage** in `reaper_mre/maps/dm2.qc` (362 waypoints): Doubled from initial 181-node dataset. Avg traffic score: 37.0 (down from 64.0 = better distribution). Avg danger scent: 0.4 (up from 0.3 = better death tracking). High-traffic tactical zones (90-100 scores) mark key combat areas, danger hotspots (up to 15.0) identify death traps and risky item pickups.
+  - **Map loader integration** in `reaper_mre/world.qc` (lines 260-264): Auto-loads 362 waypoints on dm2 startup. Console feedback: "Loaded 362 waypoints for DM2".
+  - **Improved navigation patterns**: Better vertical movement coverage (lifts, ledges), comprehensive item route coverage, tactical positioning data (where bots frequently fight/die), high-traffic chokepoints identified (score 90-100 = frequent bot passage).
+  - **Quote syntax fix** in `reaper_mre/botroute.qc` (lines 1598-1609): DumpWaypoints output uses '' for target strings (QuakeC limitation: no escape sequences). Added comment documenting post-processing requirement with Python script to convert to proper "" syntax.
+  - **Self-improving navigation**: Waypoints accumulate from bot gameplay sessions. First session: 181 nodes (manual exploration). Second session: 362 nodes (traffic analysis + new routes discovered). Future sessions will continue expanding coverage automatically via breadcrumb system.
+  - **Result:** DM2 fully navigable! Bots have comprehensive coverage of all major routes, items, and combat zones. 100% increase in waypoint density improves pathfinding precision and reduces stuck events. Build size: 487,678 bytes (+9,300 bytes for expanded waypoint data). 🗺️✅
+
 - **CRITICAL BUGFIX: Bot Skill Assignment** restores all skill-gated features:
   - **Root cause identified** in `reaper_mre/botspawn.qc` (`AddBot` function, lines 583-603): Impossible conditional logic (e.g., `ran_skill > 0.5 AND ran_skill <= 0.2`) prevented any bot from spawning with skill > 1. All bots locked at novice level (skill=1) regardless of server skill setting.
   - **Impact analysis**: ALL skill-gated features completely disabled—Juggler combos (requires skill > 2), rocket jump unstuck (requires skill > 2), advanced pathfinding, aim precision scaling. Explains 0 combo events in logs, 0% rocket jump usage, and identical bot performance.

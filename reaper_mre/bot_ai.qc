@@ -126,6 +126,92 @@ void () Stack_Pop_Safe =
    }
 }; //end of Stack_Pop_Safe
 
+// ===== PROJECTILE PREDICTION: Navigation Leading (2026-01-06) =====
+// Predicts where enemy will be based on projectile travel time.
+// Used for body orientation (ideal_yaw) so bot faces the predicted position.
+// Includes wall-clamping to prevent aiming into walls (Obot-inspired).
+//
+// Parameters:
+//   target: Entity to predict (enemy)
+//   proj_speed: Projectile speed in units/second (1000 for rockets, 600 for grenades, 0 for hitscan)
+//
+// Returns: Predicted position vector (or current position if prediction invalid)
+vector (entity target, float proj_speed) PredictEnemyPositionForNav =
+{
+   local vector predicted_pos;
+   local float travel_time;
+   local float distance;
+   local vector direction;
+
+   // Sanity check
+   if (!target || target == world)
+   {
+      return self.origin;  // No target, return self position
+   }
+
+   // For hitscan weapons (proj_speed = 0), no prediction needed
+   if (proj_speed <= 0)
+   {
+      return target.origin;
+   }
+
+   // Calculate distance to target
+   distance = vlen(target.origin - self.origin);
+
+   // Calculate travel time = distance / speed
+   travel_time = distance / proj_speed;
+
+   // Clamp travel time to reasonable values (max 2 seconds prediction)
+   if (travel_time > 2.0)
+   {
+      travel_time = 2.0;
+   }
+
+   // Predict future position: current_pos + (velocity * travel_time)
+   predicted_pos = target.origin + (target.velocity * travel_time);
+
+   // ===== WALL-CLAMPING (Obot-inspired) =====
+   // Don't aim at positions behind walls - validate with traceline
+   traceline(self.origin, predicted_pos, TRUE, self);
+
+   // If trace hit something before reaching predicted position, the path is blocked
+   if (trace_fraction < 1.0)
+   {
+      // Check if the blockage is close to the target (within splash radius ~120 units)
+      local float block_dist;
+      block_dist = vlen(trace_endpos - target.origin);
+
+      if (block_dist > 120.0)
+      {
+         // Blockage is far from target - prediction would aim at wall
+         // Fall back to current enemy position (conservative aiming)
+         return target.origin;
+      }
+      else
+      {
+         // Blockage is near target - use the impact point (wall splash)
+         return trace_endpos;
+      }
+   }
+
+   // ===== BOUNDARY CLAMPING =====
+   // Ensure prediction doesn't go outside reasonable bounds
+   // (Prevents wild predictions if enemy has extreme velocity)
+   local float pred_distance;
+   pred_distance = vlen(predicted_pos - target.origin);
+
+   // If prediction is more than 500 units from current position, clamp it
+   if (pred_distance > 500.0)
+   {
+      // Clamp to 500 unit sphere around current position
+      direction = normalize(predicted_pos - target.origin);
+      predicted_pos = target.origin + (direction * 500.0);
+   }
+
+   return predicted_pos;
+}; //end of PredictEnemyPositionForNav
+// ===== END PROJECTILE PREDICTION =====
+
 // ===== PHASE 7: Threat Scoring for Projectile Dodge Prioritization =====
 // Calculates enemy threat score based on health, armor, weapon, and powerups.
 // Higher score = more dangerous enemy = prioritize dodging their projectiles.
@@ -451,6 +537,9 @@ float () RunAway =
 
 void () BotHuntTarget =
 {
+   local vector predicted_pos;
+   local float proj_speed;
+
    self.enemyrun = FALSE;
    self.strafetime = FALSE;
    if ((self.lefty & ONTRAIN))
@@ -470,7 +559,33 @@ void () BotHuntTarget =
    setorigin (self.goalentity,self.enemy.origin);
    self.think = self.th_run;
    self.strafeonly = FALSE;
-   self.ideal_yaw = vectoyaw ((self.enemy.origin - self.origin));
+
+   // ===== PROJECTILE PREDICTION: Weapon-based Leading =====
+   // Determine projectile speed based on current weapon
+   if ((self.weapon & IT_ROCKET_LAUNCHER))
+   {
+      proj_speed = 1000.0;  // Rockets: 1000 u/s
+   }
+   else if ((self.weapon & IT_GRENADE_LAUNCHER))
+   {
+      proj_speed = 600.0;   // Grenades: 600 u/s (arc ballistic)
+   }
+   else if ((self.weapon & IT_SUPER_NAILGUN) || (self.weapon & IT_NAILGUN))
+   {
+      proj_speed = 1000.0;  // Nails: 1000 u/s (fast projectiles)
+   }
+   else
+   {
+      proj_speed = 0.0;     // Hitscan weapons (shotgun, LG): instant
+   }
+
+   // Get predicted enemy position
+   predicted_pos = PredictEnemyPositionForNav(self.enemy, proj_speed);
+
+   // Aim body toward predicted position (not current position!)
+   self.ideal_yaw = vectoyaw ((predicted_pos - self.origin));
+   // ===== END PROJECTILE PREDICTION =====
+
    self.lefty = ((self.lefty - (self.lefty & LOCAL_TIME)) + MOVETYPE_TOSS);
    self.nextthink = (time + 0.100);
    self.attack_finished = ((time + 0.700) - (0.200 * self.skil));
@@ -984,9 +1099,34 @@ void (float dist, float turn) aibot_run_slide =
    local float dis;
    local float trn;
    local float weap;
+   local vector predicted_pos;
+   local float proj_speed;
 
    trn = turn;
-   self.ideal_yaw = vectoyaw ((self.enemy.origin - self.origin));
+
+   // ===== PROJECTILE PREDICTION: Strafe Aiming =====
+   // Determine projectile speed based on current weapon
+   if ((self.weapon & IT_ROCKET_LAUNCHER))
+   {
+      proj_speed = 1000.0;  // Rockets: 1000 u/s
+   }
+   else if ((self.weapon & IT_GRENADE_LAUNCHER))
+   {
+      proj_speed = 600.0;   // Grenades: 600 u/s (arc ballistic)
+   }
+   else if ((self.weapon & IT_SUPER_NAILGUN) || (self.weapon & IT_NAILGUN))
+   {
+      proj_speed = 1000.0;  // Nails: 1000 u/s (fast projectiles)
+   }
+   else
+   {
+      proj_speed = 0.0;     // Hitscan weapons (shotgun, LG): instant
+   }
+
+   predicted_pos = PredictEnemyPositionForNav(self.enemy, proj_speed);
+   self.ideal_yaw = vectoyaw ((predicted_pos - self.origin));
+   // ===== END PROJECTILE PREDICTION =====
+
    ChangeYaw ();
    ofs = 90.000;
    dis = dist;
@@ -1944,7 +2084,32 @@ void (float dist) ai_botgetGoody =
       {
          if ((self.attack_finished < time))
          {
-            self.ideal_yaw = vectoyaw ((self.enemy.origin - self.origin));
+            // ===== PROJECTILE PREDICTION: Main Combat Aiming =====
+            local vector predicted_pos;
+            local float proj_speed;
+
+            // Determine projectile speed based on current weapon
+            if ((self.weapon & IT_ROCKET_LAUNCHER))
+            {
+               proj_speed = 1000.0;  // Rockets: 1000 u/s
+            }
+            else if ((self.weapon & IT_GRENADE_LAUNCHER))
+            {
+               proj_speed = 600.0;   // Grenades: 600 u/s (arc ballistic)
+            }
+            else if ((self.weapon & IT_SUPER_NAILGUN) || (self.weapon & IT_NAILGUN))
+            {
+               proj_speed = 1000.0;  // Nails: 1000 u/s (fast projectiles)
+            }
+            else
+            {
+               proj_speed = 0.0;     // Hitscan weapons (shotgun, LG): instant
+            }
+
+            predicted_pos = PredictEnemyPositionForNav(self.enemy, proj_speed);
+            self.ideal_yaw = vectoyaw ((predicted_pos - self.origin));
+            // ===== END PROJECTILE PREDICTION =====
+
             ChangeYaw ();
             if ((self.attack_state == AS_MELEE))
             {

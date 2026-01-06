@@ -1595,7 +1595,7 @@ void () DumpWaypoints =
          bprint (ftos (head.traffic_score));
          bprint (", ");
          bprint (ftos (head.danger_scent));
-         bprint (", '");
+         bprint (", ''");
 
          // PHASE 6: Save the target string (for button/door linking)
          if (head.target != "")
@@ -1605,6 +1605,8 @@ void () DumpWaypoints =
          //end if
 
          bprint ("');\n");
+         // NOTE: Output uses '' for target strings - post-process with:
+         // python -c "import re; ..." to convert '' to \"\" for correct QuakeC syntax
 
          count = (count + 1.000);
          total_traffic = (total_traffic + head.traffic_score);
@@ -1618,11 +1620,23 @@ void () DumpWaypoints =
    bprint ("// Total Nodes: ");
    bprint (ftos (count));
    bprint ("\n");
-   bprint ("// Avg Traffic Score: ");
-   bprint (ftos ((total_traffic / count)));
+
+   // Prevent division by zero if no waypoints found
+   if (count > 0)
+   {
+      bprint ("// Avg Traffic Score: ");
+      bprint (ftos ((total_traffic / count)));
+      bprint ("\n");
+      bprint ("// Avg Danger Scent: ");
+      bprint (ftos ((total_danger / count)));
+      bprint ("\n");
+   }
+   else
+   {
+      bprint ("// WARNING: No waypoints with pathtype=DROPPED found!\n");
+      bprint ("// Did you load a map waypoint file (e.g., LoadMapWaypoints_dm4)?\n");
+   }
+
    bprint ("\n");
-   bprint ("// Avg Danger Scent: ");
-   bprint (ftos ((total_danger / count)));
-   bprint ("\n\n");
 }; //end of the function DumpWaypoints
 // ===== END PERSISTENCE SYSTEM =====

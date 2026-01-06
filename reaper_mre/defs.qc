@@ -445,10 +445,14 @@ void (entity e) setspawnparms = #78;
 
 // ===== MAP WAYPOINT LOADERS (Forward Declarations) =====
 void () LoadMapWaypoints_dm4;
+void () LoadMapWaypoints_dm2;
 
 // ===== PHASE 8: Target Stack Functions (Forward Declarations) =====
 void () Stack_Push;
 void () Stack_Pop;
 void () Stack_Clear;
 void () Stack_Pop_Safe;
+
+// ===== PROJECTILE PREDICTION: Navigation Leading =====
+vector (entity target, float proj_speed) PredictEnemyPositionForNav;
 // ===== END FORWARD DECLARATIONS =====
