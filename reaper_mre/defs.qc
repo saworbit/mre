@@ -288,6 +288,11 @@ entity activator;
 entity damage_attacker;
 float framecount /* = 0.000 */;
 float skill /* = 0.000 */;
+// ===== PLAYER OBSERVATION LEARNING: Live Learning Globals =====
+float learned_rj_count;          // Total learned RJ waypoints spawned this session
+float LEARNED_RJ_MAX;             // Maximum learned RJ waypoints per map (50)
+entity learned_rj_head;           // Linked list head for learned RJ cleanup
+// ==============================================================
 .string wad;
 .string map;
 .float worldtype;
@@ -449,6 +454,10 @@ void (entity e) setspawnparms = #78;
 // ===== MAP WAYPOINT LOADERS (Forward Declarations) =====
 void () LoadMapWaypoints_dm4;
 void () LoadMapWaypoints_dm2;
+
+// ===== PLAYER OBSERVATION LEARNING: Learned RJ Loaders =====
+void () LoadPlayerLearnedRJ_dm4;
+void () LoadPlayerLearnedRJ_dm2;
 
 // ===== PHASE 8: Target Stack Functions (Forward Declarations) =====
 void () Stack_Push;

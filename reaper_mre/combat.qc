@@ -6,6 +6,8 @@ void () info_player_start;
 void (entity targ, entity attacker) ClientObituary;
 
 void () monster_death_use;
+// Forward declaration for live learning RJ waypoints (defined in botroute.qc)
+void (vector org, vector angles, float velocity_gain, string rj_type_str) SpawnLearnedRJ_Live;
 float (entity targ, entity inflictor) CanDamage =
 {
    if ((targ.movetype == MOVETYPE_PUSH))
@@ -181,6 +183,64 @@ void (entity targ, entity inflictor, entity attacker, float damage) T_Damage =
          bprint (" | time=");
          bprint (ftos (time));
          bprint ("\n");
+
+         // ===== PHASE 2: LIVE LEARNING - Real-Time RJ Detection =====
+         // Validate and spawn learned RJ waypoint immediately (no log parsing needed)
+         local float upward_velocity;
+         local float pitch;
+         local float is_valid_rj;
+         local entity nearby_rj;
+         local float has_duplicate;
+
+         // Validation 1: Check upward velocity (meaningful vertical boost)
+         upward_velocity = targ.velocity_z;  // Z component is vertical in Quake
+         is_valid_rj = FALSE;
+
+         if (upward_velocity > 200.000)
+         {
+            // Validation 2: Check pitch angle (proper RJ technique)
+            pitch = targ.angles_x;
+            if ((pitch >= -90.000) && (pitch <= -20.000))
+            {
+               // Validation 3: Check for duplicates (don't spawn if one exists nearby)
+               has_duplicate = FALSE;
+               nearby_rj = findradius(targ.origin, 128.000);
+               while (nearby_rj)
+               {
+                  if ((nearby_rj.classname == "BotPath") && nearby_rj.rj_learned)
+                  {
+                     has_duplicate = TRUE;
+                     nearby_rj = world;  // Break loop
+                  }
+                  else
+                  {
+                     nearby_rj = nearby_rj.chain;
+                  }
+               } //end while
+
+               if (!has_duplicate)
+               {
+                  // Valid and unique RJ! Spawn learned waypoint
+                  SpawnLearnedRJ_Live(targ.origin, targ.angles, upward_velocity, "rj_vertical");
+
+                  // Console feedback
+                  bprint("Live Learning: Bots learned rocket jump from ");
+                  bprint(targ.netname);
+                  bprint(" (pitch=");
+                  bprint(ftos(pitch));
+                  bprint("°, vel=");
+                  bprint(ftos(upward_velocity));
+                  bprint(" u/s, total=");
+                  bprint(ftos(learned_rj_count));
+                  bprint("/");
+                  bprint(ftos(LEARNED_RJ_MAX));
+                  bprint(")\n");
+
+                  is_valid_rj = TRUE;
+               } //end if
+            } //end if
+         } //end if
+         // ===========================================================
       } //end if
    } //end if
    // ==================================================

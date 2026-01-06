@@ -180,6 +180,18 @@ float (entity targ, entity inflictor) CanDamage;
 .float scent_time;
 // Traffic heatmap: how many times anyone has touched this node (main street vs back alley).
 .float traffic_score;
+// Player Observation Learning: marks this as a learned rocket jump waypoint (TRUE/FALSE).
+.float rj_learned;
+// Player Observation Learning: learned pitch angle for this RJ (-90 to 0 degrees).
+.float rj_pitch;
+// Player Observation Learning: expected velocity gain from this RJ (units/second).
+.float rj_velocity_gain;
+// Player Observation Learning: type of RJ technique ("rj_vertical", "rj_gap", etc.).
+.string rj_type;
+// Player Observation Learning: linked list for memory management (Phase 2: Live Learning).
+.entity rj_next;
+// Player Observation Learning: timestamp when this RJ was learned (for oldest-first cleanup).
+.float rj_learn_time;
 // Action Breadcrumbs: what the player did at this node (0=walk, 1=jump, 2=wait).
 .float action_flag;
 // A* Pathfinding: g-score (cost from start node to this node).

@@ -1564,6 +1564,99 @@ void (vector org, float traffic, float danger, string trig_target) SpawnSavedWay
    // via the standard 'FindAPath' logic.
 }; //end of the function SpawnSavedWaypoint
 
+// ===== PLAYER OBSERVATION LEARNING: Learned Rocket Jump Waypoints =====
+// Spawns a special waypoint that tells bots HOW to rocket jump at this location.
+// Unlike regular waypoints, RJ waypoints store pitch angle and expected velocity.
+void (vector org, vector angles, float velocity_gain, string rj_type_str) SpawnLearnedRJ =
+{
+   local entity node;
+
+   node = spawn ();
+   node.classname = "BotPath";
+   node.origin = org;
+   node.pathtype = DROPPED;  // Treat as learned path (same as traffic waypoints)
+   node.solid = SOLID_TRIGGER;
+   setsize (node,'-8 -8 -8','8 8 8');  // Slightly larger trigger for RJ waypoints
+
+   // Mark this as a learned RJ waypoint
+   node.rj_learned = TRUE;
+   node.rj_pitch = angles_x;  // Store the learned pitch angle
+   node.rj_velocity_gain = velocity_gain;  // Expected vertical velocity gain
+   node.rj_type = rj_type_str;  // Technique type ("rj_vertical", "rj_gap", etc.)
+
+   // Optional: Give RJ waypoints high traffic score (bots should seek these)
+   node.traffic_score = 50.000;  // Medium-high priority (proven technique)
+
+   // Optional: Visual debug marker (uncomment to see RJ waypoints in-game)
+   // node.effects = EF_BRIGHTLIGHT;
+}; //end of the function SpawnLearnedRJ
+
+// ===== PHASE 2: LIVE LEARNING - Memory Management =====
+// Spawns a learned RJ waypoint with automatic memory management.
+// If limit is reached, removes the oldest learned RJ first.
+void (vector org, vector angles, float velocity_gain, string rj_type_str) SpawnLearnedRJ_Live =
+{
+   local entity node;
+   local entity oldest;
+   local entity current;
+
+   // Check if we're at the limit
+   if (learned_rj_count >= LEARNED_RJ_MAX)
+   {
+      // Find and remove the oldest learned RJ waypoint
+      oldest = learned_rj_head;
+      if (oldest != world)
+      {
+         // Remove from linked list
+         learned_rj_head = oldest.rj_next;
+
+         // Remove the entity
+         remove(oldest);
+         learned_rj_count = learned_rj_count - 1.000;
+
+         bprint("Live Learning: Removed oldest RJ waypoint (limit: ");
+         bprint(ftos(LEARNED_RJ_MAX));
+         bprint(")\n");
+      }
+   } //end if
+
+   // Create the new learned RJ waypoint
+   node = spawn ();
+   node.classname = "BotPath";
+   node.origin = org;
+   node.pathtype = DROPPED;
+   node.solid = SOLID_TRIGGER;
+   setsize (node,'-8 -8 -8','8 8 8');
+
+   // Mark as learned RJ
+   node.rj_learned = TRUE;
+   node.rj_pitch = angles_x;
+   node.rj_velocity_gain = velocity_gain;
+   node.rj_type = rj_type_str;
+   node.rj_learn_time = time;  // Timestamp for aging
+   node.traffic_score = 50.000;
+
+   // Add to end of linked list (oldest at head, newest at tail)
+   node.rj_next = world;
+   if (learned_rj_head == world)
+   {
+      learned_rj_head = node;
+   }
+   else
+   {
+      // Find the tail and append
+      current = learned_rj_head;
+      while (current.rj_next != world)
+      {
+         current = current.rj_next;
+      }
+      current.rj_next = node;
+   }
+
+   learned_rj_count = learned_rj_count + 1.000;
+}; //end of the function SpawnLearnedRJ_Live
+// =====================================================================
+
 // 2. THE EXPORTER (PHASE 5: Now includes traffic/danger scores)
 // Call this via console (e.g. 'impulse 100') to dump everything.
 // Outputs QuakeC code to console that can be copied and saved.

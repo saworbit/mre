@@ -4,6 +4,8 @@ float() bot_rocket_jump;
 entity(entity door_ent) FindButtonForDoor;
 // Forward declaration for breadcrumb waypoints (defined in botroute.qc)
 void(vector org, float traffic, float danger, string trig_target) SpawnSavedWaypoint;
+// Forward declaration for live learning RJ waypoints (defined in botroute.qc)
+void(vector org, vector angles, float velocity_gain, string rj_type_str) SpawnLearnedRJ_Live;
 
 // PHASE 4 REFACTOR: CanRocketJumpHeight, CanCrossGap moved to botmath.qc
 
@@ -795,33 +797,67 @@ float() bot_rocket_jump =
       return (FALSE);
    } //end if
 
+   // 2c. Check for Learned RJ Waypoint (Player Observation Learning)
+   // If there's a learned RJ waypoint nearby, use its exact pitch angle
+   local entity learned_rj;
+   local float use_learned_angle;
+   use_learned_angle = FALSE;
+
+   learned_rj = findradius(self.origin, 128.000);  // Search 128u radius
+   while (learned_rj)
+   {
+      if ((learned_rj.classname == "BotPath") && learned_rj.rj_learned)
+      {
+         // Found a learned RJ waypoint! Use its pitch angle
+         pitch_aim = learned_rj.rj_pitch;
+         use_learned_angle = TRUE;
+
+         // Optional: Print debug message
+         // bprint(self.netname);
+         // bprint(" using learned RJ: pitch=");
+         // bprint(ftos(pitch_aim));
+         // bprint("\n");
+
+         learned_rj = world;  // Break loop
+      }
+      else
+      {
+         learned_rj = learned_rj.chain;
+      }
+   } //end while
+
    // 3. Dynamic Pitch Selection (LEARNED FROM PLAYER OBSERVATION)
    // Player data shows -29.5° is optimal (not -85° "bind-like" vertical)
    // Shallower angles = less damage, more forward momentum, smoother movement
    // OLD: -85° default (70-100+ HP damage, suicide risk)
    // NEW: -30° to -35° base (19-51 HP damage, efficient like player)
 
-   // Default: Player-learned efficient angle (-35° base, not -85° suicide angle)
-   pitch_aim = -35.000;
-
-   // High-skill bots use even shallower angle (matches observed -29.5° player technique)
-   if ((self.skil > 3.000))
+   // Only calculate pitch if we didn't find a learned RJ waypoint
+   if (!use_learned_angle)
    {
-      pitch_aim = -30.000; // Pro player angle from observation data
-   } //end if
+      // Default: Player-learned efficient angle (-35° base, not -85° suicide angle)
+      pitch_aim = -35.000;
 
-   // Health-aware: Go shallower when hurt (minimize damage)
-   if ((self.health < 75.000))
-   {
-      pitch_aim = -25.000; // Gentle RJ when already weak
-   } //end if
+      // High-skill bots use even shallower angle (matches observed -29.5° player technique)
+      if ((self.skil > 3.000))
+      {
+         pitch_aim = -30.000; // Pro player angle from observation data
+      } //end if
 
-   // Gap crossing: Use slightly steeper angle for more vertical lift
-   // Only for targets that are both far AND significantly higher
-   if (((dist > 300.000) && ((self.goalentity.origin_z - self.origin_z) > 64.000)))
-   {
-      pitch_aim = -45.000; // More vertical for high+far targets (keep old gap angle)
+      // Health-aware: Go shallower when hurt (minimize damage)
+      if ((self.health < 75.000))
+      {
+         pitch_aim = -25.000; // Gentle RJ when already weak
+      } //end if
+
+      // Gap crossing: Use slightly steeper angle for more vertical lift
+      // Only for targets that are both far AND significantly higher
+      if (((dist > 300.000) && ((self.goalentity.origin_z - self.origin_z) > 64.000)))
+      {
+         pitch_aim = -45.000; // More vertical for high+far targets (keep old gap angle)
+      } //end if
    } //end if
+   // else: use the learned pitch angle from the nearby RJ waypoint
 
    // 4. Set Aim Angles
    // Pitch: look down/back based on calculated need

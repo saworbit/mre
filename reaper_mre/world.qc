@@ -133,6 +133,10 @@ void () worldspawn =
    CamSpawn ();
    // Initialize chat system constants and globals
    InitChatSystem ();
+   // Initialize player observation learning system (Phase 2: Live Learning)
+   learned_rj_count = 0.000;
+   LEARNED_RJ_MAX = 50.000;  // Cap at 50 learned RJ waypoints per map
+   learned_rj_head = world;
    // PHASE 1 FIX: Don't override sv_gravity - read server's value instead
    // Special maps can set their own gravity in worldspawn if needed
    // setBotGravity() will read whatever the server has configured
@@ -256,11 +260,13 @@ void () StartFrame =
       {
          LoadMapWaypoints_dm4 ();
          bprint ("Loaded 452 waypoints for DM4\n");
+         LoadPlayerLearnedRJ_dm4 ();  // Load learned RJ waypoints for DM4
       } //end if
       else if ((map == "dm2"))
       {
          LoadMapWaypoints_dm2 ();
          bprint ("Loaded 362 waypoints for DM2\n");
+         LoadPlayerLearnedRJ_dm2 ();  // Load learned RJ waypoints for DM2
       } //end if
       else
       {
