@@ -134,6 +134,24 @@ void () worldspawn =
    // Initialize chat system constants and globals
    InitChatSystem ();
    // Initialize player observation learning system (Phase 2: Live Learning)
+   // Clean up any existing learned RJ waypoints from previous sessions
+   local entity old_rj;
+   old_rj = find(world, classname, "BotPath");
+   while (old_rj)
+   {
+      if (old_rj.rj_learned)
+      {
+         local entity next_ent;
+         next_ent = find(old_rj, classname, "BotPath");
+         remove(old_rj);
+         old_rj = next_ent;
+      }
+      else
+      {
+         old_rj = find(old_rj, classname, "BotPath");
+      }
+   }
+   // Reset counters
    learned_rj_count = 0.000;
    LEARNED_RJ_MAX = 50.000;  // Cap at 50 learned RJ waypoints per map
    learned_rj_head = world;
@@ -266,7 +284,8 @@ void () StartFrame =
       {
          LoadMapWaypoints_dm2 ();
          bprint ("Loaded 362 waypoints for DM2\n");
-         LoadPlayerLearnedRJ_dm2 ();  // Load learned RJ waypoints for DM2
+         // TEMPORARY: Disabled Phase 1 waypoints to allow Phase 2 live learning
+         // LoadPlayerLearnedRJ_dm2 ();  // Load learned RJ waypoints for DM2
       } //end if
       else
       {

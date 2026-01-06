@@ -165,27 +165,13 @@ void (entity targ, entity inflictor, entity attacker, float damage) T_Damage =
    take = ceil ((damage - save));
 
    // ===== PLAYER OBSERVATION: Rocket Jump Detection =====
-   // Log self-rocket hits when player has enabled observation mode (impulse 199)
+   // Learn RJ techniques when player has enabled observation mode (impulse 199)
    if ((((targ.classname == "player") && targ.observer_mode) && (attacker == targ)))
    {
       // Check for rocket/grenade (MOVETYPE_FLYMISSILE or MOVETYPE_BOUNCE)
       if (((inflictor != world) && ((inflictor.movetype == MOVETYPE_FLYMISSILE) || (inflictor.movetype == MOVETYPE_BOUNCE))))
       {
-         // Detected potential rocket jump - log all relevant data
-         bprint ("PLAYER_RJ_DAMAGE: ");
-         bprint (vtos (targ.origin));
-         bprint (" | dmg=");
-         bprint (ftos (take));
-         bprint (" | vel=");
-         bprint (vtos (targ.velocity));
-         bprint (" | ang=");
-         bprint (vtos (targ.angles));
-         bprint (" | time=");
-         bprint (ftos (time));
-         bprint ("\n");
-
-         // ===== PHASE 2: LIVE LEARNING - Real-Time RJ Detection =====
-         // Validate and spawn learned RJ waypoint immediately (no log parsing needed)
+         // ===== VALIDATE FIRST - Avoid spam from combat splash =====
          local float upward_velocity;
          local float pitch;
          local float is_valid_rj;
@@ -193,10 +179,11 @@ void (entity targ, entity inflictor, entity attacker, float damage) T_Damage =
          local float has_duplicate;
 
          // Validation 1: Check upward velocity (meaningful vertical boost)
+         // Threshold: 150 u/s catches shallow-angle RJs (efficient technique) while filtering combat splash
          upward_velocity = targ.velocity_z;  // Z component is vertical in Quake
          is_valid_rj = FALSE;
 
-         if (upward_velocity > 200.000)
+         if (upward_velocity > 150.000)
          {
             // Validation 2: Check pitch angle (proper RJ technique)
             pitch = targ.angles_x;
@@ -220,7 +207,20 @@ void (entity targ, entity inflictor, entity attacker, float damage) T_Damage =
 
                if (!has_duplicate)
                {
-                  // Valid and unique RJ! Spawn learned waypoint
+                  // ===== VALID RJ - Log for offline parser (Phase 1) =====
+                  bprint ("PLAYER_RJ_DAMAGE: ");
+                  bprint (vtos (targ.origin));
+                  bprint (" | dmg=");
+                  bprint (ftos (take));
+                  bprint (" | vel=");
+                  bprint (vtos (targ.velocity));
+                  bprint (" | ang=");
+                  bprint (vtos (targ.angles));
+                  bprint (" | time=");
+                  bprint (ftos (time));
+                  bprint ("\n");
+
+                  // ===== LIVE LEARNING - Spawn waypoint (Phase 2) =====
                   SpawnLearnedRJ_Live(targ.origin, targ.angles, upward_velocity, "rj_vertical");
 
                   // Console feedback

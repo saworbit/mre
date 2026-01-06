@@ -143,7 +143,7 @@ Bots now learn rocket jump techniques in real-time during gameplay—no log pars
 **Automatic Detection:**
 1. Player enables observation mode (`impulse 199`)
 2. Player performs rocket jump
-3. System validates technique immediately (velocity >200 u/s, pitch -20° to -90°, no nearby duplicates)
+3. System validates technique immediately (velocity >150 u/s, pitch -20° to -90°, no nearby duplicates)
 4. If valid, spawns learned RJ waypoint instantly
 5. Prints console message: "Live Learning: Bots learned rocket jump from YourName (pitch=-29.5°, vel=234.8 u/s, total=3/50)"
 
@@ -161,8 +161,8 @@ Live Learning: Removed oldest RJ waypoint (limit: 50)
 Live Learning: Bots learned rocket jump from Player (pitch=-28.4°, vel=241.5 u/s, total=50/50)
 ```
 
-**Validation Criteria** (same as offline mode):
-- ✅ **Upward Velocity** >200 u/s (meaningful vertical boost)
+**Validation Criteria** (tuned for shallow-angle techniques):
+- ✅ **Upward Velocity** >150 u/s (catches efficient shallow RJs, filters combat splash)
 - ✅ **Pitch Angle** -20° to -90° (downward shot)
 - ✅ **No Duplicates** No learned RJ within 128 units
 - ✅ **Real-Time** No death check needed (learned immediately)
@@ -203,16 +203,16 @@ Live Learning: Bots learned rocket jump from Player (pitch=-28.4°, vel=241.5 u/
 |------|---------|---------|
 | [reaper_mre/defs.qc](reaper_mre/defs.qc#L291-L295) | Added live learning globals | Track learned RJ count, limit, linked list |
 | [reaper_mre/botit_th.qc](reaper_mre/botit_th.qc#L191-L194) | Added rj_next, rj_learn_time fields | Linked list and timestamp for memory mgmt |
-| [reaper_mre/world.qc](reaper_mre/world.qc#L136-L139) | Initialize live learning globals | Set count=0, max=50, head=world |
-| [reaper_mre/botroute.qc](reaper_mre/botroute.qc#L1594-L1658) | Added SpawnLearnedRJ_Live() | Memory-managed RJ spawning with FIFO cleanup |
-| [reaper_mre/combat.qc](reaper_mre/combat.qc#L185-L241) | Added real-time RJ validation | Detect, validate, spawn, feedback |
-| [reaper_mre/botmove.qc](reaper_mre/botmove.qc#L7-L8) | Forward declaration | SpawnLearnedRJ_Live() |
+| [reaper_mre/world.qc](reaper_mre/world.qc#L136-L157) | Initialize + cleanup live learning | Remove old waypoints, reset counters (0/50) |
+| [reaper_mre/botroute.qc](reaper_mre/botroute.qc#L1594-L1657) | Added SpawnLearnedRJ_Live() | Memory-managed RJ spawning with FIFO cleanup |
+| [reaper_mre/combat.qc](reaper_mre/combat.qc#L167-L232) | Added real-time RJ validation | Detect, validate (>150 u/s, -20° to -90°), spawn, feedback |
+| [reaper_mre/botmove.qc](reaper_mre/botmove.qc#L7-L8, L815-L821) | Forward declaration + debug logging | SpawnLearnedRJ_Live() + bot usage feedback |
 
 ## Build Stats
 
 - **Phase 1 Size:** 490,578 bytes (+908 bytes from previous build)
-- **Phase 2 Size:** 491,938 bytes (+1,360 bytes from Phase 1)
-- **Total Change:** +2,268 bytes from pre-learning system
+- **Phase 2 Size (final):** 492,294 bytes (+1,716 bytes from Phase 1)
+- **Total Change:** +2,624 bytes from pre-learning system
 - **Warnings:** 36 (no errors)
 - **Commits:** eb7518f (Phase 1), [pending] (Phase 2)
 
@@ -232,12 +232,13 @@ Live Learning: Bots learned rocket jump from Player (pitch=-28.4°, vel=241.5 u/
 **Phase 2 (Live Learning):**
 - [x] Compile succeeds without errors
 - [x] Live learning globals initialized (count=0, max=50)
-- [x] Real-time RJ validation implemented
-- [ ] Player RJ triggers live learning (with feedback message)
-- [ ] Learned RJ waypoint spawns instantly
-- [ ] Bots detect and use live-learned RJ waypoints
-- [ ] Memory limit enforced (removes oldest at 50)
-- [ ] Deduplication works (no duplicates within 128u)
+- [x] Real-time RJ validation implemented (>150 u/s, -20° to -90°)
+- [x] Player RJ triggers live learning (with feedback message)
+- [x] Learned RJ waypoint spawns instantly
+- [x] Deduplication works (no duplicates within 128u)
+- [x] Phase 1 waypoints disabled to allow Phase 2 testing
+- [ ] Bots detect and use live-learned RJ waypoints (needs bot testing)
+- [ ] Memory limit enforced (removes oldest at 50) (needs 50+ RJs)
 
 ## Quick Reference
 

@@ -812,11 +812,13 @@ float() bot_rocket_jump =
          pitch_aim = learned_rj.rj_pitch;
          use_learned_angle = TRUE;
 
-         // Optional: Print debug message
-         // bprint(self.netname);
-         // bprint(" using learned RJ: pitch=");
-         // bprint(ftos(pitch_aim));
-         // bprint("\n");
+         // DEBUG: Print when bot uses learned RJ
+         bprint(self.netname);
+         bprint(" using learned RJ: pitch=");
+         bprint(ftos(pitch_aim));
+         bprint("° (expected vel=");
+         bprint(ftos(learned_rj.rj_velocity_gain));
+         bprint(" u/s)\n");
 
          learned_rj = world;  // Break loop
       }
