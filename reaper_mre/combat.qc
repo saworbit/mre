@@ -161,6 +161,30 @@ void (entity targ, entity inflictor, entity attacker, float damage) T_Damage =
    } //end if
    targ.armorvalue = (targ.armorvalue - save);
    take = ceil ((damage - save));
+
+   // ===== PLAYER OBSERVATION: Rocket Jump Detection =====
+   // Log self-rocket hits when player has enabled observation mode (impulse 199)
+   if ((((targ.classname == "player") && targ.observer_mode) && (attacker == targ)))
+   {
+      // Check for rocket/grenade (MOVETYPE_FLYMISSILE or MOVETYPE_BOUNCE)
+      if (((inflictor != world) && ((inflictor.movetype == MOVETYPE_FLYMISSILE) || (inflictor.movetype == MOVETYPE_BOUNCE))))
+      {
+         // Detected potential rocket jump - log all relevant data
+         bprint ("PLAYER_RJ_DAMAGE: ");
+         bprint (vtos (targ.origin));
+         bprint (" | dmg=");
+         bprint (ftos (take));
+         bprint (" | vel=");
+         bprint (vtos (targ.velocity));
+         bprint (" | ang=");
+         bprint (vtos (targ.angles));
+         bprint (" | time=");
+         bprint (ftos (time));
+         bprint ("\n");
+      } //end if
+   } //end if
+   // ==================================================
+
    if ((targ.flags & FL_CLIENT))
    {
       targ.dmg_take = (targ.dmg_take + take);

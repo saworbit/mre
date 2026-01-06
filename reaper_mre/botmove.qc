@@ -795,17 +795,32 @@ float() bot_rocket_jump =
       return (FALSE);
    } //end if
 
-   // 3. Dynamic Pitch Selection
-   // Default to vertical jump (high ledges)
-   // NEGATIVE pitch = looking DOWN (positive = up, which fires rocket into sky!)
-   pitch_aim = -85.000;
+   // 3. Dynamic Pitch Selection (LEARNED FROM PLAYER OBSERVATION)
+   // Player data shows -29.5° is optimal (not -85° "bind-like" vertical)
+   // Shallower angles = less damage, more forward momentum, smoother movement
+   // OLD: -85° default (70-100+ HP damage, suicide risk)
+   // NEW: -30° to -35° base (19-51 HP damage, efficient like player)
 
-   // Check if we need distance (gap crossing) instead of just height
-   // If target is far away (>300u) and not too high above us (<64u)
-   if (((dist > 300.000) && ((self.goalentity.origin_z - self.origin_z) < 64.000)))
+   // Default: Player-learned efficient angle (-35° base, not -85° suicide angle)
+   pitch_aim = -35.000;
+
+   // High-skill bots use even shallower angle (matches observed -29.5° player technique)
+   if ((self.skil > 3.000))
    {
-      // Shallow angle: shoots rocket behind bot to push them forward
-      pitch_aim = -45.000;
+      pitch_aim = -30.000; // Pro player angle from observation data
+   } //end if
+
+   // Health-aware: Go shallower when hurt (minimize damage)
+   if ((self.health < 75.000))
+   {
+      pitch_aim = -25.000; // Gentle RJ when already weak
+   } //end if
+
+   // Gap crossing: Use slightly steeper angle for more vertical lift
+   // Only for targets that are both far AND significantly higher
+   if (((dist > 300.000) && ((self.goalentity.origin_z - self.origin_z) > 64.000)))
+   {
+      pitch_aim = -45.000; // More vertical for high+far targets (keep old gap angle)
    } //end if
 
    // 4. Set Aim Angles

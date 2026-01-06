@@ -158,6 +158,9 @@ entity chat_state;      // Dedicated entity for storing global chat state
 .vector last_breadcrumb_pos;  // Feeler steering: Position of last dropped breadcrumb waypoint
 .vector stuck_lastorg;        // Feeler steering: Previous position for stuck detection
 .float stuck_time;            // Feeler steering: Accumulated time stuck (no movement progress)
+.float observer_mode;         // Player observation: TRUE when logging player actions for learning
+.vector last_rj_origin;       // Player observation: Last rocket jump position
+.float last_rj_time;          // Player observation: Timestamp of last RJ event
 float FALSE    = 0.000;
 float TRUE    = 1.000;
 float FL_FLY    = 1.000;
