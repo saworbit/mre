@@ -1000,6 +1000,238 @@ launch_reaper_mre.bat 16 dm3   # 16-player chaos on The Abandoned Base
 
 ---
 
+## 🎮 Impulse Commands Reference
+
+MRE includes a comprehensive set of impulse commands for bot management, debugging, camera control, and testing. All commands are entered in the console (press `` ` `` or `~` to open).
+
+### 📋 Core Bot Commands
+
+| Command | Function | Description |
+|---------|----------|-------------|
+| `impulse 208` | **Spawn 4 Bots** | Adds 4 bots to the match (quickest way to start a bot game) |
+| `impulse 205` | **Add 1 Bot** | Adds a single bot to the current match |
+| `impulse 211` | **Remove All Bots** | Removes all bots from the match |
+
+**Example Usage:**
+```
+impulse 208        # Spawn 4 bots instantly
+impulse 205        # Add one more bot (now 5 total)
+impulse 211        # Remove all bots (back to player-only)
+```
+
+---
+
+### 🐛 Debug & Analysis Commands
+
+| Command | Function | Description |
+|---------|----------|-------------|
+| `impulse 95` | **Debug Toggle** | Enable/disable ALL bot debug logging |
+| `impulse 96` | **Verbosity Cycle** | Cycle through debug verbosity levels (OFF → CRITICAL → NORMAL → TACTICAL → VERBOSE → DEBUG) |
+| `impulse 97` | **Feeler Debug Toggle** | Enable/disable feeler steering exploration logging (separate from main debug) |
+
+**Debug Verbosity Levels:**
+- **OFF (0)**: No logging
+- **CRITICAL (1)**: Stuck/failures/suicides only
+- **NORMAL (2)**: Target/goal changes
+- **TACTICAL (3)**: Weapon switches, combos, dodges, profiling
+- **VERBOSE (4)**: Movement, routing, perception
+- **DEBUG (5)**: Everything (very spammy!)
+
+**Example Debug Session:**
+```
+impulse 95         # Enable debug logging (starts at OFF → goes to CRITICAL)
+impulse 96         # Cycle to NORMAL (target/goal changes)
+impulse 96         # Cycle to TACTICAL (weapon/combos/profiling)
+impulse 97         # Enable feeler exploration logging
+# Play for a while...
+impulse 95         # Disable debug logging
+```
+
+**Log Output Examples:**
+```
+[Cheater] TARGET: Drooly (score=624.4, HP=100, dist=551.2u)
+[Cheater] PROFILE: Drooly is PASSIVE (  2.3) → Push Aggressively
+[Cheater] WEAPON: GL → SSG (GL-suicide-prevent)
+[Wanton] COMBO: RL → LG (Juggler shaft-combo)
+[Drooly] STUCK: Desperate escape (count=6)
+[Drooly] UNSTUCK: Rocket jump escape
+[Assmunch] FEELER: Exploration mode activated (no waypoints nearby)
+[Assmunch] BREADCRUMB: Dropped at '1024 512 64'
+```
+
+**Important:** All debug logs are saved to `qconsole.log` in your Quake directory for post-match analysis!
+
+---
+
+### 🎥 AI Cameraman Commands
+
+| Command | Function | Description |
+|---------|----------|-------------|
+| `impulse 99` | **AI Director Mode** | Activate AI Cameraman (auto-tracks exciting action) |
+| `impulse 98` | **Exit Camera** | Return to player mode (exits spectator) |
+| `impulse 50` | **Flyby Mode** | Cinematic tracking (smooth camera flyby) |
+| `impulse 51` | **Follow Mode** | Over-shoulder tracking (follows target closely) |
+| `impulse 53` | **Free Flight** | Fly around freely (manual camera control) |
+| `impulse 60` | **Toggle Info** | Show/hide target name display |
+| `impulse 61` | **Next Target** | Manually cycle to next player/bot |
+
+**AI Cameraman Workflow:**
+```
+# 1. Spawn bots FIRST (important!)
+impulse 208        # Spawn 4 bots
+
+# 2. Activate AI Cameraman
+impulse 99         # Become spectator, AI director takes over
+
+# 3. Watch the action! Camera auto-switches to exciting moments
+
+# 4. Manual override (optional)
+impulse 50         # Switch to flyby mode
+impulse 61         # Cycle to next target
+impulse 99         # Return to AI director mode
+
+# 5. Return to player
+impulse 98         # Exit camera, become player again
+```
+
+**What the AI Tracks:**
+- 🔥 Active combat (CQC battles prioritized)
+- 💀 Underdog scenarios (wounded bots fleeing)
+- ⚡ Powerup plays (quad/pent rampages)
+- 🚀 Pro movement (rocket jumps, bunny hopping)
+- 🏆 Leader highlights (high-scoring bots)
+
+---
+
+### 🗺️ Waypoint & Navigation Commands
+
+| Command | Function | Description |
+|---------|----------|-------------|
+| `impulse 100` | **Dump Waypoints** | Export all waypoints to console (for map authors) |
+| `impulse 13` | **Watcher Mode** | Enter waypoint editing mode (advanced use) |
+
+**Waypoint Dumping Workflow:**
+```
+impulse 100        # Dump waypoints to console
+# Check console output for waypoint data
+# Copy from qconsole.log to save waypoints
+```
+
+**Note:** Waypoints are automatically loaded for supported maps (DM1-DM6, E1M1-E1M8). Dumping is useful for:
+- Map authors creating new waypoint files
+- Debugging navigation issues
+- Saving breadcrumb waypoints from feeler exploration mode
+
+---
+
+### 🎨 Customization Commands
+
+| Command | Function | Description |
+|---------|----------|-------------|
+| `impulse 200` | **Next Skin** | Cycle bot skin forward (player customization) |
+| `impulse 201` | **Previous Skin** | Cycle bot skin backward |
+| `impulse 202` | **Skins Mode** | Toggle skin randomization mode |
+
+**Example:**
+```
+impulse 200        # Cycle to next skin (try different colors)
+impulse 202        # Enable random skins for all bots
+```
+
+---
+
+### 📊 Information & Scoring Commands
+
+| Command | Function | Description |
+|---------|----------|-------------|
+| `impulse 204` | **Show Intro** | Display bot introduction message |
+| `impulse 210` | **My Scores** | Display player scores (personal stats) |
+| `impulse 220` | **All Scores** | Display all player/bot scores (full scoreboard) |
+| `impulse 222` | **Top Scores** | Display top scores (leaderboard) |
+| `impulse 221` | **Update Colors** | Refresh team colors (teamplay mode) |
+
+---
+
+### 🔧 Advanced/Testing Commands
+
+| Command | Function | Description |
+|---------|----------|-------------|
+| `impulse 100-115` | **Set Bot Count** | Set exact number of bots (e.g., `impulse 104` = 4 bots) |
+| `impulse 214` | **Bot Gravity** | Toggle bot gravity settings (testing) |
+| `impulse 215` | **Verbose Mode** | Enable verbose bot output (legacy debug) |
+| `impulse 217` | **Path Count** | Print number of waypoint paths (diagnostic) |
+| `impulse 117` | **Pather Count** | Print number of active pathfinders (diagnostic) |
+| `impulse 118` | **Bot Count** | Print number of active bots (diagnostic) |
+| `impulse 119` | **Server Flags** | Print current server flags (diagnostic) |
+| `impulse 218` | **Restrict Mode** | Enable restricted mode (limits commands) |
+| `impulse 219` | **Super Restrict** | Enable super restricted mode (further limits) |
+| `impulse 223` | **Invulnerability** | Give player invulnerability (cheat/testing) |
+
+**Testing Example:**
+```
+impulse 223        # Make yourself invulnerable
+impulse 104        # Spawn exactly 4 bots
+impulse 217        # Check waypoint path count
+impulse 118        # Check active bot count
+```
+
+---
+
+### ⌨️ Standard Quake Impulses (Still Work!)
+
+MRE is fully compatible with standard Quake impulse commands:
+
+| Command | Function |
+|---------|----------|
+| `impulse 1` | Axe |
+| `impulse 2` | Shotgun |
+| `impulse 3` | Super Shotgun |
+| `impulse 4` | Nailgun |
+| `impulse 5` | Super Nailgun |
+| `impulse 6` | Grenade Launcher |
+| `impulse 7` | Rocket Launcher |
+| `impulse 8` | Lightning Gun |
+| `impulse 10` | Next Weapon |
+| `impulse 12` | Previous Weapon |
+
+---
+
+### 💡 Quick Reference Cheat Sheet
+
+**Starting a Bot Match:**
+```
+impulse 208        # Spawn 4 bots
+impulse 95         # Enable debug logging
+impulse 96         # Cycle to TACTICAL verbosity
+# Play and watch the logs!
+```
+
+**Spectating with AI Camera:**
+```
+impulse 208        # Spawn bots first!
+impulse 99         # Activate AI Cameraman
+# Sit back and watch the action
+impulse 98         # Return to player when done
+```
+
+**Debugging Navigation:**
+```
+impulse 97         # Enable feeler exploration logging
+impulse 95         # Enable main debug logging
+impulse 96         # Cycle to VERBOSE
+# Watch bots navigate, check for stuck events
+impulse 100        # Dump waypoints to see coverage
+```
+
+**Post-Match Analysis:**
+```
+# After playing, check qconsole.log for detailed logs
+# Look for patterns in STUCK events, PROFILE decisions, WEAPON switches
+# Use data to validate bot behavior and tune AI
+```
+
+---
+
 ## 🏗️ Building from Source
 
 ### Directory Structure
