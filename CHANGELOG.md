@@ -1,5 +1,18 @@
 ## 2026-01-06
 
+- **Strategic Item Control: Denial & Ambush AI** for high-value item prioritization:
+  - **Problem identified**: Bots weren't prioritizing strategic control points (RL, GL, MH, Quad) for denial and map control. Grenade Launcher base weight (36) too low, Mega Health (85) severely undervalued considering strategic importance. No denial multiplier when leading or when enemies approach items (missing the "suspect opponents are going for these items, might find them there" strategy).
+  - **Base weight increases** in `reaper_mre/botit_th.qc` (lines 433-475, 542-555): Grenade Launcher boosted from 36 → **50** (WANT+15) when owned, MH boosted from 35 → **60** (WANT+25) base weight even when full HP. Comments explain strategic value: GL for area denial/indirect fire, MH for item control regardless of health status.
+  - **Strategic need bonuses** in `reaper_mre/botgoal.qc` (lines 382-398): Added GL missing bonus (+100), MH always valuable bonus (+80). Stacks with existing RL (+200) and Quad (+150) bonuses for comprehensive high-value item prioritization.
+  - **Denial & Ambush multiplier** in `reaper_mre/botgoal.qc` (lines 410-468): NEW adaptive strategy system for strategic items (RL, GL, MH, Quad, Pent, Ring):
+    - **Denial Mode** (leading by 5+ frags): +50% weight multiplier (1.5×) to prevent opponent comeback by controlling key items
+    - **Ambush Mode** (enemy 400-800u from item): +30% weight multiplier (1.3×) to intercept enemies likely going for valuable items
+    - Both stack multiplicatively (1.5 × 1.3 = 1.95× boost) when leading AND enemy approaching
+  - **Example calculations**: MH when full HP and leading: (60 base + 80 need) × 1.5 denial = **210 priority** (was 85). GL when owned and enemy nearby: 50 base × 1.3 ambush = **65 priority** (was 36). Enables proactive map control instead of need-based reactive item seeking.
+  - **Classic deathmatch strategy**: Implements item control/denial meta—getting high-value items serves triple duty: (1) Direct advantage for you, (2) Denial prevents opponent from getting them, (3) Ambush opportunity since enemies predictably go for these spawns. Bots now understand this fundamental competitive strategy.
+  - **Expected behavior changes**: Bots proactively seek GL/MH on long platforms (DM2 observation fixed), camp strategic item spawns when leading (denial), intercept enemies approaching Quad/MH (ambush prediction), prioritize item control over pure need-based selection.
+  - **Result:** Bots now play strategic item control! Proactively deny high-value items when leading, predict and intercept enemy item routes, prioritize GL/MH for map dominance instead of ignoring them when full HP/armed. Classic competitive deathmatch meta implemented—bots understand "control the items, control the map". Build size: 488,294 bytes (+616 bytes for strategic AI). 🎯🗺️✅
+
 - **DM2 Waypoint Integration: 362-Node Navigation Network** for Claustrophobopolis:
   - **Automated waypoint extraction** via `tools/parse_waypoints.py`: Python script extracts waypoints from qconsole.log dumps (impulse 100) and converts quote syntax automatically. Handles '' → "" conversion for target strings, preserves single quotes for vector coordinates. Usage: `python parse_waypoints.py qconsole.log dm2 maps/dm2.qc`
   - **Comprehensive coverage** in `reaper_mre/maps/dm2.qc` (362 waypoints): Doubled from initial 181-node dataset. Avg traffic score: 37.0 (down from 64.0 = better distribution). Avg danger scent: 0.4 (up from 0.3 = better death tracking). High-traffic tactical zones (90-100 scores) mark key combat areas, danger hotspots (up to 15.0) identify death traps and risky item pickups.

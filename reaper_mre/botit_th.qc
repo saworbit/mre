@@ -434,7 +434,19 @@ float (entity e) healthweight =
 {
    local float weight;
 
-   weight = WANT;
+   // Megahealth is a strategic control point - always valuable for denial
+   // Check spawnflags & 2 for megahealth (100 HP)
+   if ((e.spawnflags & 2.000))
+   {
+      // Megahealth: high base weight (60) even when full HP (item control/denial)
+      weight = (WANT + 25.000);
+   } //end if
+   else
+   {
+      // Regular health: need-based
+      weight = WANT;
+   } //end if
+
    if ((self.health < 60.000))
    {
       weight = (MUST_HAVE - TRUE);
@@ -451,7 +463,11 @@ float (entity e) healthweight =
       {
          if ((self.health > 99.000))
          {
-            weight = DONT_WANT;
+            // Only skip regular health when full, NOT megahealth
+            if (!(e.spawnflags & 2.000))
+            {
+               weight = DONT_WANT;
+            } //end if
          } //end if
       } //end if
    } //end if
@@ -543,9 +559,12 @@ float (entity e) glauncherweight =
 {
    local float weight;
 
-   weight = (WANT + TRUE);
+   // GL is a strategic weapon - always valuable for area denial and indirect fire
+   // Base weight boosted from WANT+1 (36) to WANT+15 (50) to encourage proactive seeking
+   weight = (WANT + 15.000);
    if (!(self.items & IT_GRENADE_LAUNCHER))
    {
+      // Critical priority when missing (MUST_HAVE baseline)
       weight = (MUST_HAVE - TRUE);
    } //end if
    return (weight);

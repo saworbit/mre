@@ -379,6 +379,23 @@ float (entity e) itemweight =
          need = 200.000;
       } //end if
    } //end if
+   // Grenade launcher: boost by 100 if we don't have one (strategic weapon)
+   if ((e.classname == "weapon_grenadelauncher"))
+   {
+      if (!(self.items & IT_GRENADE_LAUNCHER))
+      {
+         need = 100.000;
+      } //end if
+   } //end if
+   // Megahealth: boost by 80 (strategic control point for item denial)
+   if ((e.classname == "item_health"))
+   {
+      if ((e.spawnflags & 2.000))
+      {
+         // Always valuable for denial, even when healthy
+         need = 80.000;
+      } //end if
+   } //end if
 
    // Apply risk-reward calculation: add need bonus, subtract threat penalty
    weight = ((weight + need) - threat);
@@ -389,6 +406,66 @@ float (entity e) itemweight =
       weight = DONT_WANT;
    } //end if
    // ===== END TWEAK #1 =====
+
+   // ===== STRATEGIC ITEM CONTROL: Denial & Ambush Multiplier =====
+   // High-value items (RL, GL, MH, Quad) should be prioritized for denial when:
+   // 1. Leading in score (deny opponent's comeback)
+   // 2. Enemy nearby (ambush opportunity - they're likely going for it)
+   // This implements the "suspect opponents are going for high value items" strategy.
+   if ((weight > DONT_WANT))
+   {
+      local float is_strategic_item;
+      local float denial_multiplier;
+      is_strategic_item = FALSE;
+      denial_multiplier = 1.000;
+
+      // Identify strategic control points
+      if ((e.classname == "weapon_rocketlauncher") || (e.classname == "weapon_grenadelauncher"))
+      {
+         is_strategic_item = TRUE;
+      } //end if
+      if ((e.classname == "item_artifact_super_damage") || (e.classname == "item_artifact_invulnerability") || (e.classname == "item_artifact_invisibility"))
+      {
+         is_strategic_item = TRUE;
+      } //end if
+      if ((e.classname == "item_health") && (e.spawnflags & 2.000))
+      {
+         is_strategic_item = TRUE; // Megahealth
+      } //end if
+
+      // Apply denial/ambush strategy for strategic items
+      if (is_strategic_item)
+      {
+         // DENIAL: If leading by 5+ frags, boost strategic items by 50% (prevent comeback)
+         if ((self.frags >= 5.000))
+         {
+            if (self.enemy)
+            {
+               if ((self.frags > (self.enemy.frags + 5.000)))
+               {
+                  denial_multiplier = 1.500; // 50% boost
+               } //end if
+            } //end if
+         } //end if
+
+         // AMBUSH: If enemy is near item (400-800 units), boost by 30% (they're likely going for it)
+         // This is the "find them there" strategy - predict enemy movement toward valuable items
+         if (self.enemy)
+         {
+            local float enemy_item_dist;
+            enemy_item_dist = vlen((self.enemy.origin - e.origin));
+            if ((enemy_item_dist > 400.000) && (enemy_item_dist < 800.000))
+            {
+               // Enemy is approaching item - intercept opportunity
+               denial_multiplier = (denial_multiplier * 1.300); // Stack with denial if both apply
+            } //end if
+         } //end if
+
+         // Apply the multiplier
+         weight = (weight * denial_multiplier);
+      } //end if
+   } //end if
+   // ===== END STRATEGIC ITEM CONTROL =====
 
    // ===== PROBLEM SOLVER: Vertical Reachability (Rocket Jump for Items) =====
    // Normally, items >45 units above us are ignored (unreachable).
