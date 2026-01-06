@@ -1455,15 +1455,38 @@ void () ImpulseCommands =
             } //end if
             else
             {
-               if ((self.impulse == 99.000))
+               if ((self.impulse == 97.000) && (self.classname == "player"))
                {
-                  // ===== AI CAMERAMAN ACTIVATION =====
-                  // Convert player to spectator camera with AI director mode (impulse 99)
-                  CamClientInit ();
+                  // ===== FEELER STEERING DEBUG TOGGLE ===== (Player-only)
+                  // Toggle feeler-specific logging (exploration, breadcrumbs, steering)
+                  bot_debug_feeler = !bot_debug_feeler;
+
+                  bprint ("\n");
+                  if (bot_debug_feeler)
+                  {
+                     bprint ("Feeler steering debug: ON (exploration + breadcrumbs)\n");
+                     bprint ("  - FEELER: Exploration mode activation/deactivation\n");
+                     bprint ("  - BREADCRUMB: Waypoint drops during exploration\n");
+                     bprint ("  - FEELER: Clearest direction selection\n");
+                  } //end if
+                  else
+                  {
+                     bprint ("Feeler steering debug: OFF\n");
+                  } //end if
+                  bprint ("\n");
                } //end if
                else
                {
-                  botImpulseCommand ();
+                  if ((self.impulse == 99.000))
+                  {
+                     // ===== AI CAMERAMAN ACTIVATION =====
+                     // Convert player to spectator camera with AI director mode (impulse 99)
+                     CamClientInit ();
+                  } //end if
+                  else
+                  {
+                     botImpulseCommand ();
+                  } //end if
                } //end if
             } //end if
          } //end if

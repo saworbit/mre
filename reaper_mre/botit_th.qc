@@ -18,6 +18,7 @@ float LOG_VERBOSE  = 4.000;   // + Movement, routing, perception
 float LOG_DEBUG    = 5.000;   // Everything (deep debugging)
 
 float bot_debug_level /* = 0.000 */;  // Current verbosity level (0 = off)
+float bot_debug_feeler /* = 0.000 */;  // Toggle feeler-specific logging (impulse 97)
 
 void () setWatcherMode;
 

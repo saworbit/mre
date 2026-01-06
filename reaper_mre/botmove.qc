@@ -2,6 +2,8 @@
 float() bot_rocket_jump;
 // Forward declaration for problem solver (defined in bot_ai.qc)
 entity(entity door_ent) FindButtonForDoor;
+// Forward declaration for breadcrumb waypoints (defined in botroute.qc)
+void(vector org, float traffic, float danger, string trig_target) SpawnSavedWaypoint;
 
 // PHASE 4 REFACTOR: CanRocketJumpHeight, CanCrossGap moved to botmath.qc
 
@@ -859,6 +861,8 @@ void () CheckForHazards =
    local vector spot;
    local float gap_depth;
    local float content_type;
+   local vector left_spot, right_spot;
+   local float left_gap, right_gap;
 
    // Only check if we are on the ground
    if (!(self.flags & FL_ONGROUND))
@@ -881,6 +885,27 @@ void () CheckForHazards =
    // CASE A: The "Gap" (Empty space or very deep drop)
    if (((trace_fraction == 1.000) || (gap_depth > 60.000)))
    {
+      // ===== DECORATIVE HOLE FILTER: Check gap width =====
+      // Player bounding box is 32x32 units, so gaps <40 units wide can't be fallen through.
+      // Trace to the left and right to see if this is a narrow decorative hole (grate, drain, etc.)
+      left_spot = (spot + (v_right * -20.000));  // 20 units left
+      left_spot_z = self.origin_z;
+      traceline (left_spot,(left_spot - '0.000 0.000 250.000'),TRUE,self);
+      left_gap = (self.origin_z - trace_endpos_z);
+
+      right_spot = (spot + (v_right * 20.000));  // 20 units right
+      right_spot_z = self.origin_z;
+      traceline (right_spot,(right_spot - '0.000 0.000 250.000'),TRUE,self);
+      right_gap = (self.origin_z - trace_endpos_z);
+
+      // If BOTH left and right traces hit solid floor (gap_depth < 20), this is a narrow hole.
+      // The bot's 32x32 bounding box can't fit through, so treat it as solid floor.
+      if (((left_gap < 20.000) && (right_gap < 20.000)))
+      {
+         return;  // Not a real hazard (decorative hole), continue walking
+      } //end if
+      // ===================================================
+
       // There is a dropoff ahead!
 
       // Is it a "Death Pit" (Slime/Lava/Void)?
@@ -1594,6 +1619,190 @@ void (float dist) BotmovetoVisiblegoal =
    return ;
 }; //end of the function BotmovetoVisiblegoal
 
+// ===== FEELER STEERING: Local Navigation and Movement Polish =====
+
+// Global for returning speed scale from feeler function
+float feeler_speed_scale;
+
+// Helper: Clamp value between min and max
+float (float x, float lo, float hi) Clamp =
+{
+   if ((x < lo))
+   {
+      return (lo);
+   } //end if
+   if ((x > hi))
+   {
+      return (hi);
+   } //end if
+   return (x);
+}; //end of the function Clamp
+
+// Helper: Wrap angle delta to [-180, 180]
+float (float a, float b) AngleDelta =
+{
+   local float d;
+   d = (a - b);
+   while ((d > 180.000))
+   {
+      d = (d - 360.000);
+   } //end while
+   while ((d < -180.000))
+   {
+      d = (d + 360.000);
+   } //end while
+   return (d);
+}; //end of the function AngleDelta
+
+// FEELER STEERING: 5-trace corridor centring and cornering
+// Returns yaw bias (degrees to adjust heading)
+// Sets global feeler_speed_scale (0.0-1.0)
+float (entity bot, float base_yaw, float dt) Bot_SampleFeelers =
+{
+   local vector start;
+   local vector fwd;
+   local vector right;
+   local float f;
+   local float fl;
+   local float fr;
+   local float l;
+   local float r;
+   local float bias;
+   local float yaw_bias;
+
+   yaw_bias = 0.000;
+   feeler_speed_scale = 1.000;
+
+   // Trace origin: waist height reads walls reliably
+   start = (bot.origin + '0.000 0.000 24.000');
+
+   // Use base_yaw as reference direction (goal heading), not current yaw
+   bot.v_angle_x = 0.000;
+   bot.v_angle_y = base_yaw;
+   bot.v_angle_z = 0.000;
+   makevectors (bot.v_angle);
+
+   fwd = v_forward;
+   right = v_right;
+
+   // 5 feeler traces: forward, forward-left, forward-right, left, right
+   traceline (start,(start + (fwd * 180.000)),TRUE,bot);
+   f = trace_fraction;
+
+   traceline (start,(start + ((fwd * 140.000) + (right * -70.000))),TRUE,bot);
+   fl = trace_fraction;
+
+   traceline (start,(start + ((fwd * 140.000) + (right * 70.000))),TRUE,bot);
+   fr = trace_fraction;
+
+   traceline (start,(start + (right * -55.000)),TRUE,bot);
+   l = trace_fraction;
+
+   traceline (start,(start + (right * 55.000)),TRUE,bot);
+   r = trace_fraction;
+
+   bias = 0.000;
+
+   // Corridor centring: if left wall close, steer right (and vice versa)
+   bias = (bias + ((l - r) * 22.000));
+
+   // Cornering: if front-left blocked more than front-right, steer right
+   bias = (bias + ((fl - fr) * 28.000));
+
+   // Imminent collision: forward blocked, pick clearer diagonal aggressively
+   if ((f < 0.550))
+   {
+      if ((fl < fr))
+      {
+         bias = (bias + 35.000);
+      } //end if
+      else
+      {
+         bias = (bias - 35.000);
+      } //end else
+      feeler_speed_scale = 0.600;  // Slow down approaching walls
+   } //end if
+
+   // Clamp raw bias so it cannot dominate intent
+   yaw_bias = Clamp (bias,-45.000,45.000);
+
+   // Smooth turn: cap degrees per tick (anti-robotic)
+   local float max_turn;
+   max_turn = (120.000 * dt);  // 120 deg/sec
+   yaw_bias = Clamp (yaw_bias,(-1.000 * max_turn),max_turn);
+
+   return (yaw_bias);
+}; //end of the function Bot_SampleFeelers
+
+// FEELER ESCAPE: 8-direction scan to find clearest path when stuck/lost
+// Returns yaw of clearest direction (longest unobstructed trace)
+float (entity bot, float base_yaw) Bot_FindClearestDirection =
+{
+   local vector start;
+   local float best_yaw;
+   local float best_score;
+   local float i;
+   local float scan_yaw;
+   local vector dir;
+   local float score;
+
+   start = (bot.origin + '0.000 0.000 24.000');
+   best_score = -1.000;
+   best_yaw = base_yaw;
+
+   // Scan 8 directions (0°, 45°, 90°, 135°, 180°, 225°, 270°, 315°)
+   i = 0.000;
+   while ((i < 8.000))
+   {
+      scan_yaw = (base_yaw + (i * 45.000));
+
+      bot.v_angle_x = 0.000;
+      bot.v_angle_y = scan_yaw;
+      bot.v_angle_z = 0.000;
+      makevectors (bot.v_angle);
+      dir = v_forward;
+
+      // Trace 160 units in this direction
+      traceline (start,(start + (dir * 160.000)),TRUE,bot);
+
+      // Score = distance traveled (longer = more open = likely exit)
+      score = (trace_fraction * 160.000);
+
+      if ((score > best_score))
+      {
+         best_score = score;
+         best_yaw = scan_yaw;
+      } //end if
+
+      i = (i + 1.000);
+   } //end while
+
+   return (best_yaw);
+}; //end of the function Bot_FindClearestDirection
+
+// BREADCRUMB WAYPOINTS: Drop exploration trail markers
+void () Bot_DropBreadcrumb =
+{
+   // Use existing SpawnSavedWaypoint function to create breadcrumb
+   // Mark with low traffic score (0.1) to distinguish from main routes
+   SpawnSavedWaypoint (self.origin,0.100,0.000,"");
+
+   // Update last breadcrumb position
+   self.last_breadcrumb_pos = self.origin;
+
+   // Debug logging (toggle with impulse 97)
+   if (bot_debug_feeler)
+   {
+      bprint ("[");
+      bprint (self.netname);
+      bprint ("] BREADCRUMB: Dropped at ");
+      bprint (vtos (self.origin));
+      bprint ("\n");
+   } //end if
+}; //end of the function Bot_DropBreadcrumb
+
+// ===== END FEELER STEERING =====
+
 void (float dist) Botmovetogoal =
 {
    local entity Botgoal;
@@ -1678,6 +1887,92 @@ void (float dist) Botmovetogoal =
    // =======================================
 
    self.ideal_yaw = vectoyaw ((aim_point - self.origin));
+
+   // ===== FEELER STEERING: Movement Polish and Exploration =====
+   local float base_yaw;
+   local float yaw_bias;
+   local float dt;
+   local entity nearest_waypoint;
+   local float nearest_dist;
+   local float check_dist;
+
+   base_yaw = self.ideal_yaw;  // Save goal direction
+   dt = 0.100;  // Assume 10 Hz think rate
+
+   // Apply feeler steering (corridor centring, cornering, collision avoidance)
+   yaw_bias = Bot_SampleFeelers (self,base_yaw,dt);
+   self.ideal_yaw = (base_yaw + yaw_bias);
+
+   // Calculate distance to nearest waypoint (used for exploration activation/deactivation)
+   nearest_waypoint = find (world,classname,"BotPath");
+   nearest_dist = 999999.000;
+
+   while (nearest_waypoint)
+   {
+      check_dist = vlen ((nearest_waypoint.origin - self.origin));
+      if ((check_dist < nearest_dist))
+      {
+         nearest_dist = check_dist;
+      } //end if
+      nearest_waypoint = find (nearest_waypoint,classname,"BotPath");
+   } //end while
+
+   // Check if we should activate exploration mode (no nearby waypoints)
+   if ((!self.feeler_mode_active && (nearest_dist > 128.000)))
+   {
+      self.feeler_mode_active = TRUE;
+      self.feeler_start_time = time;
+
+      // Debug logging (toggle with impulse 97)
+      if (bot_debug_feeler)
+      {
+         bprint ("[");
+         bprint (self.netname);
+         bprint ("] FEELER: Exploration mode activated (no waypoints nearby)\n");
+      } //end if
+   } //end if
+
+   // If in exploration mode, use 8-direction scan for exit finding
+   if (self.feeler_mode_active)
+   {
+      local float clear_yaw;
+      local float crumb_dist;
+
+      clear_yaw = Bot_FindClearestDirection (self,base_yaw);
+      self.ideal_yaw = clear_yaw;
+
+      // Drop breadcrumb waypoint if we've moved far enough
+      crumb_dist = vlen ((self.origin - self.last_breadcrumb_pos));
+      if (((crumb_dist > 64.000) || (self.last_breadcrumb_pos == '0.000 0.000 0.000')))
+      {
+         Bot_DropBreadcrumb ();
+      } //end if
+
+      // Debug logging (toggle with impulse 97)
+      if (bot_debug_feeler)
+      {
+         bprint ("[");
+         bprint (self.netname);
+         bprint ("] FEELER: Clearest direction = ");
+         bprint (ftos (clear_yaw));
+         bprint ("°\n");
+      } //end if
+
+      // Deactivate if we found waypoints or timeout (10 seconds)
+      if (((nearest_dist < 64.000) || ((time - self.feeler_start_time) > 10.000)))
+      {
+         self.feeler_mode_active = FALSE;
+
+         // Debug logging (toggle with impulse 97)
+         if (bot_debug_feeler)
+         {
+            bprint ("[");
+            bprint (self.netname);
+            bprint ("] FEELER: Exploration mode deactivated\n");
+         } //end if
+      } //end if
+   } //end if
+   // ===== END FEELER STEERING =====
 
    // DYNAMIC YAW SPEED (Analog Turning - See Section 3)
    Bot_SmoothTurn ();
