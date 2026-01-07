@@ -755,12 +755,13 @@ entity() FindBestEnemy =
                 score = (1000.000 - dist);
 
                 // MODIFIER 1: The "Vulture" (Low Health Priority)
-                // If enemy has < 40 HP, boost score significantly.
-                // We want to steal this kill.
-                if ((head.health < 40.000))
-                {
-                    score = (score + 500.000);
-                } //end if
+                // FUZZY LOGIC: Smooth curve replaces hard threshold at 40 HP.
+                // Old: if HP < 40 then +500 (cliff edge)
+                // New: Quadratic curve from 0 (full HP) to 500 (0 HP)
+                // HP=100: 0 bonus, HP=50: ~125 bonus, HP=25: ~280 bonus, HP=0: 500 bonus
+                local float vulture_bonus;
+                vulture_bonus = (500.000 * inverse_smooth_curve (head.health, 0.000, 100.000, 2.000));
+                score = (score + vulture_bonus);
 
                 // MODIFIER 2: The "Self-Defense" (Attacker Priority)
                 // If this guy is currently shooting me, he is #1 priority.
@@ -798,10 +799,9 @@ entity() FindBestEnemy =
                 dist = vlen (head.origin - self.origin);
                 score = (1000.000 - dist);
 
-                if ((head.health < 40.000))
-                {
-                    score = (score + 500.000);
-                } //end if
+                // FUZZY LOGIC: Smooth vulture bonus (same as player scan)
+                vulture_bonus = (500.000 * inverse_smooth_curve (head.health, 0.000, 100.000, 2.000));
+                score = (score + vulture_bonus);
 
                 if ((head.enemy == self))
                 {

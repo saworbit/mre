@@ -237,24 +237,19 @@ float (entity e) itemweight =
       } //end if
    } //end if
    // ===== PHASE 10: Graduated Need Assessment =====
-   // FrikBot-inspired graduated urgency thresholds replace linear scaling.
-   // Critical health (< 20 HP) gets massive +150 boost, low health (< 50 HP) gets +50.
-   // Megahealth detection adds +50 bonus when item has megahealth spawnflag.
-   // Low armor (< 50) gets scaled boost up to +40 when naked.
+   // FUZZY LOGIC: Health Urgency Curve (replaces FrikBot hard thresholds)
+   // Old: if HP < 20 then +150, else if HP < 50 then +50 (two cliff edges at 20 and 50)
+   // New: Cubic curve from 0 (healthy) to 200 (critically wounded)
+   // HP=100: 0, HP=50: ~25, HP=20: ~102, HP=0: 200 (smooth desperation gradient)
+   // No more sudden jumps - organic decision making across all HP values
    if ((e.classname == "item_health"))
    {
       if ((weight > DONT_WANT))
       {
-         // Critical health: massive boost (was linear +15 max, now +150)
-         if ((self.health < 20.000))
-         {
-            weight = (weight + 150.000);  // Desperate!
-         }
-         // Low health: moderate boost
-         else if ((self.health < 50.000))
-         {
-            weight = (weight + 50.000);   // Hurt
-         }
+         // Smooth health urgency: cubic curve accelerates at low HP
+         local float health_urgency;
+         health_urgency = (200.000 * inverse_smooth_curve (self.health, 0.000, 100.000, 3.000));
+         weight = (weight + health_urgency);
 
          // Megahealth bonus (spawnflags & 2)
          if ((e.spawnflags & 2.000))

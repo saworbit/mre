@@ -291,3 +291,80 @@ float (float gap_width, float drop_height) CanCrossGap =
    return (FALSE); // Too far: bot will fall to death
 }; //end of the function CanCrossGap
 // ===== END GAP SOLVER =====
+
+// ===== FUZZY LOGIC: Smooth Curve Helpers =====
+// Eliminates "cliff edge" behavior in AI decision-making by using continuous curves
+// instead of hard thresholds. Creates more organic, human-like transitions.
+// Example: Instead of "if HP < 40 then +500", use smooth scaling from 0-500.
+
+// Linear interpolation: blend between a and b based on t (0.0 to 1.0)
+// lerp(10, 50, 0.0) = 10, lerp(10, 50, 0.5) = 30, lerp(10, 50, 1.0) = 50
+float (float a, float b, float t) lerp =
+{
+   return (a + ((b - a) * t));
+}; //end of lerp
+
+// Clamp value to range [min, max]
+// clamp(150, 0, 100) = 100, clamp(-10, 0, 100) = 0, clamp(50, 0, 100) = 50
+float (float value, float min_val, float max_val) clamp =
+{
+   if ((value < min_val))
+   {
+      return (min_val);
+   } //end if
+   if ((value > max_val))
+   {
+      return (max_val);
+   } //end if
+   return (value);
+}; //end of clamp
+
+// Inverse lerp: convert value in range [min, max] to normalized 0-1
+// inverse_lerp(30, 10, 50) = 0.5, inverse_lerp(10, 10, 50) = 0.0
+float (float value, float min_val, float max_val) inverse_lerp =
+{
+   local float range;
+   range = (max_val - min_val);
+   if ((range == 0.000))
+   {
+      return (0.000); // Avoid divide by zero
+   } //end if
+   return (clamp (((value - min_val) / range), 0.000, 1.000));
+}; //end of inverse_lerp
+
+// Smooth exponential curve: accelerates near edges
+// power > 1.0 = accelerating curve (slow start, fast finish)
+// power < 1.0 = decelerating curve (fast start, slow finish)
+// smooth_curve(50, 0, 100, 2.0) = quadratic acceleration
+float (float value, float min_val, float max_val, float power) smooth_curve =
+{
+   local float t;
+   t = inverse_lerp (value, min_val, max_val);
+
+   // Apply power function (t^power)
+   // QuakeC has no built-in pow(), so we handle common cases manually
+   if ((power == 2.000))
+   {
+      t = (t * t); // Quadratic
+   } //end if
+   else if ((power == 3.000))
+   {
+      t = ((t * t) * t); // Cubic
+   } //end if
+   else if ((power == 0.500))
+   {
+      t = qc_sqrt (t); // Square root (deceleration)
+   } //end if
+   // For other powers, use linear (limitation of QuakeC)
+
+   return (t);
+}; //end of smooth_curve
+
+// Inverse smooth curve: 1.0 at min_val, 0.0 at max_val (reversed)
+// Used for "desire" calculations where low values = high desire
+// Example: Health desire is HIGH when HP is LOW
+float (float value, float min_val, float max_val, float power) inverse_smooth_curve =
+{
+   return ((1.000 - smooth_curve (value, min_val, max_val, power)));
+}; //end of inverse_smooth_curve
+// ===== END FUZZY LOGIC =====
