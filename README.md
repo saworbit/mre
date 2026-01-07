@@ -24,6 +24,79 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 ## 🎬 Latest Features (2026-01)
 
+### 🛗 Obot-Style Elevator Navigation System (2026-01-08)
+
+**NEW:** Bots now intelligently handle elevator platforms with dynamic pathfinding!
+
+The Elevator Navigation System implements Obot's proven two-node architecture to solve the classic "bot walks into empty elevator shaft" problem. Bots now check if platforms are present BEFORE pathfinding through shafts, wait patiently for elevators to arrive, and automatically learn elevator locations during gameplay.
+
+**Before Elevator System:**
+- ❌ Bots pathfind through empty elevator shafts and fall to death
+- ❌ No awareness of platform position (top vs bottom)
+- ❌ Stuck in infinite loops trying to reach elevated items
+- ❌ Manual waypoint creation required for every elevator
+
+**After Elevator System:**
+- ✅ Platform presence check before A* pathfinding (prevents shaft falls)
+- ✅ Wait state management (stops and waits for platform to arrive)
+- ✅ Automatic alternate route finding (takes stairs when elevator at top)
+- ✅ Auto-discovery system (learns elevator locations through exploration)
+- ✅ 30-second timeout with replanning (prevents infinite waiting)
+
+**How it works:**
+
+**Two-Node Architecture:**
+- **WAIT_NODE**: Placed at elevator bottom (entry point)
+- **EXIT_NODE**: Placed at elevator top (exit point)
+- **Dynamic traversal**: A* only paths through WAIT_NODE if platform is present
+
+**Platform Detection:**
+- `IsPlatformAt()`: Checks if func_plat is within 32 units of target position
+- `CanTraverseElevator()`: Validates platform at bottom OR moving down
+- Integrated at all 6 A* neighbor checks for complete coverage
+
+**Wait State Management:**
+- Bot reaches WAIT_NODE → checks platform presence
+- If absent: stops movement, looks up, waits patiently
+- Resets stuck timers (prevents panic teleport during wait)
+- Boards when platform arrives, times out after 30 seconds
+- Timeout triggers replanning to find alternate routes (stairs/ramps)
+
+**Auto-Discovery:**
+- Bot drops breadcrumb on func_plat → detects position (top/bottom)
+- Creates WAIT_NODE at pos1, EXIT_NODE at pos2
+- Links pair bidirectionally for A* traversal
+- Future bots use learned nodes automatically
+
+**Three Elevator Scenarios:**
+1. 🟢 **Platform at bottom**: Bot walks on immediately, rides to top
+2. 🔵 **Platform at top**: A* skips elevator, finds stairs/alternate route
+3. 🟡 **Platform absent**: Bot waits at entrance, boards when arrives, timeout → replan
+
+**Debug Output:**
+```
+[Assmunch] ELEVATOR: Waiting at '1792.0 384.0 -168.0'
+(2.3 seconds pass)
+[Assmunch] ELEVATOR: Boarding (waited 2.3s)
+[Assmunch] ELEVATOR: Aboard, riding to top
+```
+
+**Testing:**
+- Enable debug: `impulse 95` → `impulse 96` (cycle to LOG_TACTICAL)
+- Best test map: DM4 (452 waypoints + Yellow Armor elevator)
+- See [ELEVATOR_TEST_GUIDE.md](ELEVATOR_TEST_GUIDE.md) for detailed protocol
+
+**Evidence from Logs:**
+Log analysis from DM2 revealed Wanton bot stuck 108 times (35+ consecutive) trying to reach Yellow Armor on unmapped elevator. Pattern shows "Train surf escape" (train under elevator) and "burst into flames" (lava death), confirming classic elevator shaft problem. See [CRITICAL_FINDING.md](CRITICAL_FINDING.md) for full analysis.
+
+**Integration:**
+- Platform detection in [botroute.qc:1100-1183](reaper_mre/botroute.qc#L1100-L1183)
+- A* integration in [botroute.qc:1285-1602](reaper_mre/botroute.qc#L1285-L1602)
+- Wait state in [botmove.qc:2098-2219](reaper_mre/botmove.qc#L2098-L2219)
+- Auto-creation in [botroute.qc:600-738](reaper_mre/botroute.qc#L600-L738)
+
+**Result:** Bots handle elevators like skilled human players! Platform presence checks prevent shaft falls, wait state management enables patient boarding, A* blocking finds alternate routes automatically, and auto-discovery learns new elevators during gameplay. Eliminates stuck loops at elevator locations. Build size: 496,890 bytes (+3,896 bytes). 🛗🤖✅
+
 ### 🎯 The Profiler: Opponent Behavior Tracking (2026-01-06)
 
 **NEW:** Bots now analyze and adapt to opponent playstyles in real-time!

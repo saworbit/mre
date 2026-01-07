@@ -2095,10 +2095,101 @@ void (float dist) Botmovetogoal =
    } //end if
    // ===================================================
 
-   // ===== PLATFORM MASTERY: Elevator Patience =====
-   // If our next step is a platform node, and it's high above us,
-   // it means the lift is UP and we are DOWN. We must WAIT.
-   if (Botgoal.is_platform_node)
+   // ===== ELEVATOR SYSTEM: Wait State Management =====
+   // Enhanced elevator patience with proper WAIT_NODE detection and timeout handling.
+   // Replaces old platform_node check with comprehensive elevator wait state.
+   if ((Botgoal.node_type == NODE_WAIT))
+   {
+      local entity plat;
+      plat = Botgoal.platform_entity;
+
+      if (!plat)
+      {
+         // Error: WAIT_NODE has no platform linked
+         // Abandon this goal and replan
+         FindAPath ();
+         return ;
+      } //end if
+
+      // Check if platform is present at boarding position
+      if (!IsPlatformAt (plat,Botgoal.platform_board_pos))
+      {
+         // Platform absent - enter WAIT state
+
+         if (!self.elevator_wait_state)
+         {
+            // Just started waiting - initialize wait state
+            self.elevator_wait_state = TRUE;
+            self.elevator_wait_node = Botgoal;
+            self.elevator_wait_start = time;
+
+            // Debug log (LOG_TACTICAL level)
+            if (((bot_debug_enabled && (bot_debug_level >= LOG_TACTICAL))))
+            {
+               bprint ("[");
+               bprint (self.netname);
+               bprint ("] ELEVATOR: Waiting at ");
+               bprint (vtos (Botgoal.origin));
+               bprint ("\n");
+            } //end if
+         } //end if
+
+         // Wait behavior
+         self.velocity = '0.000 0.000 0.000';  // Stop movement
+         self.ideal_pitch = -45.000;           // Look up at shaft (human-like)
+         ChangePitch ();
+
+         // Reset stuck timers (this is an intentional wait, not stuck)
+         self.stuck_count = 0.000;
+         self.stuck_time = 0.000;
+
+         // Timeout check - prevent infinite waits (30 second limit)
+         if (((time - self.elevator_wait_start) > 30.000))
+         {
+            // Waited too long - replan route (find alternate path)
+            if (((bot_debug_enabled && (bot_debug_level >= LOG_TACTICAL))))
+            {
+               bprint ("[");
+               bprint (self.netname);
+               bprint ("] ELEVATOR: Timeout (");
+               bprint (ftos (time - self.elevator_wait_start));
+               bprint ("s), replanning\n");
+            } //end if
+
+            self.elevator_wait_state = FALSE;
+            FindAPath ();  // Force re-pathfind (A* will skip this elevator now)
+         } //end if
+
+         return ;  // Don't move while waiting
+      } //end if
+
+      // Platform arrived!
+      if (self.elevator_wait_state)
+      {
+         // Reset wait state - platform is here, proceed normally
+         self.elevator_wait_state = FALSE;
+
+         // Debug log
+         if (((bot_debug_enabled && (bot_debug_level >= LOG_TACTICAL))))
+         {
+            local float wait_duration;
+            wait_duration = (time - self.elevator_wait_start);
+
+            bprint ("[");
+            bprint (self.netname);
+            bprint ("] ELEVATOR: Boarding (waited ");
+            bprint (ftos (wait_duration));
+            bprint ("s)\n");
+         } //end if
+      } //end if
+
+      // Platform present - proceed with normal movement
+   } //end if
+   // ===== OLD PLATFORM MASTERY: Legacy fallback for is_platform_node =====
+   // Kept for backwards compatibility with manually-placed platform waypoints
+   // that don't have node_type set. Will be phased out as maps migrate to
+   // NODE_WAIT/NODE_EXIT system.
+   else if (Botgoal.is_platform_node)
    {
       // Is the node significantly above us? (> 64 units)
       if ((Botgoal.origin_z > (self.origin_z + 64.000)))
@@ -2125,7 +2216,7 @@ void (float dist) Botmovetogoal =
          } //end if
       } //end if
    } //end if
-   // ===============================================
+   // ===== END ELEVATOR SYSTEM =====
 
    // ===== PROBLEM SOLVER: Execute Vertical Solve (Rocket Jump for High Items) =====
    // Check if we are near the goal but it's above us (The "Quad Ledge" Scenario)

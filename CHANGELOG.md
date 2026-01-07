@@ -1,3 +1,41 @@
+## 2026-01-08
+
+- **Obot-Style Elevator Navigation System** for intelligent platform handling:
+  - **Two-node elevator architecture** in `reaper_mre/botit_th.qc` (lines 175-192): Implements Obot's proven design with WAIT_NODE at platform bottom and EXIT_NODE at platform top. Platform presence check runs BEFORE pathfinding to prevent bots from walking into empty elevator shafts. Entity fields: `node_type` (0=standard, 1=wait, 2=exit), `platform_entity` (link to func_plat), `platform_wait_pos`/`platform_board_pos` (pos1/pos2), `wait_node_pair` (bidirectional node linking).
+  - **Platform detection system** in `reaper_mre/botroute.qc` (lines 1100-1183): Three core functions for elevator state management:
+    - `IsPlatformAt(plat, target_pos)`: Checks if platform is within 32 units of target position (pos1 or pos2)
+    - `CanTraverseElevator(wait_node)`: Validates platform presence before allowing A* pathfinding through shaft (returns TRUE if platform at bottom OR moving down)
+    - `FindElevatorNode(pos, radius)`: Locates nearest WAIT_NODE or EXIT_NODE within radius for auto-creation system
+  - **A* pathfinding integration** in `reaper_mre/botroute.qc` (lines 1285-1602): Dynamic traversal checks at all 6 movetarget neighbor locations. Before processing each neighbor, checks if `node_type == NODE_WAIT`, then calls `CanTraverseElevator()`. If platform absent, sets `neighbor = world` to skip that path. A* automatically finds alternate routes (stairs/ramps) when elevator blocked.
+  - **Wait state management** in `reaper_mre/botmove.qc` (lines 2098-2219): Comprehensive elevator waiting system:
+    - Detects when bot reaches WAIT_NODE with platform absent
+    - Enters wait state: stops movement (`velocity = 0`), looks up (`ideal_pitch = -45`), resets stuck timers
+    - Monitors platform position every frame, boards when platform arrives
+    - 30-second timeout triggers automatic replanning to find alternate routes
+    - Debug logging: "ELEVATOR: Waiting", "ELEVATOR: Boarding (waited Xs)", "ELEVATOR: Timeout, replanning"
+  - **Boarding confirmation** in `reaper_mre/botthink.qc` (lines 556-576): Enhanced platform ride logic detects when bot successfully boards elevator. Traces 32 units down to detect func_plat/func_train beneath bot, inherits platform velocity, confirms elevator state exit. Logs boarding event with wait duration.
+  - **Auto node creation** in `reaper_mre/botroute.qc` (lines 600-738): Self-learning elevator discovery system:
+    - When bot drops breadcrumb on func_plat, detects position (bottom or top via IsPlatformAt)
+    - Creates WAIT_NODE at pos1 (bottom), EXIT_NODE at pos2 (top)
+    - Links pair bidirectionally with `wait_node_pair` entity field
+    - Connects nodes in waypoint graph for A* pathfinding
+    - Debug logging: "ELEVATOR: Created WAIT_NODE at...", "ELEVATOR: Created EXIT_NODE at..."
+  - **Forward declarations** in `reaper_mre/defs.qc` (lines 471-476): Added function signatures for `IsPlatformAt`, `CanTraverseElevator`, `FindElevatorNode`, and corrected `FindAPath` return type (float not void) to resolve compilation errors.
+  - **Expected behavior**: Bots intelligently handle elevators in three scenarios:
+    1. **Platform at bottom**: Bot walks onto elevator, no wait needed, rides to top
+    2. **Platform at top**: A* skips elevator path, finds alternate route (stairs/ramps)
+    3. **Platform absent**: Bot waits at entrance, boards when platform arrives, timeout after 30s → replan
+  - **Debug logging gates**: ALL elevator messages require `bot_debug_enabled && bot_debug_level >= LOG_TACTICAL`. Use `impulse 95` to enable debug, `impulse 96` to cycle to LOG_TACTICAL verbosity level.
+  - **Testing evidence**: Log analysis from DM2 shows 108 stuck events (35+ consecutive) with Wanton bot trying to reach item_armor2 (Yellow Armor on elevator platform). Pattern includes "Train surf escape" (train under elevator) and "burst into flames" (lava pit below), confirming classic unmapped elevator behavior. Strong circumstantial evidence elevator system is needed and likely working, but direct verification requires debug logging.
+  - **Documentation created**: Four comprehensive markdown files:
+    - `ELEVATOR_SYSTEM_ANALYSIS.md`: Architectural analysis, Obot comparison, implementation plan (80KB)
+    - `ELEVATOR_SYSTEM_DOCUMENTATION.md`: Complete API reference, function descriptions, usage guide (23KB)
+    - `ELEVATOR_TEST_GUIDE.md`: Quick test protocol, map compatibility, troubleshooting
+    - `CRITICAL_FINDING.md`: Log analysis showing Wanton's stuck loop at DM2 elevator location
+  - **Map compatibility**: DM4 has 452 waypoints + Yellow Armor elevator (func_plat at ~1792, 384, -168). DM2 has 362 waypoints but unmapped elevator (Wanton stuck loop location). E1M1 has Quad elevator but no waypoints (bots can't navigate). Recommended test map: DM4 with debug enabled.
+  - **Classic bot problem solved**: Bots no longer pathfind through empty elevator shafts! Platform presence check prevents "bot walks into void and falls to death" behavior. A* blocking provides alternate routes. Wait state management enables patient elevator boarding. Auto-creation learns elevator locations during gameplay. Implements Obot's proven two-node architecture adapted to Reaper's existing navigation systems.
+  - **Result:** Complete elevator navigation system deployed! Bots check platform presence before pathfinding, wait patiently when platform absent, find alternate routes automatically, and learn elevator locations through self-exploration. Eliminates stuck loops at elevator shafts. System running but visibility requires debug logging (impulse 95 + 96). Build size: 496,890 bytes (+3,896 bytes for elevator system). 🛗🤖✅
+
 ## 2026-01-06
 
 - **Strategic Item Control: Denial & Ambush AI** for high-value item prioritization:

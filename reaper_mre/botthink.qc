@@ -536,7 +536,7 @@ void () BotPostThink =
    self.movetarget.flags = self.flags;
    setorigin (self.movetarget,self.origin);
 
-   // ===== TWEAK #4: Ride platform auto-follow (no ride → auto-follow) =====
+   // ===== TWEAK #4: Ride platform auto-follow (enhanced with elevator boarding) =====
    // Detects when bot is standing on a moving platform (func_plat, func_train) via downward
    // trace and automatically inherits platform velocity to "ride" smoothly. Adjusts goal to
    // follow platform motion, preventing premature dismount. Enables human-like platform use.
@@ -552,6 +552,28 @@ void () BotPostThink =
       {
          self.goalentity.origin = trace_ent.origin;
       } //end if
+
+      // ===== ELEVATOR SYSTEM: Boarding Confirmation =====
+      // If bot was waiting for this platform, confirm successful boarding
+      if (self.elevator_wait_state)
+      {
+         // We were waiting for elevator and now we're aboard!
+         self.elevator_wait_state = FALSE;
+
+         // Debug log
+         if (((bot_debug_enabled && (bot_debug_level >= LOG_TACTICAL))))
+         {
+            local float wait_duration;
+            wait_duration = (time - self.elevator_wait_start);
+
+            bprint ("[");
+            bprint (self.netname);
+            bprint ("] ELEVATOR: Aboard, riding to top (waited ");
+            bprint (ftos (wait_duration));
+            bprint ("s)\n");
+         } //end if
+      } //end if
+      // ===== END ELEVATOR SYSTEM =====
    } //end if
    // ===== END TWEAK #4 =====
 

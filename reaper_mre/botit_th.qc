@@ -172,6 +172,24 @@ float (entity targ, entity inflictor) CanDamage;
 .float deny_flag;
 // Marks path nodes sitting on moving platforms (func_plat/func_train) for elevator logic.
 .float is_platform_node;
+// ===== ELEVATOR NAVIGATION SYSTEM =====
+// Node type: NODE_STANDARD (0), NODE_WAIT (1), or NODE_EXIT (2)
+.float node_type;
+// Link to the actual func_plat/func_train entity for this elevator node
+.entity platform_entity;
+// Position where bot should wait for elevator (typically pos1 for bottom)
+.vector platform_wait_pos;
+// Position where platform is boardable (typically pos1 for bottom)
+.vector platform_board_pos;
+// Link to paired node (WAIT_NODE ↔ EXIT_NODE)
+.entity wait_node_pair;
+// Bot elevator wait state: TRUE when waiting for elevator to arrive
+.float elevator_wait_state;
+// Which WAIT_NODE the bot is currently waiting at
+.entity elevator_wait_node;
+// Timestamp when bot started waiting (for timeout detection)
+.float elevator_wait_start;
+// ===== END ELEVATOR SYSTEM =====
 // Semantic map learning: danger scent (how many bots died here - avoid).
 .float danger_scent;
 // Semantic map learning: glory score (how many kills happened here - attract).
@@ -237,6 +255,19 @@ float (entity targ, entity inflictor) CanDamage;
 .entity enemycache;
 .float endpoint;
 .string teamname;
+// ===== ELEVATOR NAVIGATION SYSTEM: Constants =====
+// Node type identifiers
+float NODE_STANDARD   = 0.000;  // Normal waypoint
+float NODE_WAIT       = 1.000;  // Elevator wait node (bottom)
+float NODE_EXIT       = 2.000;  // Elevator exit node (top)
+
+// Platform state constants (Quake engine standard from plats.qc)
+float STATE_TOP       = 0.000;  // Platform at top position
+float STATE_BOTTOM    = 1.000;  // Platform at bottom position
+float STATE_UP        = 2.000;  // Platform moving to top
+float STATE_DOWN      = 3.000;  // Platform moving to bottom
+// ===== END ELEVATOR SYSTEM =====
+
 float NORMALSCORE    = 1.000;
 float MYSCORE    = 2.000;
 float MUST_HAVE    = 100.000;

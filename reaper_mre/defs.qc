@@ -467,4 +467,10 @@ void () Stack_Pop_Safe;
 
 // ===== PROJECTILE PREDICTION: Navigation Leading =====
 vector (entity target, float proj_speed) PredictEnemyPositionForNav;
+
+// ===== ELEVATOR NAVIGATION SYSTEM (Forward Declarations) =====
+float (entity plat, vector target_pos) IsPlatformAt;
+float (entity wait_node) CanTraverseElevator;
+entity (vector pos, float radius) FindElevatorNode;
+float () FindAPath;
 // ===== END FORWARD DECLARATIONS =====

@@ -597,14 +597,145 @@ void () DropBotPath =
    self.last_dropped_node = oldpath;
    // ====================================================================
 
-   // ===== PLATFORM MASTERY: Platform Tagging =====
-   // Check what we are standing on. If it's a lift/train, mark this node.
+   // ===== ELEVATOR SYSTEM: Auto Node Creation =====
+   // Check what we are standing on. If it's a lift/train, create elevator node pairs.
    traceline (self.origin,(self.origin - '0.000 0.000 64.000'),TRUE,self);
    if ((((trace_ent.classname == "func_plat") || (trace_ent.classname == "func_train")) || (trace_ent.classname == "func_door")))
    {
+      // Legacy compatibility: Mark as platform node
       oldpath.is_platform_node = TRUE;
+
+      // ===== NEW: Auto-create elevator node pairs =====
+      if ((trace_ent.classname == "func_plat"))
+      {
+         local entity plat;
+         local entity wait_node;
+         local entity exit_node;
+         local float at_bottom;
+         local float at_top;
+
+         plat = trace_ent;
+
+         // Determine if we're at bottom or top position
+         at_bottom = IsPlatformAt (plat,plat.pos1);
+         at_top = IsPlatformAt (plat,plat.pos2);
+
+         if (at_bottom)
+         {
+            // We're at bottom - create/update WAIT_NODE
+            wait_node = FindElevatorNode (plat.pos1,64.000);
+
+            if (!wait_node)
+            {
+               // Create new WAIT_NODE at current position
+               wait_node = oldpath;  // Use the breadcrumb we just dropped
+               wait_node.node_type = NODE_WAIT;
+               wait_node.platform_entity = plat;
+               wait_node.platform_wait_pos = plat.pos1;
+               wait_node.platform_board_pos = plat.pos1;
+
+               // Debug log
+               if (((bot_debug_enabled && (bot_debug_level >= LOG_VERBOSE))))
+               {
+                  bprint ("ELEVATOR: Created WAIT_NODE at ");
+                  bprint (vtos (wait_node.origin));
+                  bprint ("\n");
+               } //end if
+            } //end if
+
+            // Find or create EXIT_NODE at top
+            exit_node = FindElevatorNode (plat.pos2,64.000);
+
+            if (!exit_node)
+            {
+               // Create EXIT_NODE at top position
+               // Spawn a new waypoint entity at the platform's top position
+               exit_node = botpath ();
+               setorigin (exit_node,plat.pos2);
+               exit_node.pathtype = DROPPED;
+               exit_node.node_type = NODE_EXIT;
+               exit_node.platform_entity = plat;
+               exit_node.traffic_score = 0.100;  // Low traffic (breadcrumb)
+
+               // Debug log
+               if (((bot_debug_enabled && (bot_debug_level >= LOG_VERBOSE))))
+               {
+                  bprint ("ELEVATOR: Created EXIT_NODE at ");
+                  bprint (vtos (exit_node.origin));
+                  bprint ("\n");
+               } //end if
+            } //end if
+
+            // Link the pair (bidirectional)
+            wait_node.wait_node_pair = exit_node;
+            exit_node.wait_node_pair = wait_node;
+
+            // Connect in waypoint graph (for A* pathfinding)
+            // Use movetarget link to connect WAIT → EXIT
+            if ((wait_node.movetarget == world))
+            {
+               wait_node.movetarget = exit_node;
+            } //end if
+         } //end if
+         else if (at_top)
+         {
+            // We're at top - create/update EXIT_NODE
+            exit_node = FindElevatorNode (plat.pos2,64.000);
+
+            if (!exit_node)
+            {
+               // Create new EXIT_NODE at current position
+               exit_node = oldpath;  // Use the breadcrumb we just dropped
+               exit_node.node_type = NODE_EXIT;
+               exit_node.platform_entity = plat;
+
+               // Debug log
+               if (((bot_debug_enabled && (bot_debug_level >= LOG_VERBOSE))))
+               {
+                  bprint ("ELEVATOR: Created EXIT_NODE at ");
+                  bprint (vtos (exit_node.origin));
+                  bprint ("\n");
+               } //end if
+            } //end if
+
+            // Find or create WAIT_NODE at bottom
+            wait_node = FindElevatorNode (plat.pos1,64.000);
+
+            if (!wait_node)
+            {
+               // Create WAIT_NODE at bottom position
+               wait_node = botpath ();
+               setorigin (wait_node,plat.pos1);
+               wait_node.pathtype = DROPPED;
+               wait_node.node_type = NODE_WAIT;
+               wait_node.platform_entity = plat;
+               wait_node.platform_wait_pos = plat.pos1;
+               wait_node.platform_board_pos = plat.pos1;
+               wait_node.traffic_score = 0.100;  // Low traffic (breadcrumb)
+
+               // Debug log
+               if (((bot_debug_enabled && (bot_debug_level >= LOG_VERBOSE))))
+               {
+                  bprint ("ELEVATOR: Created WAIT_NODE at ");
+                  bprint (vtos (wait_node.origin));
+                  bprint ("\n");
+               } //end if
+            } //end if
+
+            // Link the pair (bidirectional)
+            exit_node.wait_node_pair = wait_node;
+            wait_node.wait_node_pair = exit_node;
+
+            // Connect in waypoint graph
+            if ((wait_node.movetarget == world))
+            {
+               wait_node.movetarget = exit_node;
+            } //end if
+         } //end if
+      } //end if
+      // ===== END AUTO-CREATE =====
    } //end if
-   // ==============================================
+   // ===== END ELEVATOR SYSTEM =====
 
    NUMPATHS = (NUMPATHS + SPAWNFLAG_SUPERSPIKE);
 }; //end of the function DropBotPath
@@ -1097,6 +1228,91 @@ void (entity en) RouteToEnemy =
    } //end if
 }; //end of the function RouteToEnemy
 
+// ===== ELEVATOR NAVIGATION SYSTEM: Platform Detection Functions =====
+// Check if platform is at specific position (within 32 units)
+float (entity plat, vector target_pos) IsPlatformAt =
+{
+   if (!plat)
+   {
+      return (FALSE);
+   } //end if
+
+   local float dist;
+   dist = vlen ((plat.origin - target_pos));
+
+   // Platform within 32 units of target position?
+   if ((dist < 32.000))
+   {
+      return (TRUE);
+   } //end if
+
+   return (FALSE);
+}; //end of the function IsPlatformAt
+
+// Check if elevator WAIT_NODE is traversable right now
+float (entity wait_node) CanTraverseElevator =
+{
+   // Not an elevator node? Always traversable
+   if ((wait_node.node_type != NODE_WAIT))
+   {
+      return (TRUE);
+   } //end if
+
+   local entity plat;
+   plat = wait_node.platform_entity;
+
+   if (!plat)
+   {
+      // No platform linked - error state, treat as blocked
+      return (FALSE);
+   } //end if
+
+   // Is platform at bottom position (boardable)?
+   if (IsPlatformAt (plat,wait_node.platform_board_pos))
+   {
+      return (TRUE);  // Safe to path through
+   } //end if
+
+   // Is platform descending? (Will arrive soon)
+   if ((plat.state == STATE_DOWN))
+   {
+      return (TRUE);  // Treat as traversable (bot will wait)
+   } //end if
+
+   // Platform elsewhere (at top or moving up)
+   return (FALSE);  // Find alternate route
+}; //end of the function CanTraverseElevator
+
+// Find elevator nodes near a position
+entity (vector pos, float radius) FindElevatorNode =
+{
+   local entity e;
+   local entity closest;
+   local float best_dist;
+   local float dist;
+
+   e = find (world,classname,"BotPath");
+   closest = world;
+   best_dist = radius;
+
+   while (e)
+   {
+      if (((e.node_type == NODE_WAIT) || (e.node_type == NODE_EXIT)))
+      {
+         dist = vlen ((e.origin - pos));
+         if ((dist < best_dist))
+         {
+            best_dist = dist;
+            closest = e;
+         } //end if
+      } //end if
+      e = find (e,classname,"BotPath");
+   } //end while
+
+   return (closest);
+}; //end of the function FindElevatorNode
+// ===== END ELEVATOR SYSTEM =====
+
 // ===== A* PATHFINDING: Optimal Route Solver =====
 // Universal pathfinding algorithm that finds the lowest-cost path from start to goal.
 // Uses f-score (g + h) to prioritize promising routes.
@@ -1200,6 +1416,22 @@ entity (entity start, entity goal) AStarSolve =
       neighbor = lowest.movetarget;
       if (neighbor)
       {
+         // ===== ELEVATOR SYSTEM: Dynamic Traversal Check =====
+         if ((neighbor.node_type == NODE_WAIT))
+         {
+            // This is an elevator entrance - check if platform present
+            if (!CanTraverseElevator (neighbor))
+            {
+               // Platform absent - skip this path entirely
+               // A* will find alternate route automatically
+               neighbor = world;  // Skip to next neighbor check
+            } //end if
+         } //end if
+         // ===== END ELEVATOR SYSTEM =====
+      } //end if
+
+      if (neighbor)
+      {
          if (((neighbor.search_id != ASTAR_SEARCH_ID) || (neighbor.closed_next != neighbor)))
          {
             // ===== TACTICAL PATHFINDING: The "Fear" Engine =====
@@ -1256,6 +1488,19 @@ entity (entity start, entity goal) AStarSolve =
       neighbor = lowest.movetarget2;
       if (neighbor)
       {
+         // ===== ELEVATOR SYSTEM: Dynamic Traversal Check =====
+         if ((neighbor.node_type == NODE_WAIT))
+         {
+            if (!CanTraverseElevator (neighbor))
+            {
+               neighbor = world;
+            } //end if
+         } //end if
+         // ===== END ELEVATOR SYSTEM =====
+      } //end if
+
+      if (neighbor)
+      {
          if (((neighbor.search_id != ASTAR_SEARCH_ID) || (neighbor.closed_next != neighbor)))
          {
             // ===== TACTICAL PATHFINDING: The "Fear" Engine =====
@@ -1300,6 +1545,19 @@ entity (entity start, entity goal) AStarSolve =
 
       // Repeat for movetarget3-6 (same pattern)
       neighbor = lowest.movetarget3;
+      if (neighbor)
+      {
+         // ===== ELEVATOR SYSTEM: Dynamic Traversal Check =====
+         if ((neighbor.node_type == NODE_WAIT))
+         {
+            if (!CanTraverseElevator (neighbor))
+            {
+               neighbor = world;
+            } //end if
+         } //end if
+         // ===== END ELEVATOR SYSTEM =====
+      } //end if
+
       if (neighbor)
       {
          if (((neighbor.search_id != ASTAR_SEARCH_ID) || (neighbor.closed_next != neighbor)))
@@ -1347,6 +1605,19 @@ entity (entity start, entity goal) AStarSolve =
       neighbor = lowest.movetarget4;
       if (neighbor)
       {
+         // ===== ELEVATOR SYSTEM: Dynamic Traversal Check =====
+         if ((neighbor.node_type == NODE_WAIT))
+         {
+            if (!CanTraverseElevator (neighbor))
+            {
+               neighbor = world;
+            } //end if
+         } //end if
+         // ===== END ELEVATOR SYSTEM =====
+      } //end if
+
+      if (neighbor)
+      {
          if (((neighbor.search_id != ASTAR_SEARCH_ID) || (neighbor.closed_next != neighbor)))
          {
             // ===== TACTICAL PATHFINDING: The "Fear" Engine =====
@@ -1392,6 +1663,19 @@ entity (entity start, entity goal) AStarSolve =
       neighbor = lowest.movetarget5;
       if (neighbor)
       {
+         // ===== ELEVATOR SYSTEM: Dynamic Traversal Check =====
+         if ((neighbor.node_type == NODE_WAIT))
+         {
+            if (!CanTraverseElevator (neighbor))
+            {
+               neighbor = world;
+            } //end if
+         } //end if
+         // ===== END ELEVATOR SYSTEM =====
+      } //end if
+
+      if (neighbor)
+      {
          if (((neighbor.search_id != ASTAR_SEARCH_ID) || (neighbor.closed_next != neighbor)))
          {
             // ===== TACTICAL PATHFINDING: The "Fear" Engine =====
@@ -1435,6 +1719,19 @@ entity (entity start, entity goal) AStarSolve =
       } //end if
 
       neighbor = lowest.movetarget6;
+      if (neighbor)
+      {
+         // ===== ELEVATOR SYSTEM: Dynamic Traversal Check =====
+         if ((neighbor.node_type == NODE_WAIT))
+         {
+            if (!CanTraverseElevator (neighbor))
+            {
+               neighbor = world;
+            } //end if
+         } //end if
+         // ===== END ELEVATOR SYSTEM =====
+      } //end if
+
       if (neighbor)
       {
          if (((neighbor.search_id != ASTAR_SEARCH_ID) || (neighbor.closed_next != neighbor)))
