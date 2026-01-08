@@ -7,6 +7,24 @@ void(vector org, float traffic, float danger, string trig_target) SpawnSavedWayp
 // Forward declaration for live learning RJ waypoints (defined in botroute.qc)
 void(vector org, vector angles, float velocity_gain, string rj_type_str) SpawnLearnedRJ_Live;
 
+// Progress-based stuck detection + unstick mode tuning
+float BOT_MODE_NORMAL = 0.000;
+float BOT_MODE_UNSTICK = 1.000;
+float BOT_MODE_COOLDOWN = 2.000;
+float BOT_MODE_COMBAT = 3.000;
+float BOT_LOS_NONE = 0.000;
+float BOT_LOS_FEET = 1.000;
+float BOT_LOS_TORSO = 2.000;
+float BOT_LOS_HEAD = 3.000;
+
+
+float STUCK_PROGRESS_INTERVAL = 0.200;
+float STUCK_PROGRESS_DIST = 16.000;
+float STUCK_TIME_LIMIT = 1.000;
+float STUCK_SCORE_THRESH = 5.000;
+float STUCK_PUSH_SPEED = 20.000;
+float STUCK_PUSH_DIST = 40.000;
+
 // PHASE 4 REFACTOR: CanRocketJumpHeight, CanCrossGap moved to botmath.qc
 
 void () halfwalkmove =
@@ -896,6 +914,11 @@ float() bot_rocket_jump =
    // Set cooldown (prevents spam) and reset stuck counter (successful escape)
    self.rj_cooldown = (time + 2.000);
    self.stuck_count = 0;
+   self.stuck_score = 0.000;
+   self.stuck_mode = BOT_MODE_NORMAL;
+   self.last_progress_time = time;
+   self.last_origin = self.origin;
+   self.progress_check_time = (time + STUCK_PROGRESS_INTERVAL);
 
    // PHASE 3 FIX: Verify success in 0.1 seconds (failure recovery)
    self.rj_verify_time = (time + 0.100);
@@ -916,6 +939,9 @@ void () CheckForHazards =
    local float content_type;
    local vector left_spot, right_spot;
    local float left_gap, right_gap;
+   local vector land_spot;
+   local float land_content;
+   local float escape_yaw;
 
    // Only check if we are on the ground
    if (!(self.flags & FL_ONGROUND))
@@ -966,6 +992,26 @@ void () CheckForHazards =
       {
          // STOP! Don't run in!
          self.velocity = '0.000 0.000 0.000';
+         if ((self.hazard_escape_until <= time))
+         {
+            escape_yaw = (self.angles_y + 135.000);
+            if ((random () < 0.500))
+            {
+               escape_yaw = (self.angles_y - 135.000);
+            } //end if
+            self.hazard_escape_yaw = escape_yaw;
+            self.hazard_escape_until = (time + 0.600);
+         } //end if
+         if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+         {
+            if ((self.hazard_log_time <= time))
+            {
+               bprint ("[");
+               bprint (self.netname);
+               bprint ("] HAZARD: Stop (drop/lava)\n");
+               self.hazard_log_time = (time + 0.500);
+            } //end if
+         } //end if
          return ;
       } //end if
 
@@ -982,6 +1028,61 @@ void () CheckForHazards =
       if ((content_type <= CONTENT_SLIME))
       {
          // The floor ahead is lava/slime
+         // Only jump if there appears to be safe ground to land on.
+         land_spot = (spot + (v_forward * 120.000));
+         land_spot_z = self.origin_z;
+         traceline (land_spot,(land_spot - '0.000 0.000 250.000'),TRUE,self);
+         if ((trace_fraction == 1.000))
+         {
+            self.velocity = '0.000 0.000 0.000';
+            if ((self.hazard_escape_until <= time))
+            {
+               escape_yaw = (self.angles_y + 135.000);
+               if ((random () < 0.500))
+               {
+                  escape_yaw = (self.angles_y - 135.000);
+               } //end if
+               self.hazard_escape_yaw = escape_yaw;
+               self.hazard_escape_until = (time + 0.600);
+            } //end if
+            if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+            {
+               if ((self.hazard_log_time <= time))
+               {
+                  bprint ("[");
+                  bprint (self.netname);
+                  bprint ("] HAZARD: Blocked jump (no landing)\n");
+                  self.hazard_log_time = (time + 0.500);
+               } //end if
+            } //end if
+            return ;
+         } //end if
+         land_content = pointcontents (trace_endpos);
+         if (((land_content == CONTENT_LAVA) || (land_content == CONTENT_SLIME)))
+         {
+            self.velocity = '0.000 0.000 0.000';
+            if ((self.hazard_escape_until <= time))
+            {
+               escape_yaw = (self.angles_y + 135.000);
+               if ((random () < 0.500))
+               {
+                  escape_yaw = (self.angles_y - 135.000);
+               } //end if
+               self.hazard_escape_yaw = escape_yaw;
+               self.hazard_escape_until = (time + 0.600);
+            } //end if
+            if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+            {
+               if ((self.hazard_log_time <= time))
+               {
+                  bprint ("[");
+                  bprint (self.netname);
+                  bprint ("] HAZARD: Blocked jump (unsafe landing)\n");
+                  self.hazard_log_time = (time + 0.500);
+               } //end if
+            } //end if
+            return ;
+         } //end if
          self.button2 = 1.000;  // Try to jump over it
       } //end if
    } //end if
@@ -1541,7 +1642,7 @@ float (float dist) trysidestep =
    // After 5+ stuck attempts, escalate to "human exploit" tactics: train surf (boost off
    // moving train momentum), rocket jump (blast out backward), or super jump (350u leap).
    // Resets counter after escape. Prevents infinite spin-death in geometry traps.
-   if ((self.stuck_count > 5))
+   if (((self.stuck_count > 5) && (self.stuck_mode == BOT_MODE_NORMAL)))
    {
       // ===== STUCK DETECTION LOGGING (LOG_CRITICAL+) =====
       if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
@@ -1575,6 +1676,10 @@ float (float dist) trysidestep =
          // Boost velocity with train momentum (1.5x multiplier for escape power)
          self.velocity = (self.velocity + (ground_ent.velocity * 1.500));
          self.stuck_count = 0;
+         self.stuck_score = 0.000;
+         self.last_progress_time = time;
+         self.last_origin = self.origin;
+         self.progress_check_time = (time + STUCK_PROGRESS_INTERVAL);
          return (TRUE);
       } //end if
 
@@ -1603,6 +1708,10 @@ float (float dist) trysidestep =
       // ===== END UNSTUCK LOGGING =====
       Bot_tryjump (350.000,dist,FALSE);  // High jump attempt
       self.stuck_count = 0;
+      self.stuck_score = 0.000;
+      self.last_progress_time = time;
+      self.last_origin = self.origin;
+      self.progress_check_time = (time + STUCK_PROGRESS_INTERVAL);
       return (TRUE);
    } //end if
    self.stuck_count = (self.stuck_count + 1);  // Track failed sidestep
@@ -1787,50 +1896,1030 @@ float (entity bot, float base_yaw, float dt) Bot_SampleFeelers =
    return (yaw_bias);
 }; //end of the function Bot_SampleFeelers
 
-// FEELER ESCAPE: 8-direction scan to find clearest path when stuck/lost
-// Returns yaw of clearest direction (longest unobstructed trace)
-float (entity bot, float base_yaw) Bot_FindClearestDirection =
+void (entity bot) Bot_UpdateRecentPositions =
+{
+   if ((bot.recent_pos_idx == 0.000))
+   {
+      bot.recent_pos0 = bot.origin;
+   } //end if
+   else
+   {
+      if ((bot.recent_pos_idx == 1.000))
+      {
+         bot.recent_pos1 = bot.origin;
+      } //end if
+      else
+      {
+         if ((bot.recent_pos_idx == 2.000))
+         {
+            bot.recent_pos2 = bot.origin;
+         } //end if
+         else
+         {
+            if ((bot.recent_pos_idx == 3.000))
+            {
+               bot.recent_pos3 = bot.origin;
+            } //end if
+            else
+            {
+               if ((bot.recent_pos_idx == 4.000))
+               {
+                  bot.recent_pos4 = bot.origin;
+               } //end if
+               else
+               {
+                  bot.recent_pos5 = bot.origin;
+               } //end if
+            } //end else
+         } //end else
+      } //end else
+   } //end else
+
+   bot.recent_pos_idx = (bot.recent_pos_idx + 1.000);
+   if ((bot.recent_pos_idx > 5.000))
+   {
+      bot.recent_pos_idx = 0.000;
+   } //end if
+}; //end of the function Bot_UpdateRecentPositions
+
+float (entity bot, vector pos) Bot_IsRecentlyVisited =
+{
+   if ((vlen (bot.recent_pos0) > 0.000))
+   {
+      if ((vlen (pos - bot.recent_pos0) < 72.000)) return (TRUE);
+   } //end if
+   if ((vlen (bot.recent_pos1) > 0.000))
+   {
+      if ((vlen (pos - bot.recent_pos1) < 72.000)) return (TRUE);
+   } //end if
+   if ((vlen (bot.recent_pos2) > 0.000))
+   {
+      if ((vlen (pos - bot.recent_pos2) < 72.000)) return (TRUE);
+   } //end if
+   if ((vlen (bot.recent_pos3) > 0.000))
+   {
+      if ((vlen (pos - bot.recent_pos3) < 72.000)) return (TRUE);
+   } //end if
+   if ((vlen (bot.recent_pos4) > 0.000))
+   {
+      if ((vlen (pos - bot.recent_pos4) < 72.000)) return (TRUE);
+   } //end if
+   if ((vlen (bot.recent_pos5) > 0.000))
+   {
+      if ((vlen (pos - bot.recent_pos5) < 72.000)) return (TRUE);
+   } //end if
+   return (FALSE);
+}; //end of the function Bot_IsRecentlyVisited
+
+float (entity bot, vector dir, float dist) Bot_JumpFeasibleSimple =
 {
    local vector start;
-   local float best_yaw;
-   local float best_score;
+   local vector end;
+   local float content_type;
+
+   // Headroom check
+   start = bot.origin;
+   end = (start + '0.000 0.000 48.000');
+   traceline (start,end,TRUE,bot);
+   if ((trace_fraction < 1.000))
+   {
+      return (FALSE);
+   } //end if
+
+   // Forward clearance at jump height
+   start = (bot.origin + '0.000 0.000 24.000');
+   end = (start + (dir * dist));
+   traceline (start,end,TRUE,bot);
+   if ((trace_fraction < 1.000))
+   {
+      return (FALSE);
+   } //end if
+
+   // Landing zone check
+   start = (bot.origin + (dir * dist) + '0.000 0.000 18.000');
+   end = (start + '0.000 0.000 -64.000');
+   traceline (start,end,TRUE,bot);
+   if ((trace_fraction == 1.000))
+   {
+      return (FALSE);
+   } //end if
+   content_type = pointcontents (trace_endpos);
+   if (((content_type == CONTENT_LAVA) || (content_type == CONTENT_SLIME)))
+   {
+      return (FALSE);
+   } //end if
+
+   return (TRUE);
+}; //end of the function Bot_JumpFeasibleSimple
+
+float (entity bot, vector dir, float dist) Bot_JumpFeasibleArc =
+{
+   local float i;
+   local float steps;
+   local float step;
+   local float t;
+   local float speed;
+   local vector start;
+   local vector prev;
+   local vector pos;
+   local vector vel;
+   local float content_type;
+
+   steps = 6.000;
+   step = 0.100;
+   speed = 300.000;
+
+   start = (bot.origin + '0.000 0.000 24.000');
+   vel = (dir * speed);
+   vel_z = 270.000;
+   prev = start;
+
+   i = 1.000;
+   while ((i <= steps))
+   {
+      t = (i * step);
+      pos = (start + (vel * t));
+      pos_z = (start_z + (vel_z * t) - (0.500 * 800.000 * t * t));
+
+      traceline (prev,pos,TRUE,bot);
+      if ((trace_fraction < 1.000))
+      {
+         return (FALSE);
+      } //end if
+
+      prev = pos;
+      i = (i + 1.000);
+   } //end while
+
+   // Confirm we can land on something
+   traceline (pos,(pos + '0.000 0.000 -64.000'),TRUE,bot);
+   if ((trace_fraction == 1.000))
+   {
+      return (FALSE);
+   } //end if
+   content_type = pointcontents (trace_endpos);
+   if (((content_type == CONTENT_LAVA) || (content_type == CONTENT_SLIME)))
+   {
+      return (FALSE);
+   } //end if
+
+   return (TRUE);
+}; //end of the function Bot_JumpFeasibleArc
+
+float (entity bot, vector dir, float dist) Bot_JumpFeasible =
+{
+   local float yaw;
+   local vector testdir;
+
+   if (!Bot_JumpFeasibleSimple (bot,dir,dist))
+   {
+      return (FALSE);
+   } //end if
+
+   if (Bot_JumpFeasibleArc (bot,dir,dist))
+   {
+      return (TRUE);
+   } //end if
+
+   // Allow slight air-control variants
+   yaw = vectoyaw (dir);
+
+   bot.v_angle_x = 0.000;
+   bot.v_angle_y = (yaw + 20.000);
+   bot.v_angle_z = 0.000;
+   makevectors (bot.v_angle);
+   testdir = v_forward;
+   if (Bot_JumpFeasibleArc (bot,testdir,dist)) return (TRUE);
+
+   bot.v_angle_y = (yaw - 20.000);
+   makevectors (bot.v_angle);
+   testdir = v_forward;
+   if (Bot_JumpFeasibleArc (bot,testdir,dist)) return (TRUE);
+
+   return (FALSE);
+}; //end of the function Bot_JumpFeasible
+
+float (entity bot, vector pos) Bot_FloorHeight =
+{
+   local vector start;
+   local vector end;
+
+   start = (pos + '0.000 0.000 24.000');
+   end = (pos + '0.000 0.000 -256.000');
+   traceline (start,end,TRUE,bot);
+   if ((trace_fraction == 1.000))
+   {
+      return (pos_z);
+   } //end if
+   return (trace_endpos_z);
+}; //end of the function Bot_FloorHeight
+
+float (entity bot, vector pos, entity target) Bot_LOSClassFrom =
+{
+   local vector start;
+   local float has_feet;
+   local float has_torso;
+   local float has_head;
+
+   start = (pos + bot.view_ofs);
+
+   traceline (start,(target.origin + '0.000 0.000 8.000'),TRUE,bot);
+   has_feet = (trace_fraction == 1.000);
+   traceline (start,(target.origin + target.view_ofs),TRUE,bot);
+   has_torso = (trace_fraction == 1.000);
+   traceline (start,(target.origin + '0.000 0.000 40.000'),TRUE,bot);
+   has_head = (trace_fraction == 1.000);
+
+   if (has_head) return (BOT_LOS_HEAD);
+   if (has_torso) return (BOT_LOS_TORSO);
+   if (has_feet) return (BOT_LOS_FEET);
+   return (BOT_LOS_NONE);
+}; //end of the function Bot_LOSClassFrom
+
+float (float los_class) Bot_LOSScore =
+{
+   if ((los_class == BOT_LOS_HEAD)) return (320.000);
+   if ((los_class == BOT_LOS_TORSO)) return (280.000);
+   if ((los_class == BOT_LOS_FEET)) return (80.000);
+   return (-220.000);
+}; //end of the function Bot_LOSScore
+
+float (entity bot, vector pos, vector dir) Bot_LedgeRisk =
+{
+   local vector ahead;
+   local float z_here;
+   local float z_ahead;
+
+   ahead = (pos + (dir * 48.000));
+   traceline ((ahead + '0.000 0.000 24.000'),(ahead + '0.000 0.000 -256.000'),TRUE,bot);
+   if ((trace_fraction == 1.000))
+   {
+      return (260.000);
+   } //end if
+   if ((trace_plane_normal_z < 0.700))
+   {
+      return (200.000);
+   } //end if
+   z_here = Bot_FloorHeight (bot,pos);
+   z_ahead = trace_endpos_z;
+   if (((z_here - z_ahead) > 128.000))
+   {
+      return (220.000);
+   } //end if
+   if (((z_here - z_ahead) > 64.000))
+   {
+      return (120.000);
+   } //end if
+   return (0.000);
+}; //end of the function Bot_LedgeRisk
+
+float (entity bot, vector pos) Bot_PadBonus =
+{
+   local float dist;
+
+   if (!bot.last_pad_time)
+   {
+      return (0.000);
+   } //end if
+   if (((time - bot.last_pad_time) > 10.000))
+   {
+      return (0.000);
+   } //end if
+   dist = vlen ((bot.last_pad_origin - pos));
+   if ((dist < 256.000)) return (120.000);
+   if ((dist < 512.000)) return (60.000);
+   return (0.000);
+}; //end of the function Bot_PadBonus
+
+float (entity bot, vector pos) Bot_LiftBonus =
+{
+   local float dist;
+
+   if (!bot.last_lift_time)
+   {
+      return (0.000);
+   } //end if
+   if (((time - bot.last_lift_time) > 12.000))
+   {
+      return (0.000);
+   } //end if
+   dist = vlen ((bot.last_lift_origin - pos));
+   if ((dist < 256.000)) return (90.000);
+   if ((dist < 512.000)) return (40.000);
+   return (0.000);
+}; //end of the function Bot_LiftBonus
+
+float (float base_yaw, float idx, float wall_side) Bot_CandidateYaw =
+{
+   local float sign;
+
+   sign = 1.000;
+   if ((wall_side < 0.000))
+   {
+      sign = -1.000;
+   } //end if
+
+   if ((idx == 0.000)) return (base_yaw);
+   if ((idx == 1.000)) return (base_yaw + (35.000 * sign));
+   if ((idx == 2.000)) return (base_yaw - (35.000 * sign));
+   if ((idx == 3.000)) return (base_yaw + (90.000 * sign));
+   if ((idx == 4.000)) return (base_yaw - (90.000 * sign));
+   if ((idx == 5.000)) return (base_yaw + (145.000 * sign));
+   if ((idx == 6.000)) return (base_yaw - (145.000 * sign));
+   return (base_yaw + 180.000);
+}; //end of the function Bot_CandidateYaw
+
+void (entity bot, float mode, float wall_side, float base_yaw) Bot_Feelers_Evaluate =
+{
    local float i;
    local float scan_yaw;
    local vector dir;
+   local vector side;
+   local vector start;
+   local vector end;
+   local vector base_fwd;
+   local vector base_right;
+   local float clear_dist;
+   local float widen_score;
+   local float future_score;
    local float score;
+   local float heat_penalty;
+   local float jump_ok;
+   local float step_ok;
+   local float tight_gap;
+   local float blocked;
+   local vector probe;
+   local float side_bias;
+   local float forward_scale;
+   local float strafe_bias;
+   local float same_dir;
+   local vector cand_pos;
+   local vector aim;
+   local vector flat;
+   local vector ang;
+   local float los_score;
+   local float pitch_penalty;
+   local float under_penalty;
+   local float range_penalty;
+   local float dz;
+   local float dh;
+   local float dist_enemy;
+   local float pitch;
+   local float los_class;
+   local float ledge_penalty;
+   local float rocket_penalty;
+   local float pad_bonus;
+   local float lift_bonus;
+   local float post_teleport;
+   local float hazard_penalty;
+   local float content_type;
+   local float base_floor_z;
+   local float cand_floor_z;
+   local float dz_floor;
+   local float elevation_bonus;
+   local float break_contact;
+   local float elevate_active;
 
-   start = (bot.origin + '0.000 0.000 24.000');
-   best_score = -1.000;
-   best_yaw = base_yaw;
+   bot.best_score = -99999.000;
+   bot.best_dir = '1.000 0.000 0.000';
+   bot.best_wants_jump = FALSE;
+   bot.best_step_ok = FALSE;
+   bot.best_tight_gap = FALSE;
+   bot.best_blocked = FALSE;
+   bot.best_clear_dist = 0.000;
+   bot.best_widen_score = 0.000;
+   bot.best_heat_penalty = 0.000;
+   bot.best_ideal_yaw = base_yaw;
+   bot.best_forward_scale = 1.000;
+   bot.best_strafe_bias = 0.000;
 
-   // Scan 8 directions (0°, 45°, 90°, 135°, 180°, 225°, 270°, 315°)
+   bot.v_angle_x = 0.000;
+   bot.v_angle_y = base_yaw;
+   bot.v_angle_z = 0.000;
+   makevectors (bot.v_angle);
+   base_fwd = v_forward;
+   base_right = v_right;
+   base_floor_z = Bot_FloorHeight (bot,bot.origin);
+   break_contact = (bot.combat_break_until > time);
+   elevate_active = (bot.combat_vert_disadvantage && (time <= bot.combat_elevate_until));
+   post_teleport = (bot.teleport_time > time);
+
    i = 0.000;
    while ((i < 8.000))
    {
-      scan_yaw = (base_yaw + (i * 45.000));
+      scan_yaw = Bot_CandidateYaw (base_yaw,i,wall_side);
 
       bot.v_angle_x = 0.000;
       bot.v_angle_y = scan_yaw;
       bot.v_angle_z = 0.000;
       makevectors (bot.v_angle);
       dir = v_forward;
+      side = v_right;
 
-      // Trace 160 units in this direction
-      traceline (start,(start + (dir * 160.000)),TRUE,bot);
+      start = (bot.origin + '0.000 0.000 24.000');
+      end = (start + (dir * 160.000));
+      traceline (start,end,TRUE,bot);
+      clear_dist = (trace_fraction * 160.000);
+      blocked = (clear_dist < 24.000);
 
-      // Score = distance traveled (longer = more open = likely exit)
-      score = (trace_fraction * 160.000);
+      traceline ((start + (side * 24.000)),(start + (side * 24.000) + (dir * 120.000)),TRUE,bot);
+      widen_score = trace_fraction;
+      traceline ((start - (side * 24.000)),(start - (side * 24.000) + (dir * 120.000)),TRUE,bot);
+      widen_score = ((widen_score + trace_fraction) * 60.000);
 
-      if ((score > best_score))
+      traceline ((bot.origin + (dir * 32.000)),(bot.origin + (dir * 96.000)),TRUE,bot);
+      future_score = (trace_fraction * 64.000);
+
+      traceline ((bot.origin + '0.000 0.000 22.000'),(bot.origin + '0.000 0.000 22.000' + (dir * 32.000)),TRUE,bot);
+      step_ok = (trace_fraction == 1.000);
+
+      tight_gap = FALSE;
+      if (((clear_dist < 64.000) || (widen_score < 40.000)))
       {
-         best_score = score;
-         best_yaw = scan_yaw;
+         tight_gap = TRUE;
+      } //end if
+
+      jump_ok = FALSE;
+      if ((bot.flags & FL_ONGROUND))
+      {
+         if (Bot_JumpFeasible (bot,dir,140.000))
+         {
+            jump_ok = TRUE;
+         } //end if
+      } //end if
+
+      heat_penalty = 0.000;
+      probe = (bot.origin + (dir * 96.000));
+      if ((bot.bad_spot_expire_time > time))
+      {
+         if ((vlen (probe - bot.bad_spot_origin) < bot.bad_spot_radius))
+         {
+            heat_penalty = (heat_penalty + 80.000);
+         } //end if
+      } //end if
+      if (Bot_IsRecentlyVisited (bot,probe))
+      {
+         heat_penalty = (heat_penalty + 60.000);
+      } //end if
+      if ((vlen (bot.last_escape_dir) > 0.000))
+      {
+         same_dir = ((normalize (bot.last_escape_dir)) * dir);
+         if ((same_dir > 0.950))
+         {
+            heat_penalty = (heat_penalty + 30.000);
+         } //end if
+      } //end if
+
+      score = (clear_dist + (widen_score * 0.600) + (future_score * 0.400));
+      if (tight_gap)
+      {
+         score = (score - 15.000);
+      } //end if
+      if ((blocked && !step_ok))
+      {
+         score = (score - 120.000);
+      } //end if
+
+      side_bias = 0.000;
+      if ((wall_side > 0.000))
+      {
+         side_bias = ((dir * base_right) * 20.000);
+      } //end if
+      else
+      {
+         if ((wall_side < 0.000))
+         {
+            side_bias = ((dir * base_right) * -20.000);
+         } //end if
+      } //end else
+      score = (score + side_bias);
+
+      if ((mode == BOT_MODE_COMBAT))
+      {
+         if ((bot.enemy && (bot.enemy != world)))
+         {
+            cand_pos = (bot.origin + (dir * 192.000));
+
+            los_class = Bot_LOSClassFrom (bot,cand_pos,bot.enemy);
+            los_score = Bot_LOSScore (los_class);
+            if (break_contact)
+            {
+               if ((los_class == BOT_LOS_NONE))
+               {
+                  los_score = (los_score + 60.000);
+               } //end if
+               else
+               {
+                  if ((los_class >= BOT_LOS_TORSO))
+                  {
+                     los_score = (los_score - 40.000);
+                  } //end if
+               } //end else
+            } //end if
+
+            aim = ((bot.enemy.origin + bot.enemy.view_ofs) - (cand_pos + bot.view_ofs));
+            ang = vectoangles (aim);
+            pitch = fabs (ang_x);
+            pitch_penalty = 0.000;
+            if ((pitch > 45.000))
+            {
+               pitch_penalty = 120.000;
+            } //end if
+            else
+            {
+               if ((pitch > 30.000))
+               {
+                  pitch_penalty = 60.000;
+               } //end if
+            } //end else
+            if (((bot.weapon == IT_LIGHTNING) || (bot.weapon == IT_SUPER_NAILGUN)))
+            {
+               pitch_penalty = (pitch_penalty * 1.250);
+            } //end if
+            else
+            {
+               if ((bot.weapon == IT_ROCKET_LAUNCHER))
+               {
+                  pitch_penalty = (pitch_penalty * 0.900);
+               } //end if
+            } //end else
+
+            flat = (bot.enemy.origin - cand_pos);
+            dz = flat_z;
+            flat_z = 0.000;
+            dh = vlen (flat);
+            under_penalty = 0.000;
+            if (((dz > 128.000) && (dh < 96.000)))
+            {
+               under_penalty = 400.000;
+            } //end if
+            else
+            {
+               if (((dz > 96.000) && (dh < 128.000)))
+               {
+                  under_penalty = 250.000;
+               } //end if
+            } //end else
+
+            if ((bot.weapon == IT_ROCKET_LAUNCHER))
+            {
+               under_penalty = (under_penalty + 120.000);
+            } //end if
+            else
+            {
+               if ((bot.weapon == IT_LIGHTNING))
+               {
+                  under_penalty = (under_penalty + 60.000);
+               } //end if
+            } //end else
+            if (break_contact)
+            {
+               if ((under_penalty > 0.000))
+               {
+                  under_penalty = (under_penalty + 120.000);
+               } //end if
+            } //end if
+            rocket_penalty = 0.000;
+            if (((bot.weapon == IT_ROCKET_LAUNCHER) || (bot.weapon == IT_GRENADE_LAUNCHER)))
+            {
+               if (((dz > 96.000) && (dh < 256.000)))
+               {
+                  rocket_penalty = (rocket_penalty + 180.000);
+               } //end if
+               if (((dz > 128.000) && (dh < 160.000)))
+               {
+                  rocket_penalty = (rocket_penalty + 220.000);
+               } //end if
+            } //end if
+
+            dist_enemy = vlen ((bot.enemy.origin - cand_pos));
+            range_penalty = 0.000;
+            if ((bot.weapon == IT_LIGHTNING))
+            {
+               if ((dist_enemy > 350.000))
+               {
+                  range_penalty = (range_penalty + 80.000);
+               } //end if
+               if ((dist_enemy < 80.000))
+               {
+                  range_penalty = (range_penalty + 40.000);
+               } //end if
+            } //end if
+            else
+            {
+               if ((bot.weapon == IT_ROCKET_LAUNCHER))
+               {
+                  if ((dist_enemy < 120.000))
+                  {
+                     range_penalty = (range_penalty + 200.000);
+                  } //end if
+                  if ((dist_enemy > 700.000))
+                  {
+                     range_penalty = (range_penalty + 40.000);
+                  } //end if
+               } //end if
+               else
+               {
+                  if (((bot.weapon == IT_SUPER_SHOTGUN) || (bot.weapon == IT_SHOTGUN)))
+                  {
+                     if ((dist_enemy < 100.000))
+                     {
+                        range_penalty = (range_penalty + 60.000);
+                     } //end if
+                     if ((dist_enemy > 600.000))
+                     {
+                        range_penalty = (range_penalty + 60.000);
+                     } //end if
+                  } //end if
+                  else
+                  {
+                     if (((bot.weapon == IT_SUPER_NAILGUN) || (bot.weapon == IT_NAILGUN)))
+                     {
+                        if ((dist_enemy < 120.000))
+                        {
+                           range_penalty = (range_penalty + 30.000);
+                        } //end if
+                        if ((dist_enemy > 600.000))
+                        {
+                           range_penalty = (range_penalty + 50.000);
+                        } //end if
+                     } //end if
+                  } //end else
+               } //end else
+            } //end else
+
+      score = (score + los_score);
+      score = (score - pitch_penalty);
+      score = (score - under_penalty);
+      score = (score - rocket_penalty);
+      score = (score - range_penalty);
+   } //end if
+
+   score = (score - (heat_penalty * 0.500));
+         if (break_contact)
+         {
+            score = (score + (widen_score * 0.400));
+            score = (score - ((dir * base_fwd) * 40.000));
+         } //end if
+         if (post_teleport)
+         {
+            score = (score + (widen_score * 0.300));
+            score = (score - (heat_penalty * 0.300));
+         } //end if
+         if (elevate_active)
+         {
+            if ((!blocked && step_ok))
+            {
+               cand_floor_z = Bot_FloorHeight (bot,cand_pos);
+               dz_floor = (cand_floor_z - base_floor_z);
+               elevation_bonus = 0.000;
+               if ((dz_floor > 64.000))
+               {
+                  elevation_bonus = 120.000;
+               } //end if
+               else
+               {
+                  if ((dz_floor > 32.000))
+                  {
+                     elevation_bonus = 70.000;
+                  } //end if
+                  else
+                  {
+                     if ((dz_floor > 16.000))
+                     {
+                        elevation_bonus = 35.000;
+                     } //end if
+                  } //end else
+               } //end else
+               score = (score + elevation_bonus);
+               if (jump_ok)
+               {
+                  score = (score + 50.000);
+               } //end if
+               pad_bonus = Bot_PadBonus (bot,cand_pos);
+               lift_bonus = Bot_LiftBonus (bot,cand_pos);
+               score = (score + pad_bonus + lift_bonus);
+            } //end if
+         } //end if
+
+      ledge_penalty = Bot_LedgeRisk (bot,cand_pos,dir);
+      if (break_contact)
+      {
+         ledge_penalty = (ledge_penalty * 0.600);
+      } //end if
+      score = (score - ledge_penalty);
+
+      hazard_penalty = 0.000;
+      traceline ((cand_pos + '0.000 0.000 24.000'),(cand_pos + '0.000 0.000 -256.000'),TRUE,bot);
+      if ((trace_fraction == 1.000))
+      {
+         hazard_penalty = 400.000;
+      } //end if
+      else
+      {
+         content_type = pointcontents (trace_endpos);
+         if (((content_type == CONTENT_LAVA) || (content_type == CONTENT_SLIME)))
+         {
+            hazard_penalty = 600.000;
+         } //end if
+      } //end else
+      score = (score - hazard_penalty);
+   } //end if
+      else
+      {
+         if ((mode == BOT_MODE_UNSTICK))
+         {
+            score = (score - heat_penalty);
+            score = (score + ((1.000 - (dir * base_fwd)) * 20.000));
+            if (jump_ok)
+            {
+               score = (score + 80.000);
+            } //end if
+         } //end if
+         else
+         {
+            score = (score - (heat_penalty * 0.500));
+            if (((dir * base_fwd) < 0.000))
+            {
+               score = (score - 10.000);
+            } //end if
+         } //end else
+      } //end else
+
+      if ((score > bot.best_score))
+      {
+         bot.best_score = score;
+         bot.best_dir = dir;
+         bot.best_wants_jump = (jump_ok && ((mode == BOT_MODE_UNSTICK) || (mode == BOT_MODE_COMBAT)));
+         bot.best_step_ok = step_ok;
+         bot.best_tight_gap = tight_gap;
+         bot.best_blocked = blocked;
+         bot.best_clear_dist = clear_dist;
+         bot.best_widen_score = widen_score;
+         bot.best_heat_penalty = heat_penalty;
+         bot.best_ideal_yaw = vectoyaw (dir);
+
+         forward_scale = 1.000;
+         if (tight_gap)
+         {
+            forward_scale = 0.600;
+         } //end if
+         else
+         {
+            if ((clear_dist < 80.000))
+            {
+               forward_scale = 0.800;
+            } //end if
+         } //end else
+         bot.best_forward_scale = forward_scale;
+
+         strafe_bias = 0.000;
+         if ((mode == BOT_MODE_UNSTICK))
+         {
+            if ((wall_side > 0.000)) strafe_bias = 30.000;
+            if ((wall_side < 0.000)) strafe_bias = -30.000;
+         } //end if
+         else
+         {
+            if ((mode == BOT_MODE_COMBAT))
+            {
+               if ((wall_side > 0.000)) strafe_bias = 20.000;
+               if ((wall_side < 0.000)) strafe_bias = -20.000;
+            } //end if
+         } //end else
+         bot.best_strafe_bias = strafe_bias;
       } //end if
 
       i = (i + 1.000);
    } //end while
+}; //end of the function Bot_Feelers_Evaluate
 
-   return (best_yaw);
+void (float dist, float mode) Bot_ApplyFeelerMove =
+{
+   local float move_dist;
+   local float strafe_yaw;
+   local float alt_yaw;
+
+   move_dist = dist;
+   if (self.best_forward_scale)
+   {
+      move_dist = (dist * self.best_forward_scale);
+   } //end if
+
+   self.ideal_yaw = self.best_ideal_yaw;
+   ChangeYaw ();
+
+   if ((self.best_wants_jump && (self.flags & FL_ONGROUND)))
+   {
+      Bot_tryjump (270.000,dist,FALSE);
+   } //end if
+   else
+   {
+      if ((self.best_blocked && self.best_step_ok && (self.flags & FL_ONGROUND)))
+      {
+         Bot_tryjump (210.000,dist,FALSE);
+      } //end if
+   } //end else
+
+   strafe_yaw = (self.best_ideal_yaw + self.best_strafe_bias);
+   if (!walkmove (strafe_yaw,move_dist))
+   {
+      if (!walkmove (self.best_ideal_yaw,move_dist))
+      {
+         alt_yaw = (self.best_ideal_yaw - self.best_strafe_bias);
+         walkmove (alt_yaw,(move_dist * 0.800));
+      } //end if
+   } //end if
+}; //end of the function Bot_ApplyFeelerMove
+
+void (float base_yaw) Bot_PickEscapePlan =
+{
+   Bot_Feelers_Evaluate (self,BOT_MODE_UNSTICK,self.wall_side_pref,base_yaw);
+   self.escape_dir = self.best_dir;
+   self.last_escape_dir = self.best_dir;
+}; //end of the function Bot_PickEscapePlan
+
+void () Bot_EnterUnstick =
+{
+   local float base_yaw;
+   local float age;
+
+   if ((self.stuck_mode == BOT_MODE_UNSTICK))
+   {
+      return ;
+   } //end if
+
+   // Mark repeated stuck spots as temporary bad zones.
+   if ((self.last_stuck_time))
+   {
+      if (((time - self.last_stuck_time) < 3.000))
+      {
+         if ((vlen (self.origin - self.last_stuck_origin) < 96.000))
+         {
+            self.bad_spot_origin = self.origin;
+            self.bad_spot_radius = 192.000;
+            self.bad_spot_expire_time = (time + 15.000);
+         } //end if
+      } //end if
+   } //end if
+
+   self.last_stuck_origin = self.origin;
+   self.last_stuck_time = time;
+
+   self.stuck_mode = BOT_MODE_UNSTICK;
+   self.escape_until_time = (time + (0.600 + (random () * 0.600)));
+   self.stuck_time = time;
+   self.stuck_count = 0;
+   self.wall_side_pref = -1.000;
+   if ((random () < 0.500))
+   {
+      self.wall_side_pref = 1.000;
+   } //end if
+
+   base_yaw = self.ideal_yaw;
+   if (!base_yaw)
+   {
+      base_yaw = self.angles_y;
+   } //end if
+
+   Bot_PickEscapePlan (base_yaw);
+
+   if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+   {
+      age = (time - self.last_progress_time);
+      bprint ("[");
+      bprint (self.netname);
+      bprint ("] UNSTICK: Enter mode (score=");
+      bprint (ftos (self.best_score));
+      bprint (", age=");
+      bprint (ftos (age));
+      bprint (", jump=");
+      bprint (ftos (self.best_wants_jump));
+      bprint (", tight=");
+      bprint (ftos (self.best_tight_gap));
+      bprint (", clear=");
+      bprint (ftos (self.best_clear_dist));
+      bprint (", widen=");
+      bprint (ftos (self.best_widen_score));
+      bprint (", heat=");
+      bprint (ftos (self.best_heat_penalty));
+      bprint (")\n");
+   } //end if
+}; //end of the function Bot_EnterUnstick
+
+void (float dist) Bot_UnstickThink =
+{
+   if ((time > self.escape_until_time))
+   {
+      self.stuck_mode = BOT_MODE_COOLDOWN;
+      self.escape_cooldown_time = (time + 0.600);
+      self.stuck_score = 0.000;
+      self.last_progress_time = time;
+      self.last_origin = self.origin;
+      self.progress_check_time = (time + STUCK_PROGRESS_INTERVAL);
+      if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+      {
+         bprint ("[");
+         bprint (self.netname);
+         bprint ("] UNSTICK: Exit to cooldown\n");
+      } //end if
+      return ;
+   } //end if
+   Bot_ApplyFeelerMove (dist,BOT_MODE_UNSTICK);
+   return ;
+}; //end of the function Bot_UnstickThink
+
+void (float dist) Bot_HazardEscapeThink =
+{
+   if ((time > self.hazard_escape_until))
+   {
+      self.hazard_escape_until = 0.000;
+      return ;
+   } //end if
+   Bot_Feelers_Evaluate (self,BOT_MODE_NORMAL,0.000,self.hazard_escape_yaw);
+   Bot_ApplyFeelerMove (dist,BOT_MODE_NORMAL);
+   return ;
+}; //end of the function Bot_HazardEscapeThink
+
+void (float dist) Bot_ProgressTick =
+{
+   local float moved;
+
+   if (self.elevator_wait_state)
+   {
+      self.stuck_score = 0.000;
+      self.last_progress_time = time;
+      self.last_origin = self.origin;
+      self.progress_check_time = (time + STUCK_PROGRESS_INTERVAL);
+      return ;
+   } //end if
+
+   if ((!self.last_progress_time))
+   {
+      self.last_origin = self.origin;
+      self.last_progress_time = time;
+      self.progress_check_time = (time + STUCK_PROGRESS_INTERVAL);
+      return ;
+   } //end if
+
+   if ((time < self.progress_check_time))
+   {
+      return ;
+   } //end if
+
+   self.progress_check_time = (time + STUCK_PROGRESS_INTERVAL);
+   moved = vlen ((self.origin - self.last_origin));
+
+   if ((moved > STUCK_PROGRESS_DIST))
+   {
+      self.last_progress_time = time;
+      if ((self.stuck_score > 0.000))
+      {
+         self.stuck_score = (self.stuck_score - 1.000);
+      } //end if
+      self.last_origin = self.origin;
+      Bot_UpdateRecentPositions (self);
+   } //end if
+   else
+   {
+      self.stuck_score = (self.stuck_score + 1.000);
+   } //end else
+
+   // Pushing into something: on ground, low speed, but still trying to move.
+   if (((self.flags & FL_ONGROUND) && (vlen (self.velocity) < STUCK_PUSH_SPEED) && (dist > STUCK_PUSH_DIST)))
+   {
+      self.stuck_score = (self.stuck_score + 1.000);
+   } //end if
+
+   if ((self.stuck_mode == BOT_MODE_COOLDOWN))
+   {
+      if ((time > self.escape_cooldown_time))
+      {
+         self.stuck_mode = BOT_MODE_NORMAL;
+         if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+         {
+            bprint ("[");
+            bprint (self.netname);
+            bprint ("] UNSTICK: Cooldown ended\n");
+         } //end if
+      } //end if
+   } //end if
+
+   if ((self.stuck_mode == BOT_MODE_NORMAL))
+   {
+      if (((self.stuck_score > STUCK_SCORE_THRESH) || ((time - self.last_progress_time) > STUCK_TIME_LIMIT)))
+      {
+         Bot_EnterUnstick ();
+      } //end if
+   } //end if
+}; //end of the function Bot_ProgressTick
+
+// FEELER ESCAPE: 8-direction scan to find clearest path when stuck/lost
+// Returns yaw of best-scoring direction (ranked candidates).
+float (entity bot, float base_yaw) Bot_FindClearestDirection =
+{
+   Bot_Feelers_Evaluate (bot,BOT_MODE_NORMAL,0.000,base_yaw);
+   return (bot.best_ideal_yaw);
 }; //end of the function Bot_FindClearestDirection
 
 // BREADCRUMB WAYPOINTS: Drop exploration trail markers
@@ -1860,9 +2949,7 @@ void (float dist) Botmovetogoal =
 {
    local entity Botgoal;
    local float wlevel;
-   local vector prev_origin;
 
-   prev_origin = self.oldorigin;
    self.oldorigin = self.origin;
 
    // ===== PHASE 9: PROACTIVE HAZARD CHECK (Before Movement) =====
@@ -1877,6 +2964,12 @@ void (float dist) Botmovetogoal =
    // This prevents bots from suffocating in deep water zones.
    CheckWaterSurvival ();
    // =============================================================
+
+   if ((self.hazard_escape_until > time))
+   {
+      Bot_HazardEscapeThink (dist);
+      return ;
+   } //end if
 
    // ===== DYNAMIC STUCK WIGGLE: Micro-Jump on Velocity Stall =====
    // If the bot is trying to move but velocity is near zero, don't wait 1 second.
@@ -1893,25 +2986,14 @@ void (float dist) Botmovetogoal =
    } //end if
    // ===== END DYNAMIC STUCK WIGGLE =====
 
-   // Stuck detection: if we haven't moved 10 units in 1s, clear caches and replan.
-   if ((vlen ((self.origin - prev_origin)) < 10.000))
+   // Progress-based stuck detection + unstick mode commit window
+   Bot_ProgressTick (dist);
+   if ((self.stuck_mode == BOT_MODE_UNSTICK))
    {
-      if (!self.stuck_time)
-      {
-         self.stuck_time = time;
-      } //end if
-      if (((time - self.stuck_time) > 1.000))
-      {
-         clearCache (self);
-         // Start a short cooldown so we avoid immediately picking the same bad goal.
-         self.stuck_time = time;
-         return ;
-      } //end if
+      Bot_UnstickThink (dist);
+      return ;
    } //end if
-   else
-   {
-      self.stuck_time = CAM_IDLE;
-   } //end if
+
    Botgoal = self.goalentity;
 
    // ===== SMOOTHING: The "Racing Line" (Corner Smoothing) =====
@@ -2142,6 +3224,11 @@ void (float dist) Botmovetogoal =
          // Reset stuck timers (this is an intentional wait, not stuck)
          self.stuck_count = 0.000;
          self.stuck_time = 0.000;
+         self.stuck_score = 0.000;
+         self.stuck_mode = BOT_MODE_NORMAL;
+         self.last_progress_time = time;
+         self.last_origin = self.origin;
+         self.progress_check_time = (time + STUCK_PROGRESS_INTERVAL);
 
          // Timeout check - prevent infinite waits (30 second limit)
          if (((time - self.elevator_wait_start) > 30.000))
@@ -2211,6 +3298,11 @@ void (float dist) Botmovetogoal =
             // Reset stuck timers so we don't panic-teleport
             self.stuck_time = 0.000;
             self.stuck_count = 0.000;
+            self.stuck_score = 0.000;
+            self.stuck_mode = BOT_MODE_NORMAL;
+            self.last_progress_time = time;
+            self.last_origin = self.origin;
+            self.progress_check_time = (time + STUCK_PROGRESS_INTERVAL);
 
             return ;
          } //end if
@@ -2326,6 +3418,10 @@ void (float dist) Botmovetogoal =
    {
       // Movement succeeded—reset stuck counter on progress
       self.stuck_count = 0;
+      self.stuck_score = 0.000;
+      self.last_progress_time = time;
+      self.last_origin = self.origin;
+      self.progress_check_time = (time + STUCK_PROGRESS_INTERVAL);
       return ;
    } //end if
 

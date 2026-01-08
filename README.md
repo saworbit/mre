@@ -8,23 +8,64 @@
 
 ---
 
-## 🎯 What is MRE?
+## What is MRE?
 
 Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper Bot** for Quake 1. Born from the legendary 1998 bot, MRE adds sophisticated AI systems, realistic physics navigation, and advanced combat tactics that make bots play like skilled human players.
 
-### ✨ Why MRE?
+### Why MRE?
 
-- 🧠 **Smarter AI** — Advanced decision-making, tactical positioning, and adaptive difficulty
-- 🚀 **Physics Mastery** — Rocket jumps, train surfing, platform prediction, and more
-- 🎮 **Human-like Play** — Predictive aim, weapon conservation, and strategic powerup denial
-- ⚡ **Modern Code** — Clean QuakeC with extensive documentation and modular design
-- 🏆 **Competitive Ready** — Skill-based mechanics from novice to pro-level play
+- **Smarter AI** - Advanced decision-making, tactical positioning, and adaptive difficulty
+- **Physics Mastery** - Rocket jumps, train surfing, platform prediction, and more
+- **Human-like Play** - Predictive aim, weapon conservation, and strategic powerup denial
+- **Modern Code** - Clean QuakeC with extensive documentation and modular design
+- **Competitive Ready** - Skill-based mechanics from novice to pro-level play
 
 ---
 
-## 🎬 Latest Features (2026-01)
+## Latest Features (2026-01)
 
-### 🛗 Obot-Style Elevator Navigation System (2026-01-08)
+### Combat Reposition + Verticality-Aware Pursuit (2026-01-08)
+
+**NEW:** Bots stop "shadow chasing" directly under higher targets and reposition to shootable angles.
+
+This update separates combat movement from distance chasing. When the enemy is above/below and LOS/pitch is poor, bots enter a short reposition window, using scored feeler candidates that account for LOS, pitch, and under-target penalties.
+
+**Before:**
+- Bots minimized 2D distance and stood directly under enemies
+- Poor pitch/LOS led to stalled fights and bad deaths
+
+**After:**
+- Under-target penalty prevents standing beneath elevated enemies
+- LOS + pitch scoring rewards shootable positions
+- Short reposition commits (0.6-1.2s) to avoid thrash
+- Weapon-aware range bias keeps engagements in effective bands
+- Vertical disadvantage triggers elevation-seeking feelers and a short break-contact fallback
+- Multi-point LOS scoring, ledge risk penalty, pad/lift memory, and post-teleport bias refine local picks
+- Hazard-aware feeler scoring and jump landing checks prevent lava hops without a safe landing, with escape bias from hazard edges (logs when blocked)
+
+**Debug Output (LOG_TACTICAL+):**
+```
+[Wanton] REPOS: Enter (score=457.6, pitch=308, dz=-320, dh=281.2)
+[Wanton] REPOS: Exit
+```
+
+### Unified Feeler Scoring + Progress-Based Unstick (2026-01-08)
+
+**NEW:** Feelers now return scored candidates with action hints; the controller only commits to a choice.
+
+**Highlights:**
+- Ranked candidate scoring (clearance, widen, future space, loop/bad-spot penalties)
+- Jump/step/tight-gap hints from feelers
+- Progress-based stuck detection with short commit windows + cooldown (0.2s tick / 16u threshold / 1.0s limit)
+- Target switching cooldown (1.2s) + scan interval tuning (2.5s) to reduce churn
+
+**Debug Output (LOG_CRITICAL+):**
+```
+[Drooly] UNSTICK: Enter mode (score=297.6, age=0.8, jump=0, tight=0, clear=160, widen=120, heat=0)
+[Drooly] UNSTICK: Exit to cooldown
+```
+
+### Obot-Style Elevator Navigation System (2026-01-08)
 
 **NEW:** Bots now intelligently handle elevator platforms with dynamic pathfinding!
 

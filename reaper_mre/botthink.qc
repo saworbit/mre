@@ -546,6 +546,8 @@ void () BotPostThink =
       // Standing on moving platform—inherit its velocity for smooth ride
       self.velocity = (self.velocity + trace_ent.velocity);
       self.flags = (self.flags | FL_ONGROUND);
+      self.last_lift_origin = trace_ent.origin;
+      self.last_lift_time = time;
 
       // Adjust goal to follow platform motion (prevents dismount until intended)
       if ((self.goalentity == trace_ent))

@@ -1,5 +1,51 @@
 ## 2026-01-08
 
+- **Combat Reposition + Verticality-Aware Pursuit** prevents "stand under the enemy" chasing:
+  - **Combat reposition controller** in `reaper_mre/bot_ai.qc` (`aibot_run_slide`): Detects vertical mismatch + poor LOS/pitch, commits to a short lateral reposition window (0.6-1.2s), then cools down to avoid thrash. This replaces pure distance chasing with "find a shootable angle".
+  - **Under-target penalty**: Strong penalties when enemy is significantly above and horizontal distance is small (classic shadow-chasing trap). Weapon-aware modifiers add extra penalty for RL/LG when directly underneath.
+  - **LOS + pitch scoring**: Candidate movement directions now score line-of-sight and aim pitch; steep vertical shots are penalized while clean sightlines are rewarded.
+  - **Weapon-aware range bias**: Small range penalties per weapon class (RL too close, LG too far, SG too far, etc.) to keep repositioning in effective engagement bands.
+  - **Debug logging** (LOG_TACTICAL+): `REPOS: Enter (score=..., pitch=..., dz=..., dh=...)` and `REPOS: Exit` to validate verticality handling during combat.
+  - **Result:** Bots stop parking directly underneath higher targets, orbit to gain angles, and maintain shootable positions instead of blindly minimizing 2D distance.
+
+- **High-Ground Bias + Vertical Disadvantage Handling** adds tactical elevation behavior without full nav:
+  - **Vertical disadvantage state** tracks when the enemy holds height (dz + pitch + LOS history), starting an elevation commit window.
+  - **Elevation-seeking feelers** add a local floor-height bonus when disadvantaged, biasing toward ramps and stairs.
+  - **Break contact fallback** triggers after extended disadvantage to seek open space and stop blind under-target duels.
+  - **Fire suppression during break** skips attacks when LOS is broken to avoid wasting shots.
+  - **Debug logging** (LOG_TACTICAL+): `ELEVATE: Enter`, `ELEVATE: Reached band`, `BREAK: Enter`, `BREAK: Exit`.
+  - **Result:** Bots try to gain height when losing vertically, and disengage when elevation is not locally feasible.
+
+- **Verticality add-ons: LOS tiers, ledge risk, pads/lifts, post-teleport bias** tighten local combat choices:
+  - **Multi-point LOS scoring** (feet/torso/head) improves candidate evaluation and break-contact firing gating.
+  - **Ledge/drop risk penalty** discourages accidental falls during combat movement.
+  - **Jump pad + lift memory** biases elevation seeking toward recently used vertical connectors.
+  - **Post-teleport reposition bias** favors open space for a short window after teleports.
+  - **Water bias hook** swims upward when the enemy is above in water combat.
+  - **Result:** Bots pick safer, more shootable local moves and handle vertical connectors with less thrash.
+
+- **Hazard-aware feelers + safer jumps** avoid lava leaps during local movement:
+  - **Landing safety checks** in jump feasibility reject lava/slime landing spots.
+  - **Hazard penalty in feelers** avoids choosing directions that lead onto lava/slime or void drops.
+  - **Hazard jump validation** prevents "jump over lava" when no safe landing exists.
+  - **Hazard escape bias** kicks in after hazard stops to back out of lava edges.
+  - **Hazard logging** (LOG_CRITICAL+) reports blocked jumps and hazard stops for testing.
+  - **Result:** Bots stop hopping into lava while stuck or breaking contact.
+
+- **Churn tuning: target switching + stuck thresholds** reduce noisy behavior:
+  - **Target switching cooldown** prevents rapid flip-flops unless under direct attack.
+  - **Scan interval** increased to 2.5s to cut down on target churn.
+  - **Stuck thresholds** relaxed (16u progress, 1.0s, score>5) to reduce false unstick triggers.
+  - **Result:** Fewer oscillations in combat focus and fewer unnecessary unstick events.
+
+- **Unified Feeler Evaluation + Progress-Based Unstick** for cleaner movement decisions:
+  - **Single feeler evaluator** in `reaper_mre/botmove.qc`: Ranks candidates with clearance, widen, future-space checks, loop/bad-spot penalties, and action hints (jump/step/tight gap). Returns "best direction + why" via per-bot fields.
+  - **Controller-only mode logic**: Stuck detection and commit windows live outside feelers; feelers only score candidates. Unstick mode now commits to feeler results for a short window with cooldown.
+  - **Progress thresholds**: Checks every 0.2s with a 12u minimum; stuck triggers at score >4 or >0.8s since last progress.
+  - **Jump/step hints**: Headroom/landing checks plus short arc sampling to avoid impossible jumps and wasted movement.
+  - **Debug logging** (LOG_CRITICAL+): `UNSTICK: Enter mode (score=..., jump=..., tight=..., clear=..., widen=..., heat=...)`, `UNSTICK: Exit to cooldown`, and `UNSTICK: Cooldown ended`.
+  - **Result:** Bots escape corners and loops with deliberate, scored moves instead of collision-only panic. Feeler logic stays pure; mode logic stays minimal.
+
 - **Obot-Style Elevator Navigation System** for intelligent platform handling:
   - **Two-node elevator architecture** in `reaper_mre/botit_th.qc` (lines 175-192): Implements Obot's proven design with WAIT_NODE at platform bottom and EXIT_NODE at platform top. Platform presence check runs BEFORE pathfinding to prevent bots from walking into empty elevator shafts. Entity fields: `node_type` (0=standard, 1=wait, 2=exit), `platform_entity` (link to func_plat), `platform_wait_pos`/`platform_board_pos` (pos1/pos2), `wait_node_pair` (bidirectional node linking).
   - **Platform detection system** in `reaper_mre/botroute.qc` (lines 1100-1183): Three core functions for elevator state management:

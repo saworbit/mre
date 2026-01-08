@@ -65,6 +65,9 @@ vector () botaim;
 
 void () botImpulseCommand;
 
+void (entity bot, float mode, float wall_side, float base_yaw) Bot_Feelers_Evaluate;
+void (float dist, float mode) Bot_ApplyFeelerMove;
+
 void () setBotGravity;
 
 void (vector tdest, float tspeed, void() func) SUB_CalcMove;
@@ -131,6 +134,67 @@ float (entity targ, entity inflictor) CanDamage;
 .float stuck_time;
 // Retry counter for stuck rotation logic (0-7 cycle, triggers angle rotation and cache clear).
 .float stuck_count;
+// Progress-based stuck detection (micro movement with no net progress).
+.vector last_origin;
+.float last_progress_time;
+.float stuck_score;
+.float progress_check_time;
+.float stuck_mode;
+.float escape_until_time;
+.float escape_cooldown_time;
+.vector escape_dir;
+.float escape_style;
+.vector last_escape_dir;
+// Feeler best-candidate outputs (scored probes + action hints).
+.vector best_dir;
+.float best_score;
+.float best_wants_jump;
+.float best_step_ok;
+.float best_tight_gap;
+.float best_blocked;
+.float best_clear_dist;
+.float best_widen_score;
+.float best_heat_penalty;
+.float best_ideal_yaw;
+.float best_forward_scale;
+.float best_strafe_bias;
+.float wall_side_pref;
+.float combat_repos_until;
+.float combat_repos_cooldown_time;
+.float combat_no_los_time;
+.float combat_repos_side;
+.float combat_vert_disadvantage;
+.float combat_vert_start_time;
+.float combat_last_enemy_seen;
+.float combat_elevate_until;
+.float combat_elevate_start_z;
+.float combat_break_until;
+.float combat_break_cooldown_time;
+.float combat_break_side;
+.float last_target_switch_time;
+// Hazard escape window for lava/void edges.
+.float hazard_escape_until;
+.float hazard_escape_yaw;
+.float hazard_log_time;
+// Recent jump pad/lift memory for elevation seeking.
+.vector last_pad_origin;
+.float last_pad_time;
+.vector last_lift_origin;
+.float last_lift_time;
+// Recent position ring buffer for loop detection.
+.vector recent_pos0;
+.vector recent_pos1;
+.vector recent_pos2;
+.vector recent_pos3;
+.vector recent_pos4;
+.vector recent_pos5;
+.float recent_pos_idx;
+// Area abandonment memory for repeated stuck spots.
+.vector last_stuck_origin;
+.float last_stuck_time;
+.vector bad_spot_origin;
+.float bad_spot_radius;
+.float bad_spot_expire_time;
 // Rocket jump cooldown timer: prevents spam RJ (2s delay between attempts).
 .float rj_cooldown;
 // PHASE 3 FIX: Rocket jump verification timer for failure recovery

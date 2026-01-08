@@ -1101,6 +1101,17 @@ void (float dist, float turn) aibot_run_slide =
    local float weap;
    local vector predicted_pos;
    local float proj_speed;
+   local vector diff;
+   local vector aim;
+   local vector ang;
+   local float dz;
+   local float dh;
+   local float pitch;
+   local float need_repos;
+   local float base_yaw;
+   local float enemy_vis_local;
+   local float vert_disadvantage;
+   local float vert_recent_vis;
 
    trn = turn;
 
@@ -1126,6 +1137,243 @@ void (float dist, float turn) aibot_run_slide =
    predicted_pos = PredictEnemyPositionForNav(self.enemy, proj_speed);
    self.ideal_yaw = vectoyaw ((predicted_pos - self.origin));
    // ===== END PROJECTILE PREDICTION =====
+
+   // ===== COMBAT REPOSITION: Avoid chasing directly under/over targets =====
+   enemy_vis_local = enemyvisible (self.enemy);
+   if (enemy_vis_local)
+   {
+      self.combat_no_los_time = 0.000;
+      self.combat_last_enemy_seen = time;
+   } //end if
+   else
+   {
+      if (!self.combat_no_los_time)
+      {
+         self.combat_no_los_time = time;
+      } //end if
+   } //end else
+
+   diff = (self.enemy.origin - self.origin);
+   dz = diff_z;
+   diff_z = 0.000;
+   dh = vlen (diff);
+
+   aim = ((self.enemy.origin + self.enemy.view_ofs) - (self.origin + self.view_ofs));
+   ang = vectoangles (aim);
+   pitch = fabs (ang_x);
+
+   if ((self.waterlevel > 1.000))
+   {
+      if ((dz > 64.000))
+      {
+         self.button2 = 1.000;
+      } //end if
+   } //end if
+
+   vert_recent_vis = enemy_vis_local;
+   if ((!vert_recent_vis && self.combat_last_enemy_seen))
+   {
+      if (((time - self.combat_last_enemy_seen) < 1.000))
+      {
+         vert_recent_vis = TRUE;
+      } //end if
+   } //end if
+
+   vert_disadvantage = FALSE;
+   if (((dz > 128.000) && vert_recent_vis))
+   {
+      vert_disadvantage = TRUE;
+   } //end if
+   if (((dz > 96.000) && (pitch > 35.000)))
+   {
+      vert_disadvantage = TRUE;
+   } //end if
+   if (((dz > 96.000) && !enemy_vis_local))
+   {
+      if ((self.combat_no_los_time && ((time - self.combat_no_los_time) > 0.700)))
+      {
+         vert_disadvantage = TRUE;
+      } //end if
+   } //end if
+
+   if (vert_disadvantage)
+   {
+      self.combat_vert_disadvantage = TRUE;
+      if (!self.combat_vert_start_time)
+      {
+         self.combat_vert_start_time = time;
+         self.combat_elevate_until = (time + (1.200 + (random () * 0.400)));
+         self.combat_elevate_start_z = self.origin_z;
+         if ((bot_debug_enabled && (bot_debug_level >= LOG_TACTICAL)))
+         {
+            bprint ("[");
+            bprint (self.netname);
+            bprint ("] ELEVATE: Enter\n");
+         } //end if
+      } //end if
+      if ((self.combat_elevate_until && (self.origin_z >= (self.combat_elevate_start_z + 64.000))))
+      {
+         self.combat_elevate_until = 0.000;
+         if ((bot_debug_enabled && (bot_debug_level >= LOG_TACTICAL)))
+         {
+            bprint ("[");
+            bprint (self.netname);
+            bprint ("] ELEVATE: Reached band\n");
+         } //end if
+      } //end if
+   } //end if
+   else
+   {
+      if (self.combat_vert_disadvantage)
+      {
+         self.combat_vert_disadvantage = FALSE;
+         self.combat_vert_start_time = 0.000;
+         self.combat_elevate_until = 0.000;
+         self.combat_elevate_start_z = 0.000;
+      } //end if
+   } //end else
+
+   if ((self.combat_break_until && (time > self.combat_break_until)))
+   {
+      self.combat_break_until = 0.000;
+      if ((bot_debug_enabled && (bot_debug_level >= LOG_TACTICAL)))
+      {
+         bprint ("[");
+         bprint (self.netname);
+         bprint ("] BREAK: Exit\n");
+      } //end if
+   } //end if
+
+   if ((self.combat_break_until && !vert_disadvantage && enemy_vis_local && (pitch < 25.000)))
+   {
+      self.combat_break_until = 0.000;
+      if ((bot_debug_enabled && (bot_debug_level >= LOG_TACTICAL)))
+      {
+         bprint ("[");
+         bprint (self.netname);
+         bprint ("] BREAK: Exit (clear)\n");
+      } //end if
+   } //end if
+
+   if ((vert_disadvantage && (time > self.combat_break_cooldown_time)))
+   {
+      if ((self.combat_vert_start_time && ((time - self.combat_vert_start_time) > 1.200)))
+      {
+         if (((pitch > 35.000) || (!enemy_vis_local) || (dz > 96.000)))
+         {
+            self.combat_break_until = (time + (1.000 + (random () * 1.000)));
+            self.combat_break_cooldown_time = (time + 0.600);
+            self.combat_break_side = -1.000;
+            if ((random () < 0.500))
+            {
+               self.combat_break_side = 1.000;
+            } //end if
+            if ((bot_debug_enabled && (bot_debug_level >= LOG_TACTICAL)))
+            {
+               bprint ("[");
+               bprint (self.netname);
+               bprint ("] BREAK: Enter\n");
+            } //end if
+         } //end if
+      } //end if
+   } //end if
+
+   if ((self.combat_break_until && (time <= self.combat_break_until)))
+   {
+      base_yaw = vectoyaw ((self.enemy.origin - self.origin));
+      Bot_Feelers_Evaluate (self,BOT_MODE_COMBAT,self.combat_break_side,base_yaw);
+      Bot_ApplyFeelerMove (dist,BOT_MODE_COMBAT);
+      return ;
+   } //end if
+
+   if ((self.combat_vert_disadvantage && (time <= self.combat_elevate_until)))
+   {
+      base_yaw = vectoyaw ((self.enemy.origin - self.origin));
+      Bot_Feelers_Evaluate (self,BOT_MODE_COMBAT,0.000,base_yaw);
+      Bot_ApplyFeelerMove (dist,BOT_MODE_COMBAT);
+      return ;
+   } //end if
+
+   if ((self.teleport_time > time))
+   {
+      if ((time > self.combat_repos_cooldown_time))
+      {
+         self.combat_repos_until = (time + 0.600);
+         self.combat_repos_side = -1.000;
+         if ((random () < 0.500))
+         {
+            self.combat_repos_side = 1.000;
+         } //end if
+         base_yaw = vectoyaw ((self.enemy.origin - self.origin));
+         Bot_Feelers_Evaluate (self,BOT_MODE_COMBAT,self.combat_repos_side,base_yaw);
+         Bot_ApplyFeelerMove (dist,BOT_MODE_COMBAT);
+         return ;
+      } //end if
+   } //end if
+
+   need_repos = FALSE;
+   if ((!vert_disadvantage && (dz > 96.000) && (dh < 128.000)))
+   {
+      need_repos = TRUE;
+   } //end if
+   if ((!vert_disadvantage && (fabs (dz) > 96.000) && (pitch > 30.000)))
+   {
+      need_repos = TRUE;
+   } //end if
+   if ((!vert_disadvantage && (fabs (dz) > 96.000) && !enemy_vis_local))
+   {
+      if ((self.combat_no_los_time && ((time - self.combat_no_los_time) > 0.400)))
+      {
+         need_repos = TRUE;
+      } //end if
+   } //end if
+
+   if ((self.combat_repos_until && (time > self.combat_repos_until)))
+   {
+      self.combat_repos_until = 0.000;
+      self.combat_repos_cooldown_time = (time + 0.400);
+      if ((bot_debug_enabled && (bot_debug_level >= LOG_TACTICAL)))
+      {
+         bprint ("[");
+         bprint (self.netname);
+         bprint ("] REPOS: Exit\n");
+      } //end if
+   } //end if
+
+   if ((need_repos && (time > self.combat_repos_until) && (time > self.combat_repos_cooldown_time)))
+   {
+      self.combat_repos_until = (time + (0.600 + (random () * 0.600)));
+      self.combat_repos_side = -1.000;
+      if ((random () < 0.500))
+      {
+         self.combat_repos_side = 1.000;
+      } //end if
+
+      base_yaw = vectoyaw ((self.enemy.origin - self.origin));
+      Bot_Feelers_Evaluate (self,BOT_MODE_COMBAT,self.combat_repos_side,base_yaw);
+
+      if ((bot_debug_enabled && (bot_debug_level >= LOG_TACTICAL)))
+      {
+         bprint ("[");
+         bprint (self.netname);
+         bprint ("] REPOS: Enter (score=");
+         bprint (ftos (self.best_score));
+         bprint (", pitch=");
+         bprint (ftos (pitch));
+         bprint (", dz=");
+         bprint (ftos (dz));
+         bprint (", dh=");
+         bprint (ftos (dh));
+         bprint (")\n");
+      } //end if
+   } //end if
+
+   if ((self.combat_repos_until && (time <= self.combat_repos_until)))
+   {
+      Bot_ApplyFeelerMove (dist,BOT_MODE_COMBAT);
+      return ;
+   } //end if
+   // ===== END COMBAT REPOSITION =====
 
    ChangeYaw ();
    ofs = 90.000;
@@ -1480,6 +1728,7 @@ void (float dist) ai_botrun =
    local float ang_floor;
    local float ang_ceil;
    local float kd_ratio;
+   local float los_class;
 
    if ((self.enemy.deadflag != DEAD_NO))
    {
@@ -1621,12 +1870,26 @@ void (float dist) ai_botrun =
             // Only switch if we have a clear reason
             if (switch_justified)
             {
+               // Prevent rapid flip-flopping unless it's immediate self-defense.
+               if ((better_target.enemy != self))
+               {
+                  if ((self.last_target_switch_time && ((time - self.last_target_switch_time) < 1.200)))
+                  {
+                     switch_justified = FALSE;
+                  } //end if
+               } //end if
+            } //end if
+
+            // Only switch if we have a clear reason
+            if (switch_justified)
+            {
                self.enemy = better_target;
                BotFoundTarget (); // Play shout sound, reset reaction time
+               self.last_target_switch_time = time;
             } //end if
          } //end if
 
-         self.scan_time = (time + 1.500); // Check every 1.5s (reduced from 0.5s to fix high switching)
+         self.scan_time = (time + 2.500); // Check every 2.5s to reduce churn
       } //end if
       // ===================================================
    } //end if
@@ -1759,7 +2022,29 @@ void (float dist) ai_botrun =
    {
       aibot_run_melee ();
    } //end if
-   CheckBotAttack ();
+   if ((self.combat_break_until > time))
+   {
+      los_class = BOT_LOS_NONE;
+      if (enemy_vis)
+      {
+         los_class = Bot_LOSClassFrom (self,self.origin,self.enemy);
+      } //end if
+      if ((enemy_vis && (los_class >= BOT_LOS_TORSO)))
+      {
+         CheckBotAttack ();
+      } //end if
+      else
+      {
+         if ((self.attack_finished < time))
+         {
+            self.attack_finished = (time + 0.200);
+         } //end if
+      } //end else
+   } //end if
+   else
+   {
+      CheckBotAttack ();
+   } //end else
    aibot_run_slide (dist,CANTURN);
    return ;
 }; //end of the function ai_botrun

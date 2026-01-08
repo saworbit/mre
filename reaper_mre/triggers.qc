@@ -587,6 +587,8 @@ void () trigger_push_touch =
       if ((other.health > FALSE))
       {
          other.velocity = ((self.speed * self.movedir) * MOVETYPE_BOUNCE);
+         other.last_pad_origin = self.origin;
+         other.last_pad_time = time;
          if ((other.classname == "player"))
          {
             if ((other.fly_sound < time))
