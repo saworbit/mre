@@ -36,18 +36,30 @@ void () death_taunt =
 
 void (entity noisemaker, entity noiseobject) signalnoise =
 {
+   local entity bot;
+   local vector diff;
+   local float dist_sq;
+   local float range_sq;
+
    if ((noisemaker.classname != "player"))
    {
       return ;
    } //end if
-   if (!NOISEQUEUE)
+
+   range_sq = 1000000.000; // 1000u radius squared
+   bot = find (world,classname,"dmbot");
+   while (bot)
    {
-      return ;
-   } //end if
-   NOISEQUEUE.goalentity = noisemaker;
-   NOISEQUEUE.movetarget = noiseobject;
-   NOISEQUEUE.think = removenoise;
-   NOISEQUEUE.nextthink = (time + TRUE);
+      diff = (bot.origin - noisemaker.origin);
+      dist_sq = ((diff_x * diff_x) + (diff_y * diff_y));
+      dist_sq = (dist_sq + (diff_z * diff_z));
+      if ((dist_sq < range_sq))
+      {
+         bot.search_time = (time + 5.000);
+         bot.noise_target = noisemaker;
+      } //end if
+      bot = find (bot,classname,"dmbot");
+   } //end while
 }; //end of the function signalnoise
 float (entity e) hearnoise =
 {

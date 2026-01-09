@@ -438,6 +438,54 @@ void () CheckForHazards;
 - Include the file immediately after `defs.qc` in `progs.src`.
 - Keep function signatures aligned with their single definitions.
 
+---
+
+### 17. Train Prediction Traversal Caps (predict_train_pos)
+
+**ISSUE:** Iterating long path_corner chains with `find()` is O(N) per call and can spike when multiple bots target trains in the same frame.
+
+**Safe Pattern:**
+```c
+seg_count = 0;
+dist_limit = (train_speed * t_future);
+while (curr && seg_count < 10)
+{
+    // accumulate segment distance
+    if (total_dist > dist_limit) break;
+    curr = find (world, targetname, curr.target);
+    seg_count = (seg_count + 1);
+}
+```
+
+**Prevention:**
+- Cap traversal depth (10 segments is usually enough for prediction).
+- Break once the lookahead distance is satisfied.
+- Only use modulo cycling when the chain is confirmed to loop.
+
+---
+
+### 18. Noise Fanout vs Global Queue (signalnoise)
+
+**ISSUE:** A single global noise queue can be overwritten by multiple sound events in the same frame, causing bots to miss earlier sounds.
+
+**Safe Pattern:**
+```c
+bot = find (world, classname, "dmbot");
+while (bot)
+{
+    if (dist_sq < range_sq)
+    {
+        bot.noise_target = noisemaker;
+    }
+    bot = find (bot, classname, "dmbot");
+}
+```
+
+**Prevention:**
+- Push noise events directly to bots when they happen.
+- Store the last noise source per bot to avoid race conditions.
+- Prefer cheap distance checks (squared distance) in tight loops.
+
 ## 🛠️ Build & Deploy Workflow
 
 ### Compilation

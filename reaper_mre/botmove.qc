@@ -205,7 +205,7 @@ float (vector jmpv) Botwaterjump =
 // Predicts where a train will be at future time by traversing its path_corner chain.
 // Two-pass algorithm: (1) calculate total path distance for cycling, (2) interpolate
 // position along chain based on time. Handles looping paths via modulo arithmetic,
-// detects cycles with first_corner tracking, and limits to 64 segments for safety.
+// detects cycles with first_corner tracking, and limits to 10 segments for safety.
 vector (entity train, float t_future) predict_train_pos =
 {
    local entity curr;
@@ -218,6 +218,10 @@ vector (entity train, float t_future) predict_train_pos =
    local float seg_dist;
    local float seg_count;
    local float t_mod;
+   local float dist_limit;
+   local float dist_future;
+   local float looped;
+   local float truncated;
 
    if (!train) return train.origin;
 
@@ -242,24 +246,51 @@ vector (entity train, float t_future) predict_train_pos =
    dist_accum = 0;
    total_dist = 0;
    seg_count = 0;
+   dist_limit = (train_speed * t_future);
+   looped = FALSE;
+   truncated = FALSE;
 
    // First pass: accumulate total chain distance (for cycling)
-   while (curr && seg_count < 64) {  // PHASE 4 FIX: Max 64 segments (was 16) for complex train paths
+   while (curr && seg_count < 10) {
       next_pos = curr.origin;
       seg_dist = vlen(next_pos - last_pos);
       total_dist = (total_dist + seg_dist);
 
       last_pos = next_pos;
+      if ((total_dist > dist_limit))
+      {
+         break;
+      } //end if
       curr = find(world, targetname, curr.target);
-      if (curr == first_corner) break; // Loop detected: stop to avoid infinite
+      if (curr == first_corner)
+      {
+         looped = TRUE;
+         break;
+      } //end if
       seg_count = (seg_count + 1);
    }
 
+   if ((seg_count >= 10))
+   {
+      truncated = TRUE;
+   } //end if
+
    if (total_dist == 0) return train.origin; // No path length? Static
 
-   // Modulo time for cycling paths
-   t_mod = t_future - (floor(t_future / (total_dist / train_speed)) * (total_dist / train_speed));
-   local float dist_future = train_speed * t_mod;
+   dist_future = (train_speed * t_future);
+   if ((looped && !truncated))
+   {
+      // Modulo time for cycling paths
+      t_mod = t_future - (floor(t_future / (total_dist / train_speed)) * (total_dist / train_speed));
+      dist_future = (train_speed * t_mod);
+   } //end if
+   else
+   {
+      if ((dist_future > total_dist))
+      {
+         dist_future = total_dist;
+      } //end if
+   } //end if
 
    // Second pass: traverse to find interpolated position
    curr = first_corner; // Reset to start
@@ -267,7 +298,7 @@ vector (entity train, float t_future) predict_train_pos =
    dist_accum = 0;
    seg_count = 0;
 
-   while (curr && seg_count < 64) {  // PHASE 4 FIX: Max 64 segments (was 16)
+   while (curr && seg_count < 10) {
       next_pos = curr.origin;
       seg_dist = vlen(next_pos - last_pos);
 

@@ -19,6 +19,14 @@
   - **New header** `reaper_mre/bot_defs.qc`: shared prototypes for common helpers and AI entrypoints.
   - **Build order update** in `reaper_mre/progs.src`: includes `bot_defs.qc` immediately after `defs.qc`.
   - **Result:** Fewer duplicate-definition mistakes and clearer cross-file dependencies.
+- **Train prediction loop cap** to prevent thundering-herd spikes:
+  - **Segment cap + distance window** in `reaper_mre/botmove.qc`: predict_train_pos now limits traversal to 10 segments and stops once the time horizon is covered.
+  - **Loop-aware fallback** in `reaper_mre/botmove.qc`: only uses modulo cycling when a loop is detected and the chain is not truncated.
+  - **Result:** Avoids O(N) entity scans during concurrent train targeting.
+- **Noise push dispatch** to avoid NOISEQUEUE races:
+  - **Immediate fanout** in `reaper_mre/botnoise.qc`: signalnoise injects events to nearby bots instead of overwriting a global queue.
+  - **New per-bot field** in `reaper_mre/botit_th.qc`: `noise_target` stores the last heard source.
+  - **Result:** Bots consistently react to multiple simultaneous sounds in the same frame.
 - **Docs update:** Clarified that `impulse 97` feeler logs only appear in exploration mode (no nearby waypoints), so waypoint-dense maps may show no FEELER/BREADCRUMB output.
 - **Suppressive fire on heard targets** for hallway spam behavior:
   - **Expanded hearing range** in `reaper_mre/bot_ai.qc`: BotListen now treats sounds as audible out to ~800 units.

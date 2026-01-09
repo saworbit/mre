@@ -316,6 +316,8 @@ float (entity targ, entity inflictor) CanDamage;
 .entity closed_next;
 // Human Reaction Time: timestamp when bot can start aiming/firing after acquiring new enemy.
 .float reaction_finished;
+// Last heard noise target for immediate sound-based reactions.
+.entity noise_target;
 // PHASE 3 FIX: Bully mode commitment timer (prevents instant decision flipping)
 .float bully_commit_time;
 // Nemesis System: tracks who killed this bot for revenge seeking.

@@ -327,6 +327,24 @@ Each helper now caches the current `trace_*` values, performs its own `traceline
 
 **Result:** Cleaner cross-file dependencies and fewer duplicate-definition errors.
 
+### Train Prediction Loop Cap (2026-01-10)
+
+**OPTIMIZATION:** predict_train_pos now limits chain traversal to avoid per-frame O(N) scans.
+
+**The Fix:**
+Traversal caps at 10 segments and breaks once the time horizon is covered; looping modulo is only used when a loop is detected and the chain isn't truncated.
+
+**Result:** Prevents thundering-herd spikes when multiple bots target trains at once.
+
+### Noise Push Dispatch (2026-01-10)
+
+**BUGFIX:** Noise events are pushed directly to bots instead of overwriting a global queue.
+
+**The Fix:**
+`signalnoise` now fans out to nearby bots immediately and stores the source in each bot’s `noise_target`.
+
+**Result:** Bots hear overlapping events in the same frame reliably.
+
 ### Lefty Bitmask Safety (2026-01-10)
 
 **BUGFIX:** Clearing `self.lefty` flags now uses masked subtraction to avoid corrupting unrelated bits.
