@@ -31,6 +31,10 @@
   - **Throttle gate** in `reaper_mre/bot_ai.qc`: only run help scans when low health or on a 10% random chance.
   - **Global restore** in `reaper_mre/bot_ai.qc`: save/restore `enemy_vis` around temporary `self` swaps.
   - **Result:** Lower per-frame overhead with fewer global state side effects.
+- **NOISEQUEUE initialization moved to worldspawn** for reliable hearing:
+  - **Initialization** in `reaper_mre/world.qc`: `NOISEQUEUE = noisetarget()` now runs during worldspawn.
+  - **Removed late init** from `reaper_mre/botspawn.qc`: avoids missing early noises when bots aren't spawned yet.
+  - **Result:** Noise events are captured consistently from match start.
 - **Docs update:** Clarified that `impulse 97` feeler logs only appear in exploration mode (no nearby waypoints), so waypoint-dense maps may show no FEELER/BREADCRUMB output.
 - **Suppressive fire on heard targets** for hallway spam behavior:
   - **Expanded hearing range** in `reaper_mre/bot_ai.qc`: BotListen now treats sounds as audible out to ~800 units.

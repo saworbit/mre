@@ -354,6 +354,15 @@ Traversal caps at 10 segments and breaks once the time horizon is covered; loopi
 
 **Result:** Reduced CPU spikes in teamplay without cross-bot state bleed.
 
+### NOISEQUEUE Worldspawn Init (2026-01-10)
+
+**BUGFIX:** Noise queue initialization now occurs at worldspawn instead of bot spawn.
+
+**The Fix:**
+`NOISEQUEUE = noisetarget()` runs in `world.qc` so early match noises are not dropped when bots haven't spawned yet.
+
+**Result:** Bots hear the first sounds reliably, even before any bot spawns.
+
 ### Lefty Bitmask Safety (2026-01-10)
 
 **BUGFIX:** Clearing `self.lefty` flags now uses masked subtraction to avoid corrupting unrelated bits.

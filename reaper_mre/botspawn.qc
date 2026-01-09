@@ -9,7 +9,6 @@ void () initBotLevel =
    local entity e;
    local string tmp;
 
-   NOISEQUEUE = noisetarget ();
    num = ((serverflags & BOTS) / SECRET_YES_SHOOT);
    serverflags = ((serverflags - (serverflags & BOTS)) - INITLEVEL);
    NUMBOTS = CAM_IDLE;

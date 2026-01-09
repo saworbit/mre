@@ -505,6 +505,22 @@ if ((self.health >= 30.000) && (random () >= 0.100))
 - Allow immediate scans when the bot is low on health.
 - Restore shared globals (e.g., `enemy_vis`) after `self` swaps.
 
+---
+
+### 20. Noise Queue Lifetime (NOISEQUEUE)
+
+**ISSUE:** If NOISEQUEUE is created only during bot spawn, early match noises can be dropped before any bots exist.
+
+**Safe Pattern:**
+```c
+// worldspawn
+NOISEQUEUE = noisetarget();
+```
+
+**Prevention:**
+- Initialize NOISEQUEUE in `worldspawn` so it's available from frame 0.
+- Avoid bot-only init for shared world services.
+
 ## 🛠️ Build & Deploy Workflow
 
 ### Compilation

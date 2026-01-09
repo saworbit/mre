@@ -133,6 +133,8 @@ void () worldspawn =
    CamSpawn ();
    // Initialize chat system constants and globals
    InitChatSystem ();
+   // Initialize noise queue entity (used by legacy hearing logic)
+   NOISEQUEUE = noisetarget ();
    // Initialize player observation learning system (Phase 2: Live Learning)
    // Clean up any existing learned RJ waypoints from previous sessions
    local entity old_rj;
