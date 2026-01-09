@@ -319,6 +319,18 @@ Clear flags via `self.lefty = (self.lefty - (self.lefty & FLAG))` for `GETGOODY`
 
 **Result:** No spurious state flips when clearing flags.
 
+### newmis Spawn Safety (2026-01-10)
+
+**BUGFIX:** Projectile spawns now capture the spawned entity locally instead of relying on the global `newmis`.
+
+**The Problem:**
+`spawn()` writes to the global `newmis`. If a nested call spawns another entity, `newmis` can be overwritten before the outer function finishes configuring its projectile.
+
+**The Fix:**
+`launch_spike` now returns the spawned entity and the calling code uses that local reference for all configuration.
+
+**Result:** Spike and superspike setup no longer risks configuring the wrong entity.
+
 ### 🏎️ Movement Smoothing Suite (2026-01-05)
 
 **NEW:** Three distinct smoothing upgrades transform robotic movement into human-like fluidity!

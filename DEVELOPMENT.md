@@ -184,7 +184,30 @@ self.lefty = (self.lefty - (self.lefty & STRAFE_DIR));
 
 ---
 
-### 5. Impulse Truncation (8-bit Limit)
+### 5. newmis Global (spawn) Safety
+
+**ISSUE:** `spawn()` writes to the global `newmis`. If another spawn happens before you finish configuring the entity, the global can be overwritten.
+
+**Bad Pattern:**
+```c
+newmis = spawn();
+newmis.owner = self;
+```
+
+**Safe Pattern:**
+```c
+local entity missile;
+missile = spawn();
+missile.owner = self;
+```
+
+**Prevention:**
+- Capture the spawned entity into a local variable immediately.
+- Avoid using `newmis` for any configuration outside the same line as `spawn()`.
+
+---
+
+### 6. Impulse Truncation (8-bit Limit)
 
 **ISSUE:** Quake engine truncates impulse values to 8-bit range (0-255). Values >255 get reduced via modulo.
 

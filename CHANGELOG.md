@@ -25,6 +25,9 @@
 - **Lefty bitmask safety** for reliable flag clearing:
   - **Masked clears** in `reaper_mre/bot_ai.qc`: `GETGOODY`, `MULTIENEMY`, `STRAFE_DIR`, and `ONTRAIN` now clear via `self.lefty - (self.lefty & FLAG)` to avoid corrupting unrelated bits.
   - **Result:** No accidental state flips when clearing flags that were not set.
+- **Spawn safety for projectiles** to avoid `newmis` clobbering:
+  - **Local entity capture** in `reaper_mre/weapons.qc`: `launch_spike` now returns the spawned entity and all configuration uses the local reference, not `newmis`.
+  - **Result:** Spike/superspike setup no longer risks configuring the wrong entity if another spawn fires mid-chain.
 
 ## 2026-01-09
 

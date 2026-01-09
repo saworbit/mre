@@ -532,27 +532,30 @@ void () spike_touch;
 
 void () superspike_touch;
 
-void (vector org, vector dir) launch_spike =
+entity (vector org, vector dir) launch_spike =
 {
-   newmis = spawn ();
-   newmis.owner = self;
-   newmis.movetype = MOVETYPE_FLYMISSILE;
-   newmis.solid = SOLID_BBOX;
-   newmis.angles = vectoangles (dir);
-   newmis.touch = spike_touch;
-   newmis.classname = "spike";
-   newmis.think = SUB_Remove;
-   newmis.nextthink = (time + CAM_NOCLIP);
-   setmodel (newmis,"progs/spike.mdl");
-   setsize (newmis,VEC_ORIGIN,VEC_ORIGIN);
-   setorigin (newmis,org);
-   newmis.velocity = (dir * 1000.000);
+   local entity missile;
+
+   missile = spawn ();
+   missile.owner = self;
+   missile.movetype = MOVETYPE_FLYMISSILE;
+   missile.solid = SOLID_BBOX;
+   missile.angles = vectoangles (dir);
+   missile.touch = spike_touch;
+   missile.classname = "spike";
+   missile.think = SUB_Remove;
+   missile.nextthink = (time + CAM_NOCLIP);
+   setmodel (missile,"progs/spike.mdl");
+   setsize (missile,VEC_ORIGIN,VEC_ORIGIN);
+   setorigin (missile,org);
+   missile.velocity = (dir * 1000.000);
+   return missile;
 }; //end of the function launch_spike
 
 void () W_FireSuperSpikes =
 {
    local vector dir;
-   local entity old;
+   local entity missile;
 
    sound (self,CHAN_WEAPON,"weapons/spike2.wav",TRUE,ATTN_NORM);
    self.attack_finished = (time + 0.200);
@@ -563,10 +566,10 @@ void () W_FireSuperSpikes =
    {
       dir = botaim ();
    } //end if
-   launch_spike ((self.origin + '0.000 0.000 16.000'),dir);
-   newmis.touch = superspike_touch;
-   setmodel (newmis,"progs/s_spike.mdl");
-   setsize (newmis,VEC_ORIGIN,VEC_ORIGIN);
+   missile = launch_spike ((self.origin + '0.000 0.000 16.000'),dir);
+   missile.touch = superspike_touch;
+   setmodel (missile,"progs/s_spike.mdl");
+   setsize (missile,VEC_ORIGIN,VEC_ORIGIN);
    self.punchangle_x = CONTENT_SOLID;
 }; //end of the function W_FireSuperSpikes
 
