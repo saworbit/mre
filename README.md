@@ -318,6 +318,15 @@ Each helper now caches the current `trace_*` values, performs its own `traceline
 
 **Result:** No duplicate symbol risk and clearer ownership of shared utility functions.
 
+### Shared Bot Prototypes (2026-01-10)
+
+**MAINTENANCE:** Added a single prototype header to prevent forward-declaration drift.
+
+**The Fix:**
+`bot_defs.qc` centralizes shared function prototypes and is included early in `progs.src`.
+
+**Result:** Cleaner cross-file dependencies and fewer duplicate-definition errors.
+
 ### Lefty Bitmask Safety (2026-01-10)
 
 **BUGFIX:** Clearing `self.lefty` flags now uses masked subtraction to avoid corrupting unrelated bits.

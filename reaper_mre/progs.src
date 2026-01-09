@@ -1,6 +1,7 @@
 ./progs.dat
 
 defs.qc
+bot_defs.qc
 botit_th.qc
 kascam.qc
 func.qc

@@ -15,6 +15,10 @@
   - **Radius-limited scan** in `reaper_mre/bot_ai.qc`: uses `findradius(self.origin, 500)` instead of full map iteration.
   - **Threat gating** in `reaper_mre/bot_ai.qc`: skips dodge scans when idle and healthy to avoid unnecessary work.
   - **Result:** Lower CPU cost while preserving dodge responsiveness in combat.
+- **Centralized bot prototypes** to avoid copy-paste forward declarations:
+  - **New header** `reaper_mre/bot_defs.qc`: shared prototypes for common helpers and AI entrypoints.
+  - **Build order update** in `reaper_mre/progs.src`: includes `bot_defs.qc` immediately after `defs.qc`.
+  - **Result:** Fewer duplicate-definition mistakes and clearer cross-file dependencies.
 - **Docs update:** Clarified that `impulse 97` feeler logs only appear in exploration mode (no nearby waypoints), so waypoint-dense maps may show no FEELER/BREADCRUMB output.
 - **Suppressive fire on heard targets** for hallway spam behavior:
   - **Expanded hearing range** in `reaper_mre/bot_ai.qc`: BotListen now treats sounds as audible out to ~800 units.

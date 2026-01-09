@@ -419,6 +419,25 @@ while (head)
 - Skip scans when idle and healthy unless under direct threat.
 - Keep the dodge logic intact; only reduce the search space.
 
+---
+
+### 16. Shared Bot Prototypes (bot_defs.qc)
+
+**ISSUE:** Scattered forward declarations drift and lead to duplicate-definition errors or missing prototypes across files.
+
+**Safe Pattern:**
+```c
+// bot_defs.qc (included early in progs.src)
+float () CheckWaterLevel;
+float (entity target) Bot_IsAvoidedTarget;
+void () CheckForHazards;
+```
+
+**Prevention:**
+- Centralize shared prototypes in one file.
+- Include the file immediately after `defs.qc` in `progs.src`.
+- Keep function signatures aligned with their single definitions.
+
 ## 🛠️ Build & Deploy Workflow
 
 ### Compilation
