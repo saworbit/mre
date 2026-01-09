@@ -22,6 +22,9 @@
   - **Saved/restored trace globals** in `reaper_mre/bot_ai.qc`: `PredictEnemyPositionForNav` and `CallForHelp` now preserve `trace_*` state and use local copies for their logic.
   - **Saved/restored trace globals** in `reaper_mre/botgoal.qc`: `chooseRoamTarget` and `goForAir` no longer leak trace results into movement/combat callers.
   - **Result:** Movement/collision logic no longer reads stale trace data after prediction and goal helper traces.
+- **Lefty bitmask safety** for reliable flag clearing:
+  - **Masked clears** in `reaper_mre/bot_ai.qc`: `GETGOODY`, `MULTIENEMY`, `STRAFE_DIR`, and `ONTRAIN` now clear via `self.lefty - (self.lefty & FLAG)` to avoid corrupting unrelated bits.
+  - **Result:** No accidental state flips when clearing flags that were not set.
 
 ## 2026-01-09
 

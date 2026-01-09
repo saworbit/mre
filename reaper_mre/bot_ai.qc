@@ -6,11 +6,11 @@ void () endEnemy =
    olden = self.enemy;
    if ((self.lefty & GETGOODY))
    {
-      self.lefty = (self.lefty - GETGOODY);
+      self.lefty = (self.lefty - (self.lefty & GETGOODY));
    } //end if
    if ((self.lefty & MULTIENEMY))
    {
-      self.lefty = (self.lefty - MULTIENEMY);
+      self.lefty = (self.lefty - (self.lefty & MULTIENEMY));
    } //end if
    self.enemy = world;
    // Streak credit: count a kill if the last enemy actually died.
@@ -422,7 +422,7 @@ float () bot_dodge_stuff =
       // Dodge to the left - clear STRAFE_DIR flag
       if ((self.lefty & STRAFE_DIR))
       {
-         self.lefty = (self.lefty - STRAFE_DIR);
+         self.lefty = (self.lefty - (self.lefty & STRAFE_DIR));
       } //end if
    } //end if
 
@@ -606,7 +606,7 @@ void () BotHuntTarget =
    self.strafetime = FALSE;
    if ((self.lefty & ONTRAIN))
    {
-      self.lefty = (self.lefty - ONTRAIN);
+      self.lefty = (self.lefty - (self.lefty & ONTRAIN));
    } //end if
    Stack_Push();  // Save current goal before redirecting to enemy (Phase 8: Target Stack)
    self.goalentity.goalentity = self.enemy;
@@ -1670,7 +1670,7 @@ void (float dist, float turn) aibot_run_slide =
       {
          if ((self.lefty & STRAFE_DIR))
          {
-            self.lefty = (self.lefty - STRAFE_DIR);
+            self.lefty = (self.lefty - (self.lefty & STRAFE_DIR));
 
          } //end if
          else
@@ -1717,7 +1717,7 @@ void (float dist, float turn) aibot_run_slide =
    self.strafetime = FALSE;
    if ((self.lefty & STRAFE_DIR))
    {
-      self.lefty = (self.lefty - STRAFE_DIR);
+      self.lefty = (self.lefty - (self.lefty & STRAFE_DIR));
 
    } //end if
    else
@@ -2395,7 +2395,7 @@ void (float dist) ai_endgetGoody =
 {
    if ((self.lefty & GETGOODY))
    {
-      self.lefty = (self.lefty - GETGOODY);
+      self.lefty = (self.lefty - (self.lefty & GETGOODY));
    } //end if
    if ((self.goalentity.classname != "BotTarget"))
    {
@@ -2529,7 +2529,7 @@ void (float dist) ai_botgetGoody =
    } //end if
    if ((self.lefty & GETGOODY))
    {
-      self.lefty = (self.lefty - GETGOODY);
+      self.lefty = (self.lefty - (self.lefty & GETGOODY));
    } //end if
    if ((self.goalentity.classname != "BotTarget"))
    {

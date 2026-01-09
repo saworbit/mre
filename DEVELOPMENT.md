@@ -162,7 +162,29 @@ trace_endpos = saved_trace_endpos;
 
 ---
 
-### 4. Impulse Truncation (8-bit Limit)
+### 4. Bitmask Flag Clearing (self.lefty)
+
+**ISSUE:** `self.lefty` is a bitmask. Clearing flags with raw subtraction can corrupt other bits if the flag is not set.
+
+**Bad Pattern:**
+```c
+// Unsafe: may borrow across bits if STRAFE_DIR is not set
+self.lefty = (self.lefty - STRAFE_DIR);
+```
+
+**Safe Pattern:**
+```c
+// Safe: only subtracts if the bit is present
+self.lefty = (self.lefty - (self.lefty & STRAFE_DIR));
+```
+
+**Prevention:**
+- Use masked subtraction for clears: `var = var - (var & FLAG)`.
+- Avoid relying on subtraction without a mask, even inside a guard.
+
+---
+
+### 5. Impulse Truncation (8-bit Limit)
 
 **ISSUE:** Quake engine truncates impulse values to 8-bit range (0-255). Values >255 get reduced via modulo.
 

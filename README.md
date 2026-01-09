@@ -307,6 +307,18 @@ Each helper now caches the current `trace_*` values, performs its own `traceline
 
 **Result:** Movement and collision logic no longer sees stale trace results after prediction or goal helper calls.
 
+### Lefty Bitmask Safety (2026-01-10)
+
+**BUGFIX:** Clearing `self.lefty` flags now uses masked subtraction to avoid corrupting unrelated bits.
+
+**The Problem:**
+`self.lefty` is a bitmask. Some clears used raw subtraction, which can borrow across bits when the flag is not set.
+
+**The Fix:**
+Clear flags via `self.lefty = (self.lefty - (self.lefty & FLAG))` for `GETGOODY`, `MULTIENEMY`, `STRAFE_DIR`, and `ONTRAIN`.
+
+**Result:** No spurious state flips when clearing flags.
+
 ### 🏎️ Movement Smoothing Suite (2026-01-05)
 
 **NEW:** Three distinct smoothing upgrades transform robotic movement into human-like fluidity!
