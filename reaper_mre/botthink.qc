@@ -446,7 +446,11 @@ void () checkyaw =
 
    // 5. Apply Final Angle
    self.ideal_pitch = current_pitch;
-   self.angles_x = current_pitch;
+   if ((abs_diff > 0.500))
+   {
+      self.angles_x = current_pitch;
+      self.fixangle = TRUE;
+   } //end if
 
    // NOTE: We do NOT call ChangePitch() because we handled pitch update manually above.
    // The engine's ChangeYaw() still runs automatically for yaw (left/right) smoothing.

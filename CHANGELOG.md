@@ -44,6 +44,9 @@
 - **Safe powerup bitmask clears** to avoid `self.items` corruption:
   - **Masked subtraction** in `reaper_mre/botthink.qc`: powerup expirations now clear `IT_INVISIBILITY`, `IT_INVULNERABILITY`, `IT_QUAD`, and `IT_SUIT` via `self.items - (self.items & FLAG)`.
   - **Result:** No accidental item bit corruption if a flag was already cleared elsewhere.
+- **Pitch jitter guard** to reduce network snapping:
+  - **Gated pitch updates** in `reaper_mre/botthink.qc`: only apply `angles_x` when `abs_diff > 0.5` and set `fixangle` to force a clean update.
+  - **Result:** Spectators and demos see smoother pitch interpolation instead of constant micro-snaps.
 
 ## 2026-01-09
 

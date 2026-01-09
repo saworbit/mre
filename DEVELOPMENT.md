@@ -319,6 +319,25 @@ self.items = (self.items - (self.items & IT_QUAD));
 - Use masked subtraction for clearing item flags.
 - Avoid raw subtraction when multiple systems can update `self.items`.
 
+---
+
+### 11. Angle Interpolation (Pitch jitter)
+
+**ISSUE:** Writing `angles_x` every frame can fight engine interpolation and cause visible pitch jitter in demos/spectators.
+
+**Safe Pattern:**
+```c
+if ((abs_diff > 0.500))
+{
+    self.angles_x = current_pitch;
+    self.fixangle = TRUE;
+}
+```
+
+**Prevention:**
+- Gate angle updates to meaningful deltas.
+- Let engine interpolation handle micro changes.
+
 ## 🛠️ Build & Deploy Workflow
 
 ### Compilation

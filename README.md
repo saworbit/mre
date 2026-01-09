@@ -370,6 +370,15 @@ Bots now track `combat_search_time` for enemy chase persistence and `nav_search_
 
 **Result:** No accidental item state corruption when a flag is already cleared.
 
+### Pitch Jitter Guard (2026-01-10)
+
+**OPTIMIZATION:** Pitch updates are now gated to avoid fighting engine interpolation.
+
+**The Fix:**
+`checkyaw` only writes `angles_x` when the pitch delta exceeds 0.5 degrees and sets `fixangle` on those updates.
+
+**Result:** Smoother pitch in spectator views and demos with less micro‑snap jitter.
+
 ### 🏎️ Movement Smoothing Suite (2026-01-05)
 
 **NEW:** Three distinct smoothing upgrades transform robotic movement into human-like fluidity!
