@@ -1,5 +1,15 @@
 ## 2026-01-10
 
+- **Directional fail memory** to prevent repeated failed approaches:
+  - **Position + yaw bucketing** in `reaper_mre/botmove.qc`: 6-entry ring buffer tracks failed approaches (32-unit grid, 30° yaw buckets, 20s TTL).
+  - **Heavy penalty (not hard blocking)** in `reaper_mre/botmove.qc`: Failed directions get -500 penalty (was -120), applied directly to score. Bots strongly avoid failed approaches but can still use them as "last resort" when ALL directions are bad. Prevents stuck detection death spiral caused by hard blocking.
+  - **Extended goal avoidance** in `reaper_mre/botgoal.qc`: Fixated goals avoided for 20s (was 5s). Prevents rapid re-selection of unreachable items like item_armor2 behind bars.
+  - **Failure recording** in `reaper_mre/botgoal.qc`: Records directional failure when goal fixation triggers (unreachable items).
+  - **Failure recording** in `reaper_mre/botmove.qc`: Records directional failure when entering unstick mode (stuck movement).
+  - **Entity fields** in `reaper_mre/defs.qc`: fail_pos0-5, fail_yaw0-5, fail_until0-5, fail_head.
+  - **Debug logging** in `reaper_mre/botmove.qc`: LOG_VERBOSE shows "FAIL-MEM: Record yaw=X° at (pos)" when failures recorded, "FAIL-MEM: Penalty -500 for yaw=X°" when penalties applied.
+  - **Duplicate prevention** in `reaper_mre/botmove.qc`: Checks existing buffer entries before recording to avoid wasting slots on same pos+yaw combos.
+  - **Result:** Bots avoid retrying same approach angles at bars, corners, and greebles. Prevents bar fixation loops and corner oscillation by remembering "tried approaching from 45° at this spot and it failed."
 - **Bot cast identity system + entry lines** for consistent personalities:
   - **Data-driven cast** in `reaper_mre/botspawn.qc`: 36-slot roster with fixed names, colors, personalities, and skills.
   - **Join catchphrases** in `reaper_mre/botspawn.qc`: each bot announces a short entry line on spawn.

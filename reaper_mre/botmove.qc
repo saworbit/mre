@@ -2140,6 +2140,259 @@ float (entity bot, vector pos) Bot_IsRecentlyVisited =
    return (FALSE);
 }; //end of the function Bot_IsRecentlyVisited
 
+// Directional fail memory: Coarse position quantization (32-unit grid)
+vector (vector p) CoarsePos =
+{
+   local vector cp;
+
+   cp_x = (floor (p_x / 32.000) * 32.000);
+   cp_y = (floor (p_y / 32.000) * 32.000);
+   cp_z = (floor (p_z / 32.000) * 32.000);
+   return (cp);
+}; //end of the function CoarsePos
+
+// Directional fail memory: Record failed approach (position + yaw bucket)
+void (entity bot, vector dir) RecordDirectionalFail =
+{
+   local vector cp;
+   local float yaw;
+   local float expire;
+
+   local float dy;
+   local float near;
+
+   cp = CoarsePos (bot.origin);
+   yaw = vectoyaw (dir);
+   while ((yaw < 0.000))
+   {
+      yaw = (yaw + 360.000);
+   } //end while
+   while ((yaw >= 360.000))
+   {
+      yaw = (yaw - 360.000);
+   } //end while
+   expire = (time + 20.000);  // 20 second TTL - matches goal avoidance duration
+
+   // Check for duplicates - don't waste buffer slots
+   if ((bot.fail_until0 > time))
+   {
+      near = (vlen (cp - bot.fail_pos0) < 96.000);
+      dy = fabs (yaw - bot.fail_yaw0);
+      if ((dy > 180.000)) dy = (360.000 - dy);
+      if ((near && (dy < 30.000))) return;
+   } //end if
+   if ((bot.fail_until1 > time))
+   {
+      near = (vlen (cp - bot.fail_pos1) < 96.000);
+      dy = fabs (yaw - bot.fail_yaw1);
+      if ((dy > 180.000)) dy = (360.000 - dy);
+      if ((near && (dy < 30.000))) return;
+   } //end if
+   if ((bot.fail_until2 > time))
+   {
+      near = (vlen (cp - bot.fail_pos2) < 96.000);
+      dy = fabs (yaw - bot.fail_yaw2);
+      if ((dy > 180.000)) dy = (360.000 - dy);
+      if ((near && (dy < 30.000))) return;
+   } //end if
+   if ((bot.fail_until3 > time))
+   {
+      near = (vlen (cp - bot.fail_pos3) < 96.000);
+      dy = fabs (yaw - bot.fail_yaw3);
+      if ((dy > 180.000)) dy = (360.000 - dy);
+      if ((near && (dy < 30.000))) return;
+   } //end if
+   if ((bot.fail_until4 > time))
+   {
+      near = (vlen (cp - bot.fail_pos4) < 96.000);
+      dy = fabs (yaw - bot.fail_yaw4);
+      if ((dy > 180.000)) dy = (360.000 - dy);
+      if ((near && (dy < 30.000))) return;
+   } //end if
+   if ((bot.fail_until5 > time))
+   {
+      near = (vlen (cp - bot.fail_pos5) < 96.000);
+      dy = fabs (yaw - bot.fail_yaw5);
+      if ((dy > 180.000)) dy = (360.000 - dy);
+      if ((near && (dy < 30.000))) return;
+   } //end if
+
+   if ((bot_debug_enabled && (bot_debug_level >= LOG_VERBOSE)))
+   {
+      bprint ("[");
+      bprint (bot.netname);
+      bprint ("] FAIL-MEM: Record yaw=");
+      bprint (ftos (yaw));
+      bprint ("° at (");
+      bprint (ftos (cp_x));
+      bprint (",");
+      bprint (ftos (cp_y));
+      bprint (")\n");
+   } //end if
+
+   bot.fail_head = (bot.fail_head + 1.000);
+   if ((bot.fail_head > 5.000))
+   {
+      bot.fail_head = 0.000;
+   } //end if
+
+   if ((bot.fail_head == 0.000))
+   {
+      bot.fail_pos0 = cp;
+      bot.fail_yaw0 = yaw;
+      bot.fail_until0 = expire;
+   } //end if
+   if ((bot.fail_head == 1.000))
+   {
+      bot.fail_pos1 = cp;
+      bot.fail_yaw1 = yaw;
+      bot.fail_until1 = expire;
+   } //end if
+   if ((bot.fail_head == 2.000))
+   {
+      bot.fail_pos2 = cp;
+      bot.fail_yaw2 = yaw;
+      bot.fail_until2 = expire;
+   } //end if
+   if ((bot.fail_head == 3.000))
+   {
+      bot.fail_pos3 = cp;
+      bot.fail_yaw3 = yaw;
+      bot.fail_until3 = expire;
+   } //end if
+   if ((bot.fail_head == 4.000))
+   {
+      bot.fail_pos4 = cp;
+      bot.fail_yaw4 = yaw;
+      bot.fail_until4 = expire;
+   } //end if
+   if ((bot.fail_head == 5.000))
+   {
+      bot.fail_pos5 = cp;
+      bot.fail_yaw5 = yaw;
+      bot.fail_until5 = expire;
+   } //end if
+}; //end of the function RecordDirectionalFail
+
+// Directional fail memory: Get penalty for approaching from this direction
+float (entity bot, vector dir) GetDirectionalPenalty =
+{
+   local vector cp;
+   local float yaw;
+   local float dy;
+   local float penalty;
+   local float near;
+
+   cp = CoarsePos (bot.origin);
+   yaw = vectoyaw (dir);
+   while ((yaw < 0.000))
+   {
+      yaw = (yaw + 360.000);
+   } //end while
+   while ((yaw >= 360.000))
+   {
+      yaw = (yaw - 360.000);
+   } //end while
+
+   penalty = 0.000;
+
+   // Check all 6 fail entries
+   if ((bot.fail_until0 > time))
+   {
+      near = (vlen (cp - bot.fail_pos0) < 96.000);
+      dy = fabs (yaw - bot.fail_yaw0);
+      if ((dy > 180.000))
+      {
+         dy = (360.000 - dy);
+      } //end if
+      if ((near && (dy < 30.000)))
+      {
+         penalty = 500.000;
+      } //end if
+   } //end if
+   if ((bot.fail_until1 > time))
+   {
+      near = (vlen (cp - bot.fail_pos1) < 96.000);
+      dy = fabs (yaw - bot.fail_yaw1);
+      if ((dy > 180.000))
+      {
+         dy = (360.000 - dy);
+      } //end if
+      if ((near && (dy < 30.000)))
+      {
+         penalty = 500.000;
+      } //end if
+   } //end if
+   if ((bot.fail_until2 > time))
+   {
+      near = (vlen (cp - bot.fail_pos2) < 96.000);
+      dy = fabs (yaw - bot.fail_yaw2);
+      if ((dy > 180.000))
+      {
+         dy = (360.000 - dy);
+      } //end if
+      if ((near && (dy < 30.000)))
+      {
+         penalty = 500.000;
+      } //end if
+   } //end if
+   if ((bot.fail_until3 > time))
+   {
+      near = (vlen (cp - bot.fail_pos3) < 96.000);
+      dy = fabs (yaw - bot.fail_yaw3);
+      if ((dy > 180.000))
+      {
+         dy = (360.000 - dy);
+      } //end if
+      if ((near && (dy < 30.000)))
+      {
+         penalty = 500.000;
+      } //end if
+   } //end if
+   if ((bot.fail_until4 > time))
+   {
+      near = (vlen (cp - bot.fail_pos4) < 96.000);
+      dy = fabs (yaw - bot.fail_yaw4);
+      if ((dy > 180.000))
+      {
+         dy = (360.000 - dy);
+      } //end if
+      if ((near && (dy < 30.000)))
+      {
+         penalty = 500.000;
+      } //end if
+   } //end if
+   if ((bot.fail_until5 > time))
+   {
+      near = (vlen (cp - bot.fail_pos5) < 96.000);
+      dy = fabs (yaw - bot.fail_yaw5);
+      if ((dy > 180.000))
+      {
+         dy = (360.000 - dy);
+      } //end if
+      if ((near && (dy < 30.000)))
+      {
+         penalty = 500.000;
+      } //end if
+   } //end if
+
+   if ((penalty > 0.000))
+   {
+      if ((bot_debug_enabled && (bot_debug_level >= LOG_VERBOSE)))
+      {
+         bprint ("[");
+         bprint (bot.netname);
+         bprint ("] FAIL-MEM: Penalty -");
+         bprint (ftos (penalty));
+         bprint (" for yaw=");
+         bprint (ftos (yaw));
+         bprint ("°\n");
+      } //end if
+   } //end if
+
+   return (penalty);
+}; //end of the function GetDirectionalPenalty
+
 float (entity bot, vector dir, float dist) Bot_JumpFeasibleSimple =
 {
    local vector start;
@@ -2454,6 +2707,7 @@ void (entity bot, float mode, float wall_side, float base_yaw) Bot_Feelers_Evalu
    local float elevation_bonus;
    local float break_contact;
    local float elevate_active;
+   local float directional_fail;
    local vector second_dir;
    local float second_score;
    local vector blended_dir;
@@ -2582,8 +2836,12 @@ void (entity bot, float mode, float wall_side, float base_yaw) Bot_Feelers_Evalu
             heat_penalty = (heat_penalty + 30.000);
          } //end if
       } //end if
-
       score = (clear_dist + (widen_score * 0.600) + (future_score * 0.400));
+
+      // Directional fail memory: Heavy penalty for previously failed approaches
+      // Use as "last resort" - bot can still pick it if ALL options are bad
+      directional_fail = GetDirectionalPenalty (bot,dir);
+      score = (score - directional_fail);
       if (tight_gap)
       {
          score = (score - 15.000);
@@ -3038,6 +3296,13 @@ void () Bot_EnterUnstick =
    {
       base_yaw = self.angles_y;
    } //end if
+
+   // Record directional failure: this approach got us stuck
+   self.v_angle_x = 0.000;
+   self.v_angle_y = base_yaw;
+   self.v_angle_z = 0.000;
+   makevectors (self.v_angle);
+   RecordDirectionalFail (self,v_forward);
 
    Bot_PickEscapePlan (base_yaw);
 

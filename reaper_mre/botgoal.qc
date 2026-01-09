@@ -7,6 +7,7 @@ void () bot_trigger1;
 
 void () aibot_chooseGoal;
 float /* ERROR: Could not determine return type */ () BotFindTarget;
+void (entity bot, vector dir) RecordDirectionalFail;  // Directional fail memory (defined in botmove.qc)
 
 float (entity target) Bot_IsAvoidedTarget =
 {
@@ -200,7 +201,9 @@ void () Bot_CheckGoalFixation =
 
    if (((time - self.last_goal_progress_time) > 1.500))
    {
-      Bot_AddAvoidTarget (goal,5.000);
+      Bot_AddAvoidTarget (goal,20.000);  // Avoid for 20s - if we can't reach it after trying multiple angles, stay away longer
+      // Record directional failure: remember this approach angle didn't work
+      RecordDirectionalFail (self,normalize (goal.origin - self.origin));
       if ((bot_debug_enabled && (bot_debug_level >= LOG_TACTICAL)))
       {
          bprint ("[");

@@ -24,6 +24,45 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 ## Latest Features (2026-01)
 
+### Directional Fail Memory (2026-01-10)
+
+**NEW:** Bots remember failed approach angles and avoid repeating the same mistakes!
+
+The Directional Fail Memory system tracks position + yaw combinations that led to stuck situations or unreachable goals. Bots now avoid retrying failed approaches, eliminating the classic "staring at armor behind bars" loop.
+
+**Before:**
+- ❌ Bots repeatedly try the same angle at bars/corners
+- ❌ Loop indefinitely between 2-3 failed directions
+- ❌ Fixate on unreachable items every 5 seconds
+
+**After:**
+- ✅ 6-entry ring buffer tracks failed approaches (32-unit grid, 30° yaw buckets)
+- ✅ -500 point penalty for previously failed directions (strong avoidance with "last resort" fallback)
+- ✅ 20-second memory duration (TTL) prevents rapid re-selection of unreachable goals
+- ✅ Duplicate prevention stops wasting buffer slots on same failures
+- ✅ Works in both goal fixation (bars/greebles) and unstick scenarios (corners/tight spaces)
+
+**How it works:**
+1. Bot tries approaching item at 90° → Gets stuck/fixated
+2. System records: `(position: 2144,-2176) + (yaw: 90°) → FAIL`
+3. Bot tries 45° → Also fails → Recorded
+4. Bot evaluates feelers: 90° gets -500 penalty, 45° gets -500 penalty
+5. Bot tries 135° instead → Success! Escapes area
+
+**Debug Output (LOG_VERBOSE):**
+```
+[Karen] FAIL-MEM: Record yaw=95° at (2144,-2176)
+[Karen] FIXATE: Avoid goal item_armor2
+[Karen] FAIL-MEM: Penalty -500 for yaw=105°  ← Within 30° bucket
+```
+
+**Technical Details:**
+- **Position quantization**: 32-unit grid prevents noise
+- **Yaw bucketing**: 30° buckets catch similar angles (85° and 95° both penalized)
+- **Proximity check**: 96-unit radius determines "same location"
+- **Heavy penalty**: -500 points (typical feeler scores 150-400) strongly discourages retries
+- **Fallback safety**: Bots can still pick penalized directions if ALL options are bad (prevents stuck detection death spiral)
+
 ### Combat Reposition + Verticality-Aware Pursuit (2026-01-08)
 
 **NEW:** Bots stop "shadow chasing" directly under higher targets and reposition to shootable angles.

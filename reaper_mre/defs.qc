@@ -162,6 +162,13 @@ entity chat_state;      // Dedicated entity for storing global chat state
 .float observer_mode;         // Player observation: TRUE when logging player actions for learning
 .vector last_rj_origin;       // Player observation: Last rocket jump position
 .float last_rj_time;          // Player observation: Timestamp of last RJ event
+.vector fail_pos0; .float fail_yaw0; .float fail_until0;  // Directional fail memory: Entry 0
+.vector fail_pos1; .float fail_yaw1; .float fail_until1;  // Directional fail memory: Entry 1
+.vector fail_pos2; .float fail_yaw2; .float fail_until2;  // Directional fail memory: Entry 2
+.vector fail_pos3; .float fail_yaw3; .float fail_until3;  // Directional fail memory: Entry 3
+.vector fail_pos4; .float fail_yaw4; .float fail_until4;  // Directional fail memory: Entry 4
+.vector fail_pos5; .float fail_yaw5; .float fail_until5;  // Directional fail memory: Entry 5
+.float fail_head;             // Directional fail memory: Ring buffer head index
 float FALSE    = 0.000;
 float TRUE    = 1.000;
 float FL_FLY    = 1.000;
