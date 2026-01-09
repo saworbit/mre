@@ -936,12 +936,18 @@ void () BotListen =
    local entity head;
    local float dist;
    local float heard;
+   local float audible_range;
+   local float spam_range;
+   local float spam_min_range;
 
    // Only listen when idle (don't interfere with active combat)
    if ((self.enemy != world))
    {
       return ;
    } //end if
+   audible_range = 800.000;
+   spam_range = 800.000;
+   spam_min_range = 160.000;
 
    // Scan for players first
    head = find (world,classname,"player");
@@ -955,7 +961,7 @@ void () BotListen =
             dist = vlen ((head.origin - self.origin));
 
             // Sound travel limit (Quake sounds drop off around 500-800u)
-            if ((dist < 600.000))
+            if ((dist < audible_range))
             {
                heard = FALSE;
 
@@ -993,11 +999,17 @@ void () BotListen =
                   self.ideal_yaw = vectoyaw ((head.origin - self.origin));
                   ChangeYaw ();
 
-                  // OPTIONAL: Pre-fire rockets if enemy is very close (wallbang attempt)
-                  // This creates "spam" behavior seen in pro play (fire at doorways)
-                  if ((dist < 200.000) && (self.weapon == IT_ROCKET_LAUNCHER))
+                  // Suppressive fire: spam splash weapons at heard locations (corner denial).
+                  if (((dist < spam_range) && (dist > spam_min_range)) && (self.ammo_rockets > FALSE))
                   {
-                     self.button0 = TRUE;
+                     if (((self.weapon == IT_ROCKET_LAUNCHER) || (self.weapon == IT_GRENADE_LAUNCHER)))
+                     {
+                        if ((time > self.attack_finished))
+                        {
+                           self.button0 = TRUE;
+                           self.attack_finished = (time + 0.600);
+                        } //end if
+                     } //end if
                   } //end if
 
                   return ;
@@ -1018,7 +1030,7 @@ void () BotListen =
          {
             dist = vlen ((head.origin - self.origin));
 
-            if ((dist < 600.000))
+            if ((dist < audible_range))
             {
                heard = FALSE;
 
@@ -1048,9 +1060,16 @@ void () BotListen =
                   self.ideal_yaw = vectoyaw ((head.origin - self.origin));
                   ChangeYaw ();
 
-                  if ((dist < 200.000) && (self.weapon == IT_ROCKET_LAUNCHER))
+                  if (((dist < spam_range) && (dist > spam_min_range)) && (self.ammo_rockets > FALSE))
                   {
-                     self.button0 = TRUE;
+                     if (((self.weapon == IT_ROCKET_LAUNCHER) || (self.weapon == IT_GRENADE_LAUNCHER)))
+                     {
+                        if ((time > self.attack_finished))
+                        {
+                           self.button0 = TRUE;
+                           self.attack_finished = (time + 0.600);
+                        } //end if
+                     } //end if
                   } //end if
 
                   return ;

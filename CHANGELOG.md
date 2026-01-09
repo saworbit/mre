@@ -8,6 +8,10 @@
   - **New per-bot fields** in `reaper_mre/botit_th.qc`: `feeler_commit_dir` and `feeler_commit_until` track local steering commits.
   - **Result:** Smoother corridor flow, earlier cornering, fewer bar/rail fixations, less ping-ponging.
 - **Docs update:** Clarified that `impulse 97` feeler logs only appear in exploration mode (no nearby waypoints), so waypoint-dense maps may show no FEELER/BREADCRUMB output.
+- **Suppressive fire on heard targets** for hallway spam behavior:
+  - **Expanded hearing range** in `reaper_mre/bot_ai.qc`: BotListen now treats sounds as audible out to ~800 units.
+  - **Splash spam reaction** in `reaper_mre/bot_ai.qc`: when a sound is heard out of sight and within 160-800u, bots with RL/GL and ammo will fire suppressive shots toward the sound with a short cooldown.
+  - **Result:** Bots pressure corners and hallways more like human players, even before LOS.
 
 ## 2026-01-09
 

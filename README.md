@@ -1040,7 +1040,7 @@ Advanced **path_corner chain prediction** for moving platforms:
 | Feature | Description |
 |---------|-------------|
 | 🎯 **The Profiler** | Opponent behavior tracking: Analyzes enemy movement patterns (approach/retreat) to build aggression profiles (0-10 score). Adapts tactics dynamically—retreat & trap vs rushers (>7.0), push aggressively vs campers (<3.0). Human-like playstyle adaptation mid-match (2026-01-06) |
-| 👂 **Simulated Perception** | Hearing module: Detects invisible enemies through walls via noise (weapon fire, footsteps >200 u/s, jumps, quad/pent hum). Pre-aims at doorways where enemies approach (600u range, 800u for powerups). Wallbang spam with RL <200u mimics pro play (2026-01-05) |
+| 👂 **Simulated Perception** | Hearing module: Detects invisible enemies through walls via noise (weapon fire, footsteps >200 u/s, jumps, quad/pent hum). Pre-aims at doorways where enemies approach (800u range). Adds suppressive RL/GL spam at heard locations (160-800u) to punish loud hallway play (2026-01-10) |
 | 🎯 **The FFA Fix** | Intelligent multi-target awareness: Scans all enemies, scores by distance/health/threat, switches mid-combat for better targets. Vulture mode (+500 for <40 HP), self-defense (+800 for attackers), 1.5s re-scan with hysteresis (data-driven optimization, 2026-01-05) |
 | 🧠 **Target Stack (Phase 8)** | 3-deep LIFO goal memory—bots remember interrupted missions across combat (pursuing Mega → enemy → fight → **restore Mega**) |
 | 📊 **Risk-Aware Scoring** | Need-based item boosts minus threat penalty (proximity -80 max) |
