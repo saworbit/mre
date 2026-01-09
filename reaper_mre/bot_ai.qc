@@ -25,7 +25,7 @@ void () endEnemy =
    } //end if
    self.think = self.th_walk;
    self.nextthink = (time + 0.100);
-   self.search_time = (time - TRUE);
+   self.combat_search_time = (time - TRUE);
    self.enemyrun = FALSE;
    Stack_Pop_Safe();  // Restore previous goal from stack (Phase 8: Target Stack)
    if ((olden.classname == "player"))
@@ -651,7 +651,7 @@ void () BotHuntTarget =
    self.lefty = ((self.lefty - (self.lefty & LOCAL_TIME)) + MOVETYPE_TOSS);
    self.nextthink = (time + 0.100);
    self.attack_finished = ((time + 0.700) - (0.200 * self.skil));
-   self.search_time = (time + MOVETYPE_PUSH);
+   self.combat_search_time = (time + MOVETYPE_PUSH);
    clearCache (self);
    if (teamplay)
    {
@@ -1910,7 +1910,7 @@ void (float dist) ai_botrun =
 
       // Cache visible enemy velocity to extend chase prediction past line-of-sight breaks.
       self.last_enemy_vel = self.enemy.velocity;
-      self.search_time = (time + MOVETYPE_PUSH);
+      self.combat_search_time = (time + MOVETYPE_PUSH);
 
       // ===== FFA FIX: The "Swivel Turret" (Dynamic Target Switching) =====
       // In FFA, don't commit to a duel. If a new, better target appears
@@ -1977,7 +1977,7 @@ void (float dist) ai_botrun =
       } //end if
       // ===================================================
    } //end if
-   if ((self.search_time < time))
+   if ((self.combat_search_time < time))
    {
       endEnemy ();
       BotFindTarget ();
@@ -2158,7 +2158,7 @@ void () aibot_setupchase =
    {
       setorigin (self.goalentity,pth.origin);
    } //end if
-   self.search_time = (time + MOVETYPE_TOSS);
+   self.combat_search_time = (time + MOVETYPE_TOSS);
 }; //end of the function aibot_setupchase
 
 void (float dist) aibot_chase =
@@ -2190,7 +2190,7 @@ void (float dist) aibot_chase =
          objerror ("bad bot target in bot_ai! 1\n");
       } //end if
       setorigin (self.goalentity,self.enemy.origin);
-      self.search_time = (time + MOVETYPE_FLY);
+      self.combat_search_time = (time + MOVETYPE_FLY);
       self.think = self.th_run;
       Botmovetogoal (dist);
       return ;
@@ -2199,11 +2199,11 @@ void (float dist) aibot_chase =
    if ((!enemy_vis) && (self.skil > TRUE))
    {
       setorigin (self.goalentity,(self.goalentity.origin + (self.last_enemy_vel * 0.200)));
-      self.search_time = (self.search_time + 0.100);
+      self.combat_search_time = (self.combat_search_time + 0.100);
    } //end if
    if (RunAway ())
    {
-      if ((self.search_time < time))
+      if ((self.combat_search_time < time))
       {
          endEnemy ();
          return ;
@@ -2244,7 +2244,7 @@ void (float dist) aibot_chase =
       } //end if
       return ;
    } //end if
-   if ((self.search_time < time))
+   if ((self.combat_search_time < time))
    {
       endEnemy ();
       return ;
@@ -2424,7 +2424,7 @@ void (float dist) ai_botgetGoody =
    local float dis;
    local float weap;
 
-   self.search_time = (self.search_time + 0.100);
+   self.combat_search_time = (self.combat_search_time + 0.100);
    if ((time > self.goody_time))
    {
       ai_endgetGoody (dist);

@@ -52,7 +52,7 @@ void () t_botmovetarget =
          if (!(other.lefty & ONTRAIN))
          {
             other.lefty = (other.lefty | ONTRAIN);
-            other.search_time = (time + TRUE);
+            other.nav_search_time = (time + TRUE);
          } //end if
          return ;
       } //end if
@@ -60,12 +60,12 @@ void () t_botmovetarget =
       {
          if ((other.lefty & GETGOODY))
          {
-            other.goody_time = time;
+         other.goody_time = time;
 
          } //end if
          else
          {
-            other.search_time = time;
+            other.nav_search_time = time;
          } //end if
          return ;
       } //end if
@@ -74,7 +74,7 @@ void () t_botmovetarget =
       button_touch ();
       self = tmp;
       clearCache (other);
-      other.search_time = (time + MOVETYPE_WALK);
+      other.nav_search_time = (time + MOVETYPE_WALK);
       other.nextthink = (time + 0.300);
       return ;
    } //end if
@@ -92,7 +92,7 @@ void () t_botmovetarget =
    rnd = (rnd - vlen ((other.origin - pth.origin)));
    if ((rnd < pth.enemylen))
    {
-      other.search_time = (time - TRUE);
+      other.combat_search_time = (time - TRUE);
       return ;
    } //end if
    random ();
@@ -102,7 +102,7 @@ void () t_botmovetarget =
    rnd = (random () * (other.skil + TRUE));
    if ((rnd < 0.100))
    {
-      other.search_time = (time - TRUE);
+      other.combat_search_time = (time - TRUE);
       return ;
    } //end if
    if ((self.classname != "BotTarget"))
@@ -110,7 +110,7 @@ void () t_botmovetarget =
       objerror ("bad bot target in bot_touch! 2\n");
    } //end if
    setorigin (self,pth.origin);
-   other.search_time = (time + MOVETYPE_STEP);
+   other.combat_search_time = (time + MOVETYPE_STEP);
 }; //end of the function t_botmovetarget
 
 void () bot_toucheditem =
@@ -126,7 +126,7 @@ void () bot_toucheditem =
          dprint ("\n");
       } //end if
       other.lefty = (other.lefty - (other.lefty & LOCAL_TIME));
-      other.search_time = (time - TRUE);
+      other.nav_search_time = (time - TRUE);
    } //end if
 }; //end of the function bot_toucheditem
 
@@ -143,12 +143,12 @@ void (entity bot) bot_triggered =
    Botgoal.goalentity = find (world,targetname,self.target);
    if ((Botgoal.goalentity.classname == "light"))
    {
-      bot.search_time = time;
+      bot.nav_search_time = time;
       return ;
    } //end if
    if (Botgoal.goalentity)
    {
-      bot.search_time = (time + MOVETYPE_WALK);
+      bot.nav_search_time = (time + MOVETYPE_WALK);
       org = ((Botgoal.goalentity.absmax + Botgoal.goalentity.absmin) * 0.500);
       org_z = (Botgoal.goalentity.absmin_z + TRUE);
       if ((Botgoal.classname != "BotTarget"))
@@ -229,7 +229,7 @@ void () enemy_touched =
    if ((tmp.classname == "trigger_push"))
    {
       endEnemy ();
-      self.search_time = (time + MOVETYPE_STEP);
+      self.combat_search_time = (time + MOVETYPE_STEP);
       if ((self.goalentity.classname != "BotTarget"))
       {
          objerror ("bad bot target in bot_touch! 5\n");
@@ -244,7 +244,7 @@ void () enemy_touched =
    } //end if
    setorigin (self.goalentity,org);
    self.goalentity.goalentity = self.enemy;
-   self.search_time = (time + MOVETYPE_STEP);
+   self.combat_search_time = (time + MOVETYPE_STEP);
    if ((self.lefty & GETGOODY))
    {
       self.lefty = (self.lefty - GETGOODY);

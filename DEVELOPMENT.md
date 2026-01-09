@@ -289,6 +289,23 @@ impulse 99  = AI Director (was 400)
 
 ---
 
+### 9. Shared Timers (combat vs navigation)
+
+**ISSUE:** `search_time` was used for both enemy persistence and goal patience, causing one system to clobber the other.
+
+**Safe Pattern:**
+```c
+// Separate timers for different systems
+self.combat_search_time = (time + 7.0);
+self.nav_search_time = (time + 4.0);
+```
+
+**Prevention:**
+- Use dedicated timers for combat and navigation.
+- Avoid reusing shared fields for unrelated behaviors.
+
+---
+
 ## 🛠️ Build & Deploy Workflow
 
 ### Compilation

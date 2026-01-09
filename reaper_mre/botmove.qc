@@ -1522,7 +1522,7 @@ void (float dist) strafemove =
 
    if ((self.flags & (FL_INWATER + FL_ONGROUND)))
    {
-      self.search_time = (self.search_time - 0.300);
+      self.nav_search_time = (self.nav_search_time - 0.300);
    } //end if
 }; //end of the function strafemove
 // ===== END BONUS TWEAK #5 =====

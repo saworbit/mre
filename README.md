@@ -352,6 +352,15 @@ Item weighting rejects entities with `solid == SOLID_NOT` and `modelindex == 0`,
 
 **Result:** Fewer stale-goal chases after pickups or entity removal.
 
+### Split Search Timers (2026-01-10)
+
+**BUGFIX:** Combat persistence and navigation patience no longer share the same timer.
+
+**The Fix:**
+Bots now track `combat_search_time` for enemy chase persistence and `nav_search_time` for item/path patience, preventing cross‑clobbering between systems.
+
+**Result:** Bots don’t forget enemies early or abandon goals due to unrelated timer updates.
+
 ### 🏎️ Movement Smoothing Suite (2026-01-05)
 
 **NEW:** Three distinct smoothing upgrades transform robotic movement into human-like fluidity!

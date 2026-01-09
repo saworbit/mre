@@ -360,7 +360,8 @@ void () PutBotInServer =
    SetNewParms ();
    DecodeLevelParms ();
    W_SetCurrentAmmo ();
-   self.search_time = time;
+   self.nav_search_time = time;
+   self.combat_search_time = (time - TRUE);
    self.attack_finished = time;
    self.th_pain = bot_pain;
    self.th_die = BotDie;
@@ -454,7 +455,7 @@ void () PutBotInServer =
          if (self.movetarget.rocketcache)
          {
             setorigin (self.goalentity,self.movetarget.rocketcache.origin);
-            self.search_time = (self.search_time + 5.000);
+            self.nav_search_time = (self.nav_search_time + 5.000);
          } //end if
       } //end if
    } //end if

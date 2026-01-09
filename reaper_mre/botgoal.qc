@@ -167,7 +167,7 @@ void () Bot_CheckGoalFixation =
    if ((goal.solid == SOLID_NOT) && (goal.modelindex == 0.000))
    {
       self.goalentity.goalentity = self.goalentity;
-      self.search_time = time;
+      self.nav_search_time = time;
       self.last_goal_progress_time = time;
       self.last_goal_dist = 999999.000;
       return ;
@@ -203,7 +203,7 @@ void () Bot_CheckGoalFixation =
       self.last_goal_progress_time = time;
       self.last_goal_dist = 999999.000;
       self.goalentity.goalentity = self.goalentity;
-      self.search_time = time;
+      self.nav_search_time = time;
    } //end if
 }; //end of the function Bot_CheckGoalFixation
 
@@ -222,7 +222,7 @@ void () shoottarget =
    self.enemy = world;
    if ((botTarget.goalentity.classname == "door"))
    {
-      self.search_time = (time + FL_CLIENT);
+      self.nav_search_time = (time + FL_CLIENT);
    } //end if
 }; //end of the function shoottarget
 
@@ -244,7 +244,7 @@ void (float dist) ai_botseek =
    } //end if
    botTarget = self.goalentity;
    Bot_CheckGoalFixation ();
-   if ((time < self.search_time))
+   if ((time < self.nav_search_time))
    {
       if ((botTarget.goalentity.classname == "train"))
       {
@@ -259,10 +259,10 @@ void (float dist) ai_botseek =
          rng = vlen ((botTarget.origin - self.origin));
          if ((rng >= oldrng))
          {
-            self.search_time = (self.search_time - 0.400);
+            self.nav_search_time = (self.nav_search_time - 0.400);
             if ((botTarget.goalentity == botTarget))
             {
-               self.search_time = time;
+               self.nav_search_time = time;
             } //end if
          } //end if
          return ;
@@ -1653,7 +1653,7 @@ void () aibot_chooseGoal =
    } //end if
    self.lefty = (self.lefty + TRUE);
    current = botTarget.goalentity;
-   self.search_time = (time + MOVETYPE_STEP);
+   self.nav_search_time = (time + MOVETYPE_STEP);
    best = DONT_WANT;
    OK_NOTVIS = FALSE;
    if ((self.air_finished < (time + MOVETYPE_FLYMISSILE)))
@@ -1740,7 +1740,7 @@ void () aibot_chooseGoal =
                            if ((vlen ((e.origin - self.origin)) < 100.000))
                            {
                               // Force wait behavior
-                              self.search_time = (time + 1.000);
+                              self.nav_search_time = (time + 1.000);
                            } //end if
                         } //end if
                      } //end if
@@ -1916,7 +1916,7 @@ void () aibot_chooseGoal =
          botTarget.goalentity = global_item;
          bestorg = global_item.origin;
          // Give bot more time to travel there before giving up
-         self.search_time = (time + 5.000);
+         self.nav_search_time = (time + 5.000);
       } //end if
       else
       {
@@ -1924,7 +1924,7 @@ void () aibot_chooseGoal =
          botTarget.goalentity = botTarget;
          bestorg = chooseRoamTarget (FALSE);
          // Check again soon
-         self.search_time = (time + 0.500);
+         self.nav_search_time = (time + 0.500);
       } //end if
       self.lefty = (self.lefty | FAR_SEEK);
    } //end if

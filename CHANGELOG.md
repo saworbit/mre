@@ -36,6 +36,11 @@
   - **Early rejection** in `reaper_mre/botgoal.qc`: `itemweight` now ignores items with `solid == SOLID_NOT` and `modelindex == 0`.
   - **Fixation cleanup** in `reaper_mre/botgoal.qc`: `Bot_CheckGoalFixation` drops goals that were removed or hidden and resets the search state.
   - **Result:** Bots abandon stale goals immediately instead of walking toward removed items.
+- **Decoupled search timers** to prevent combat/nav clobbering:
+  - **New fields** in `reaper_mre/botit_th.qc`: `combat_search_time` (enemy persistence) and `nav_search_time` (goal patience).
+  - **Combat updates** in `reaper_mre/bot_ai.qc` and `reaper_mre/botsignl.qc`: chase timers now write to `combat_search_time`.
+  - **Navigation updates** in `reaper_mre/botgoal.qc`, `reaper_mre/botmove.qc`, `reaper_mre/botspawn.qc`, and `reaper_mre/botsignl.qc`: goal timers now write to `nav_search_time`.
+  - **Result:** Combat memory no longer gets shortened by goal selection, and roam patience no longer gets overwritten during fights.
 
 ## 2026-01-09
 
