@@ -486,6 +486,25 @@ while (bot)
 - Store the last noise source per bot to avoid race conditions.
 - Prefer cheap distance checks (squared distance) in tight loops.
 
+---
+
+### 19. Team Help Scan Throttling (CallForHelp)
+
+**ISSUE:** Running help scans for every bot every frame multiplies path checks and traces across the team.
+
+**Safe Pattern:**
+```c
+if ((self.health >= 30.000) && (random () >= 0.100))
+{
+    return;
+}
+```
+
+**Prevention:**
+- Throttle help scans with a low probability when healthy.
+- Allow immediate scans when the bot is low on health.
+- Restore shared globals (e.g., `enemy_vis`) after `self` swaps.
+
 ## 🛠️ Build & Deploy Workflow
 
 ### Compilation

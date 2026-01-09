@@ -345,6 +345,15 @@ Traversal caps at 10 segments and breaks once the time horizon is covered; loopi
 
 **Result:** Bots hear overlapping events in the same frame reliably.
 
+### CallForHelp Throttle + State Guard (2026-01-10)
+
+**OPTIMIZATION:** Team help scans now run less often and avoid leaking global state.
+
+**The Fix:**
+`CallForHelp` is gated unless bots are low on health or pass a 10% random check, and it restores `enemy_vis` after temporary `self` swaps.
+
+**Result:** Reduced CPU spikes in teamplay without cross-bot state bleed.
+
 ### Lefty Bitmask Safety (2026-01-10)
 
 **BUGFIX:** Clearing `self.lefty` flags now uses masked subtraction to avoid corrupting unrelated bits.

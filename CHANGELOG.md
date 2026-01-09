@@ -27,6 +27,10 @@
   - **Immediate fanout** in `reaper_mre/botnoise.qc`: signalnoise injects events to nearby bots instead of overwriting a global queue.
   - **New per-bot field** in `reaper_mre/botit_th.qc`: `noise_target` stores the last heard source.
   - **Result:** Bots consistently react to multiple simultaneous sounds in the same frame.
+- **CallForHelp throttling + state protection** to reduce team CPU spikes:
+  - **Throttle gate** in `reaper_mre/bot_ai.qc`: only run help scans when low health or on a 10% random chance.
+  - **Global restore** in `reaper_mre/bot_ai.qc`: save/restore `enemy_vis` around temporary `self` swaps.
+  - **Result:** Lower per-frame overhead with fewer global state side effects.
 - **Docs update:** Clarified that `impulse 97` feeler logs only appear in exploration mode (no nearby waypoints), so waypoint-dense maps may show no FEELER/BREADCRUMB output.
 - **Suppressive fire on heard targets** for hallway spam behavior:
   - **Expanded hearing range** in `reaper_mre/bot_ai.qc`: BotListen now treats sounds as audible out to ~800 units.

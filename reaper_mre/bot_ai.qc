@@ -446,6 +446,12 @@ void () CallForHelp =
    local float saved_trace_inopen;
    local float saved_trace_inwater;
    local float help_trace_fraction;
+   local float saved_enemy_vis;
+
+   if (((self.health >= 30.000) && (random () >= 0.100)))
+   {
+      return ;
+   } //end if
 
    HELPING = TRUE;
    e = find (world,classname,"dmbot");
@@ -491,6 +497,7 @@ void () CallForHelp =
                            dprint (" coming to help!\n");
                         } //end if
                         e.enemy = self.enemy;
+                        saved_enemy_vis = enemy_vis;
                         tmp = self;
                         self = e;
                         BotFoundTarget ();
@@ -500,6 +507,7 @@ void () CallForHelp =
                         } //end if
                         setorigin (self.goalentity,p.origin);
                         self = tmp;
+                        enemy_vis = saved_enemy_vis;
                      } //end if
                   } //end if
                } //end if
