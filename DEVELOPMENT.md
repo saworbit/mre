@@ -207,7 +207,31 @@ missile.owner = self;
 
 ---
 
-### 6. Impulse Truncation (8-bit Limit)
+### 6. Frame-Rate Dependent Smoothing (Delta Time)
+
+**ISSUE:** Fixed degrees-per-tick turning makes aim sluggish when server FPS drops.
+
+**Bad Pattern:**
+```c
+turn_speed = (15.000 + (self.skil * 10.000)); // per tick
+```
+
+**Safe Pattern:**
+```c
+local float time_delta;
+local float turn_dps;
+time_delta = (time - self.last_aim_time);
+turn_dps = (150.000 + (self.skil * 100.000));
+turn_speed = (turn_dps * time_delta);
+```
+
+**Prevention:**
+- Scale per-frame motion by elapsed time when possible.
+- Clamp unusually large deltas to avoid big jumps after pauses.
+
+---
+
+### 7. Impulse Truncation (8-bit Limit)
 
 **ISSUE:** Quake engine truncates impulse values to 8-bit range (0-255). Values >255 get reduced via modulo.
 

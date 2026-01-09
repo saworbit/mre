@@ -292,15 +292,25 @@ void () checkyaw =
    local float desired_pitch;
    local float current_pitch;
    local float diff;
+   local float time_delta;
+   local float turn_dps;
    local float turn_speed;
    local float abs_diff;
 
    // 1. Early exit if no enemy
-   if (!self.enemy) return;
+   if (!self.enemy)
+   {
+      self.last_aim_time = time;
+      return;
+   }
 
    // ===== HUMAN REACTION TIME: Block Aiming During Delay =====
    // Don't aim at enemy until reaction time has passed
-   if ((time < self.reaction_finished)) return;
+   if ((time < self.reaction_finished))
+   {
+      self.last_aim_time = time;
+      return;
+   }
    // ===== END HUMAN REACTION TIME =====
 
    // 2. Calculate lead target (standard logic)
@@ -392,10 +402,21 @@ void () checkyaw =
    // Calculate difference
    diff = (desired_pitch - current_pitch);
 
-   // Slew Rate: How many degrees can we turn this tick? (0.1s)
-   // Skill 0 (Easy): 15 deg/tick = 150 deg/s (Lazy tracking)
-   // Skill 3 (Nightmare): 45 deg/tick = 450 deg/s (Snappy but not instant)
-   turn_speed = (15.000 + (self.skil * 10.000));
+   // Slew Rate: How many degrees can we turn this tick?
+   // Skill 0 (Easy): 150 deg/s (Lazy tracking)
+   // Skill 3 (Nightmare): 450 deg/s (Snappy but not instant)
+   time_delta = (time - self.last_aim_time);
+   if ((time_delta <= 0.000))
+   {
+      time_delta = 0.100;
+   } //end if
+   if ((time_delta > 0.200))
+   {
+      time_delta = 0.200;
+   } //end if
+   self.last_aim_time = time;
+   turn_dps = (150.000 + (self.skil * 100.000));
+   turn_speed = (turn_dps * time_delta);
 
    // Get absolute value of diff manually (QuakeC has no fabs)
    abs_diff = diff;

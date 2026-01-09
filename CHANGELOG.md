@@ -28,6 +28,10 @@
 - **Spawn safety for projectiles** to avoid `newmis` clobbering:
   - **Local entity capture** in `reaper_mre/weapons.qc`: `launch_spike` now returns the spawned entity and all configuration uses the local reference, not `newmis`.
   - **Result:** Spike/superspike setup no longer risks configuring the wrong entity if another spawn fires mid-chain.
+- **Delta-time aim smoothing** to keep pitch slew rate consistent under lag:
+  - **Time-scaled turn speed** in `reaper_mre/botthink.qc`: `checkyaw` now uses degrees-per-second * time delta instead of fixed degrees-per-tick.
+  - **New per-bot field** in `reaper_mre/botit_th.qc`: `last_aim_time` tracks the last aim update for delta calculation.
+  - **Result:** Aim smoothing remains stable when server FPS drops; bots don't become sluggish under load.
 
 ## 2026-01-09
 

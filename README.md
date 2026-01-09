@@ -331,6 +331,18 @@ Clear flags via `self.lefty = (self.lefty - (self.lefty & FLAG))` for `GETGOODY`
 
 **Result:** Spike and superspike setup no longer risks configuring the wrong entity.
 
+### Delta-Time Aim Smoothing (2026-01-10)
+
+**OPTIMIZATION:** Pitch slew rate now scales by time delta to avoid frame-rate dependent aiming.
+
+**The Problem:**
+Fixed degrees-per-tick turning slows down in real time when server FPS drops.
+
+**The Fix:**
+`checkyaw` now computes degrees-per-second and multiplies by elapsed time since the last aim update.
+
+**Result:** Bots keep consistent turn speed even under server load.
+
 ### 🏎️ Movement Smoothing Suite (2026-01-05)
 
 **NEW:** Three distinct smoothing upgrades transform robotic movement into human-like fluidity!

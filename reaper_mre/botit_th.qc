@@ -1,4 +1,6 @@
 .float watertype2;
+// Tracks last aim update time for delta-time scaled pitch smoothing.
+.float last_aim_time;
 float last_time_left /* = 0.000 */;
 .float fClientNo;
 float fActiveClients /* = 0.000 */;
