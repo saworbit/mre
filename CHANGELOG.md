@@ -12,6 +12,12 @@
   - **Expanded hearing range** in `reaper_mre/bot_ai.qc`: BotListen now treats sounds as audible out to ~800 units.
   - **Splash spam reaction** in `reaper_mre/bot_ai.qc`: when a sound is heard out of sight and within 160-800u, bots with RL/GL and ammo will fire suppressive shots toward the sound with a short cooldown.
   - **Result:** Bots pressure corners and hallways more like human players, even before LOS.
+- **Traversal strafe-jumping** for faster navigation on clear runs:
+  - **Eligibility gating** in `reaper_mre/botmove.qc`: Only when idle (no enemy), skill >2, path clear >300u, and no ledge risk.
+  - **Alternating strafe yaw** in `reaper_mre/botmove.qc`: Small left/right yaw offsets and timed flips to simulate strafe-jump patterns.
+  - **Hop trigger + fallback movement** in `reaper_mre/botmove.qc`: Timed jumps when grounded, with diagonal walkmove when jump is on cooldown.
+  - **New per-bot fields** in `reaper_mre/botit_th.qc`: `travel_bhop_side`, `travel_bhop_flip_time`, `travel_bhop_jump_time`.
+  - **Result:** Bots build traversal speed on long corridors and reach items faster.
 
 ## 2026-01-09
 

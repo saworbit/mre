@@ -1067,7 +1067,7 @@ Advanced **path_corner chain prediction** for moving platforms:
 | 🏎️ **The Racing Line** | Corner smoothing: Blends aim 70% current + 30% next waypoint within 120u for smooth curves through doorways (2026-01-05) |
 | 🎯 **Strafe Hysteresis** | Anti-vibration: 0.5s direction commitment prevents seizure-like jitter, creates smooth combat arcs (2026-01-05) |
 | 🖱️ **Analog Turning** | Dynamic yaw speed: 5°/frame tracking, 20°/frame cornering, 45°/frame flicks for human-like aim (2026-01-05) |
-| 🐰 **Bunny Hop Mechanics** | Skill-based strafe-jump acceleration (skill >2, +12 u/s boost, 600 u/s cap) |
+| 🐰 **Bunny Hop Mechanics** | Skill-based strafe-jump acceleration (skill >2, +12 u/s boost, 600 u/s cap) plus traversal strafe-jumping on long clear runs |
 | 🎢 **Jump Smoothing** | 3-frame moving average eliminates jittery trajectories |
 | 🪂 **Mid-Air Correction** | 20% velocity damping when trajectory becomes unreachable |
 | 🌋 **Mid-Air Hazard Avoidance** | 0.15s trajectory prediction + 90° emergency steering away from lava/slime (2026-01-04) |

@@ -6,6 +6,8 @@ entity(entity door_ent) FindButtonForDoor;
 void(vector org, float traffic, float danger, string trig_target) SpawnSavedWaypoint;
 // Forward declaration for live learning RJ waypoints (defined in botroute.qc)
 void(vector org, vector angles, float velocity_gain, string rj_type_str) SpawnLearnedRJ_Live;
+// Forward declaration for ledge risk (defined later in this file)
+float(entity bot, vector pos, vector dir) Bot_LedgeRisk;
 
 // Progress-based stuck detection + unstick mode tuning
 float BOT_MODE_NORMAL = 0.000;
@@ -1861,6 +1863,103 @@ float (entity bot, float mode) Bot_FeelerCandidateCount =
    return (count);
 }; //end of the function Bot_FeelerCandidateCount
 
+// Traversal strafe-jumping: build speed on long, clear runs between waypoints.
+float (float dist, float base_yaw) Bot_TraversalStrafe =
+{
+   local vector start;
+   local vector end;
+   local vector dir;
+   local float clear_dist;
+   local float dist_to_goal;
+   local float side;
+   local float travel_yaw;
+   local vector jumpv;
+   local float ledge_penalty;
+
+   if ((self.enemy != world))
+   {
+      return (FALSE);
+   } //end if
+   if (self.feeler_mode_active)
+   {
+      return (FALSE);
+   } //end if
+   if ((self.skil <= 2.000))
+   {
+      return (FALSE);
+   } //end if
+   if ((self.flags & FL_INWATER))
+   {
+      return (FALSE);
+   } //end if
+   if (self.elevator_wait_state)
+   {
+      return (FALSE);
+   } //end if
+   dist_to_goal = vlen ((self.goalentity.origin - self.origin));
+   if ((dist_to_goal < 240.000))
+   {
+      return (FALSE);
+   } //end if
+
+   self.v_angle_x = 0.000;
+   self.v_angle_y = base_yaw;
+   self.v_angle_z = 0.000;
+   makevectors (self.v_angle);
+   dir = v_forward;
+   start = (self.origin + '0.000 0.000 24.000');
+   end = (start + (dir * 320.000));
+   traceline (start,end,TRUE,self);
+   clear_dist = (trace_fraction * 320.000);
+   if ((clear_dist < 300.000))
+   {
+      return (FALSE);
+   } //end if
+
+   ledge_penalty = Bot_LedgeRisk (self,(self.origin + (dir * 96.000)),dir);
+   if ((ledge_penalty > 0.000))
+   {
+      return (FALSE);
+   } //end if
+
+   side = self.travel_bhop_side;
+   if (!side)
+   {
+      side = 1.000;
+   } //end if
+   if ((time > self.travel_bhop_flip_time))
+   {
+      side = (-1.000 * side);
+      self.travel_bhop_flip_time = (time + (0.350 + (random () * 0.150)));
+   } //end if
+   self.travel_bhop_side = side;
+
+   travel_yaw = (base_yaw + (side * 12.000));
+   self.ideal_yaw = travel_yaw;
+
+   if ((self.flags & FL_ONGROUND))
+   {
+      if ((time > self.travel_bhop_jump_time))
+      {
+         self.v_angle_x = 0.000;
+         self.v_angle_y = travel_yaw;
+         self.v_angle_z = 0.000;
+         makevectors (self.v_angle);
+         jumpv = (v_forward * BOTSPEED);
+         jumpv_z = 270.000;
+         Botjump (jumpv);
+         self.travel_bhop_jump_time = (time + 0.400);
+         return (TRUE);
+      } //end if
+      if (walkmove ((base_yaw + (side * 25.000)),dist))
+      {
+         return (TRUE);
+      } //end if
+      return (FALSE);
+   } //end if
+   return (TRUE);
+}; //end of the function Bot_TraversalStrafe
+
 // FEELER STEERING: 5-trace corridor centring and cornering
 // Returns yaw bias (degrees to adjust heading)
 // Sets global feeler_speed_scale (0.0-1.0)
@@ -3250,6 +3349,14 @@ void (float dist) Botmovetogoal =
       } //end if
    } //end if
    // ===== END FEELER STEERING =====
+
+   // ===== TRAVERSAL STRAFE-JUMPING =====
+   if (Bot_TraversalStrafe (dist,self.ideal_yaw))
+   {
+      Bot_SmoothTurn ();
+      return ;
+   } //end if
+   // ===== END TRAVERSAL STRAFE-JUMPING =====
 
    // DYNAMIC YAW SPEED (Analog Turning - See Section 3)
    Bot_SmoothTurn ();
