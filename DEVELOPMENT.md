@@ -988,4 +988,4 @@ if (bot_debug_enabled && (important_decision_made))
 
 **Last Updated:** 2026-01-05
 **Maintainer:** reaperai project
-**License:** GPL (matches original Reaper Bot)
+**License:** MIT

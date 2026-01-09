@@ -2199,7 +2199,7 @@ Contributions are welcome! Please:
 This project builds upon the classic **Reaper Bot** (1998) with modern enhancements.
 
 - 🤖 **Original Reaper Bot:** Public domain / community project
-- ✨ **MRE Enhancements:** See repository license
+- ✨ **MRE Enhancements:** MIT License (see `LICENSE`)
 
 ---
 
