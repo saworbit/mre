@@ -1980,6 +1980,7 @@ cd c:\reaperai && tools\fteqcc_win64\fteqcc64.exe -O3 reaper_mre\progs.src && co
 ## 🎯 Skill Levels
 
 Bots adapt their behavior based on skill setting (`skill 0-3`):
+Default: Bots spawn at skill 3 (nightmare), and the mod forces the server `skill` cvar to at least 3 so the scoreboard matches. To allow dynamic scaling, set `bot_skill_adapt 1` (enables 1.0-4.0).
 
 | Skill | IQ | Behavior |
 |-------|-----|----------|
@@ -1991,6 +1992,7 @@ Bots adapt their behavior based on skill setting (`skill 0-3`):
 **Set in-game:**
 ```
 skill 3           // Max difficulty
+bot_skill_adapt 1 // Optional: enable streak-based skill scaling
 impulse 100       // Add bot
 impulse 102       // Remove bot
 ```

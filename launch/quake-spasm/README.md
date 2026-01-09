@@ -31,7 +31,7 @@ The Windows archives ship with their own DLLs (`SDL.dll`, `SDL2.dll`, codec libr
 ### Reaper MRE mod
 1. The recompiled MRE build lives in `launch\quake-spasm\reaper_mre` with `progs.dat`.
 2. Run `quakespasm.exe -basedir C:\reaperai\launch\quake-spasm -game reaper_mre` from `launch\quake-spasm` to load it.
-3. Harder bots (console): `skill 3` (or `skill 4` if your build accepts it), then `addbot <name> 5` for max skill bots.
+3. Default bots spawn at skill 3 (nightmare). You can run `skill 3` to confirm; use `bot_skill_adapt 1` to enable streak-based scaling, then `addbot <name> 5` for max skill bots.
 4. CI artifact copy: `C:\reaperai\ci\reaper_mre\progs.dat`.
 5. **Elevator Navigation Testing** (NEW 2026-01-08):
    - Enable debug logging: `impulse 95` (toggle bot debug ON), then `impulse 96` twice to cycle to LOG_TACTICAL verbosity
@@ -49,7 +49,7 @@ The Windows archives ship with their own DLLs (`SDL.dll`, `SDL2.dll`, codec libr
 9. Weapon choice now conserves rockets, counters Quad/Pent with SNG, and goes melee earlier on weak targets; `+map dm6` with `impulse 208` is a good stress test.
 10. Adrenaline logic now tightens aim noise and speeds think cycles when low HP or in close fights; `+map dm2` is a good close-quarters test.
 11. High-skill bots now spawn with memory (pre-cached routes to key powerups/weapons) and bias their first goal toward rocket control; `+map dm1` is a good spawn-route test.
-12. Streak-based tuning now nudges skill up/down based on kill/death streaks and biases target acquisition; `+map dm4` is a good multi-fight test.
+12. Streak-based tuning (enable with `bot_skill_adapt 1`) nudges skill up/down based on kill/death streaks and biases target acquisition; `+map dm4` is a good multi-fight test.
 13. Route caching now checks mid-route blockage, reacts to target velocity shifts, and prunes poor branches with a light heuristic; `+map dm5` is a good dynamic reroute test.
 14. Goal selection now boosts items near low-HP enemies and predicts fast enemy paths for intercepts; `+map dm2` is a good chase/finish test.
 15. Weapon-aware evasion now widens rocket dodges, flips strafe direction on self-velocity shifts, and adds lightning-gun jump bias; `+map dm7` is a good projectile evasion test.

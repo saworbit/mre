@@ -19,6 +19,7 @@ float LOG_DEBUG    = 5.000;   // Everything (deep debugging)
 
 float bot_debug_level /* = 0.000 */;  // Current verbosity level (0 = off)
 float bot_debug_feeler /* = 0.000 */;  // Toggle feeler-specific logging (impulse 97)
+float bot_skill_adapt /* = 0.000 */;  // Enable adaptive skill tuning (cvar bot_skill_adapt)
 
 void () setWatcherMode;
 

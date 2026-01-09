@@ -260,6 +260,15 @@ void () StartFrame =
    teamplay = cvar ("teamplay");
    skill = cvar ("skill");
    framecount = (framecount + TRUE);
+   if ((framecount == 1.000))
+   {
+      if ((skill < 3.000))
+      {
+         cvar_set ("skill","3");
+         skill = 3.000;
+      } //end if
+   } //end if
+   bot_skill_adapt = cvar ("bot_skill_adapt");
 
    // ===== PORTAL AWARENESS: Link Teleporters Once =====
    // Run this on frame 5 to ensure all entities are spawned

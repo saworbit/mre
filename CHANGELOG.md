@@ -1,3 +1,12 @@
+## 2026-01-09
+
+- **Nightmare default + optional adaptive scaling** for consistent high-skill spawns:
+  - **Default spawn skill** in `reaper_mre/botspawn.qc`: Bots now spawn at skill 3 (nightmare) by default.
+  - **Scoreboard alignment** in `reaper_mre/world.qc`: Forces server `skill` cvar to at least 3 on first frame so TAB display matches the bot baseline.
+  - **Optional adaptation** in `reaper_mre/bot_ai.qc`: Streak-based skill tuning is gated behind new `bot_skill_adapt` cvar (default off) so bots stay at 3 unless explicitly enabled.
+  - **New global** in `reaper_mre/botit_th.qc`: `bot_skill_adapt` stores the toggle state from `cvar("bot_skill_adapt")`.
+  - **Result:** Bots stay at nightmare by default with predictable difficulty; adaptive scaling is opt-in.
+
 ## 2026-01-08
 
 - **Combat Reposition + Verticality-Aware Pursuit** prevents "stand under the enemy" chasing:

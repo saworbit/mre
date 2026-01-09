@@ -1738,31 +1738,34 @@ void (float dist) ai_botrun =
       return ;
    } //end if
    // Streak-based skill tuning: adjust up on hot streaks, down on slumps.
-   kd_ratio = (self.kill_streak - self.death_streak);
-   if ((kd_ratio > 3.000))
+   if (bot_skill_adapt)
    {
-      self.skil = (self.skil + 0.500);
-      if ((self.skil > 4.000))
+      kd_ratio = (self.kill_streak - self.death_streak);
+      if ((kd_ratio > 3.000))
       {
-         self.skil = 4.000;
-      } //end if
-   } //end if
-   else
-   {
-      if ((kd_ratio < -3.000))
-      {
-         self.skil = (self.skil - 0.500);
-         if ((self.skil < 1.000))
+         self.skil = (self.skil + 0.500);
+         if ((self.skil > 4.000))
          {
-            self.skil = 1.000;
+            self.skil = 4.000;
          } //end if
       } //end if
-   } //end else
-   if ((fabs (kd_ratio) > 3.000))
-   {
-      self.kill_streak = CAM_IDLE;
-      self.death_streak = CAM_IDLE;
-      self.taunt_streak = CAM_IDLE;
+      else
+      {
+         if ((kd_ratio < -3.000))
+         {
+            self.skil = (self.skil - 0.500);
+            if ((self.skil < 1.000))
+            {
+               self.skil = 1.000;
+            } //end if
+         } //end if
+      } //end else
+      if ((fabs (kd_ratio) > 3.000))
+      {
+         self.kill_streak = CAM_IDLE;
+         self.death_streak = CAM_IDLE;
+         self.taunt_streak = CAM_IDLE;
+      } //end if
    } //end if
    if (!self.enemy)
    {

@@ -573,52 +573,14 @@ entity () AddBot =
    local entity oldself;
    local string mycolor;
    local float plycolor;
-   local float ran_skill;
 
    newbot = spawn ();
    oldself = self;
    self = newbot;
    self.think = SpawnNewBot;
    self.nextthink = (time + (12.000 * random ()));
-   // ===== BUGFIX: Skill Assignment Logic (2026-01-06) =====
-   // Previous logic had impossible conditions (e.g., x > 0.5 AND x <= 0.2)
-   // Result: ALL bots spawned with skill=1, breaking Juggler/RJ/advanced features
-   ran_skill = crandom ();
-   // Convert crandom() range (-1.0 to 1.0) to normalized range (0.0 to 1.0)
-   ran_skill = ((ran_skill + 1.000) * 0.500);
-
-   // Skill distribution with CORRECT conditional logic:
-   // 50% skill 1.0 (novice), 20% skill 1.5, 20% skill 2.0, 5% skill 2.5, 5% skill 3.0
-   if ((ran_skill <= 0.500))
-   {
-      self.skil = 1.000;  // 50% - Novice
-   } //end if
-   else
-   {
-      if ((ran_skill <= 0.700))
-      {
-         self.skil = 1.500;  // 20% - Below average (0.5-0.7)
-      } //end if
-      else
-      {
-         if ((ran_skill <= 0.900))
-         {
-            self.skil = 2.000;  // 20% - Average (0.7-0.9) - JUGGLER UNLOCKED!
-         } //end if
-         else
-         {
-            if ((ran_skill <= 0.950))
-            {
-               self.skil = 2.500;  // 5% - Above average (0.9-0.95)
-            } //end if
-            else
-            {
-               self.skil = 3.000;  // 5% - Expert (0.95-1.0)
-            } //end if
-         } //end if
-      } //end if
-   } //end else
-   // ===== END BUGFIX =====
+   // Default bots to nightmare skill (toughest) at spawn.
+   self.skil = 3.000;
    initscore ();
    self = oldself;
    return (newbot);
