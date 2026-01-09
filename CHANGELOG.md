@@ -7,6 +7,10 @@
   - **Dynamic ledge thresholds** in `reaper_mre/botmove.qc`: ledge risk thresholds tighten when stuck so bots get cautious only when needed.
   - **New per-bot fields** in `reaper_mre/botit_th.qc`: `feeler_commit_dir` and `feeler_commit_until` track local steering commits.
   - **Result:** Smoother corridor flow, earlier cornering, fewer bar/rail fixations, less ping-ponging.
+- **Bot_tryjump gravity fix + faster arc simulation** for accurate gap feasibility:
+  - **Time-scaled gravity** in `reaper_mre/botmove.qc`: jump simulation now applies `GRAVITY * dt` per step instead of full gravity each tick.
+  - **Streamlined trace loop** in `reaper_mre/botmove.qc`: single step trace with slope check and hazard gate reduces overhead.
+  - **Result:** Bots no longer under-estimate jump distances due to 10× gravity.
 - **Docs update:** Clarified that `impulse 97` feeler logs only appear in exploration mode (no nearby waypoints), so waypoint-dense maps may show no FEELER/BREADCRUMB output.
 - **Suppressive fire on heard targets** for hallway spam behavior:
   - **Expanded hearing range** in `reaper_mre/bot_ai.qc`: BotListen now treats sounds as audible out to ~800 units.

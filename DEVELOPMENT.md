@@ -379,6 +379,25 @@ float () CheckWaterLevel;
 - Use forward declarations instead of copy-pasting function bodies.
 - Prefer early-compiled files for core utilities to minimize dependency chains.
 
+---
+
+### 14. Jump Simulation Timestep Scaling (Bot_tryjump)
+
+**ISSUE:** Per-step gravity in jump simulations must be scaled by the timestep. Applying full `GRAVITY` each 0.1s step simulates 10x gravity and makes bots misjudge jump feasibility.
+
+**Safe Pattern:**
+```c
+sim_interval = 0.100;
+tvel = (tvel - (GRAVITY * sim_interval));
+newbottom = (bottom + (jumpv * sim_interval));
+newbottom_z = (newbottom_z + (tvel * sim_interval));
+```
+
+**Prevention:**
+- Always scale accelerations by the integration timestep.
+- Keep simulation step size explicit and consistent.
+- Add a safety break for out-of-bounds fall conditions.
+
 ## 🛠️ Build & Deploy Workflow
 
 ### Compilation

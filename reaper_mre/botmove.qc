@@ -443,6 +443,7 @@ float /* ERROR: Could not determine return type */ (float vz, float dist, float 
 {
    local float timetofloor;
    local float tvel;
+   local float sim_interval;
    local float dis;
    local float diffz;
    local float diffxy;
@@ -683,83 +684,43 @@ float /* ERROR: Could not determine return type */ (float vz, float dist, float 
    bottom_z = (bottom_z + self.mins_z);
    ht = (self.view_ofs_z - self.mins_z);
    NOTLAND = TRUE;
+   sim_interval = 0.100; // 100ms steps
    while (NOTLAND)
    {
-      tvel = (tvel - GRAVITY);
-      newbottom = (bottom + (jumpv * 0.100));
-      newbottom_z = (newbottom_z + (tvel * 0.100));
-      traceline (bottom,newbottom,SPAWNFLAG_SUPERSPIKE,self);
-      frac = trace_fraction;
-
-      // ===== TWEAK #2: Jump arc platform collision (ground sim → mid-air predict) =====
-      // Detects platforms during jump arc simulation so bots recognize plats/trains as
-      // valid landing surfaces—enables precise platform timing without ground-only bias.
-      // Re-traces downward to confirm solid surface (not edge/lip) before accepting.
-      if (((trace_ent.classname == "func_plat") || (trace_ent.classname == "func_train")))
+      tvel = (tvel - (GRAVITY * sim_interval));
+      newbottom = (bottom + (jumpv * sim_interval));
+      newbottom_z = (newbottom_z + (tvel * sim_interval));
+      traceline (bottom,newbottom,TRUE,self);
+      if ((trace_fraction < 1.000))
       {
-         // Hit platform surface during arc—verify it's solid collision (not edge)
-         traceline (bottom,(bottom - '0.000 0.000 8.000'),TRUE,self);
-         if ((trace_fraction < 1.000))
+         if ((trace_plane_normal_z > 0.700))
          {
-            // Platform is reachable via jump—treat as valid landing
-            return (TRUE);
+            newbottom = trace_endpos;
+            newbottom_z = trace_endpos_z;
+            NOTLAND = FALSE;
          } //end if
-      } //end if
-      // ===== END TWEAK #2 =====
-
-      if ((trace_fraction == SPAWNFLAG_SUPERSPIKE))
-      {
-         newtop = newbottom;
-         top = bottom;
-         top_z = (top_z + ht);
-         newtop_z = (newtop_z + ht);
-         traceline (top,newtop,SPAWNFLAG_SUPERSPIKE,self);
-         if ((trace_fraction == SPAWNFLAG_SUPERSPIKE))
-         {
-            traceline (newbottom,newtop,SPAWNFLAG_SUPERSPIKE,self);
-         } //end if
-         if ((trace_fraction == SPAWNFLAG_SUPERSPIKE))
-         {
-            top = (top + (SECRET_YES_SHOOT * v_right));
-            newtop = (newtop + (SECRET_YES_SHOOT * v_right));
-            traceline (top,newtop,SPAWNFLAG_SUPERSPIKE,self);
-         } //end if
-         if ((trace_fraction == SPAWNFLAG_SUPERSPIKE))
-         {
-            top = (top - (DOOR_TOGGLE * v_right));
-            newtop = (newtop - (DOOR_TOGGLE * v_right));
-            traceline (top,newtop,SPAWNFLAG_SUPERSPIKE,self);
-         } //end if
-         if ((trace_fraction != SPAWNFLAG_SUPERSPIKE))
-         {
-            frac = 0.100;
-         } //end if
-      } //end if
-      if ((trace_fraction != SPAWNFLAG_SUPERSPIKE))
-      {
-         dir = normalize ((newbottom - bottom));
-         len = vlen ((newbottom - bottom));
-         newbottom = (bottom + ((dir * len) * frac));
-         newbottom_z = (newbottom_z + LOOPTIME);
-         if (!checkLanding ((newbottom - (SECRET_YES_SHOOT * v_forward))))
+         else
          {
             return (FALSE);
          } //end if
-         NOTLAND = FALSE;
       } //end if
       if (NOTLAND)
       {
-         if (CheckLavaOrLow (newbottom))
+         lnd = pointcontents (newbottom);
+         if ((lnd <= CONTENT_SLIME))
+         {
+            return (FALSE);
+         } //end if
+         bottom = newbottom;
+         if ((bottom_z < (self.origin_z - 500.000)))
          {
             return (FALSE);
          } //end if
       } //end if
-      lnd = pointcontents (newbottom);
-      if ((lnd == CONTENT_WATER))
+      else
       {
-         NOTLAND = FALSE;
+         bottom = newbottom;
       } //end if
-      bottom = newbottom;
    } //end while
    jumpv_z = velz;
    if (imagine)
@@ -3739,3 +3700,4 @@ void (float dist) Botmovetogoal =
    strafemove ((dist * 0.800));
    return ;
 }; //end of the function Botmovetogoal
+

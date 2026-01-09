@@ -354,6 +354,18 @@ Fixed degrees-per-tick turning slows down in real time when server FPS drops.
 
 **Result:** Bots keep consistent turn speed even under server load.
 
+### Bot_tryjump Gravity Scaling (2026-01-10)
+
+**BUGFIX:** Jump arc simulation now scales gravity by timestep so bots don't under-estimate jump distances.
+
+**The Problem:**
+`Bot_tryjump` subtracted full `GRAVITY` each 0.1s step, effectively simulating 10x gravity.
+
+**The Fix:**
+The arc loop now applies `GRAVITY * dt`, uses a single step trace with slope gating, and keeps hazard checks in the loop.
+
+**Result:** Bots correctly recognize reachable gaps and ledges during jump planning.
+
 ### Goal Removal Guard (2026-01-10)
 
 **BUGFIX:** Bots now abandon item goals that were removed or hidden between selection and pursuit.
