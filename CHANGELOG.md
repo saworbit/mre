@@ -193,10 +193,10 @@
   - **Debug logging gates**: ALL elevator messages require `bot_debug_enabled && bot_debug_level >= LOG_TACTICAL`. Use `impulse 95` to enable debug, `impulse 96` to cycle to LOG_TACTICAL verbosity level.
   - **Testing evidence**: Log analysis from DM2 shows 108 stuck events (35+ consecutive) with Wanton bot trying to reach item_armor2 (Yellow Armor on elevator platform). Pattern includes "Train surf escape" (train under elevator) and "burst into flames" (lava pit below), confirming classic unmapped elevator behavior. Strong circumstantial evidence elevator system is needed and likely working, but direct verification requires debug logging.
   - **Documentation created**: Four comprehensive markdown files:
-    - `ELEVATOR_SYSTEM_ANALYSIS.md`: Architectural analysis, Obot comparison, implementation plan (80KB)
-    - `ELEVATOR_SYSTEM_DOCUMENTATION.md`: Complete API reference, function descriptions, usage guide (23KB)
-    - `ELEVATOR_TEST_GUIDE.md`: Quick test protocol, map compatibility, troubleshooting
-    - `CRITICAL_FINDING.md`: Log analysis showing Wanton's stuck loop at DM2 elevator location
+    - `docs/ELEVATOR_SYSTEM_ANALYSIS.md`: Architectural analysis, Obot comparison, implementation plan (80KB)
+    - `docs/ELEVATOR_SYSTEM_DOCUMENTATION.md`: Complete API reference, function descriptions, usage guide (23KB)
+    - `docs/ELEVATOR_TEST_GUIDE.md`: Quick test protocol, map compatibility, troubleshooting
+    - `docs/CRITICAL_FINDING.md`: Log analysis showing Wanton's stuck loop at DM2 elevator location
   - **Map compatibility**: DM4 has 452 waypoints + Yellow Armor elevator (func_plat at ~1792, 384, -168). DM2 has 362 waypoints but unmapped elevator (Wanton stuck loop location). E1M1 has Quad elevator but no waypoints (bots can't navigate). Recommended test map: DM4 with debug enabled.
   - **Classic bot problem solved**: Bots no longer pathfind through empty elevator shafts! Platform presence check prevents "bot walks into void and falls to death" behavior. A* blocking provides alternate routes. Wait state management enables patient elevator boarding. Auto-creation learns elevator locations during gameplay. Implements Obot's proven two-node architecture adapted to Reaper's existing navigation systems.
   - **Result:** Complete elevator navigation system deployed! Bots check platform presence before pathfinding, wait patiently when platform absent, find alternate routes automatically, and learn elevator locations through self-exploration. Eliminates stuck loops at elevator shafts. System running but visibility requires debug logging (impulse 95 + 96). Build size: 496,890 bytes (+3,896 bytes for elevator system). 🛗🤖✅

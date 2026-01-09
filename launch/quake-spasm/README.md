@@ -41,8 +41,8 @@ The Windows archives ship with their own DLLs (`SDL.dll`, `SDL2.dll`, codec libr
      - `[BotName] ELEVATOR: Boarding (waited 2.3s)` (platform arrived, bot boards)
      - `[BotName] ELEVATOR: Timeout (30.1s), replanning` (platform never came, finding alternate route)
      - `A*: Elevator blocked at '...' (platform at top)` (A* skipping elevator, using stairs)
-   - See `ELEVATOR_TEST_GUIDE.md` in repo root for detailed testing protocol
-   - See `CRITICAL_FINDING.md` for log analysis showing 108-stuck-loop at DM2 elevator (evidence system is needed)
+   - See `../../docs/ELEVATOR_TEST_GUIDE.md` for detailed testing protocol
+   - See `../../docs/CRITICAL_FINDING.md` for log analysis showing 108-stuck-loop at DM2 elevator (evidence system is needed)
 6. Predictive bot aiming (splash height variance, vertical lead, velocity-history smoothing with strafe-pattern overlead, chase extrapolation) scales with skill; `+map dm6` is a good stress test for movers.
 7. Powerup denial logic now boosts quad/pent/ring contesting; `+map dm2` is a good test for quad denial.
 8. Adaptive goal logic now prefers health when hurt and leans into denial when leading; `+map dm3` is a good mixed-item test.

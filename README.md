@@ -128,10 +128,10 @@ The Elevator Navigation System implements Obot's proven two-node architecture to
 **Testing:**
 - Enable debug: `impulse 95` → `impulse 96` (cycle to LOG_TACTICAL)
 - Best test map: DM4 (452 waypoints + Yellow Armor elevator)
-- See [ELEVATOR_TEST_GUIDE.md](ELEVATOR_TEST_GUIDE.md) for detailed protocol
+- See [ELEVATOR_TEST_GUIDE.md](docs/ELEVATOR_TEST_GUIDE.md) for detailed protocol
 
 **Evidence from Logs:**
-Log analysis from DM2 revealed Wanton bot stuck 108 times (35+ consecutive) trying to reach Yellow Armor on unmapped elevator. Pattern shows "Train surf escape" (train under elevator) and "burst into flames" (lava death), confirming classic elevator shaft problem. See [CRITICAL_FINDING.md](CRITICAL_FINDING.md) for full analysis.
+Log analysis from DM2 revealed Wanton bot stuck 108 times (35+ consecutive) trying to reach Yellow Armor on unmapped elevator. Pattern shows "Train surf escape" (train under elevator) and "burst into flames" (lava death), confirming classic elevator shaft problem. See [CRITICAL_FINDING.md](docs/CRITICAL_FINDING.md) for full analysis.
 
 **Integration:**
 - Platform detection in [botroute.qc:1100-1183](reaper_mre/botroute.qc#L1100-L1183)
@@ -2212,14 +2212,14 @@ This project builds upon the classic **Reaper Bot** (1998) with modern enhanceme
 ---
 ## 🙏 Credits
 
-- ?YZ? **Original Reaper Bot** ??" Steven Polge & community (1998)
-- ?Y?- **FrikBot** ??" Ryan "Frik" Smith
-- ?Y?- **Omicron Bot** ??" Jan Paul van Waveren (Mr Elusive, RIP :-( ) (AI architecture inspiration)
-- ?Y?- **Quake 1 Team** ??" id Software (1996)
-- ?Y?- **Quake Community** ??" mappers, modders, server admins, and players
-- ?Y"? **FTEQCC Compiler** ??" FTE QuakeWorld team
-- ?YZ? **QuakeSpasm Engine** ??" QuakeSpasm developers
-- ?Y?? **MRE AI Systems** ??" Modern enhancements (2026)
+- 📦 **Original Reaper Bot** — Steven Polge & community (1998)
+  - **FrikBot** — Ryan "Frik" Smith
+  - **Omicron Bot** — Jan Paul van Waveren (Mr Elusive, RIP :-( ) (AI architecture inspiration)
+  - **Quake 1 Team** — id Software (1996)
+  - **Quake Community** — mappers, modders, server admins, and players
+  - **FTEQCC Compiler** — FTE QuakeWorld team
+- 🎮 **QuakeSpasm Engine** — QuakeSpasm developers
+- 🤖 **MRE AI Systems** — Modern enhancements (2026)
 
 ---
 ## 🔗 Links
