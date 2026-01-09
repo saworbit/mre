@@ -1136,7 +1136,10 @@ void() CheckWaterSurvival =
             self.button2 = 1;
 
             // Add upward velocity to help break surface
-            self.velocity_z = 200;
+            if ((self.velocity_z < 150.000))
+            {
+               self.velocity_z = 200.000;
+            } //end if
 
             // Look up slightly to assist physics engine
             self.v_angle_x = -45;
