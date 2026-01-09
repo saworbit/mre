@@ -597,6 +597,25 @@ float () RunAway =
    return (FALSE);
 }; //end of the function RunAway
 
+float () Bot_ValidateEnemy =
+{
+   if ((!self.enemy) || (self.enemy == world))
+   {
+      return (FALSE);
+   } //end if
+   if (((self.enemy.classname != "player") && (self.enemy.classname != "dmbot")))
+   {
+      endEnemy ();
+      return (FALSE);
+   } //end if
+   if (((self.enemy.health <= 0.000) || (self.enemy.deadflag != DEAD_NO)))
+   {
+      endEnemy ();
+      return (FALSE);
+   } //end if
+   return (TRUE);
+}; //end of the function Bot_ValidateEnemy
+
 void () BotHuntTarget =
 {
    local vector predicted_pos;

@@ -463,6 +463,11 @@ void () BotPostThink =
    local float enemy_dist;
    local float think_delay;
 
+   if (self.enemy)
+   {
+      Bot_ValidateEnemy ();
+   } //end if
+
    // Adrenaline focus: scale up when hurt or in close-quarters combat.
    self.adrenaline = CAM_IDLE;
    if ((self.health < 30.000))

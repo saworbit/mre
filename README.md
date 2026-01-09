@@ -379,6 +379,15 @@ Bots now track `combat_search_time` for enemy chase persistence and `nav_search_
 
 **Result:** Smoother pitch in spectator views and demos with less micro‑snap jitter.
 
+### Phantom Enemy Validation (2026-01-10)
+
+**BUGFIX:** Bots now validate `self.enemy` each frame to avoid targeting reused entity slots.
+
+**The Fix:**
+`Bot_ValidateEnemy` clears enemies that are not `player`/`dmbot` or are dead, and `BotPostThink` calls it before combat logic.
+
+**Result:** No more chasing rockets or stale entities after disconnect/reuse.
+
 ### 🏎️ Movement Smoothing Suite (2026-01-05)
 
 **NEW:** Three distinct smoothing upgrades transform robotic movement into human-like fluidity!

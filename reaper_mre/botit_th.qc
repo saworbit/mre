@@ -53,6 +53,7 @@ void () DropBotPath;
 void () DumpWaypoints;
 
 float () BotFoundTarget;
+float () Bot_ValidateEnemy;
 
 void (entity en2) secondEnemy;
 

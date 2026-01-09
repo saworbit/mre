@@ -338,6 +338,24 @@ if ((abs_diff > 0.500))
 - Gate angle updates to meaningful deltas.
 - Let engine interpolation handle micro changes.
 
+---
+
+### 12. Enemy Slot Reuse (phantom targets)
+
+**ISSUE:** Entity slots get reused. `self.enemy` can point at a non-player entity after disconnects or spawns.
+
+**Safe Pattern:**
+```c
+if (((self.enemy.classname != "player") && (self.enemy.classname != "dmbot")))
+{
+    self.enemy = world;
+}
+```
+
+**Prevention:**
+- Validate `self.enemy` each think before combat logic.
+- Clear enemy if classname, health, or deadflag are invalid.
+
 ## 🛠️ Build & Deploy Workflow
 
 ### Compilation

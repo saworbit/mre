@@ -47,6 +47,10 @@
 - **Pitch jitter guard** to reduce network snapping:
   - **Gated pitch updates** in `reaper_mre/botthink.qc`: only apply `angles_x` when `abs_diff > 0.5` and set `fixangle` to force a clean update.
   - **Result:** Spectators and demos see smoother pitch interpolation instead of constant micro-snaps.
+- **Phantom enemy validation** to prevent chasing reused entity slots:
+  - **Central validation** in `reaper_mre/bot_ai.qc`: `Bot_ValidateEnemy` now checks classname, health, and deadflag and clears invalid enemies.
+  - **Bot think guard** in `reaper_mre/botthink.qc`: per-frame enemy validation runs before combat logic.
+  - **Result:** Bots drop non-player/dmbot targets immediately after slot reuse.
 
 ## 2026-01-09
 
