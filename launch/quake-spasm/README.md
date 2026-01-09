@@ -50,16 +50,17 @@ The Windows archives ship with their own DLLs (`SDL.dll`, `SDL2.dll`, codec libr
 10. Adrenaline logic now tightens aim noise and speeds think cycles when low HP or in close fights; `+map dm2` is a good close-quarters test.
 11. High-skill bots now spawn with memory (pre-cached routes to key powerups/weapons) and bias their first goal toward rocket control; `+map dm1` is a good spawn-route test.
 12. Streak-based tuning (enable with `bot_skill_adapt 1`) nudges skill up/down based on kill/death streaks and biases target acquisition; `+map dm4` is a good multi-fight test.
-13. Route caching now checks mid-route blockage, reacts to target velocity shifts, and prunes poor branches with a light heuristic; `+map dm5` is a good dynamic reroute test.
-14. Goal selection now boosts items near low-HP enemies and predicts fast enemy paths for intercepts; `+map dm2` is a good chase/finish test.
-15. Weapon-aware evasion now widens rocket dodges, flips strafe direction on self-velocity shifts, and adds lightning-gun jump bias; `+map dm7` is a good projectile evasion test.
-16. Noise-based taunts now trigger on hot streaks (varied lines) and death streak complaints on gib noises; `+map dm1` is a good low-pop test for bprint output.
-17. Movement recovery now detects stuck loops, escalates sidesteps (jump/diagonal/backpedal), and adds idle patrol wandering; `+map e1m1` is a good corner/idle test.
-18. Vision now includes corner-peek traces, idle scan yaw sweeps, and stuck-time quick rejection; `+map dm4` is a good corner/LOS test.
-19. **Physics-accurate navigation** now uses finer arc simulation (0.05s vs 0.1s timesteps), strafe momentum carryover (30% ground velocity), and multi-trace path validation (2x sample density + collision detection); `+map e1m1` (tight stairs) and `+map e1m2` (ramps) are good jump precision tests.
-20. **Grenade launcher mastery** now predicts 1-bounce wall shots (0.8 elasticity reflection), uses full gravity arc physics (g×t×0.6 lob velocity), and validates self-risk (<128u splash) to prevent frag-suicide; `+map dm3` (crates/corridors) is a good bank-shot test, `give 6` for GL.
-21. **Tactical AI** now scores items by need (RL/Quad/low ammo +100-200) minus threat (enemy proximity -80 max), amplifies powerup denial when leading (+0.15) or enemy weak (+0.2), and rotates 45° on stuck attempts with cache-clear on loop; `+map dm4` is a good tactical decision test.
-22. **Air physics suite** now clamps horizontal air speed (320-400 u/s skill-scaled), smooths jump velocity patterns (3-frame avg, 300 u/s cap), and dampens mid-air velocity 20% when goal unreachable; `+map e1m3` (castle falls/jumps) is a good air control test.
+13. Traversal strafe-jumping now accelerates bots on long, clear runs; `+map dm4` hallways or `+map dm6` loops are good speed tests.
+14. Route caching now checks mid-route blockage, reacts to target velocity shifts, and prunes poor branches with a light heuristic; `+map dm5` is a good dynamic reroute test.
+15. Goal selection now boosts items near low-HP enemies and predicts fast enemy paths for intercepts; `+map dm2` is a good chase/finish test.
+16. Weapon-aware evasion now widens rocket dodges, flips strafe direction on self-velocity shifts, and adds lightning-gun jump bias; `+map dm7` is a good projectile evasion test.
+17. Noise-based taunts now trigger on hot streaks (varied lines) and death streak complaints on gib noises; `+map dm1` is a good low-pop test for bprint output.
+18. Movement recovery now detects stuck loops, escalates sidesteps (jump/diagonal/backpedal), and adds idle patrol wandering; `+map e1m1` is a good corner/idle test.
+19. Vision now includes corner-peek traces, idle scan yaw sweeps, and stuck-time quick rejection; `+map dm4` is a good corner/LOS test.
+20. **Physics-accurate navigation** now uses finer arc simulation (0.05s vs 0.1s timesteps), strafe momentum carryover (30% ground velocity), and multi-trace path validation (2x sample density + collision detection); `+map e1m1` (tight stairs) and `+map e1m2` (ramps) are good jump precision tests.
+21. **Grenade launcher mastery** now predicts 1-bounce wall shots (0.8 elasticity reflection), uses full gravity arc physics (g×t×0.6 lob velocity), and validates self-risk (<128u splash) to prevent frag-suicide; `+map dm3` (crates/corridors) is a good bank-shot test, `give 6` for GL.
+22. **Tactical AI** now scores items by need (RL/Quad/low ammo +100-200) minus threat (enemy proximity -80 max), amplifies powerup denial when leading (+0.15) or enemy weak (+0.2), and rotates 45° on stuck attempts with cache-clear on loop; `+map dm4` is a good tactical decision test.
+23. **Air physics suite** now clamps horizontal air speed (320-400 u/s skill-scaled), smooths jump velocity patterns (3-frame avg, 300 u/s cap), and dampens mid-air velocity 20% when goal unreachable; `+map e1m3` (castle falls/jumps) is a good air control test.
 
 ### One-click launch (Windows)
 Run `launch_rpbot.bat` from `launch\quake-spasm` to start the mod with a safe default:
