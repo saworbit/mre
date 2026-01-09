@@ -335,6 +335,8 @@ void () PutBotInServer =
    local float cache_len;
 
    self.classname = "dmbot";
+   self.flags = (self.flags | FL_CLIENT);
+   self.colormap = (self.fClientNo + SPAWNFLAG_SUPERSPIKE);
    self.health = MUST_HAVE;
    self.takedamage = DAMAGE_AIM;
    self.solid = SOLID_SLIDEBOX;
@@ -472,7 +474,7 @@ void () PutBotInServer =
 
    // ===== CHAT HOOK: PERSONALITY ASSIGNMENT =====
    // Assign personality type to bot on spawn
-   if ((self.personality == FALSE))
+   if (((self.personality == FALSE) && (self.netname == "")))
    {
       local float r;
 
@@ -556,16 +558,166 @@ void () PutBotInServer =
    msgUpdateFragsToAll (self.fClientNo,self.frags);
 }; //end of the function PutBotInServer
 
+void () Bot_EntryLine =
+{
+   local string msg;
+
+   msg = "joins the fight.";
+   if ((self.netname == "Reaper"))
+   {
+      msg = "Fear the reaper.";
+   } //end if
+   else if ((self.netname == "Omicron"))
+   {
+      msg = "AAS online.";
+   } //end if
+   else if ((self.netname == "Toxic"))
+   {
+      msg = "gg ez";
+   } //end if
+   else if ((self.netname == "Karen"))
+   {
+      msg = "I want to speak to the owner.";
+   } //end if
+   else if ((self.netname == "Bozo"))
+   {
+      msg = "Honk honk!";
+   } //end if
+   else if ((self.netname == "Camper"))
+   {
+      msg = "I'll be waiting.";
+   } //end if
+   else if ((self.netname == "Terminator"))
+   {
+      msg = "Terminated.";
+   } //end if
+   else if ((self.netname == "Rusty"))
+   {
+      msg = "Still warming up.";
+   } //end if
+   else if ((self.netname == "Thresh"))
+   {
+      msg = "No mercy.";
+   } //end if
+   else if ((self.netname == "Romero"))
+   {
+      msg = "Got any shrooms?";
+   } //end if
+   else if ((self.netname == "Carmack"))
+   {
+      msg = "Fixed in the next build.";
+   } //end if
+   else if ((self.netname == "American"))
+   {
+      msg = "America!";
+   } //end if
+   else if ((self.netname == "Drooly"))
+   {
+      msg = "Where am I?";
+   } //end if
+   else if ((self.netname == "Derang"))
+   {
+      msg = "You're all doomed.";
+   } //end if
+   else if ((self.netname == "Wanton"))
+   {
+      msg = "Bring it on.";
+   } //end if
+   else if ((self.netname == "Chatter"))
+   {
+      msg = "Let's talk.";
+   } //end if
+   else if ((self.netname == "Frik"))
+   {
+      msg = "Generating waypoints...";
+   } //end if
+   else if ((self.netname == "MrElusive"))
+   {
+      msg = "Calculating paths.";
+   } //end if
+   else if ((self.netname == "Gladiator"))
+   {
+      msg = "Railgun ready.";
+   } //end if
+   else if ((self.netname == "Eraser"))
+   {
+      msg = "Learning routes.";
+   } //end if
+   else if ((self.netname == "Zeus"))
+   {
+      msg = "Bow before me.";
+   } //end if
+   else if ((self.netname == "Oak"))
+   {
+      msg = "Take cover.";
+   } //end if
+   else if ((self.netname == "Frog"))
+   {
+      msg = "Ribbit.";
+   } //end if
+   else if ((self.netname == "Cthon"))
+   {
+      msg = "From the depths.";
+   } //end if
+   else if ((self.netname == "Eliminator"))
+   {
+      msg = "Target acquired.";
+   } //end if
+   else if ((self.netname == "TheTutor"))
+   {
+      msg = "Class is in session.";
+   } //end if
+   else if ((self.netname == "Jumbot"))
+   {
+      msg = "Calculating nodes...";
+   } //end if
+   else if ((self.netname == "Ace"))
+   {
+      msg = "Ace is the place.";
+   } //end if
+   else if ((self.netname == "DoomGuy"))
+   {
+      msg = "Rip and tear.";
+   } //end if
+   else if ((self.netname == "Ranger"))
+   {
+      msg = "Ranger reporting.";
+   } //end if
+   else if ((self.netname == "Bitterman"))
+   {
+      msg = "Still alive.";
+   } //end if
+   else if ((self.netname == "TankJr"))
+   {
+      msg = "Heavy armor online.";
+   } //end if
+   else if ((self.netname == "Crash"))
+   {
+      msg = "Let's crash the party.";
+   } //end if
+   else if ((self.netname == "Phobos"))
+   {
+      msg = "Fear me.";
+   } //end if
+   else if ((self.netname == "Slash"))
+   {
+      msg = "Let's slash.";
+   } //end if
+   else if ((self.netname == "Anarki"))
+   {
+      msg = "Adrenaline injected.";
+   } //end if
+
+   bprint (self.netname);
+   bprint (": ");
+   bprint (msg);
+   bprint ("\n");
+}; //end of the function Bot_EntryLine
+
 void () SpawnNewBot =
 {
-   local string tmp;
-
    PutBotInServer ();
-   bprint (self.netname);
-   tmp = ftos (self.skil);
-   bprint (" (iq ");
-   bprint (tmp);
-   bprint (") is reformed Thanks Chris.\n");
+   Bot_EntryLine ();
 }; //end of the function SpawnNewBot
 entity () AddBot =
 {
@@ -600,6 +752,406 @@ float () numplayers =
    return (n);
 }; //end of the function numplayers
 
+// =========================================================
+// BOT CHARACTER PROFILES - THE ULTIMATE COLLECTION
+// =========================================================
+void (entity bot, float index) Bot_AssignIdentity =
+{
+   local float WHITE;
+   local float BROWN;
+   local float BLUE;
+   local float GREEN;
+   local float RED;
+   local float GOLD;
+   local float PURPLE;
+   local float GREY;
+   local float YELLOW;
+   local float id;
+
+   WHITE = 0.000;
+   BROWN = 1.000;
+   BLUE = 2.000;
+   GREEN = 3.000;
+   RED = 4.000;
+   GOLD = 7.000;
+   PURPLE = 8.000;
+   GREY = 11.000;
+   YELLOW = 12.000;
+
+   id = index - (floor (index / 36.000) * 36.000);
+   if ((id == 0.000))
+   {
+      id = 36.000;
+   } //end if
+
+   bot.personality = PERS_PRO;
+   bot.skil = 3.000;
+
+   if ((id == 1.000))
+   {
+      bot.netname = "Reaper";
+      bot.fShirt = RED;
+      bot.fPants = 0.000;
+      bot.personality = PERS_PRO;
+   } //end if
+   else
+   {
+      if ((id == 2.000))
+      {
+         bot.netname = "Omicron";
+         bot.fShirt = BLUE;
+         bot.fPants = YELLOW;
+         bot.personality = PERS_PRO;
+      } //end if
+      else
+      {
+         if ((id == 3.000))
+         {
+            bot.netname = "Toxic";
+            bot.fShirt = GREEN;
+            bot.fPants = PURPLE;
+            bot.personality = PERS_RAGER;
+         } //end if
+         else
+         {
+            if ((id == 4.000))
+            {
+               bot.netname = "Karen";
+               bot.fShirt = PURPLE;
+               bot.fPants = WHITE;
+               bot.personality = PERS_RAGER;
+            } //end if
+            else
+            {
+               if ((id == 5.000))
+               {
+                  bot.netname = "Bozo";
+                  bot.fShirt = RED;
+                  bot.fPants = YELLOW;
+                  bot.personality = PERS_MEMELORD;
+                  bot.skil = 1.000;
+               } //end if
+               else
+               {
+                  if ((id == 6.000))
+                  {
+                     bot.netname = "Camper";
+                     bot.fShirt = GREEN;
+                     bot.fPants = BROWN;
+                     bot.personality = PERS_CAMPER;
+                  } //end if
+                  else
+                  {
+                     if ((id == 7.000))
+                     {
+                        bot.netname = "Terminator";
+                        bot.fShirt = GREY;
+                        bot.fPants = GREY;
+                        bot.personality = PERS_PRO;
+                     } //end if
+                     else
+                     {
+                        if ((id == 8.000))
+                        {
+                           bot.netname = "Rusty";
+                           bot.fShirt = BROWN;
+                           bot.fPants = BROWN;
+                           bot.personality = PERS_NOOB;
+                           bot.skil = 0.000;
+                        } //end if
+                        else
+                        {
+                           if ((id == 9.000))
+                           {
+                              bot.netname = "Thresh";
+                              bot.fShirt = RED;
+                              bot.fPants = BLUE;
+                              bot.personality = PERS_PRO;
+                           } //end if
+                           else
+                           {
+                              if ((id == 10.000))
+                              {
+                                 bot.netname = "Romero";
+                                 bot.fShirt = 0.000;
+                                 bot.fPants = 0.000;
+                                 bot.personality = PERS_MEMELORD;
+                              } //end if
+                              else
+                              {
+                                 if ((id == 11.000))
+                                 {
+                                    bot.netname = "Carmack";
+                                    bot.fShirt = WHITE;
+                                    bot.fPants = BLUE;
+                                    bot.personality = PERS_PRO;
+                                 } //end if
+                                 else
+                                 {
+                                    if ((id == 12.000))
+                                    {
+                                       bot.netname = "American";
+                                       bot.fShirt = RED;
+                                       bot.fPants = WHITE;
+                                       bot.personality = PERS_CAMPER;
+                                    } //end if
+                                    else
+                                    {
+                                       if ((id == 13.000))
+                                       {
+                                          bot.netname = "Drooly";
+                                          bot.fShirt = 13.000;
+                                          bot.fPants = 13.000;
+                                          bot.personality = PERS_NOOB;
+                                          bot.skil = 0.000;
+                                       } //end if
+                                       else
+                                       {
+                                          if ((id == 14.000))
+                                          {
+                                             bot.netname = "Derang";
+                                             bot.fShirt = YELLOW;
+                                             bot.fPants = RED;
+                                             bot.personality = PERS_RAGER;
+                                          } //end if
+                                          else
+                                          {
+                                             if ((id == 15.000))
+                                             {
+                                                bot.netname = "Wanton";
+                                                bot.fShirt = PURPLE;
+                                                bot.fPants = PURPLE;
+                                                bot.personality = PERS_PRO;
+                                             } //end if
+                                             else
+                                             {
+                                                if ((id == 16.000))
+                                                {
+                                                   bot.netname = "Chatter";
+                                                   bot.fShirt = GOLD;
+                                                   bot.fPants = GOLD;
+                                                   bot.personality = PERS_MEMELORD;
+                                                } //end if
+                                                else
+                                                {
+                                                   if ((id == 17.000))
+                                                   {
+                                                      bot.netname = "Frik";
+                                                      bot.fShirt = WHITE;
+                                                      bot.fPants = RED;
+                                                      bot.personality = PERS_MEMELORD;
+                                                   } //end if
+                                                   else
+                                                   {
+                                                      if ((id == 18.000))
+                                                      {
+                                                         bot.netname = "MrElusive";
+                                                         bot.fShirt = GREY;
+                                                         bot.fPants = 0.000;
+                                                         bot.personality = PERS_PRO;
+                                                      } //end if
+                                                      else
+                                                      {
+                                                         if ((id == 19.000))
+                                                         {
+                                                            bot.netname = "Gladiator";
+                                                            bot.fShirt = GOLD;
+                                                            bot.fPants = RED;
+                                                            bot.personality = PERS_PRO;
+                                                         } //end if
+                                                         else
+                                                         {
+                                                            if ((id == 20.000))
+                                                            {
+                                                               bot.netname = "Eraser";
+                                                               bot.fShirt = BLUE;
+                                                               bot.fPants = WHITE;
+                                                               bot.personality = PERS_PRO;
+                                                            } //end if
+                                                            else
+                                                            {
+                                                               if ((id == 21.000))
+                                                               {
+                                                                  bot.netname = "Zeus";
+                                                                  bot.fShirt = WHITE;
+                                                                  bot.fPants = GOLD;
+                                                                  bot.personality = PERS_PRO;
+                                                               } //end if
+                                                               else
+                                                               {
+                                                                  if ((id == 22.000))
+                                                                  {
+                                                                     bot.netname = "Oak";
+                                                                     bot.fShirt = BROWN;
+                                                                     bot.fPants = GREEN;
+                                                                     bot.personality = PERS_CAMPER;
+                                                                  } //end if
+                                                                  else
+                                                                  {
+                                                                     if ((id == 23.000))
+                                                                     {
+                                                                        bot.netname = "Frog";
+                                                                        bot.fShirt = GREEN;
+                                                                        bot.fPants = YELLOW;
+                                                                        bot.personality = PERS_MEMELORD;
+                                                                     } //end if
+                                                                     else
+                                                                     {
+                                                                        if ((id == 24.000))
+                                                                        {
+                                                                           bot.netname = "Cthon";
+                                                                           bot.fShirt = RED;
+                                                                           bot.fPants = 0.000;
+                                                                           bot.personality = PERS_RAGER;
+                                                                        } //end if
+                                                                        else
+                                                                        {
+                                                                           if ((id == 25.000))
+                                                                           {
+                                                                              bot.netname = "Eliminator";
+                                                                              bot.fShirt = 0.000;
+                                                                              bot.fPants = RED;
+                                                                              bot.personality = PERS_PRO;
+                                                                           } //end if
+                                                                           else
+                                                                           {
+                                                                              if ((id == 26.000))
+                                                                              {
+                                                                                 bot.netname = "TheTutor";
+                                                                                 bot.fShirt = WHITE;
+                                                                                 bot.fPants = BROWN;
+                                                                                 bot.personality = PERS_CAMPER;
+                                                                              } //end if
+                                                                              else
+                                                                              {
+                                                                                 if ((id == 27.000))
+                                                                                 {
+                                                                                    bot.netname = "Jumbot";
+                                                                                    bot.fShirt = BLUE;
+                                                                                    bot.fPants = BLUE;
+                                                                                    bot.personality = PERS_NOOB;
+                                                                                    bot.skil = 1.000;
+                                                                                 } //end if
+                                                                                 else
+                                                                                 {
+                                                                                    if ((id == 28.000))
+                                                                                    {
+                                                                                       bot.netname = "Ace";
+                                                                                       bot.fShirt = GREEN;
+                                                                                       bot.fPants = 0.000;
+                                                                                       bot.personality = PERS_PRO;
+                                                                                    } //end if
+                                                                                    else
+                                                                                    {
+                                                                                       if ((id == 29.000))
+                                                                                       {
+                                                                                          bot.netname = "DoomGuy";
+                                                                                          bot.fShirt = GREEN;
+                                                                                          bot.fPants = GREEN;
+                                                                                          bot.personality = PERS_PRO;
+                                                                                       } //end if
+                                                                                       else
+                                                                                       {
+                                                                                          if ((id == 30.000))
+                                                                                          {
+                                                                                             bot.netname = "Ranger";
+                                                                                             bot.fShirt = BROWN;
+                                                                                             bot.fPants = GOLD;
+                                                                                             bot.personality = PERS_PRO;
+                                                                                          } //end if
+                                                                                          else
+                                                                                          {
+                                                                                             if ((id == 31.000))
+                                                                                             {
+                                                                                                bot.netname = "Bitterman";
+                                                                                                bot.fShirt = GREY;
+                                                                                                bot.fPants = GREEN;
+                                                                                                bot.personality = PERS_CAMPER;
+                                                                                             } //end if
+                                                                                             else
+                                                                                             {
+                                                                                                if ((id == 32.000))
+                                                                                                {
+                                                                                                   bot.netname = "TankJr";
+                                                                                                   bot.fShirt = RED;
+                                                                                                   bot.fPants = RED;
+                                                                                                   bot.personality = PERS_RAGER;
+                                                                                                } //end if
+                                                                                                else
+                                                                                                {
+                                                                                                   if ((id == 33.000))
+                                                                                                   {
+                                                                                                      bot.netname = "Crash";
+                                                                                                      bot.fShirt = PURPLE;
+                                                                                                      bot.fPants = PURPLE;
+                                                                                                      bot.personality = PERS_NOOB;
+                                                                                                      bot.skil = 1.000;
+                                                                                                   } //end if
+                                                                                                   else
+                                                                                                   {
+                                                                                                      if ((id == 34.000))
+                                                                                                      {
+                                                                                                         bot.netname = "Phobos";
+                                                                                                         bot.fShirt = GOLD;
+                                                                                                         bot.fPants = GREEN;
+                                                                                                         bot.personality = PERS_PRO;
+                                                                                                      } //end if
+                                                                                                      else
+                                                                                                      {
+                                                                                                         if ((id == 35.000))
+                                                                                                         {
+                                                                                                            bot.netname = "Slash";
+                                                                                                            bot.fShirt = BLUE;
+                                                                                                            bot.fPants = 0.000;
+                                                                                                            bot.personality = PERS_MEMELORD;
+                                                                                                         } //end if
+                                                                                                         else
+                                                                                                         {
+                                                                                                            if ((id == 36.000))
+                                                                                                            {
+                                                                                                               bot.netname = "Anarki";
+                                                                                                               bot.fShirt = RED;
+                                                                                                               bot.fPants = YELLOW;
+                                                                                                               bot.personality = PERS_MEMELORD;
+                                                                                                            } //end if
+                                                                                                         } //end if
+                                                                                                      } //end if
+                                                                                                   } //end if
+                                                                                                } //end if
+                                                                                             } //end if
+                                                                                          } //end if
+                                                                                       } //end if
+                                                                                    } //end if
+                                                                                 } //end if
+                                                                              } //end if
+                                                                           } //end if
+                                                                        } //end if
+                                                                     } //end if
+                                                                  } //end if
+                                                               } //end if
+                                                            } //end if
+                                                         } //end if
+                                                      } //end if
+                                                   } //end if
+                                                } //end if
+                                             } //end if
+                                          } //end if
+                                       } //end if
+                                    } //end if
+                                 } //end if
+                              } //end if
+                           } //end if
+                        } //end if
+                     } //end if
+                  } //end if
+               } //end if
+            } //end if
+         } //end if
+      } //end if
+   } //end if
+
+}; //end of the function Bot_AssignIdentity
+
 void () AddAnotherBot =
 {
    local entity newbot;
@@ -628,28 +1180,41 @@ void () AddAnotherBot =
          } //end if
       } //end if
    } //end if
+
    newbot = AddBot ();
-   newbot.colormap = CAM_IDLE;
    newbot.fClientNo = cno;
+   newbot.team = 99.000;
+
+   NUMBOTS = (NUMBOTS + SPAWNFLAG_SUPERSPIKE);
+
    if (!teamplay)
    {
-      newbot.colormap = (cno + SPAWNFLAG_SUPERSPIKE);
-      newbot.fShirt = floor ((random () * MSG_UPDATENAME));
-      newbot.fPants = floor ((random () * MSG_UPDATENAME));
+      Bot_AssignIdentity (newbot,NUMBOTS);
+      newbot.colormap = (newbot.fClientNo + SPAWNFLAG_SUPERSPIKE);
+      if (NAMEBOTS)
+      {
+         newbot.teamname = self.netname;
+      } //end if
+      else
+      {
+         newbot.teamname = "";
+      } //end if
    } //end if
-   if (teamplay)
+   else
    {
       newbot.colormap = (cno + SPAWNFLAG_SUPERSPIKE);
       newbot.fShirt = SPAWNFLAG_LASER;
       newbot.fPants = SPAWNFLAG_LASER;
-
+      newbot.netname = "Grunt";
+      newbot.personality = PERS_PRO;
+      newbot.teamname = newbot.netname;
    } //end if
-   else
+
+   if (!teamplay)
    {
       if ((SKINSMODE == SPAWNFLAG_SUPERSPIKE))
       {
          skinChange (newbot,NUMBOTS);
-
       } //end if
       else
       {
@@ -662,41 +1227,7 @@ void () AddAnotherBot =
          } //end if
       } //end if
    } //end if
-   newbot.team = 99.000;
-   if (NAMEBOTS)
-   {
-      newbot.teamname = self.netname;
 
-   } //end if
-   else
-   {
-      if ((newbot.skil < SPAWNFLAG_SUPERSPIKE))
-      {
-         newbot.teamname = "";
-
-      } //end if
-      else
-      {
-         if ((newbot.skil < SPAWNFLAG_LASER))
-         {
-            newbot.teamname = "";
-
-         } //end if
-         else
-         {
-            if ((newbot.skil < CAM_FOLLOW))
-            {
-               newbot.teamname = "";
-
-            } //end if
-            else
-            {
-               newbot.teamname = "";
-            } //end if
-         } //end if
-      } //end if
-   } //end if
-   NUMBOTS = (NUMBOTS + SPAWNFLAG_SUPERSPIKE);
    if ((NUMBOTS == SPAWNFLAG_SUPERSPIKE))
    {
       newbot.nextthink = (time + 0.100);
@@ -704,122 +1235,6 @@ void () AddAnotherBot =
    if ((NUMBOTS < SECRET_YES_SHOOT))
    {
       serverflags = ((serverflags - (serverflags & BOTS)) + (SECRET_YES_SHOOT * NUMBOTS));
-   } //end if
-   if ((NUMBOTS == SPAWNFLAG_SUPERSPIKE))
-   {
-      newbot.netname = "Cheater";
-
-   } //end if
-   else
-   {
-      if ((NUMBOTS == SPAWNFLAG_LASER))
-      {
-         newbot.netname = "Assmunch";
-
-      } //end if
-      else
-      {
-         if ((NUMBOTS == CAM_FOLLOW))
-         {
-            newbot.netname = "Wanton";
-
-         } //end if
-         else
-         {
-            if ((NUMBOTS == SECRET_1ST_DOWN))
-            {
-               newbot.netname = "Drooly";
-
-            } //end if
-            else
-            {
-               if ((NUMBOTS == CAM_FREE))
-               {
-                  newbot.netname = "Rapier";
-
-               } //end if
-               else
-               {
-                  if ((NUMBOTS == CAM_NOCLIP))
-                  {
-                     newbot.netname = "Derang";
-
-                  } //end if
-                  else
-                  {
-                     if ((NUMBOTS == CAM_DEATH))
-                     {
-                        newbot.netname = "Hater";
-
-                     } //end if
-                     else
-                     {
-                        if ((NUMBOTS == SECRET_NO_SHOOT))
-                        {
-                           newbot.netname = "Angry";
-
-                        } //end if
-                        else
-                        {
-                           if ((NUMBOTS == TE_LIGHTNING3))
-                           {
-                              newbot.netname = "Lust";
-
-                           } //end if
-                           else
-                           {
-                              if ((NUMBOTS == TE_LAVASPLASH))
-                              {
-                                 newbot.netname = "Slut";
-
-                              } //end if
-                              else
-                              {
-                                 if ((NUMBOTS == TE_TELEPORT))
-                                 {
-                                    newbot.netname = "Pride";
-
-                                 } //end if
-                                 else
-                                 {
-                                    if ((NUMBOTS == 12.000))
-                                    {
-                                       newbot.netname = "Malice";
-
-                                    } //end if
-                                    else
-                                    {
-                                       if ((NUMBOTS == MSG_UPDATENAME))
-                                       {
-                                          newbot.netname = "Envy";
-
-                                       } //end if
-                                       else
-                                       {
-                                          if ((NUMBOTS == MSG_UPDATEFRAGS))
-                                          {
-                                             newbot.netname = "Sloth";
-
-                                          } //end if
-                                          else
-                                          {
-                                             if ((NUMBOTS == 15.000))
-                                             {
-                                                newbot.netname = "Onerus";
-                                             } //end if
-                                          } //end if
-                                       } //end if
-                                    } //end if
-                                 } //end if
-                              } //end if
-                           } //end if
-                        } //end if
-                     } //end if
-                  } //end if
-               } //end if
-            } //end if
-         } //end if
-      } //end if
    } //end if
 }; //end of the function AddAnotherBot
 
@@ -985,3 +1400,6 @@ void () UpdateTeamColors =
       e = find (e,classname,"dmbot");
    } //end while
 }; //end of the function UpdateTeamColors
+
+
+

@@ -2203,16 +2203,25 @@ This project builds upon the classic **Reaper Bot** (1998) with modern enhanceme
 
 ---
 
-## 🙏 Credits
+## Known Issues (2026-01)
 
-- 🎮 **Original Reaper Bot** — Steven Polge & community (1998)
-- 🤖 **Omicron Bot** — Mr Elusive (AI architecture inspiration)
-- 🔧 **FTEQCC Compiler** — FTE QuakeWorld team
-- 🎨 **QuakeSpasm Engine** — QuakeSpasm developers
-- 🧠 **MRE AI Systems** — Modern enhancements (2026)
+- Bot model colors appear identical in-world even though the scoreboard shows distinct colors.
+  - What we tried: restored `colormap = fClientNo + 1`, removed shirt/pants colormap packing, enforced `FL_CLIENT` on bot spawn, and verified colors are sent via `msgUpdateColorsToAll`.
+  - Suspected causes: engine setting that disables model colors (`r_nocolors` / `r_noskins`), or a player model that does not support color ranges.
 
 ---
+## 🙏 Credits
 
+- ?YZ? **Original Reaper Bot** ??" Steven Polge & community (1998)
+- ?Y?- **FrikBot** ??" Ryan "Frik" Smith
+- ?Y?- **Omicron Bot** ??" Jan Paul van Waveren (Mr Elusive, RIP :-( ) (AI architecture inspiration)
+- ?Y?- **Quake 1 Team** ??" id Software (1996)
+- ?Y?- **Quake Community** ??" mappers, modders, server admins, and players
+- ?Y"? **FTEQCC Compiler** ??" FTE QuakeWorld team
+- ?YZ? **QuakeSpasm Engine** ??" QuakeSpasm developers
+- ?Y?? **MRE AI Systems** ??" Modern enhancements (2026)
+
+---
 ## 🔗 Links
 
 - 📦 **GitHub Releases:** [Latest progs.dat builds](https://github.com/saworbit/mre/releases)

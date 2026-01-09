@@ -1462,8 +1462,6 @@ void (entity targ, entity attacker) ClientObituary =
             {
                if ((deathmatch != TE_LIGHTNING1))
                {
-                  dprint (ftos (attacker.frags));
-                  dprint ("\n");
                   attacker.frags = (attacker.frags + TRUE);
                   if ((attacker.classname == "dmbot"))
                   {

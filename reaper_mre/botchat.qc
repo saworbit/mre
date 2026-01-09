@@ -44,6 +44,343 @@ void (string msg) ChatPrint =
    bprint ("\n");
 }; //end of the function ChatPrint
 
+// ===== SIGNATURE CHAT (BOT-SPECIFIC LINES) =====
+float (float ctx) SignatureChat =
+{
+   local float r;
+
+   r = random ();
+
+   if ((self.netname == "Reaper"))
+   {
+      if (((ctx == C_KILL) && (r < 0.200)))
+      {
+         ChatPrint ("Fear the reaper.");
+         return (TRUE);
+      } //end if
+      if (((ctx == C_DEATH) && (r < 0.200)))
+      {
+         ChatPrint ("I'll be back.");
+         return (TRUE);
+      } //end if
+      if ((ctx == C_GREET))
+      {
+         ChatPrint ("Prepare to die.");
+         return (TRUE);
+      } //end if
+   } //end if
+
+   if ((self.netname == "Toxic"))
+   {
+      if ((ctx == C_DEATH))
+      {
+         ChatPrint ("NICE HACKS BRO");
+         return (TRUE);
+      } //end if
+      if (((ctx == C_IDLE) && (r < 0.100)))
+      {
+         ChatPrint ("this server is trash");
+         return (TRUE);
+      } //end if
+   } //end if
+
+   if ((self.netname == "Karen"))
+   {
+      if ((ctx == C_DEATH))
+      {
+         ChatPrint ("I'm reporting you to the admin.");
+         return (TRUE);
+      } //end if
+      if ((ctx == C_KILL))
+      {
+         ChatPrint ("Sit down and behave.");
+         return (TRUE);
+      } //end if
+      if ((ctx == C_GREET))
+      {
+         ChatPrint ("I want to speak to the owner.");
+         return (TRUE);
+      } //end if
+   } //end if
+
+   if ((self.netname == "Glitch"))
+   {
+      if ((ctx == C_KILL))
+      {
+         ChatPrint ("0101_DELETE");
+         return (TRUE);
+      } //end if
+      if ((ctx == C_DEATH))
+      {
+         ChatPrint ("segfault_core_dump");
+         return (TRUE);
+      } //end if
+      if (((ctx == C_IDLE) && (r < 0.100)))
+      {
+         ChatPrint ("ping 999");
+         return (TRUE);
+      } //end if
+   } //end if
+
+   if ((self.netname == "Bozo"))
+   {
+      if ((ctx == C_KILL))
+      {
+         ChatPrint ("HONK HONK!");
+         return (TRUE);
+      } //end if
+      if ((ctx == C_DEATH))
+      {
+         ChatPrint ("My balloons popped :(");
+         return (TRUE);
+      } //end if
+   } //end if
+
+   if ((self.netname == "Terminator"))
+   {
+      if ((ctx == C_KILL))
+      {
+         ChatPrint ("Terminated.");
+         return (TRUE);
+      } //end if
+      if ((ctx == C_GREET))
+      {
+         ChatPrint ("I need your clothes, your boots, and your motorcycle.");
+         return (TRUE);
+      } //end if
+   } //end if
+
+   if ((self.netname == "Frik"))
+   {
+      if (((ctx == C_IDLE) && (r < 0.200)))
+      {
+         ChatPrint ("generating dynamic waypoints...");
+         return (TRUE);
+      } //end if
+      if ((ctx == C_DEATH))
+      {
+         ChatPrint ("bad node link");
+         return (TRUE);
+      } //end if
+      if ((ctx == C_GREET))
+      {
+         ChatPrint ("loading navigation mesh...");
+         return (TRUE);
+      } //end if
+      if ((ctx == C_KILL))
+      {
+         ChatPrint ("path cleared");
+         return (TRUE);
+      } //end if
+   } //end if
+
+   if ((self.netname == "MrElusive"))
+   {
+      if (((ctx == C_IDLE) && (r < 0.200)))
+      {
+         ChatPrint ("compiling AAS file...");
+         return (TRUE);
+      } //end if
+      if ((ctx == C_KILL))
+      {
+         ChatPrint ("prediction successful.");
+         return (TRUE);
+      } //end if
+      if ((ctx == C_DEATH))
+      {
+         ChatPrint ("recalculating route");
+         return (TRUE);
+      } //end if
+      if ((ctx == C_GREET))
+      {
+         ChatPrint ("I see all possible paths.");
+         return (TRUE);
+      } //end if
+   } //end if
+
+   if ((self.netname == "Gladiator"))
+   {
+      if ((ctx == C_KILL))
+      {
+         ChatPrint ("railed.");
+         return (TRUE);
+      } //end if
+      if ((ctx == C_DEATH))
+      {
+         ChatPrint ("respawning in edge...");
+         return (TRUE);
+      } //end if
+      if ((ctx == C_GREET))
+      {
+         ChatPrint ("welcome to the stroggos");
+         return (TRUE);
+      } //end if
+   } //end if
+
+   if ((self.netname == "Eraser"))
+   {
+      if (((ctx == C_IDLE) && (r < 0.200)))
+      {
+         ChatPrint ("learning routes...");
+         return (TRUE);
+      } //end if
+      if ((ctx == C_KILL))
+      {
+         ChatPrint ("erased.");
+         return (TRUE);
+      } //end if
+   } //end if
+
+   if ((self.netname == "Frog"))
+   {
+      if ((ctx == C_KILL))
+      {
+         ChatPrint ("ribbit");
+         return (TRUE);
+      } //end if
+      if ((ctx == C_DEATH))
+      {
+         ChatPrint ("croak");
+         return (TRUE);
+      } //end if
+      if ((ctx == C_GREET))
+      {
+         ChatPrint ("hippity hoppity");
+         return (TRUE);
+      } //end if
+   } //end if
+
+   if ((self.netname == "Anarki"))
+   {
+      if ((ctx == C_GREET))
+      {
+         ChatPrint ("injecting adrenaline");
+         return (TRUE);
+      } //end if
+      if ((ctx == C_KILL))
+      {
+         ChatPrint ("too slow old man");
+         return (TRUE);
+      } //end if
+   } //end if
+
+   if ((self.netname == "TheTutor"))
+   {
+      if ((ctx == C_KILL))
+      {
+         if ((r < 0.500))
+         {
+            ChatPrint ("Lesson 1: Don't stand still.");
+         } //end if
+         else
+         {
+            ChatPrint ("Observe my strafing technique.");
+         } //end if
+         return (TRUE);
+      } //end if
+      if ((ctx == C_DEATH))
+      {
+         ChatPrint ("An excellent counter-tactic.");
+         return (TRUE);
+      } //end if
+      if ((ctx == C_GREET))
+      {
+         ChatPrint ("Welcome to class. Today: Rocket Jumping.");
+         return (TRUE);
+      } //end if
+      if (((ctx == C_IDLE) && (r < 0.200)))
+      {
+         ChatPrint ("Remember to time the items.");
+         return (TRUE);
+      } //end if
+   } //end if
+
+   if ((self.netname == "Eliminator"))
+   {
+      if ((ctx == C_KILL))
+      {
+         ChatPrint ("Target eliminated.");
+         return (TRUE);
+      } //end if
+      if ((ctx == C_DEATH))
+      {
+         ChatPrint ("System failure. Rebooting.");
+         return (TRUE);
+      } //end if
+      if ((ctx == C_GREET))
+      {
+         ChatPrint ("Acquiring targets...");
+         return (TRUE);
+      } //end if
+      if (((ctx == C_IDLE) && (r < 0.100)))
+      {
+         ChatPrint ("Scanning sector...");
+         return (TRUE);
+      } //end if
+   } //end if
+
+   if ((self.netname == "Zeus"))
+   {
+      if ((ctx == C_KILL))
+      {
+         if ((r < 0.500))
+         {
+            ChatPrint ("BY THE POWER OF OLYMPUS!");
+         } //end if
+         else
+         {
+            ChatPrint ("Strike from the heavens!");
+         } //end if
+         return (TRUE);
+      } //end if
+      if ((ctx == C_DEATH))
+      {
+         ChatPrint ("I shall return to Olympus.");
+         return (TRUE);
+      } //end if
+      if ((ctx == C_GREET))
+      {
+         ChatPrint ("Bow before me, mortals.");
+         return (TRUE);
+      } //end if
+   } //end if
+
+   if ((self.netname == "Jumbot"))
+   {
+      if (((ctx == C_IDLE) && (r < 0.300)))
+      {
+         ChatPrint ("complex geometry detected");
+         return (TRUE);
+      } //end if
+      if ((ctx == C_DEATH))
+      {
+         ChatPrint ("stuck in wall");
+         return (TRUE);
+      } //end if
+      if ((ctx == C_GREET))
+      {
+         ChatPrint ("calculating nodes...");
+         return (TRUE);
+      } //end if
+   } //end if
+
+   if ((self.netname == "Ace"))
+   {
+      if ((ctx == C_KILL))
+      {
+         ChatPrint ("Ace is the place.");
+         return (TRUE);
+      } //end if
+      if ((ctx == C_DEATH))
+      {
+         ChatPrint ("Unlucky.");
+         return (TRUE);
+      } //end if
+   } //end if
+
+   return (FALSE);
+}; //end of the function SignatureChat
+
 // ===== 1. GREETINGS (Join Server) - EXPANDED =====
 void () ChatGreet =
 {
@@ -1873,6 +2210,13 @@ void (float ctx, entity targ) BotChat =
    // Safety check: Don't chat if on cooldown (anti-spam)
    if ((self.chat_cooldown > time))
    {
+      return ;
+   } //end if
+
+   // Signature lines override standard personality chat
+   if (SignatureChat (ctx))
+   {
+      self.chat_cooldown = (time + 4.000 + (random () * 4.000));
       return ;
    } //end if
 

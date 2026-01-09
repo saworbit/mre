@@ -1,5 +1,17 @@
 ## 2026-01-10
 
+- **Bot cast identity system + entry lines** for consistent personalities:
+  - **Data-driven cast** in `reaper_mre/botspawn.qc`: 36-slot roster with fixed names, colors, personalities, and skills.
+  - **Join catchphrases** in `reaper_mre/botspawn.qc`: each bot announces a short entry line on spawn.
+  - **Signature chat expansion** in `reaper_mre/botchat.qc`: new legend/community lines for key cast members.
+  - **Result:** Consistent bot identities without hardcoded one-off name checks.
+- **Bot color/colormap stability** to prevent client crashes and stabilize model colors:
+  - **Client-slot colormap** in `reaper_mre/botspawn.qc`: bots always use `fClientNo + 1`, not shirt/pants encoding.
+  - **Spawn-time colormap reinforcement** in `reaper_mre/botspawn.qc`: `PutBotInServer` reasserts the client-slot colormap before model setup.
+  - **Result:** Avoids `i >= cl.maxclients`; scoreboard colors are correct, but in-world model colors may still appear identical (see README Known Issues).
+- **FFA obituary cleanup + log noise removal**:
+  - **Teamname reset in FFA** in `reaper_mre/botspawn.qc`: prevents duplicated names like `ReaperReaper` in kill messages.
+  - **Removed debug frag print** in `reaper_mre/client.qc`: eliminates stray numeric spam in logs.
 - **Dynamic feeler steering** for more human local movement:
   - **Adaptive probe range + candidate count** in `reaper_mre/botmove.qc`: feeler range now scales with speed and stuck score; candidate count expands when stuck/combat for better escape choices.
   - **Swept clearance checks** in `reaper_mre/botmove.qc`: forward clearance now uses center + left/right offset traces to avoid false "fit" paths (bars/narrow gaps).

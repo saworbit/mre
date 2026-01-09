@@ -118,6 +118,32 @@ if ((self.impulse == 95.000) && (self.classname == "player"))
 
 **When Bots CAN Execute:**
 - Weapon switching (impulse 1-8)
+
+---
+
+### 3. Bot Colormap Must Stay in Client Slot Range
+
+**ISSUE:** Setting `self.colormap` to shirt/pants encodings (e.g., `fShirt * 16 + fPants`) breaks the client update path.
+
+**Symptoms:**
+- Windows error: `i >= cl.maxclients`
+- Bot models render with the same colors even though the scoreboard shows different colors
+
+**Root Cause:**
+The engine expects `colormap` to be a **client slot index** (`clientnum + 1`). Values outside `1..maxclients` are invalid and can crash the client or force default coloring.
+
+**The Fix:**
+```c
+// Correct: colormap always points at the client slot
+self.colormap = (self.fClientNo + 1);
+
+// Colors are communicated separately
+msgUpdateColorsToAll (self.fClientNo, self.fShirt, self.fPants);
+```
+
+**Best Practice:**
+- Set `colormap` for bots when they enter the server (in `PutBotInServer`).
+- Never reuse `colormap` as a packed color value.
 - Bot-specific commands (impulse 208 for addbot)
 - Normal gameplay impulses
 
@@ -944,6 +970,13 @@ if (bot_debug_enabled && (important_decision_made))
 
 ---
 
+## Open Issues
+
+- Bot model colors appear identical in-world even though the scoreboard shows distinct colors.
+- Tried: restored `colormap = fClientNo + 1`, removed shirt/pants colormap packing, enforced `FL_CLIENT` on bot spawn, and verified colors are sent via `msgUpdateColorsToAll`.
+- Suspect: engine setting that disables model colors (`r_nocolors` / `r_noskins`) or a player model that lacks color ranges.
+
+---
 ## 📖 Additional Resources
 
 - **FTEQCC Documentation**: https://fte.triptohell.info/moodles/qc/
