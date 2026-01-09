@@ -36,7 +36,8 @@ class BotLogAnalyzer:
             'combo_events': [],     # NEW: Juggler combos
             'stuck_events': [],     # NEW: Stuck detections
             'unstuck_events': [],   # NEW: Unstuck methods
-            'hazard_events': []     # NEW: Hazard avoidance events
+            'hazard_events': [],    # NEW: Hazard avoidance events
+            'fixate_events': []     # NEW: Goal fixation avoids
         })
 
         # Track overall match timing
@@ -57,6 +58,7 @@ class BotLogAnalyzer:
         self.stuck_pattern = re.compile(r'\[(.+?)\] STUCK: (.+)')
         self.unstuck_pattern = re.compile(r'\[(.+?)\] UNSTUCK: (.+)')
         self.hazard_pattern = re.compile(r'\[(.+?)\] HAZARD: (.+)')
+        self.fixate_pattern = re.compile(r'\[(.+?)\] FIXATE: (.+)')
 
         # Timestamp pattern (if present in logs)
         # Quake logs don't have timestamps by default, so we'll estimate from decision count
@@ -155,6 +157,13 @@ class BotLogAnalyzer:
                     hazard_info = hazard_match.group(2)
                     self.bots[bot_name]['hazard_events'].append(hazard_info)
 
+                # Parse fixation events (NEW)
+                fixate_match = self.fixate_pattern.search(line)
+                if fixate_match:
+                    bot_name = fixate_match.group(1)
+                    fixate_info = fixate_match.group(2)
+                    self.bots[bot_name]['fixate_events'].append(fixate_info)
+
         print(f"[OK] Parsed data for {len(self.bots)} bots\n")
 
     def calculate_statistics(self):
@@ -167,7 +176,7 @@ class BotLogAnalyzer:
         engagement_pct = (total_engagement / (total_engagement + total_idle) * 100) if (total_engagement + total_idle) > 0 else 0
 
         # Estimate match duration from decision count
-        # Change-only logging with scan_time=1.5s means ~0.4 decisions/second average
+        # Change-only logging with scan_time=3.0s means ~0.4 decisions/second average
         # (bots log on target/goal changes, not every scan)
         if total_decisions > 0:
             # Conservative estimate: assume average 2 decisions per second during active play
@@ -304,6 +313,7 @@ class BotLogAnalyzer:
         total_stuck_events = sum(len(bot['stuck_events']) for bot in self.bots.values())
         total_unstuck_events = sum(len(bot['unstuck_events']) for bot in self.bots.values())
         total_hazard_events = sum(len(bot['hazard_events']) for bot in self.bots.values())
+        total_fixate_events = sum(len(bot['fixate_events']) for bot in self.bots.values())
 
         # Overall summary
         print(f"  Weapon switches (tactical): {total_weapon_switches}")
@@ -312,19 +322,21 @@ class BotLogAnalyzer:
         print(f"  Stuck detections: {total_stuck_events}")
         print(f"  Unstuck methods used: {total_unstuck_events}")
         print(f"  Hazard avoidance events: {total_hazard_events}")
+        print(f"  Goal fixation avoids: {total_fixate_events}")
 
         # Per-bot breakdown (only if events exist)
-        if total_weapon_switches > 0 or total_combo_events > 0 or total_stuck_events > 0 or total_hazard_events > 0:
+        if total_weapon_switches > 0 or total_combo_events > 0 or total_stuck_events > 0 or total_hazard_events > 0 or total_fixate_events > 0:
             print(f"\n  PER-BOT TACTICAL BREAKDOWN:")
-            print(f"  {'Bot Name':<15} {'Weapons':<10} {'Combos':<10} {'Hears':<10} {'Stuck':<10} {'Hazards':<10}")
-            print("  " + "-" * 72)
+            print(f"  {'Bot Name':<15} {'Weapons':<10} {'Combos':<10} {'Hears':<10} {'Stuck':<10} {'Hazards':<10} {'Fixate':<10}")
+            print("  " + "-" * 83)
             for bot_name, data in sorted(self.bots.items()):
                 weapon_count = len(data['weapon_switches'])
                 combo_count = len(data['combo_events'])
                 hear_count = len(data['hear_events'])
                 stuck_count = len(data['stuck_events'])
                 hazard_count = len(data['hazard_events'])
-                print(f"  {bot_name:<15} {weapon_count:<10} {combo_count:<10} {hear_count:<10} {stuck_count:<10} {hazard_count:<10}")
+                fixate_count = len(data['fixate_events'])
+                print(f"  {bot_name:<15} {weapon_count:<10} {combo_count:<10} {hear_count:<10} {stuck_count:<10} {hazard_count:<10} {fixate_count:<10}")
 
         # Analyze weapon switch patterns
         if total_weapon_switches > 0:
@@ -388,33 +400,33 @@ class BotLogAnalyzer:
         # Check switch frequency with TIME-AWARE THRESHOLDS
         switches_per_bot_per_min = stats.get('avg_switches_per_bot_per_min', 0)
 
-        # For scan_time = 1.5s (40 scans/minute):
+        # For scan_time = 3.0s (20 scans/minute):
         # - GOOD: ~10-20 switches/min per bot (25-50% of scans find new target)
         # - EXCESSIVE: >30 switches/min per bot (75%+ of scans switch - indicates flip-flopping)
         # - TOO LOW: <5 switches/min per bot (<12% of scans switch - too sticky)
 
         if switches_per_bot_per_min > 30:
             print(f"  [!] EXCESSIVE target switching ({switches_per_bot_per_min:.1f} per bot per minute)")
-            print(f"      With scan_time=2.5s, bots scan 24 times/min")
-            print(f"      Current: {switches_per_bot_per_min/24*100:.1f}% of scans switch targets (too high!)")
-            print(f"      -> Consider: Increase target commitment time (scan_time 2.5s → 3.0s)")
+            print(f"      With scan_time=3.0s, bots scan 20 times/min")
+            print(f"      Current: {switches_per_bot_per_min/20*100:.1f}% of scans switch targets (too high!)")
+            print(f"      -> Consider: Increase target commitment time (scan_time 3.0s → 3.5s)")
             print(f"      -> Consider: Add stronger hysteresis to target scoring")
             print(f"      -> Target: 10-20 switches/min per bot (25-50% switch rate)")
         elif switches_per_bot_per_min > 20:
             print(f"  [~] MODERATE-HIGH target switching ({switches_per_bot_per_min:.1f} per bot per minute)")
-            print(f"      With scan_time=2.5s, bots scan 24 times/min")
-            print(f"      Current: {switches_per_bot_per_min/24*100:.1f}% of scans switch targets")
+            print(f"      With scan_time=3.0s, bots scan 20 times/min")
+            print(f"      Current: {switches_per_bot_per_min/20*100:.1f}% of scans switch targets")
             print(f"      This may be acceptable for FFA with multi-opponent awareness")
-            print(f"      -> If bots seem distracted: Increase scan_time to 3.0s")
+            print(f"      -> If bots seem distracted: Increase scan_time to 3.5s")
             print(f"      -> If combat effectiveness is good: Current rate is acceptable")
         elif switches_per_bot_per_min < 5:
             print(f"  [!] LOW target switching ({switches_per_bot_per_min:.1f} per bot per minute)")
             print(f"      Bots may be too committed to targets (missing better opportunities)")
-            print(f"      -> Consider: Decrease scan_time interval (2.5s → 2.0s)")
+            print(f"      -> Consider: Decrease scan_time interval (3.0s → 2.5s)")
             print(f"      -> Consider: Lower thresholds for better target selection")
         else:
             print(f"  [OK] GOOD target switching rate ({switches_per_bot_per_min:.1f} per bot per minute)")
-            print(f"      With scan_time=2.5s, {switches_per_bot_per_min/24*100:.1f}% of scans find new target")
+            print(f"      With scan_time=3.0s, {switches_per_bot_per_min/20*100:.1f}% of scans find new target")
             print(f"      This is healthy for FFA dynamics!")
 
         # Check goal diversity

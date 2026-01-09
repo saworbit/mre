@@ -32,11 +32,23 @@
   - **Hazard logging** (LOG_CRITICAL+) reports blocked jumps and hazard stops for testing.
   - **Result:** Bots stop hopping into lava while stuck or breaking contact.
 
+- **Goal fixation avoidance + steering inertia** reduce corner pinballing:
+  - **Fixation detection** drops goals that show no progress for 1.5s and avoids them for 5s.
+  - **Avoid list** skips unreachable items (e.g., behind bars) until the cooldown expires.
+  - **Steering inertia** blends top two feeler candidates to smooth local turns.
+  - **Debug logging** (LOG_TACTICAL+): `FIXATE: Avoid goal <classname>`.
+  - **Result:** Bots stop fixating on blocked items and move more fluidly through tight spaces.
+
 - **Churn tuning: target switching + stuck thresholds** reduce noisy behavior:
   - **Target switching cooldown** prevents rapid flip-flops unless under direct attack.
-  - **Scan interval** increased to 2.5s to cut down on target churn.
+  - **Scan interval** increased to 3.0s to cut down on target churn.
   - **Stuck thresholds** relaxed (16u progress, 1.0s, score>5) to reduce false unstick triggers.
   - **Result:** Fewer oscillations in combat focus and fewer unnecessary unstick events.
+
+- **Hazard escape + goal diversity tuning** reduces lava-edge stalls:
+  - **Hazard bad-spot marking** after repeated stops forces a longer retreat away from lava edges.
+  - **Goal diversity nudge** adds small randomization to item selection to avoid over-fixation.
+  - **Result:** Fewer hazard loops and more varied item pursuit.
 
 - **Unified Feeler Evaluation + Progress-Based Unstick** for cleaner movement decisions:
   - **Single feeler evaluator** in `reaper_mre/botmove.qc`: Ranks candidates with clearance, widen, future-space checks, loop/bad-spot penalties, and action hints (jump/step/tight gap). Returns "best direction + why" via per-bot fields.

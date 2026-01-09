@@ -1001,6 +1001,9 @@ void () CheckForHazards =
             } //end if
             self.hazard_escape_yaw = escape_yaw;
             self.hazard_escape_until = (time + 0.600);
+            self.bad_spot_origin = self.origin;
+            self.bad_spot_radius = 220.000;
+            self.bad_spot_expire_time = (time + 10.000);
          } //end if
          if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
          {
@@ -1044,6 +1047,9 @@ void () CheckForHazards =
                } //end if
                self.hazard_escape_yaw = escape_yaw;
                self.hazard_escape_until = (time + 0.600);
+               self.bad_spot_origin = self.origin;
+               self.bad_spot_radius = 220.000;
+               self.bad_spot_expire_time = (time + 10.000);
             } //end if
             if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
             {
@@ -1070,6 +1076,9 @@ void () CheckForHazards =
                } //end if
                self.hazard_escape_yaw = escape_yaw;
                self.hazard_escape_until = (time + 0.600);
+               self.bad_spot_origin = self.origin;
+               self.bad_spot_radius = 220.000;
+               self.bad_spot_expire_time = (time + 10.000);
             } //end if
             if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
             {
@@ -2279,6 +2288,10 @@ void (entity bot, float mode, float wall_side, float base_yaw) Bot_Feelers_Evalu
    local float elevation_bonus;
    local float break_contact;
    local float elevate_active;
+   local vector second_dir;
+   local float second_score;
+   local vector blended_dir;
+   local float blended_len;
 
    bot.best_score = -99999.000;
    bot.best_dir = '1.000 0.000 0.000';
@@ -2292,6 +2305,8 @@ void (entity bot, float mode, float wall_side, float base_yaw) Bot_Feelers_Evalu
    bot.best_ideal_yaw = base_yaw;
    bot.best_forward_scale = 1.000;
    bot.best_strafe_bias = 0.000;
+   second_dir = '0.000 0.000 0.000';
+   second_score = -99999.000;
 
    bot.v_angle_x = 0.000;
    bot.v_angle_y = base_yaw;
@@ -2648,6 +2663,8 @@ void (entity bot, float mode, float wall_side, float base_yaw) Bot_Feelers_Evalu
 
       if ((score > bot.best_score))
       {
+         second_score = bot.best_score;
+         second_dir = bot.best_dir;
          bot.best_score = score;
          bot.best_dir = dir;
          bot.best_wants_jump = (jump_ok && ((mode == BOT_MODE_UNSTICK) || (mode == BOT_MODE_COMBAT)));
@@ -2689,9 +2706,30 @@ void (entity bot, float mode, float wall_side, float base_yaw) Bot_Feelers_Evalu
          } //end else
          bot.best_strafe_bias = strafe_bias;
       } //end if
+      else
+      {
+         if ((score > second_score))
+         {
+            second_score = score;
+            second_dir = dir;
+         } //end if
+      } //end else
 
       i = (i + 1.000);
    } //end while
+   if ((second_score > -99998.000))
+   {
+      if ((second_score > (bot.best_score - 80.000)))
+      {
+         blended_dir = ((bot.best_dir * 0.700) + (second_dir * 0.300));
+         blended_len = vlen (blended_dir);
+         if ((blended_len > 0.100))
+         {
+            bot.best_dir = (blended_dir / blended_len);
+            bot.best_ideal_yaw = vectoyaw (bot.best_dir);
+         } //end if
+      } //end if
+   } //end if
 }; //end of the function Bot_Feelers_Evaluate
 
 void (float dist, float mode) Bot_ApplyFeelerMove =

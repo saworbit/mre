@@ -8,6 +8,197 @@ void () bot_trigger1;
 void () aibot_chooseGoal;
 float /* ERROR: Could not determine return type */ () BotFindTarget;
 
+float (entity target) Bot_IsAvoidedTarget =
+{
+   if (!target)
+   {
+      return (FALSE);
+   } //end if
+
+   if (self.avoid_target0)
+   {
+      if ((time >= self.avoid_target_time0))
+      {
+         self.avoid_target0 = world;
+         self.avoid_target_time0 = 0.000;
+      } //end if
+      else
+      {
+         if ((self.avoid_target0 == target)) return (TRUE);
+      } //end else
+   } //end if
+   if (self.avoid_target1)
+   {
+      if ((time >= self.avoid_target_time1))
+      {
+         self.avoid_target1 = world;
+         self.avoid_target_time1 = 0.000;
+      } //end if
+      else
+      {
+         if ((self.avoid_target1 == target)) return (TRUE);
+      } //end else
+   } //end if
+   if (self.avoid_target2)
+   {
+      if ((time >= self.avoid_target_time2))
+      {
+         self.avoid_target2 = world;
+         self.avoid_target_time2 = 0.000;
+      } //end if
+      else
+      {
+         if ((self.avoid_target2 == target)) return (TRUE);
+      } //end else
+   } //end if
+   if (self.avoid_target3)
+   {
+      if ((time >= self.avoid_target_time3))
+      {
+         self.avoid_target3 = world;
+         self.avoid_target_time3 = 0.000;
+      } //end if
+      else
+      {
+         if ((self.avoid_target3 == target)) return (TRUE);
+      } //end else
+   } //end if
+
+   return (FALSE);
+}; //end of the function Bot_IsAvoidedTarget
+
+void (entity target, float ttl) Bot_AddAvoidTarget =
+{
+   local float best_time;
+   local float idx;
+
+   if (!target)
+   {
+      return ;
+   } //end if
+
+   if ((self.avoid_target0 == target))
+   {
+      self.avoid_target_time0 = (time + ttl);
+      return ;
+   } //end if
+   if ((self.avoid_target1 == target))
+   {
+      self.avoid_target_time1 = (time + ttl);
+      return ;
+   } //end if
+   if ((self.avoid_target2 == target))
+   {
+      self.avoid_target_time2 = (time + ttl);
+      return ;
+   } //end if
+   if ((self.avoid_target3 == target))
+   {
+      self.avoid_target_time3 = (time + ttl);
+      return ;
+   } //end if
+
+   idx = 0.000;
+   if ((!self.avoid_target0) || (self.avoid_target_time0 <= time)) idx = 0.000;
+   else if ((!self.avoid_target1) || (self.avoid_target_time1 <= time)) idx = 1.000;
+   else if ((!self.avoid_target2) || (self.avoid_target_time2 <= time)) idx = 2.000;
+   else if ((!self.avoid_target3) || (self.avoid_target_time3 <= time)) idx = 3.000;
+   else
+   {
+      best_time = self.avoid_target_time0;
+      idx = 0.000;
+      if ((self.avoid_target_time1 < best_time)) { best_time = self.avoid_target_time1; idx = 1.000; }
+      if ((self.avoid_target_time2 < best_time)) { best_time = self.avoid_target_time2; idx = 2.000; }
+      if ((self.avoid_target_time3 < best_time)) { best_time = self.avoid_target_time3; idx = 3.000; }
+   } //end else
+
+   if ((idx == 0.000))
+   {
+      self.avoid_target0 = target;
+      self.avoid_target_time0 = (time + ttl);
+   } //end if
+   else if ((idx == 1.000))
+   {
+      self.avoid_target1 = target;
+      self.avoid_target_time1 = (time + ttl);
+   } //end if
+   else if ((idx == 2.000))
+   {
+      self.avoid_target2 = target;
+      self.avoid_target_time2 = (time + ttl);
+   } //end if
+   else
+   {
+      self.avoid_target3 = target;
+      self.avoid_target_time3 = (time + ttl);
+   } //end else
+}; //end of the function Bot_AddAvoidTarget
+
+void () Bot_CheckGoalFixation =
+{
+   local entity goal;
+   local float dist;
+
+   if (!self.goalentity)
+   {
+      return ;
+   } //end if
+   goal = self.goalentity.goalentity;
+   if (!goal)
+   {
+      return ;
+   } //end if
+   if ((goal == self.goalentity))
+   {
+      return ;
+   } //end if
+   if ((goal == self.enemy))
+   {
+      return ;
+   } //end if
+   if (((goal.classname == "player") || (goal.classname == "dmbot")))
+   {
+      return ;
+   } //end if
+   if ((goal.classname == "BotPath"))
+   {
+      return ;
+   } //end if
+
+   if ((self.last_goal_entity != goal))
+   {
+      self.last_goal_entity = goal;
+      self.last_goal_dist = vlen ((goal.origin - self.origin));
+      self.last_goal_progress_time = time;
+      return ;
+   } //end if
+
+   dist = vlen ((goal.origin - self.origin));
+   if ((dist < (self.last_goal_dist - 8.000)))
+   {
+      self.last_goal_dist = dist;
+      self.last_goal_progress_time = time;
+      return ;
+   } //end if
+
+   if (((time - self.last_goal_progress_time) > 1.500))
+   {
+      Bot_AddAvoidTarget (goal,5.000);
+      if ((bot_debug_enabled && (bot_debug_level >= LOG_TACTICAL)))
+      {
+         bprint ("[");
+         bprint (self.netname);
+         bprint ("] FIXATE: Avoid goal ");
+         bprint (goal.classname);
+         bprint ("\n");
+      } //end if
+      self.last_goal_progress_time = time;
+      self.last_goal_dist = 999999.000;
+      self.goalentity.goalentity = self.goalentity;
+      self.search_time = time;
+   } //end if
+}; //end of the function Bot_CheckGoalFixation
+
 void () shoottarget =
 {
    local vector dir;
@@ -44,6 +235,7 @@ void (float dist) ai_botseek =
       return ;
    } //end if
    botTarget = self.goalentity;
+   Bot_CheckGoalFixation ();
    if ((time < self.search_time))
    {
       if ((botTarget.goalentity.classname == "train"))
@@ -1403,6 +1595,11 @@ void () aibot_chooseGoal =
       e = findradius (self.origin,SEARCH_RADIUS);
       while (e)
       {
+         if (Bot_IsAvoidedTarget (e))
+         {
+            e = e.chain;
+            continue;
+         } //end if
          weight = DONT_WANT;
          if ((e == current))
          {
@@ -1538,6 +1735,8 @@ void () aibot_chooseGoal =
             } //end if
             if ((weight > best))
             {
+               // Small diversity bias: occasionally favor less-frequent items.
+               weight = (weight + (random () * 5.000));
                botTarget.goalentity = e;
                best = weight;
                bestorg = org;
@@ -1584,6 +1783,11 @@ void () aibot_chooseGoal =
       best = DONT_WANT;
       while (e)
       {
+         if (Bot_IsAvoidedTarget (e))
+         {
+            e = e.chain;
+            continue;
+         } //end if
          if (((e.pathtype == DROPPED) || (e.pathtype == TELEPORT)))
          {
             if ((e == current))

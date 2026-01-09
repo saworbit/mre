@@ -126,6 +126,8 @@ void () Stack_Pop_Safe =
    }
 }; //end of Stack_Pop_Safe
 
+float (entity target) Bot_IsAvoidedTarget;
+
 // ===== PROJECTILE PREDICTION: Navigation Leading (2026-01-06) =====
 // Predicts where enemy will be based on projectile travel time.
 // Used for body orientation (ideal_yaw) so bot faces the predicted position.
@@ -1873,7 +1875,7 @@ void (float dist) ai_botrun =
                // Prevent rapid flip-flopping unless it's immediate self-defense.
                if ((better_target.enemy != self))
                {
-                  if ((self.last_target_switch_time && ((time - self.last_target_switch_time) < 1.200)))
+                  if ((self.last_target_switch_time && ((time - self.last_target_switch_time) < 1.600)))
                   {
                      switch_justified = FALSE;
                   } //end if
@@ -1889,7 +1891,7 @@ void (float dist) ai_botrun =
             } //end if
          } //end if
 
-         self.scan_time = (time + 2.500); // Check every 2.5s to reduce churn
+         self.scan_time = (time + 3.000); // Check every 3.0s to reduce churn
       } //end if
       // ===================================================
    } //end if
@@ -2198,6 +2200,11 @@ float (float minweight) aibot_checkforGoodies =
    best = DONT_WANT;
    while (e)
    {
+      if (Bot_IsAvoidedTarget (e))
+      {
+         e = e.chain;
+         continue;
+      } //end if
       weight = DONT_WANT;
       if ((e.origin_z > (self.origin_z + (0.700 * MAXJUMP))))
       {

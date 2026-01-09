@@ -42,6 +42,8 @@ This update separates combat movement from distance chasing. When the enemy is a
 - Vertical disadvantage triggers elevation-seeking feelers and a short break-contact fallback
 - Multi-point LOS scoring, ledge risk penalty, pad/lift memory, and post-teleport bias refine local picks
 - Hazard-aware feeler scoring and jump landing checks prevent lava hops without a safe landing, with escape bias from hazard edges (logs when blocked)
+- Goal fixation avoidance skips unreachable items and blends steering for smoother local turns
+- Hazard bad-spot marking and small goal-selection jitter reduce lava-edge loops
 
 **Debug Output (LOG_TACTICAL+):**
 ```
@@ -57,7 +59,8 @@ This update separates combat movement from distance chasing. When the enemy is a
 - Ranked candidate scoring (clearance, widen, future space, loop/bad-spot penalties)
 - Jump/step/tight-gap hints from feelers
 - Progress-based stuck detection with short commit windows + cooldown (0.2s tick / 16u threshold / 1.0s limit)
-- Target switching cooldown (1.2s) + scan interval tuning (2.5s) to reduce churn
+- Target switching cooldown (1.6s) + scan interval tuning (3.0s) to reduce churn
+- Goal fixation avoidance (1.5s stall / 5s TTL) for unreachable items
 
 **Debug Output (LOG_CRITICAL+):**
 ```

@@ -176,6 +176,18 @@ float (entity targ, entity inflictor) CanDamage;
 .float hazard_escape_until;
 .float hazard_escape_yaw;
 .float hazard_log_time;
+// Temporary avoid list for unreachable goals.
+.entity avoid_target0;
+.entity avoid_target1;
+.entity avoid_target2;
+.entity avoid_target3;
+.float avoid_target_time0;
+.float avoid_target_time1;
+.float avoid_target_time2;
+.float avoid_target_time3;
+.entity last_goal_entity;
+.float last_goal_dist;
+.float last_goal_progress_time;
 // Recent jump pad/lift memory for elevation seeking.
 .vector last_pad_origin;
 .float last_pad_time;
