@@ -366,6 +366,15 @@ The arc loop now applies `GRAVITY * dt`, uses a single step trace with slope gat
 
 **Result:** Bots correctly recognize reachable gaps and ledges during jump planning.
 
+### Projectile Dodge Scan Optimization (2026-01-10)
+
+**OPTIMIZATION:** Projectile evasion now limits scans to nearby entities and skips work when idle/healthy.
+
+**The Fix:**
+`bot_dodge_stuff` uses `findradius` around the bot (500u) and gates scans when no enemy and high health.
+
+**Result:** Lower per-frame cost while keeping dodge behavior effective in combat.
+
 ### Goal Removal Guard (2026-01-10)
 
 **BUGFIX:** Bots now abandon item goals that were removed or hidden between selection and pursuit.

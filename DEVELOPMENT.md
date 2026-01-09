@@ -398,6 +398,27 @@ newbottom_z = (newbottom_z + (tvel * sim_interval));
 - Keep simulation step size explicit and consistent.
 - Add a safety break for out-of-bounds fall conditions.
 
+---
+
+### 15. Projectile Dodge Scan Scope (bot_dodge_stuff)
+
+**ISSUE:** Scanning all entities every frame for projectiles is O(N) per bot and scales poorly.
+
+**Safe Pattern:**
+```c
+head = findradius (self.origin, 500.000);
+while (head)
+{
+    // filter for missiles/grenades and check approach direction
+    head = head.chain;
+}
+```
+
+**Prevention:**
+- Use `findradius` to bound scan cost.
+- Skip scans when idle and healthy unless under direct threat.
+- Keep the dodge logic intact; only reduce the search space.
+
 ## 🛠️ Build & Deploy Workflow
 
 ### Compilation

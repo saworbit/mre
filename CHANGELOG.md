@@ -11,6 +11,10 @@
   - **Time-scaled gravity** in `reaper_mre/botmove.qc`: jump simulation now applies `GRAVITY * dt` per step instead of full gravity each tick.
   - **Streamlined trace loop** in `reaper_mre/botmove.qc`: single step trace with slope check and hazard gate reduces overhead.
   - **Result:** Bots no longer under-estimate jump distances due to 10× gravity.
+- **Projectile dodge scan optimization** to reduce per-frame overhead:
+  - **Radius-limited scan** in `reaper_mre/bot_ai.qc`: uses `findradius(self.origin, 500)` instead of full map iteration.
+  - **Threat gating** in `reaper_mre/bot_ai.qc`: skips dodge scans when idle and healthy to avoid unnecessary work.
+  - **Result:** Lower CPU cost while preserving dodge responsiveness in combat.
 - **Docs update:** Clarified that `impulse 97` feeler logs only appear in exploration mode (no nearby waypoints), so waypoint-dense maps may show no FEELER/BREADCRUMB output.
 - **Suppressive fire on heard targets** for hallway spam behavior:
   - **Expanded hearing range** in `reaper_mre/bot_ai.qc`: BotListen now treats sounds as audible out to ~800 units.

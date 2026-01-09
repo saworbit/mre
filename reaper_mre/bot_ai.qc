@@ -300,100 +300,79 @@ float (entity e) bot_size_player =
 // Returns: TRUE if dodging, FALSE if no threat detected
 float () bot_dodge_stuff =
 {
-   // Only dodge if we have an enemy (in combat mode)
-   if ((self.enemy == world))
+   local entity head;
+   local entity item;
+   local float bestrating;
+   local float rating;
+   local float dist;
+   local float type_weight;
+   local vector org;
+   local vector dir_to_bot;
+   local vector vel_dir;
+   local vector norm;
+   local float dodge_dir;
+   local float angle_diff;
+
+   if (((self.enemy == world) && (self.health > 80.000)))
    {
       return (FALSE);
    } //end if
 
-   local entity item;
-   local float bestdist;
-   local float bestrating;
-   local float rating;
-   local float dist;
-   local vector org;
-
-   bestdist = 10000.000;
    bestrating = 0.000;
    item = world;
 
-   // ===== SCAN FOR GRENADES (highest priority) =====
-   local entity grenade;
-   grenade = find (world,classname,"grenade");
-   while ((grenade != world))
+   head = findradius (self.origin, 500.000);
+   while (head)
    {
-      // Only dodge grenades moving toward us
-      org = (((grenade.origin + (grenade.velocity * 0.150)) - self.origin) - (self.velocity * 0.150));
-      if (((vlen (org) < vlen ((grenade.origin - self.origin))) && (vlen (org) < 240.000)))
+      if (((head.classname == "missile") || (head.classname == "grenade")))
       {
-         // Calculate threat rating based on distance and owner
-         dist = vlen (org);
-         rating = (1.000 / dist);
-         if ((grenade.owner != world))
+         if ((head.owner != self))
          {
-            rating = (rating * bot_size_player (grenade.owner));
-         } //end if
-
-         // Track most threatening grenade
-         if ((rating > bestrating))
-         {
-            bestrating = rating;
-            bestdist = dist;
-            item = grenade;
+            vel_dir = normalize (head.velocity);
+            dir_to_bot = normalize ((self.origin - head.origin));
+            if (((vel_dir * dir_to_bot) > 0.300))
+            {
+               org = (head.origin - self.origin);
+               dist = vlen (org);
+               if ((dist > 1.000))
+               {
+                  if ((head.classname == "grenade"))
+                  {
+                     type_weight = 1.000;
+                  } //end if
+                  else
+                  {
+                     type_weight = 0.500;
+                  } //end if
+                  rating = (type_weight / dist);
+                  if ((head.owner != world))
+                  {
+                     rating = (rating * bot_size_player (head.owner));
+                  } //end if
+                  if ((rating > bestrating))
+                  {
+                     bestrating = rating;
+                     item = head;
+                  } //end if
+               } //end if
+            } //end if
          } //end if
       } //end if
-      grenade = find (grenade,classname,"grenade");
+      head = head.chain;
    } //end while
 
-   // ===== SCAN FOR MISSILES (lower priority than grenades) =====
-   local entity missile;
-   missile = find (world,classname,"missile");
-   while ((missile != world))
-   {
-      // Only dodge missiles moving toward us
-      org = (((missile.origin + (missile.velocity * 0.150)) - self.origin) - (self.velocity * 0.150));
-      if (((vlen (org) < vlen ((missile.origin - self.origin))) && (vlen (org) < 240.000)))
-      {
-         // Calculate threat rating based on distance and owner
-         dist = vlen (org);
-         rating = (0.500 / dist);
-         if ((missile.owner != world))
-         {
-            rating = (rating * bot_size_player (missile.owner));
-         } //end if
-
-         // Track most threatening missile
-         if ((rating > bestrating))
-         {
-            bestrating = rating;
-            bestdist = dist;
-            item = missile;
-         } //end if
-      } //end if
-      missile = find (missile,classname,"missile");
-   } //end while
-
-   // ===== NO THREAT DETECTED =====
    if ((item == world))
    {
       self.avoid = world;
       return (FALSE);
    } //end if
 
-   // ===== EXECUTE DODGE MOVEMENT =====
-   // Already dodging this projectile - don't recalculate
    if ((self.avoid == item))
    {
       return (TRUE);
    } //end if
 
-   // Calculate perpendicular escape vector based on projectile velocity
-   local vector norm;
-   local float dodge_dir;
-
    norm = normalize (item.velocity);
-   // Choose left or right perpendicular based on which side is safer
-   // Perpendicular vector: rotate 90° either direction
    if ((random () > 0.500))
    {
       dodge_dir = (vectoyaw (norm) + 90.000);
@@ -403,15 +382,10 @@ float () bot_dodge_stuff =
       dodge_dir = (vectoyaw (norm) - 90.000);
    } //end if
 
-   // ===== REAPER MOVEMENT ADAPTATION =====
-   // Set strafe direction using Reaper's lefty flag system
-   // Determine which perpendicular direction to dodge based on angle
-   local float angle_diff;
    angle_diff = anglemod ((dodge_dir - self.angles_y));
 
    if ((angle_diff < 180.000))
    {
-      // Dodge to the right - set STRAFE_DIR flag
       if (!(self.lefty & STRAFE_DIR))
       {
          self.lefty = (self.lefty | STRAFE_DIR);
@@ -419,14 +393,12 @@ float () bot_dodge_stuff =
    } //end if
    else
    {
-      // Dodge to the left - clear STRAFE_DIR flag
       if ((self.lefty & STRAFE_DIR))
       {
          self.lefty = (self.lefty - (self.lefty & STRAFE_DIR));
       } //end if
    } //end if
 
-   // Mark this projectile as being actively dodged
    self.avoid = item;
 
    return (TRUE);
@@ -2557,3 +2529,4 @@ void (float dist) ai_botgetGoody =
    setorigin (self.goalentity,self.lastseenpos);
    self.goalentity.goalentity = self.enemy;
 }; //end of the function ai_botgetGoody
+
