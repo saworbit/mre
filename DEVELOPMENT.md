@@ -306,6 +306,19 @@ self.nav_search_time = (time + 4.0);
 
 ---
 
+### 10. Bitmask Clears (self.items)
+
+**ISSUE:** Clearing item flags with raw subtraction can corrupt the bitmask if the flag is already cleared elsewhere.
+
+**Safe Pattern:**
+```c
+self.items = (self.items - (self.items & IT_QUAD));
+```
+
+**Prevention:**
+- Use masked subtraction for clearing item flags.
+- Avoid raw subtraction when multiple systems can update `self.items`.
+
 ## 🛠️ Build & Deploy Workflow
 
 ### Compilation

@@ -14,6 +14,14 @@ float (entity target) Bot_IsAvoidedTarget =
    {
       return (FALSE);
    } //end if
+   if (target.avoid_until)
+   {
+      if ((time < target.avoid_until))
+      {
+         return (TRUE);
+      } //end if
+      target.avoid_until = 0.000;
+   } //end if
 
    if (self.avoid_target0)
    {
@@ -76,6 +84,7 @@ void (entity target, float ttl) Bot_AddAvoidTarget =
    {
       return ;
    } //end if
+   target.avoid_until = (time + ttl);
 
    if ((self.avoid_target0 == target))
    {

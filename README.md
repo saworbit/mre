@@ -361,6 +361,15 @@ Bots now track `combat_search_time` for enemy chase persistence and `nav_search_
 
 **Result:** Bots don’t forget enemies early or abandon goals due to unrelated timer updates.
 
+### Powerup Bitmask Safety (2026-01-10)
+
+**BUGFIX:** Powerup expirations now clear `self.items` using masked subtraction to prevent bitmask corruption.
+
+**The Fix:**
+`botthink.qc` clears `IT_INVISIBILITY`, `IT_INVULNERABILITY`, `IT_QUAD`, and `IT_SUIT` with `self.items - (self.items & FLAG)`.
+
+**Result:** No accidental item state corruption when a flag is already cleared.
+
 ### 🏎️ Movement Smoothing Suite (2026-01-05)
 
 **NEW:** Three distinct smoothing upgrades transform robotic movement into human-like fluidity!

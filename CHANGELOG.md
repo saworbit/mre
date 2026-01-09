@@ -41,6 +41,9 @@
   - **Combat updates** in `reaper_mre/bot_ai.qc` and `reaper_mre/botsignl.qc`: chase timers now write to `combat_search_time`.
   - **Navigation updates** in `reaper_mre/botgoal.qc`, `reaper_mre/botmove.qc`, `reaper_mre/botspawn.qc`, and `reaper_mre/botsignl.qc`: goal timers now write to `nav_search_time`.
   - **Result:** Combat memory no longer gets shortened by goal selection, and roam patience no longer gets overwritten during fights.
+- **Safe powerup bitmask clears** to avoid `self.items` corruption:
+  - **Masked subtraction** in `reaper_mre/botthink.qc`: powerup expirations now clear `IT_INVISIBILITY`, `IT_INVULNERABILITY`, `IT_QUAD`, and `IT_SUIT` via `self.items - (self.items & FLAG)`.
+  - **Result:** No accidental item bit corruption if a flag was already cleared elsewhere.
 
 ## 2026-01-09
 

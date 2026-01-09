@@ -148,6 +148,7 @@ void end_sys_fields;
 .entity last_speaker;   // Stores global last speaker (on chat_state entity)
 entity chat_state;      // Dedicated entity for storing global chat state
 .entity avoid;          // Projectile being actively dodged (Phase 7: Active Projectile Dodging)
+.float avoid_until;     // Target avoid timer to prevent retry thrash
 .entity goal_stack1;    // Goal memory level 1 (Phase 8: Target Stack - Brain Memory)
 .entity goal_stack2;    // Goal memory level 2 (Phase 8: Target Stack - Brain Memory)
 .entity goal_stack3;    // Goal memory level 3 (Phase 8: Target Stack - Brain Memory)

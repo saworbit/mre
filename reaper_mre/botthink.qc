@@ -180,7 +180,7 @@ void () BotCheckPowerups =
       } //end if
       if ((self.invisible_finished < time))
       {
-         self.items = (self.items - IT_INVISIBILITY);
+         self.items = (self.items - (self.items & IT_INVISIBILITY));
          self.invisible_finished = FALSE;
          self.invisible_time = CAM_IDLE;
       } //end if
@@ -208,7 +208,7 @@ void () BotCheckPowerups =
       } //end if
       if ((self.invincible_finished < time))
       {
-         self.items = (self.items - IT_INVULNERABILITY);
+         self.items = (self.items - (self.items & IT_INVULNERABILITY));
          self.invincible_time = CAM_IDLE;
          self.invincible_finished = FALSE;
       } //end if
@@ -238,7 +238,7 @@ void () BotCheckPowerups =
       } //end if
       if ((self.super_damage_finished < time))
       {
-         self.items = (self.items - IT_QUAD);
+         self.items = (self.items - (self.items & IT_QUAD));
          self.super_damage_finished = FALSE;
          self.super_time = CAM_IDLE;
       } //end if
@@ -269,7 +269,7 @@ void () BotCheckPowerups =
       } //end if
       if ((self.radsuit_finished < time))
       {
-         self.items = (self.items - IT_SUIT);
+         self.items = (self.items - (self.items & IT_SUIT));
          self.rad_time = CAM_IDLE;
          self.radsuit_finished = FALSE;
       } //end if
