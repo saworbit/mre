@@ -2213,11 +2213,11 @@ This project builds upon the classic **Reaper Bot** (1998) with modern enhanceme
 ## 🙏 Credits
 
 - 📦 **Original Reaper Bot** — Steven Polge & community (1998)
-  - **FrikBot** — Ryan "Frik" Smith
-  - **Omicron Bot** — Jan Paul van Waveren (Mr Elusive, RIP :-( ) (AI architecture inspiration)
-  - **Quake 1 Team** — id Software (1996)
-  - **Quake Community** — mappers, modders, server admins, and players
-  - **FTEQCC Compiler** — FTE QuakeWorld team
+- 🤖 **FrikBot** — Ryan "Frik" Smith
+- 🧠 **Omicron Bot** — Jan Paul van Waveren † (Mr Elusive) — AI architecture inspiration
+- 🎮 **Quake 1 Team** — id Software (1996)
+- 👥 **Quake Community** — mappers, modders, server admins, and players
+- 🔨 **FTEQCC Compiler** — FTE QuakeWorld team
 - 🎮 **QuakeSpasm Engine** — QuakeSpasm developers
 - 🤖 **MRE AI Systems** — Modern enhancements (2026)
 
