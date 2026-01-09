@@ -356,6 +356,29 @@ if (((self.enemy.classname != "player") && (self.enemy.classname != "dmbot")))
 - Validate `self.enemy` each think before combat logic.
 - Clear enemy if classname, health, or deadflag are invalid.
 
+---
+
+### 13. Duplicate Function Definitions (compile-order ambiguity)
+
+**ISSUE:** Defining the same function body in multiple files creates ambiguous behavior. The compiler uses `progs.src` order, so later copies may shadow earlier ones or cause duplicate-definition errors.
+
+**Safe Pattern:**
+```c
+// Define once in an early-compiled file (e.g., botmove.qc)
+float () CheckWaterLevel =
+{
+    // ...
+};
+
+// Forward declare in files that need it (or in botit_th.qc)
+float () CheckWaterLevel;
+```
+
+**Prevention:**
+- Keep shared helpers in a single canonical file.
+- Use forward declarations instead of copy-pasting function bodies.
+- Prefer early-compiled files for core utilities to minimize dependency chains.
+
 ## 🛠️ Build & Deploy Workflow
 
 ### Compilation

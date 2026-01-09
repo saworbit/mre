@@ -1100,6 +1100,27 @@ void () CheckForHazards =
 }; //end of the function CheckForHazards
 // ===== END PHASE 9: GROUND HAZARD DETECTION =====
 
+float () CheckWaterLevel =
+{
+   local float pnt;
+
+   if ((self.waterlevel < SPAWNFLAG_SUPERSPIKE))
+   {
+      return (CAM_IDLE);
+   } //end if
+   pnt = pointcontents ((self.origin + self.view_ofs));
+   if ((pnt != CONTENT_EMPTY))
+   {
+      return (CAM_FOLLOW);
+   } //end if
+   pnt = pointcontents (self.origin);
+   if ((pnt != CONTENT_EMPTY))
+   {
+      return (SPAWNFLAG_LASER);
+   } //end if
+   return (SPAWNFLAG_SUPERSPIKE);
+}; //end of the function CheckWaterLevel
+
 // ===== PHASE 11: WATER SURVIVAL (Drowning Prevention) =====
 // Detects when bot is underwater and running out of air, forcing surface swim.
 // Prevents bots from suffocating in deep water by checking air_finished field.

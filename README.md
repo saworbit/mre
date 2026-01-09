@@ -307,6 +307,17 @@ Each helper now caches the current `trace_*` values, performs its own `traceline
 
 **Result:** Movement and collision logic no longer sees stale trace results after prediction or goal helper calls.
 
+### Utility Definition Consolidation (2026-01-10)
+
+**MAINTENANCE:** Shared helpers are now defined once to avoid compile-order ambiguities.
+
+**What changed:**
+- `CheckWaterLevel` now has a single definition in `botmove.qc` (movement utilities).
+- The duplicate body was removed from `botthink.qc`.
+- Existing prototypes (e.g., in `func.qc`) continue to cover cross-file calls.
+
+**Result:** No duplicate symbol risk and clearer ownership of shared utility functions.
+
 ### Lefty Bitmask Safety (2026-01-10)
 
 **BUGFIX:** Clearing `self.lefty` flags now uses masked subtraction to avoid corrupting unrelated bits.

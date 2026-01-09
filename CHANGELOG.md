@@ -51,6 +51,10 @@
   - **Central validation** in `reaper_mre/bot_ai.qc`: `Bot_ValidateEnemy` now checks classname, health, and deadflag and clears invalid enemies.
   - **Bot think guard** in `reaper_mre/botthink.qc`: per-frame enemy validation runs before combat logic.
   - **Result:** Bots drop non-player/dmbot targets immediately after slot reuse.
+- **Utility de-duplication** to keep compile order deterministic:
+  - **Single definition** in `reaper_mre/botmove.qc`: `CheckWaterLevel` now lives alongside other movement utilities.
+  - **Removed duplicate** in `reaper_mre/botthink.qc`: avoids double-definition risk and keeps shared helpers centralized.
+  - **Result:** Cleaner build order and fewer ambiguous definitions across modules.
 
 ## 2026-01-09
 

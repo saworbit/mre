@@ -3,27 +3,6 @@ void (entity e) clearCache;
 float (entity b) TrueReachable;  // Forward declaration for air reachability checks
 void (float ctx, entity targ) BotChat;  // Forward declaration for chat system (defined in botchat.qc)
 
-float () CheckWaterLevel =
-{
-   local float pnt;
-
-   if ((self.waterlevel < SPAWNFLAG_SUPERSPIKE))
-   {
-      return (CAM_IDLE);
-   } //end if
-   pnt = pointcontents ((self.origin + self.view_ofs));
-   if ((pnt != CONTENT_EMPTY))
-   {
-      return (CAM_FOLLOW);
-   } //end if
-   pnt = pointcontents (self.origin);
-   if ((pnt != CONTENT_EMPTY))
-   {
-      return (SPAWNFLAG_LASER);
-   } //end if
-   return (SPAWNFLAG_SUPERSPIKE);
-}; //end of the function CheckWaterLevel
-
 void () BotWaterMove =
 {
    local float wlevel;
