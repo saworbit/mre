@@ -144,6 +144,17 @@ vector (entity target, float proj_speed) PredictEnemyPositionForNav =
    local float travel_time;
    local float distance;
    local vector direction;
+   local float saved_trace_allsolid;
+   local float saved_trace_startsolid;
+   local float saved_trace_fraction;
+   local vector saved_trace_endpos;
+   local vector saved_trace_plane_normal;
+   local float saved_trace_plane_dist;
+   local entity saved_trace_ent;
+   local float saved_trace_inopen;
+   local float saved_trace_inwater;
+   local float nav_trace_fraction;
+   local vector nav_trace_endpos;
 
    // Sanity check
    if (!target || target == world)
@@ -174,14 +185,34 @@ vector (entity target, float proj_speed) PredictEnemyPositionForNav =
 
    // ===== WALL-CLAMPING (Obot-inspired) =====
    // Don't aim at positions behind walls - validate with traceline
+   saved_trace_allsolid = trace_allsolid;
+   saved_trace_startsolid = trace_startsolid;
+   saved_trace_fraction = trace_fraction;
+   saved_trace_endpos = trace_endpos;
+   saved_trace_plane_normal = trace_plane_normal;
+   saved_trace_plane_dist = trace_plane_dist;
+   saved_trace_ent = trace_ent;
+   saved_trace_inopen = trace_inopen;
+   saved_trace_inwater = trace_inwater;
    traceline(self.origin, predicted_pos, TRUE, self);
+   nav_trace_fraction = trace_fraction;
+   nav_trace_endpos = trace_endpos;
+   trace_allsolid = saved_trace_allsolid;
+   trace_startsolid = saved_trace_startsolid;
+   trace_fraction = saved_trace_fraction;
+   trace_endpos = saved_trace_endpos;
+   trace_plane_normal = saved_trace_plane_normal;
+   trace_plane_dist = saved_trace_plane_dist;
+   trace_ent = saved_trace_ent;
+   trace_inopen = saved_trace_inopen;
+   trace_inwater = saved_trace_inwater;
 
    // If trace hit something before reaching predicted position, the path is blocked
-   if (trace_fraction < 1.0)
+   if (nav_trace_fraction < 1.0)
    {
       // Check if the blockage is close to the target (within splash radius ~120 units)
       local float block_dist;
-      block_dist = vlen(trace_endpos - target.origin);
+      block_dist = vlen(nav_trace_endpos - target.origin);
 
       if (block_dist > 120.0)
       {
@@ -192,7 +223,7 @@ vector (entity target, float proj_speed) PredictEnemyPositionForNav =
       else
       {
          // Blockage is near target - use the impact point (wall splash)
-         return trace_endpos;
+         return nav_trace_endpos;
       }
    }
 
@@ -433,6 +464,16 @@ void () CallForHelp =
    local entity p;
    local entity tmp;
    local float d;
+   local float saved_trace_allsolid;
+   local float saved_trace_startsolid;
+   local float saved_trace_fraction;
+   local vector saved_trace_endpos;
+   local vector saved_trace_plane_normal;
+   local float saved_trace_plane_dist;
+   local entity saved_trace_ent;
+   local float saved_trace_inopen;
+   local float saved_trace_inwater;
+   local float help_trace_fraction;
 
    HELPING = TRUE;
    e = find (world,classname,"dmbot");
@@ -446,15 +487,34 @@ void () CallForHelp =
             {
                if ((e.health > 80.000))
                {
-                  if ((e.items & ((((IT_ROCKET_LAUNCHER + IT_LIGHTNING) + IT_SUPER_NAILGUN) + IT_SUPER_SHOTGUN) + IT_GRENADE_LAUNCHER)))
-                  {
-                     p = BestChaseRoute (e,self.enemy);
-                     traceline (e.origin,self.enemy.origin,TRUE,e);
-                     if (((trace_fraction == TRUE) || (p.enemycache == self.enemy)))
+                     if ((e.items & ((((IT_ROCKET_LAUNCHER + IT_LIGHTNING) + IT_SUPER_NAILGUN) + IT_SUPER_SHOTGUN) + IT_GRENADE_LAUNCHER)))
                      {
-                        if (VERBOSEBOT)
+                         p = BestChaseRoute (e,self.enemy);
+                        saved_trace_allsolid = trace_allsolid;
+                        saved_trace_startsolid = trace_startsolid;
+                        saved_trace_fraction = trace_fraction;
+                        saved_trace_endpos = trace_endpos;
+                        saved_trace_plane_normal = trace_plane_normal;
+                        saved_trace_plane_dist = trace_plane_dist;
+                        saved_trace_ent = trace_ent;
+                        saved_trace_inopen = trace_inopen;
+                        saved_trace_inwater = trace_inwater;
+                        traceline (e.origin,self.enemy.origin,TRUE,e);
+                        help_trace_fraction = trace_fraction;
+                        trace_allsolid = saved_trace_allsolid;
+                        trace_startsolid = saved_trace_startsolid;
+                        trace_fraction = saved_trace_fraction;
+                        trace_endpos = saved_trace_endpos;
+                        trace_plane_normal = saved_trace_plane_normal;
+                        trace_plane_dist = saved_trace_plane_dist;
+                        trace_ent = saved_trace_ent;
+                        trace_inopen = saved_trace_inopen;
+                        trace_inwater = saved_trace_inwater;
+                        if (((help_trace_fraction == TRUE) || (p.enemycache == self.enemy)))
                         {
-                           dprint (e.teamname);
+                           if (VERBOSEBOT)
+                           {
+                              dprint (e.teamname);
                            dprint (e.netname);
                            dprint (" coming to help!\n");
                         } //end if

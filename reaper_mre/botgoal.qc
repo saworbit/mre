@@ -825,6 +825,16 @@ vector (float n) chooseRoamTarget =
    local vector below;
    local vector bestorg;
    local vector deny_dir;
+   local float saved_trace_allsolid;
+   local float saved_trace_startsolid;
+   local float saved_trace_fraction;
+   local vector saved_trace_endpos;
+   local vector saved_trace_plane_normal;
+   local float saved_trace_plane_dist;
+   local entity saved_trace_ent;
+   local float saved_trace_inopen;
+   local float saved_trace_inwater;
+   local float roam_trace_fraction;
 
    // ===== PORTAL AWARENESS: Prioritize Teleporter Exploration =====
    // Bots actively seek out teleporters as "mystery boxes" to explore
@@ -893,10 +903,29 @@ vector (float n) chooseRoamTarget =
       bestorg_y = (bestorg_y + (m * ((700.000 * random ()) + 50.000)));
    } //end if
    bestorg_z = (((bestorg_z + ((MOVETYPE_WALK * MAXJUMP) * random ())) - (FL_SWIM * MAXJUMP)) - TRUE);
+   saved_trace_allsolid = trace_allsolid;
+   saved_trace_startsolid = trace_startsolid;
+   saved_trace_fraction = trace_fraction;
+   saved_trace_endpos = trace_endpos;
+   saved_trace_plane_normal = trace_plane_normal;
+   saved_trace_plane_dist = trace_plane_dist;
+   saved_trace_ent = trace_ent;
+   saved_trace_inopen = trace_inopen;
+   saved_trace_inwater = trace_inwater;
    traceline (self.origin,bestorg,TRUE,self);
+   roam_trace_fraction = trace_fraction;
+   trace_allsolid = saved_trace_allsolid;
+   trace_startsolid = saved_trace_startsolid;
+   trace_fraction = saved_trace_fraction;
+   trace_endpos = saved_trace_endpos;
+   trace_plane_normal = saved_trace_plane_normal;
+   trace_plane_dist = saved_trace_plane_dist;
+   trace_ent = saved_trace_ent;
+   trace_inopen = saved_trace_inopen;
+   trace_inwater = saved_trace_inwater;
    dir = normalize ((bestorg - self.origin));
    len = vlen ((bestorg - self.origin));
-   bestorg = (self.origin + (dir * ((len * trace_fraction) - KINDA_WANT)));
+   bestorg = (self.origin + (dir * ((len * roam_trace_fraction) - KINDA_WANT)));
    below = bestorg;
    below_z = (dropline (below) + TRUE);
    lnd = pointcontents (below);
@@ -1210,6 +1239,16 @@ void () goForAir =
 {
    local vector bestorg;
    local entity botTarget;
+   local float saved_trace_allsolid;
+   local float saved_trace_startsolid;
+   local float saved_trace_fraction;
+   local vector saved_trace_endpos;
+   local vector saved_trace_plane_normal;
+   local float saved_trace_plane_dist;
+   local entity saved_trace_ent;
+   local float saved_trace_inopen;
+   local float saved_trace_inwater;
+   local float air_trace_inopen;
 
    if (VERBOSEBOT)
    {
@@ -1219,8 +1258,27 @@ void () goForAir =
    } //end if
    bestorg = self.origin;
    bestorg_z = (bestorg_z + 800.000);
+   saved_trace_allsolid = trace_allsolid;
+   saved_trace_startsolid = trace_startsolid;
+   saved_trace_fraction = trace_fraction;
+   saved_trace_endpos = trace_endpos;
+   saved_trace_plane_normal = trace_plane_normal;
+   saved_trace_plane_dist = trace_plane_dist;
+   saved_trace_ent = trace_ent;
+   saved_trace_inopen = trace_inopen;
+   saved_trace_inwater = trace_inwater;
    traceline (self.origin,bestorg,TRUE,self);
-   if (!trace_inopen)
+   air_trace_inopen = trace_inopen;
+   trace_allsolid = saved_trace_allsolid;
+   trace_startsolid = saved_trace_startsolid;
+   trace_fraction = saved_trace_fraction;
+   trace_endpos = saved_trace_endpos;
+   trace_plane_normal = saved_trace_plane_normal;
+   trace_plane_dist = saved_trace_plane_dist;
+   trace_ent = saved_trace_ent;
+   trace_inopen = saved_trace_inopen;
+   trace_inwater = saved_trace_inwater;
+   if (!air_trace_inopen)
    {
       bestorg = chooseRoamTarget (TRUE);
       bestorg_z = (bestorg_z + 200.000);

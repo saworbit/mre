@@ -295,6 +295,18 @@ Debug output shows:
 
 **Result:** Debug toggle now works perfectly! Developers can enable logging for AI analysis, then cleanly disable it when done. No more bot interference. Build size: 458,998 bytes (+24 bytes). 🐛🔧✅
 
+### Trace Global Clobber Fix (2026-01-10)
+
+**BUGFIX:** Helper tracelines now preserve the engine `trace_*` globals instead of overwriting caller state.
+
+**The Problem:**
+QuakeC exposes a single set of global `trace_*` variables (fraction/endpos/ent/etc.). Helper functions in `bot_ai.qc` and `botgoal.qc` were running `traceline()` and unintentionally overwriting trace data that movement/combat code expected to still be valid.
+
+**The Fix:**
+Each helper now caches the current `trace_*` values, performs its own `traceline()`, copies the results it needs into local variables, and restores the original globals before returning.
+
+**Result:** Movement and collision logic no longer sees stale trace results after prediction or goal helper calls.
+
 ### 🏎️ Movement Smoothing Suite (2026-01-05)
 
 **NEW:** Three distinct smoothing upgrades transform robotic movement into human-like fluidity!

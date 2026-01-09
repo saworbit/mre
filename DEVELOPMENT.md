@@ -129,7 +129,40 @@ if ((self.impulse == 95.000) && (self.classname == "player"))
 
 ---
 
-### 3. Impulse Truncation (8-bit Limit)
+### 3. Trace Globals Are Shared (trace_* clobbering)
+
+**ISSUE:** `traceline()` writes into global `trace_*` variables. Any helper that calls `traceline()` will overwrite the caller's trace results.
+
+**What Happened (Historical):**
+- Navigation prediction and goal helpers ran `traceline()` internally.
+- Parent movement/combat logic later read `trace_fraction` or `trace_endpos`, but got the helper results instead of its own trace data.
+- This caused false "clear path" or phantom collisions.
+
+**The Fix:**
+Save and restore `trace_*` around helper traces, and use local copies for decisions:
+```c
+// Save globals
+saved_trace_fraction = trace_fraction;
+saved_trace_endpos = trace_endpos;
+
+// Run helper trace
+traceline(self.origin, predicted_pos, TRUE, self);
+local_fraction = trace_fraction;
+local_endpos = trace_endpos;
+
+// Restore globals
+trace_fraction = saved_trace_fraction;
+trace_endpos = saved_trace_endpos;
+```
+
+**Prevention:**
+- Cache `trace_*` immediately after your own `traceline()` if you need the values later.
+- Avoid relying on `trace_*` across function calls unless you know no other trace ran.
+- In helpers, treat trace globals as temporary and restore them before returning.
+
+---
+
+### 4. Impulse Truncation (8-bit Limit)
 
 **ISSUE:** Quake engine truncates impulse values to 8-bit range (0-255). Values >255 get reduced via modulo.
 

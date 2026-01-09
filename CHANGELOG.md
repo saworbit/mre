@@ -18,6 +18,10 @@
   - **Hop trigger + fallback movement** in `reaper_mre/botmove.qc`: Timed jumps when grounded, with diagonal walkmove when jump is on cooldown.
   - **New per-bot fields** in `reaper_mre/botit_th.qc`: `travel_bhop_side`, `travel_bhop_flip_time`, `travel_bhop_jump_time`.
   - **Result:** Bots build traversal speed on long corridors and reach items faster.
+- **Trace-safe helper tracelines** to prevent global trace clobbering:
+  - **Saved/restored trace globals** in `reaper_mre/bot_ai.qc`: `PredictEnemyPositionForNav` and `CallForHelp` now preserve `trace_*` state and use local copies for their logic.
+  - **Saved/restored trace globals** in `reaper_mre/botgoal.qc`: `chooseRoamTarget` and `goForAir` no longer leak trace results into movement/combat callers.
+  - **Result:** Movement/collision logic no longer reads stale trace data after prediction and goal helper traces.
 
 ## 2026-01-09
 
