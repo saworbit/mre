@@ -32,6 +32,10 @@
   - **Time-scaled turn speed** in `reaper_mre/botthink.qc`: `checkyaw` now uses degrees-per-second * time delta instead of fixed degrees-per-tick.
   - **New per-bot field** in `reaper_mre/botit_th.qc`: `last_aim_time` tracks the last aim update for delta calculation.
   - **Result:** Aim smoothing remains stable when server FPS drops; bots don't become sluggish under load.
+- **Goal removal guard** to prevent chasing invalid item entities:
+  - **Early rejection** in `reaper_mre/botgoal.qc`: `itemweight` now ignores items with `solid == SOLID_NOT` and `modelindex == 0`.
+  - **Fixation cleanup** in `reaper_mre/botgoal.qc`: `Bot_CheckGoalFixation` drops goals that were removed or hidden and resets the search state.
+  - **Result:** Bots abandon stale goals immediately instead of walking toward removed items.
 
 ## 2026-01-09
 

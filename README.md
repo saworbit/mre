@@ -343,6 +343,15 @@ Fixed degrees-per-tick turning slows down in real time when server FPS drops.
 
 **Result:** Bots keep consistent turn speed even under server load.
 
+### Goal Removal Guard (2026-01-10)
+
+**BUGFIX:** Bots now abandon item goals that were removed or hidden between selection and pursuit.
+
+**The Fix:**
+Item weighting rejects entities with `solid == SOLID_NOT` and `modelindex == 0`, and fixation logic immediately drops such goals.
+
+**Result:** Fewer stale-goal chases after pickups or entity removal.
+
 ### 🏎️ Movement Smoothing Suite (2026-01-05)
 
 **NEW:** Three distinct smoothing upgrades transform robotic movement into human-like fluidity!

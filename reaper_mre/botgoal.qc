@@ -164,6 +164,14 @@ void () Bot_CheckGoalFixation =
    {
       return ;
    } //end if
+   if ((goal.solid == SOLID_NOT) && (goal.modelindex == 0.000))
+   {
+      self.goalentity.goalentity = self.goalentity;
+      self.search_time = time;
+      self.last_goal_progress_time = time;
+      self.last_goal_dist = 999999.000;
+      return ;
+   } //end if
 
    if ((self.last_goal_entity != goal))
    {
@@ -397,6 +405,11 @@ float (entity e) itemweight =
       {
          return (DONT_WANT);
       } //end if
+   } //end if
+   // Item already picked up or removed: skip stale goal.
+   if ((e.solid == SOLID_NOT) && (e.modelindex == 0.000))
+   {
+      return (DONT_WANT);
    } //end if
    if (e.th_weight)
    {

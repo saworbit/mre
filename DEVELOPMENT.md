@@ -231,7 +231,25 @@ turn_speed = (turn_dps * time_delta);
 
 ---
 
-### 7. Impulse Truncation (8-bit Limit)
+### 7. Stale Goal Entities (Item Removal)
+
+**ISSUE:** Items can be removed or hidden after selection (picked up or respawning), leaving bots chasing invalid entities.
+
+**Safe Pattern:**
+```c
+if ((e.solid == SOLID_NOT) && (e.modelindex == 0.000))
+{
+    return DONT_WANT;
+}
+```
+
+**Prevention:**
+- Re-validate `solid` and `modelindex` when scoring or pursuing item goals.
+- Reset goal state if a target becomes invalid mid‑pursuit.
+
+---
+
+### 8. Impulse Truncation (8-bit Limit)
 
 **ISSUE:** Quake engine truncates impulse values to 8-bit range (0-255). Values >255 get reduced via modulo.
 
