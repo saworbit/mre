@@ -267,6 +267,11 @@ The MRE debug system provides hierarchical verbosity levels for analyzing bot be
 impulse 95      # Toggle logging on/off
 impulse 96      # Cycle through verbosity levels
 ```
+Feeler exploration logs use a separate toggle:
+```bash
+impulse 97      # Feeler debug (exploration + breadcrumbs)
+```
+Note: FEELER/BREADCRUMB output only appears when bots enter exploration mode (no nearby waypoints).
 
 #### Verbosity Levels (impulse 96)
 

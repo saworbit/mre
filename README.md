@@ -1144,7 +1144,7 @@ impulse 211        # Remove all bots (back to player-only)
 |---------|----------|-------------|
 | `impulse 95` | **Debug Toggle** | Enable/disable ALL bot debug logging |
 | `impulse 96` | **Verbosity Cycle** | Cycle through debug verbosity levels (OFF → CRITICAL → NORMAL → TACTICAL → VERBOSE → DEBUG) |
-| `impulse 97` | **Feeler Debug Toggle** | Enable/disable feeler steering exploration logging (separate from main debug) |
+| `impulse 97` | **Feeler Debug Toggle** | Enable/disable feeler steering exploration logging (only prints when exploration mode is active) |
 
 **Debug Verbosity Levels:**
 - **OFF (0)**: No logging
@@ -1163,6 +1163,7 @@ impulse 97         # Enable feeler exploration logging
 # Play for a while...
 impulse 95         # Disable debug logging
 ```
+Note: feeler logs only appear when bots enter exploration mode (no nearby waypoints). On waypoint-dense maps like DM4, you may not see FEELER/BREADCRUMB output unless bots reach unmapped areas.
 
 **Log Output Examples:**
 ```

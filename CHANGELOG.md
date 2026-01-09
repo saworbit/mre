@@ -1,3 +1,14 @@
+## 2026-01-10
+
+- **Dynamic feeler steering** for more human local movement:
+  - **Adaptive probe range + candidate count** in `reaper_mre/botmove.qc`: feeler range now scales with speed and stuck score; candidate count expands when stuck/combat for better escape choices.
+  - **Swept clearance checks** in `reaper_mre/botmove.qc`: forward clearance now uses center + left/right offset traces to avoid false "fit" paths (bars/narrow gaps).
+  - **Short commit windows** in `reaper_mre/botmove.qc`: normal movement holds a chosen local direction briefly to reduce oscillation and jitter at decision points.
+  - **Dynamic ledge thresholds** in `reaper_mre/botmove.qc`: ledge risk thresholds tighten when stuck so bots get cautious only when needed.
+  - **New per-bot fields** in `reaper_mre/botit_th.qc`: `feeler_commit_dir` and `feeler_commit_until` track local steering commits.
+  - **Result:** Smoother corridor flow, earlier cornering, fewer bar/rail fixations, less ping-ponging.
+- **Docs update:** Clarified that `impulse 97` feeler logs only appear in exploration mode (no nearby waypoints), so waypoint-dense maps may show no FEELER/BREADCRUMB output.
+
 ## 2026-01-09
 
 - **Nightmare default + optional adaptive scaling** for consistent high-skill spawns:

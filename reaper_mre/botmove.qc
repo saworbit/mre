@@ -1825,6 +1825,42 @@ float (float a, float b) AngleDelta =
    return (d);
 }; //end of the function AngleDelta
 
+// Dynamic feeler range: longer lookahead when moving fast, shorter when stuck.
+float (entity bot, float mode) Bot_FeelerRange =
+{
+   local float spd;
+   local float range;
+
+   spd = vlen (bot.velocity);
+   range = (96.000 + (spd * 0.350) - (bot.stuck_score * 24.000));
+   if ((mode == BOT_MODE_UNSTICK))
+   {
+      range = (range * 0.800);
+   } //end if
+   return (Clamp (range,64.000,256.000));
+}; //end of the function Bot_FeelerRange
+
+// Dynamic feeler count: fewer probes when cruising, more when stuck or in combat.
+float (entity bot, float mode) Bot_FeelerCandidateCount =
+{
+   local float count;
+
+   count = 5.000;
+   if ((mode == BOT_MODE_COMBAT))
+   {
+      count = 7.000;
+   } //end if
+   if ((mode == BOT_MODE_UNSTICK))
+   {
+      count = 8.000;
+   } //end if
+   if ((bot.stuck_score > 1.000))
+   {
+      count = 8.000;
+   } //end if
+   return (count);
+}; //end of the function Bot_FeelerCandidateCount
+
 // FEELER STEERING: 5-trace corridor centring and cornering
 // Returns yaw bias (degrees to adjust heading)
 // Sets global feeler_speed_scale (0.0-1.0)
@@ -1840,12 +1876,21 @@ float (entity bot, float base_yaw, float dt) Bot_SampleFeelers =
    local float r;
    local float bias;
    local float yaw_bias;
+   local float range;
+   local float diag_len;
+   local float diag_side;
+   local float side_len;
 
    yaw_bias = 0.000;
    feeler_speed_scale = 1.000;
 
    // Trace origin: waist height reads walls reliably
    start = (bot.origin + '0.000 0.000 24.000');
+
+   range = Bot_FeelerRange (bot,BOT_MODE_NORMAL);
+   diag_len = (range * 0.780);
+   diag_side = (diag_len * 0.500);
+   side_len = (range * 0.300);
 
    // Use base_yaw as reference direction (goal heading), not current yaw
    bot.v_angle_x = 0.000;
@@ -1857,19 +1902,19 @@ float (entity bot, float base_yaw, float dt) Bot_SampleFeelers =
    right = v_right;
 
    // 5 feeler traces: forward, forward-left, forward-right, left, right
-   traceline (start,(start + (fwd * 180.000)),TRUE,bot);
+   traceline (start,(start + (fwd * range)),TRUE,bot);
    f = trace_fraction;
 
-   traceline (start,(start + ((fwd * 140.000) + (right * -70.000))),TRUE,bot);
+   traceline (start,(start + ((fwd * diag_len) + (right * -diag_side))),TRUE,bot);
    fl = trace_fraction;
 
-   traceline (start,(start + ((fwd * 140.000) + (right * 70.000))),TRUE,bot);
+   traceline (start,(start + ((fwd * diag_len) + (right * diag_side))),TRUE,bot);
    fr = trace_fraction;
 
-   traceline (start,(start + (right * -55.000)),TRUE,bot);
+   traceline (start,(start + (right * -side_len)),TRUE,bot);
    l = trace_fraction;
 
-   traceline (start,(start + (right * 55.000)),TRUE,bot);
+   traceline (start,(start + (right * side_len)),TRUE,bot);
    r = trace_fraction;
 
    bias = 0.000;
@@ -2158,6 +2203,9 @@ float (entity bot, vector pos, vector dir) Bot_LedgeRisk =
    local vector ahead;
    local float z_here;
    local float z_ahead;
+   local float drop_low;
+   local float drop_high;
+   local float caution;
 
    ahead = (pos + (dir * 48.000));
    traceline ((ahead + '0.000 0.000 24.000'),(ahead + '0.000 0.000 -256.000'),TRUE,bot);
@@ -2169,13 +2217,16 @@ float (entity bot, vector pos, vector dir) Bot_LedgeRisk =
    {
       return (200.000);
    } //end if
+   caution = Clamp ((bot.stuck_score * 8.000),0.000,32.000);
+   drop_low = Clamp ((64.000 - caution),32.000,64.000);
+   drop_high = Clamp ((128.000 - (caution * 2.000)),64.000,128.000);
    z_here = Bot_FloorHeight (bot,pos);
    z_ahead = trace_endpos_z;
-   if (((z_here - z_ahead) > 128.000))
+   if (((z_here - z_ahead) > drop_high))
    {
       return (220.000);
    } //end if
-   if (((z_here - z_ahead) > 64.000))
+   if (((z_here - z_ahead) > drop_low))
    {
       return (120.000);
    } //end if
@@ -2292,6 +2343,14 @@ void (entity bot, float mode, float wall_side, float base_yaw) Bot_Feelers_Evalu
    local float second_score;
    local vector blended_dir;
    local float blended_len;
+   local float cand_count;
+   local float forward_len;
+   local float future_len;
+   local float side_offset;
+   local float clear_frac;
+   local float center_frac;
+   local float left_frac;
+   local float right_frac;
 
    bot.best_score = -99999.000;
    bot.best_dir = '1.000 0.000 0.000';
@@ -2318,9 +2377,19 @@ void (entity bot, float mode, float wall_side, float base_yaw) Bot_Feelers_Evalu
    break_contact = (bot.combat_break_until > time);
    elevate_active = (bot.combat_vert_disadvantage && (time <= bot.combat_elevate_until));
    post_teleport = (bot.teleport_time > time);
+   forward_len = Bot_FeelerRange (bot,mode);
+   future_len = (forward_len * 0.400);
+   side_offset = fabs (bot.mins_x);
+   if ((bot.maxs_x > side_offset))
+   {
+      side_offset = bot.maxs_x;
+   } //end if
+   side_offset = (side_offset - 2.000);
+   side_offset = Clamp (side_offset,16.000,32.000);
+   cand_count = Bot_FeelerCandidateCount (bot,mode);
 
    i = 0.000;
-   while ((i < 8.000))
+   while ((i < cand_count))
    {
       scan_yaw = Bot_CandidateYaw (base_yaw,i,wall_side);
 
@@ -2332,24 +2401,38 @@ void (entity bot, float mode, float wall_side, float base_yaw) Bot_Feelers_Evalu
       side = v_right;
 
       start = (bot.origin + '0.000 0.000 24.000');
-      end = (start + (dir * 160.000));
+      end = (start + (dir * forward_len));
       traceline (start,end,TRUE,bot);
-      clear_dist = (trace_fraction * 160.000);
+      center_frac = trace_fraction;
+
+      traceline ((start + (side * side_offset)),(start + (side * side_offset) + (dir * forward_len)),TRUE,bot);
+      left_frac = trace_fraction;
+      traceline ((start - (side * side_offset)),(start - (side * side_offset) + (dir * forward_len)),TRUE,bot);
+      right_frac = trace_fraction;
+
+      clear_frac = center_frac;
+      if ((left_frac < clear_frac)) clear_frac = left_frac;
+      if ((right_frac < clear_frac)) clear_frac = right_frac;
+      if ((bot.stuck_score > 1.000))
+      {
+         traceline ((start + '0.000 0.000 12.000'),(start + '0.000 0.000 12.000' + (dir * forward_len)),TRUE,bot);
+         if ((trace_fraction < clear_frac)) clear_frac = trace_fraction;
+      } //end if
+
+      clear_dist = (clear_frac * forward_len);
       blocked = (clear_dist < 24.000);
 
-      traceline ((start + (side * 24.000)),(start + (side * 24.000) + (dir * 120.000)),TRUE,bot);
-      widen_score = trace_fraction;
-      traceline ((start - (side * 24.000)),(start - (side * 24.000) + (dir * 120.000)),TRUE,bot);
-      widen_score = ((widen_score + trace_fraction) * 60.000);
+      widen_score = ((left_frac + right_frac) * 60.000);
 
-      traceline ((bot.origin + (dir * 32.000)),(bot.origin + (dir * 96.000)),TRUE,bot);
-      future_score = (trace_fraction * 64.000);
+      probe = (bot.origin + (dir * (forward_len * 0.200)));
+      traceline (probe,(probe + (dir * future_len)),TRUE,bot);
+      future_score = (trace_fraction * future_len);
 
-      traceline ((bot.origin + '0.000 0.000 22.000'),(bot.origin + '0.000 0.000 22.000' + (dir * 32.000)),TRUE,bot);
+      traceline ((bot.origin + '0.000 0.000 22.000'),(bot.origin + '0.000 0.000 22.000' + (dir * (forward_len * 0.200))),TRUE,bot);
       step_ok = (trace_fraction == 1.000);
 
       tight_gap = FALSE;
-      if (((clear_dist < 64.000) || (widen_score < 40.000)))
+      if (((clear_dist < (forward_len * 0.400)) || (widen_score < 40.000)))
       {
          tight_gap = TRUE;
       } //end if
@@ -2729,6 +2812,27 @@ void (entity bot, float mode, float wall_side, float base_yaw) Bot_Feelers_Evalu
             bot.best_ideal_yaw = vectoyaw (bot.best_dir);
          } //end if
       } //end if
+   } //end if
+   if ((mode == BOT_MODE_NORMAL))
+   {
+      if ((time < bot.feeler_commit_until))
+      {
+         if (((bot.best_dir * bot.feeler_commit_dir) > 0.850))
+         {
+            bot.best_dir = bot.feeler_commit_dir;
+            bot.best_ideal_yaw = vectoyaw (bot.best_dir);
+         } //end if
+         else
+         {
+            bot.feeler_commit_dir = bot.best_dir;
+            bot.feeler_commit_until = (time + 0.600);
+         } //end else
+      } //end if
+      else
+      {
+         bot.feeler_commit_dir = bot.best_dir;
+         bot.feeler_commit_until = (time + 0.600);
+      } //end else
    } //end if
 }; //end of the function Bot_Feelers_Evaluate
 

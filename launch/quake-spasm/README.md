@@ -79,6 +79,7 @@ If the MRE build crashes, enable console logging and developer output so the cra
 
 The log is written to `C:\reaperai\launch\quake-spasm\qconsole.log`.
 Expected warnings include missing music tracks and IPX disabled; those are normal for local tests.
+If you enable `impulse 97` for feeler debugging, note that FEELER/BREADCRUMB output only appears when bots enter exploration mode (no nearby waypoints), so DM4 may not show those lines.
 
 ### Latest test (dm2 quad denial)
 Recent debug run on dm2 completes startup and gameplay without crashes; no host errors observed in `qconsole.log`.

@@ -159,6 +159,8 @@ float (entity targ, entity inflictor) CanDamage;
 .float best_ideal_yaw;
 .float best_forward_scale;
 .float best_strafe_bias;
+.vector feeler_commit_dir;
+.float feeler_commit_until;
 .float wall_side_pref;
 .float combat_repos_until;
 .float combat_repos_cooldown_time;
