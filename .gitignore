@@ -1,5 +1,6 @@
 # Build outputs / binaries
 *.dat
+*.lno
 *.exe
 !tools/fteqcc_win64/fteqcc64.exe
 *.dll
