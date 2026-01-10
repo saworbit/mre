@@ -260,6 +260,14 @@ float (entity targ, entity inflictor) CanDamage;
 .float bot_last_damage_dealt;// Last time bot dealt damage to enemy (optional success signal)
 .float bot_intent_next_update; // Rate limiter for intent eval (4Hz)
 // ===== END INTENT ESCALATION =====
+// ===== FLOW GOVERNOR: Priority-Based Arbitration =====
+// Prevents competing control loops by arbitrating who controls movement.
+// Only one driver owns the bot's movement goal at a time (highest priority wins).
+.float fg_pri;           // Current driver priority (0-100, higher wins)
+.float fg_driver;        // Current driver ID (FG_DRV_* constants)
+.float fg_until;         // Commit time (when current driver expires)
+.vector fg_goalDir;      // Goal direction chosen by current driver
+// ===== END FLOW GOVERNOR =====
 // Rocket jump cooldown timer: prevents spam RJ (2s delay between attempts).
 .float rj_cooldown;
 // PHASE 3 FIX: Rocket jump verification timer for failure recovery

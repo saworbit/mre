@@ -24,6 +24,96 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 ## Latest Features (2026-01)
 
+### Flow Governor: Priority-Based Arbitration (2026-01-11)
+
+**NEW:** Competing control loops now arbitrated cleanly—no more oscillation between escape/chase modes!
+
+**Problem:** Multiple failsafe systems (terrain trap, loop breaker, vertical reposition, intent escalation) were directly overriding bot movement, causing:
+- **Oscillation:** Bot escapes terrain trap → chase resumes → terrain trap triggers again (endless ping-pong)
+- **Re-entry:** Loop breaker forces exit → bot immediately re-enters loop
+- **Fighting overrides:** Vertical reposition starts → chase overrides it → vertical retriggering
+
+**Solution: The Flow Governor**
+
+Priority-based arbitration layer where each system "requests control" instead of directly forcing movement. Only the highest-priority driver owns the bot's movement goal at any time.
+
+**Driver Priority Hierarchy (highest wins):**
+```
+100 - Terrain Trap Resolver  (water, lips, micro-basins, greebles)
+ 90 - Loop Breaker           (repetitive behavioral circles)
+ 80 - Vertical Reposition    (platform stalemate, no LOS + big dz)
+ 60 - Intent Director        (fight, chase, resupply, explore, unstick)
+ 40 - Route Memory           (anchor pull from waypoints - future)
+ 20 - Default Roam           (fallback exploration - future)
+  0 - Waypoint Navigation    (baseline when no driver active)
+```
+
+**How It Works:**
+
+1. **Each driver evaluates its condition** (e.g., terrain trap checks waterlevel, loop breaker checks signature buffer)
+2. **Driver "requests control"** via `FG_Request(bot, priority, driver_id, goal_direction, commit_seconds)`
+3. **Governor arbitrates:**
+   - If no driver active OR requesting driver has higher priority → grant control
+   - If current driver has higher/equal priority and still committed → deny request (prevents churn)
+4. **Steering executes driver's goal:** TraceFlow always runs, but steers toward `fg_goalDir` when driver active, else uses waypoint navigation
+
+**Key Benefits:**
+
+- **No oscillation:** Short commit windows (0.5-1.2s) with priority enforcement prevent ping-pong loops
+- **Clean separation:** Tactical reasoning (Intent Escalation) vs movement execution (Governor + TraceFlow)
+- **Observability:** Debug mode shows which driver has control and why (`[BotName] FG: Driver 1 took control (pri=100)`)
+- **Extensible:** Easy to add new drivers (route memory, exploration bias) without breaking existing systems
+
+**Example Scenarios:**
+
+1. **Terrain Trap (pri 100) vs Intent Director (pri 60):**
+   - Bot in DM2 ankle water → Terrain Trap requests control
+   - Intent Director also requests "chase enemy" → Governor denies (100 > 60)
+   - Bot escapes water for 1.2s, then Intent Director regains control
+   - **Result:** Clean escape without chase interference
+
+2. **Vertical Reposition (pri 80) vs Loop Breaker (pri 90):**
+   - Bot stuck under platform (no LOS, big dz) → Vertical Reposition requests strafe
+   - Bot enters loop while strafing → Loop Breaker overrides (90 > 80)
+   - Loop break completes → Vertical Reposition regains control
+   - **Result:** Loop break takes precedence, then reposition continues
+
+3. **Intent Escalation cascade:**
+   - Intent Escalation changes intent: FIGHT → UNSTICK (tactical decision)
+   - Intent Director translates UNSTICK intent → feeler best direction (movement goal)
+   - Intent Director requests control (pri 60)
+   - **Result:** Tactical reasoning separated from movement execution
+
+**New Features Enabled:**
+
+- **Vertical Reposition Driver** (pri 80): Breaks "under platform" stalemates by tangentially strafing to find LOS. Computes strafe direction (left/right tangent around enemy) and requests control when `VT_VerticalMode()` detects vertical stalemate (no LOS + big Z separation).
+- **Intent Director Driver** (pri 60): Translates high-level intent into movement goals. FIGHT → move toward enemy, CHASE → last known position, UNSTICK/EXPLORE/RESUPPLY → feeler best direction.
+
+**Code Locations:**
+
+- **Core arbitration:** [botmove.qc:2708-2787](reaper_mre/botmove.qc) (FG_Tick, FG_Request)
+- **Vertical Reposition:** [botmove.qc:3318-3437](reaper_mre/botmove.qc) (VT_PickRepositionDir, VT_Driver)
+- **Intent Director:** [botmove.qc:3216-3294](reaper_mre/botmove.qc) (Intent_Driver)
+- **Think loop integration:** [botmove.qc:4985-5134](reaper_mre/botmove.qc) (FG_Tick, driver calls, goal override)
+- **Entity fields:** [botit_th.qc:263-270](reaper_mre/botit_th.qc) (fg_pri, fg_driver, fg_until, fg_goalDir)
+
+**Debug Output:**
+
+Enable `impulse 96` (bot debug) and `impulse 97` (feeler debug) to see:
+```
+[BotName] FG: Driver 3 took control (pri=80, until t=123.4)  // Vertical reposition active
+[BotName] FG: Driver 1 took control (pri=100, until t=124.6) // Terrain trap override
+```
+
+**Testing Notes:**
+
+- Vertical stalemates (DM2 upper platform, DM4 rocket launcher platform) should now resolve via tangential strafe
+- Terrain trap escapes (DM2 water) should complete without chase interference
+- Loop breaks should stick (no immediate re-entry)
+- Intent escalation should feel "tactical" (bot switches strategy) not "twitchy" (fighting with movement)
+
+---
+
 ### Graph-Based Influence Map System (2026-01-10)
 
 **NEW:** Bots now use tactical pathfinding with real-time danger/interest awareness!

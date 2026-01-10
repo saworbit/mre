@@ -46,4 +46,15 @@ void (entity bot) Bot_UpdateIntentFail;
 void (entity bot) Bot_EscalateIntent;
 void (entity bot) Bot_OnPickup;
 void (entity bot) Bot_OnEnemySeen;
+void (entity bot) Intent_Driver;
+
+// Flow Governor (botmove.qc)
+void (entity bot) FG_Tick;
+void (entity bot, float pri, float drv, vector goalDir, float secs) FG_Request;
+
+// Vertical Reposition Driver (botmove.qc)
+float (entity bot, entity e) VT_HasLOS;
+float (entity bot, entity e) VT_VerticalMode;
+vector (entity bot, entity e) VT_PickRepositionDir;
+void (entity bot) VT_Driver;
 // ---------------------------------------------------------

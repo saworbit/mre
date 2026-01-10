@@ -30,6 +30,15 @@ float BOT_INTENT_EXPLORE = 4.000;    // Roaming for pickups or enemy contact
 float BOT_INTENT_UNSTICK = 5.000;    // Escape stuck state or reposition
 float BOT_INTENT_UPDATE_HZ = 4.000;  // Intent evaluation frequency (4Hz)
 
+// Flow Governor: Driver IDs for arbitration
+float FG_DRV_NONE = 0.000;           // No active driver
+float FG_DRV_TERRAIN = 1.000;        // Terrain trap resolver (pri 100)
+float FG_DRV_LOOP = 2.000;           // Loop breaker (pri 90)
+float FG_DRV_VERTICAL = 3.000;       // Vertical reposition (pri 80)
+float FG_DRV_INTENT = 4.000;         // Intent director (pri 60)
+float FG_DRV_ROUTE = 5.000;          // Route memory (pri 40)
+float FG_DRV_ROAM = 6.000;           // Default roam (pri 20)
+
 float STUCK_PROGRESS_INTERVAL = 0.200;
 float STUCK_PROGRESS_DIST = 12.000;  // Horizontal progress threshold
 float STUCK_PROGRESS_VERT = 8.000;   // Vertical progress threshold (stairs)
@@ -2696,6 +2705,87 @@ void (entity bot) HandleWaterTrap =
 
 // ===== END SHALLOW WATER TRAP ESCAPE =====
 
+// ===== FLOW GOVERNOR: Priority-Based Arbitration =====
+// Prevents competing control loops by arbitrating who controls movement.
+// Each subsystem "requests control" with a priority and a short commit window.
+// Only one driver owns the bot's movement goal at a time (highest priority wins).
+//
+// Drivers (priority, highest wins):
+//   100 - Terrain trap resolver (water, lips, micro-basins, greebles)
+//    90 - Loop breaker (behavioral loops)
+//    80 - Vertical reposition (no LOS + big dz, prevents vertical stalemates)
+//    60 - Intent director (fight, chase, resupply, explore, unstick)
+//    40 - Route memory (anchor pull from waypoints)
+//    20 - Default roam (fallback)
+//
+// TraceFlow always does the steering, but it steers toward the Governor's goal.
+
+// Release expired control and reset governor state
+void (entity bot) FG_Tick =
+{
+   if ((time >= bot.fg_until))
+   {
+      bot.fg_pri = 0.000;
+      bot.fg_driver = FG_DRV_NONE;
+      bot.fg_goalDir = '0.000 0.000 0.000';
+   } //end if
+}; //end of the function FG_Tick
+
+// Request control with a priority and a short commit window.
+// Higher priority overrides lower; equal priority does not churn while committed.
+void (entity bot, float pri, float drv, vector goalDir, float secs) FG_Request =
+{
+   local vector flat_dir;
+
+   // Flatten goal direction (ignore vertical component)
+   flat_dir = goalDir;
+   flat_dir_z = 0.000;
+   if ((vlen (flat_dir) > 0.010))
+   {
+      flat_dir = normalize (flat_dir);
+   } //end if
+   else
+   {
+      flat_dir = '1.000 0.000 0.000';
+   } //end else
+
+   // If current driver is committed and higher priority, deny request
+   if (((time < bot.fg_until) && (bot.fg_pri > pri)))
+   {
+      return ;
+   } //end if
+
+   // If equal priority and still committed, deny (prevents churn)
+   if (((time < bot.fg_until) && (bot.fg_pri == pri)))
+   {
+      return ;
+   } //end if
+
+   // Grant control to this driver
+   bot.fg_pri = pri;
+   bot.fg_driver = drv;
+   bot.fg_goalDir = flat_dir;
+   bot.fg_until = (time + secs);
+
+   // Break steering commit so the new driver takes effect immediately
+   bot.feeler_commit_until = 0.000;
+
+   if ((bot_debug_enabled && (bot_debug_level >= LOG_VERBOSE)))
+   {
+      bprint ("[");
+      bprint (bot.netname);
+      bprint ("] FG: Driver ");
+      bprint (ftos (drv));
+      bprint (" took control (pri=");
+      bprint (ftos (pri));
+      bprint (", until t=");
+      bprint (ftos (bot.fg_until));
+      bprint (")\n");
+   } //end if
+}; //end of the function FG_Request
+
+// ===== END FLOW GOVERNOR CORE =====
+
 // ===== GENERAL TERRAIN TRAP RESOLVER =====
 // Handles movement pathologies that break all three layers (waypoints, intent, steering):
 // - Shallow water (waterlevel 1)
@@ -2854,18 +2944,15 @@ void (entity bot) Bot_HandleTerrainTrap =
       bprint ("s)\n");
    } //end if
 
-   // Break any existing commit so we can choose new escape line
-   bot.feeler_commit_until = 0.000;
-
    // Pick escape direction using exit gradient
    escape = Bot_PickTerrainEscape (bot);
 
    // Record this attempt in directional fail memory
    RecordDirectionalFail (bot,escape);
 
-   // Commit hard for 1.2 seconds to avoid trap re-entry
-   bot.feeler_commit_dir = escape;
-   bot.feeler_commit_until = (time + 1.200);
+   // Request control from Flow Governor (priority 100 - highest)
+   // Governor handles commit window and breaks conflicting commits
+   FG_Request (bot,100.000,FG_DRV_TERRAIN,escape,1.200);
 
    // Force unstuck mode temporarily (prevents normal pathfinding from fighting us)
    bot.stuck_mode = BOT_MODE_UNSTICK;
@@ -3031,8 +3118,6 @@ void (entity bot) Bot_EscalateIntent =
    if ((bot.bot_intent == BOT_INTENT_FIGHT))
    {
       bot.bot_intent = BOT_INTENT_UNSTICK;
-      bot.stuck_mode = BOT_MODE_UNSTICK;
-      bot.escape_until_time = (time + 1.200);
       if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
       {
          bprint ("FIGHT → UNSTICK (reposition)\n");
@@ -3078,8 +3163,6 @@ void (entity bot) Bot_EscalateIntent =
    if ((bot.bot_intent == BOT_INTENT_EXPLORE))
    {
       bot.bot_intent = BOT_INTENT_UNSTICK;
-      bot.stuck_mode = BOT_MODE_UNSTICK;
-      bot.escape_until_time = (time + 1.200);
       if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
       {
          bprint ("EXPLORE → UNSTICK (no progress)\n");
@@ -3095,8 +3178,7 @@ void (entity bot) Bot_EscalateIntent =
       bot.v_angle_z = 0.000;
       makevectors (bot.v_angle);
       RecordDirectionalFail (bot,v_forward);
-      // Clear commit and try exploring
-      bot.feeler_commit_until = 0.000;
+      // Try exploring
       bot.bot_intent = BOT_INTENT_EXPLORE;
       if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
       {
@@ -3129,6 +3211,87 @@ void (entity bot) Bot_OnEnemySeen =
       bot.bot_intent_fail = 0.000;
    } //end if
 }; //end of the function Bot_OnEnemySeen
+
+// Intent Director Driver: Translates high-level intent into movement goal
+void (entity bot) Intent_Driver =
+{
+   local vector goal;
+   local vector fwd;
+
+   goal = '0.000 0.000 0.000';
+
+   // Translate intent to goal direction
+   if ((bot.bot_intent == BOT_INTENT_FIGHT))
+   {
+      // Move toward enemy
+      if ((bot.enemy && (bot.enemy.health > 0.000)))
+      {
+         goal = (bot.enemy.origin - bot.origin);
+         goal_z = 0.000;
+         if ((vlen (goal) > 0.010))
+         {
+            goal = normalize (goal);
+         } //end if
+      } //end if
+   } //end if
+   else
+   {
+      if ((bot.bot_intent == BOT_INTENT_CHASE))
+      {
+         // Move toward last known enemy position (use enemy or feeler best)
+         if ((bot.enemy && (bot.enemy.health > 0.000)))
+         {
+            goal = (bot.enemy.origin - bot.origin);
+            goal_z = 0.000;
+            if ((vlen (goal) > 0.010))
+            {
+               goal = normalize (goal);
+            } //end if
+         } //end if
+      } //end if
+      else
+      {
+         if ((bot.bot_intent == BOT_INTENT_UNSTICK))
+         {
+            // Use feeler best direction (computed in Bot_Feelers_Evaluate)
+            if ((vlen (bot.best_dir) > 0.010))
+            {
+               goal = bot.best_dir;
+            } //end if
+            else
+            {
+               // Fallback to forward
+               bot.v_angle_x = 0.000;
+               bot.v_angle_z = 0.000;
+               makevectors (bot.v_angle);
+               goal = v_forward;
+            } //end else
+         } //end if
+         else
+         {
+            // EXPLORE or RESUPPLY: use feeler best direction
+            if ((vlen (bot.best_dir) > 0.010))
+            {
+               goal = bot.best_dir;
+            } //end if
+            else
+            {
+               // Fallback to forward
+               bot.v_angle_x = 0.000;
+               bot.v_angle_z = 0.000;
+               makevectors (bot.v_angle);
+               goal = v_forward;
+            } //end else
+         } //end else
+      } //end else
+   } //end else
+
+   // If we have a valid goal, request control (priority 60)
+   if ((vlen (goal) > 0.010))
+   {
+      FG_Request (bot,60.000,FG_DRV_INTENT,goal,0.500);
+   } //end if
+}; //end of the function Intent_Driver
 
 // ===== END INTENT ESCALATION =====
 
@@ -3227,6 +3390,127 @@ float (entity bot, entity e, vector moveDir) VT_VertPenalty =
 
    return (0.000);
 }; //end of the function VT_VertPenalty
+
+// Pick vertical reposition direction (tangential strafe to find angle)
+vector (entity bot, entity e) VT_PickRepositionDir =
+{
+   local vector toE;
+   local vector dirToE;
+   local vector tangL;
+   local vector tangR;
+   local float xy;
+   local float desired;
+   local vector outDir;
+   local vector c1;
+   local vector c2;
+   local float clearL;
+   local float clearR;
+   local vector start;
+   local vector end;
+
+   toE = (e.origin - bot.origin);
+   toE_z = 0.000;
+
+   // Fallback if enemy is exactly on top (rare)
+   if ((vlen (toE) < 0.010))
+   {
+      bot.v_angle_x = 0.000;
+      bot.v_angle_z = 0.000;
+      makevectors (bot.v_angle);
+      tangR_x = -v_forward_y;
+      tangR_y = v_forward_x;
+      tangR_z = 0.000;
+      return (normalize (tangR));
+   } //end if
+
+   dirToE = normalize (toE);
+   xy = vlen (toE);
+   desired = 256.000;
+
+   // Tangents around enemy bearing (left and right strafe)
+   tangL_x = -dirToE_y;
+   tangL_y = dirToE_x;
+   tangL_z = 0.000;
+   tangR_x = dirToE_y;
+   tangR_y = -dirToE_x;
+   tangR_z = 0.000;
+   tangL = normalize (tangL);
+   tangR = normalize (tangR);
+
+   // If too close, favor moving out plus tangent
+   if ((xy < desired))
+   {
+      outDir = -dirToE;  // away from enemy in XY
+
+      // Blend outward and tangent, pick whichever is clearer
+      c1 = ((outDir + (tangL * 0.700)) * 0.700);
+      c2 = ((outDir + (tangR * 0.700)) * 0.700);
+      c1 = normalize (c1);
+      c2 = normalize (c2);
+
+      // Check clearance for both candidates
+      start = (bot.origin + '0.000 0.000 22.000');
+      end = (start + (c1 * 160.000));
+      traceline (start,end,TRUE,bot);
+      clearL = trace_fraction;
+
+      end = (start + (c2 * 160.000));
+      traceline (start,end,TRUE,bot);
+      clearR = trace_fraction;
+
+      if ((clearR > clearL))
+      {
+         return (c2);
+      } //end if
+
+      return (c1);
+   } //end if
+
+   // Already at good distance: just strafe around to find LOS
+   // Check clearance and pick clearer tangent
+   start = (bot.origin + '0.000 0.000 22.000');
+   end = (start + (tangL * 160.000));
+   traceline (start,end,TRUE,bot);
+   clearL = trace_fraction;
+
+   end = (start + (tangR * 160.000));
+   traceline (start,end,TRUE,bot);
+   clearR = trace_fraction;
+
+   if ((clearR > clearL))
+   {
+      return (tangR);
+   } //end if
+
+   return (tangL);
+}; //end of the function VT_PickRepositionDir
+
+// Vertical Reposition Driver: Request control when vertical stalemate detected
+void (entity bot) VT_Driver =
+{
+   local vector reposition_dir;
+
+   if (!bot.enemy)
+   {
+      return ;
+   } //end if
+
+   if ((bot.enemy.health <= 0.000))
+   {
+      return ;
+   } //end if
+
+   if (!VT_VerticalMode (bot,bot.enemy))
+   {
+      return ;
+   } //end if
+
+   // Pick tangential reposition direction
+   reposition_dir = VT_PickRepositionDir (bot,bot.enemy);
+
+   // Request control from Flow Governor (priority 80)
+   FG_Request (bot,80.000,FG_DRV_VERTICAL,reposition_dir,1.000);
+}; //end of the function VT_Driver
 
 // ===== END VERTICAL TACTICS =====
 
@@ -3334,12 +3618,13 @@ void (entity bot) Loop_BreakLoop =
    fwd_dir = v_forward;
    RecordDirectionalFail (bot,fwd_dir);
 
+   // Request control from Flow Governor (priority 90)
+   // Use forward direction as initial goal (steering will refine)
+   FG_Request (bot,90.000,FG_DRV_LOOP,fwd_dir,1.200);
+
    // Force unstick mode for a moment
    bot.stuck_mode = BOT_MODE_UNSTICK;
    bot.escape_until_time = (time + 1.200);
-
-   // Clear commit to allow new direction
-   bot.feeler_commit_until = 0.000;
 }; //end of the function Loop_BreakLoop
 
 // ===== END BEHAVIORAL LOOP DETECTION =====
@@ -4697,6 +4982,11 @@ void (float dist) Botmovetogoal =
    // Progress-based stuck detection + unstick mode commit window
    Bot_ProgressTick (dist);
 
+   // ===== FLOW GOVERNOR: Release expired control =====
+   // Reset governor state if current driver's commit has expired
+   FG_Tick (self);
+   // =============================================================
+
    // ===== BEHAVIORAL LOOP DETECTION =====
    // Push current state signature to buffer (every 0.25s)
    Loop_PushSig (self);
@@ -4771,6 +5061,22 @@ void (float dist) Botmovetogoal =
    } //end if
    // =============================================================
 
+   // ===== FLOW GOVERNOR: Driver Requests (Priority Order) =====
+   // Each driver evaluates its condition and requests control if needed.
+   // Governor grants control to highest priority driver with active request.
+   // Priority order (highest first):
+   //   100 - Terrain Trap (already called above)
+   //    90 - Loop Breaker (already called above)
+   //    80 - Vertical Reposition
+   //    60 - Intent Director
+
+   // Vertical Reposition Driver (pri 80)
+   VT_Driver (self);
+
+   // Intent Director Driver (pri 60)
+   Intent_Driver (self);
+   // =============================================================
+
    if ((self.stuck_mode == BOT_MODE_UNSTICK))
    {
       Bot_UnstickThink (dist);
@@ -4788,32 +5094,44 @@ void (float dist) Botmovetogoal =
 
    Botgoal = self.goalentity;
 
-   // ===== SMOOTHING: The "Racing Line" (Corner Smoothing) =====
-   // Pro players don't hit waypoints then turn 90°. They "cut the corner,"
-   // starting the turn before reaching the waypoint by blending aim toward next node.
-   local vector aim_point;
-   aim_point = Botgoal.origin;
-
-   // If we are getting close to the current node (within 120 units),
-   // and that node has a target (the next node in the chain)...
-   if ((vlen (self.origin - Botgoal.origin) < 120.000))
+   // ===== FLOW GOVERNOR: Use driver goal if active =====
+   // If a driver has control, use its goal direction instead of waypoint nav
+   if ((self.fg_driver != FG_DRV_NONE))
    {
-       if (Botgoal.target)
-       {
-           local entity next_node;
-           next_node = find (world,targetname,Botgoal.target);
-
-           if (next_node)
-           {
-               // Blend our aim: 70% current node, 30% next node.
-               // This causes the bot to curve into the turn early.
-               aim_point = ((Botgoal.origin * 0.700) + (next_node.origin * 0.300));
-           } //end if
-       } //end if
+      // Driver is active: use Flow Governor goal direction
+      self.ideal_yaw = vectoyaw (self.fg_goalDir);
    } //end if
-   // =======================================
+   else
+   {
+      // No driver: use normal waypoint navigation
+      // ===== SMOOTHING: The "Racing Line" (Corner Smoothing) =====
+      // Pro players don't hit waypoints then turn 90°. They "cut the corner,"
+      // starting the turn before reaching the waypoint by blending aim toward next node.
+      local vector aim_point;
+      aim_point = Botgoal.origin;
 
-   self.ideal_yaw = vectoyaw ((aim_point - self.origin));
+      // If we are getting close to the current node (within 120 units),
+      // and that node has a target (the next node in the chain)...
+      if ((vlen (self.origin - Botgoal.origin) < 120.000))
+      {
+          if (Botgoal.target)
+          {
+              local entity next_node;
+              next_node = find (world,targetname,Botgoal.target);
+
+              if (next_node)
+              {
+                  // Blend our aim: 70% current node, 30% next node.
+                  // This causes the bot to curve into the turn early.
+                  aim_point = ((Botgoal.origin * 0.700) + (next_node.origin * 0.300));
+              } //end if
+          } //end if
+      } //end if
+      // =======================================
+
+      self.ideal_yaw = vectoyaw ((aim_point - self.origin));
+   } //end else
+   // ============================================================
 
    // ===== FEELER STEERING: Movement Polish and Exploration =====
    local float base_yaw;
