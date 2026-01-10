@@ -228,6 +228,18 @@ float (entity targ, entity inflictor) CanDamage;
 .vector bad_spot_origin;
 .float bad_spot_radius;
 .float bad_spot_expire_time;
+// ===== DYNAMIC BREADCRUMBING: Short-term position history for unstuck backtracking =====
+// Ring buffer of last 5 valid positions (covers ~2.5 seconds of movement at 0.5s/sample).
+.vector crumb_pos_0;
+.vector crumb_pos_1;
+.vector crumb_pos_2;
+.vector crumb_pos_3;
+.vector crumb_pos_4;
+.float crumb_index;       // Current write position (0-4)
+.float crumb_timer;       // When to drop next crumb (rate-limited to 2Hz)
+.float is_retracing;      // State flag: Currently trying to backtrack to a breadcrumb?
+.vector old_goal_pos;     // Saved goal position before entering retrace mode
+// ===== END BREADCRUMBING =====
 // Rocket jump cooldown timer: prevents spam RJ (2s delay between attempts).
 .float rj_cooldown;
 // PHASE 3 FIX: Rocket jump verification timer for failure recovery

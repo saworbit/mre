@@ -3818,6 +3818,40 @@ void () Bot_EnterUnstick =
    makevectors (self.v_angle);
    RecordDirectionalFail (self,v_forward);
 
+   // === BREADCRUMB BACKTRACKING: Try to recover by retracing steps ===
+   // Attempt to find a recent valid position to backtrack to before
+   // using feeler-based forward escape plan.
+   local vector rescue_spot;
+   rescue_spot = Breadcrumb_GetRecoverySpot ();
+
+   // If we found a valid breadcrumb (not the current origin), enter retrace mode
+   if (((rescue_spot != self.origin) && (rescue_spot != '0.000 0.000 0.000')))
+   {
+      self.is_retracing = TRUE;
+      self.old_goal_pos = self.origin;  // Save where we're stuck
+
+      if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+      {
+         bprint ("[");
+         bprint (self.netname);
+         bprint ("] UNSTICK: Breadcrumb backtrack to ");
+         bprint (vtos (rescue_spot));
+         bprint (" (dist=");
+         bprint (ftos (vlen ((rescue_spot - self.origin))));
+         bprint (")\n");
+      } //end if
+
+      // Override movement to target the rescue spot
+      // We use ideal_yaw to steer toward the breadcrumb
+      local vector aim_dir;
+      aim_dir = normalize ((rescue_spot - self.origin));
+      self.ideal_yaw = vectoyaw (aim_dir);
+
+      return ;  // Skip feeler escape plan, we're backtracking
+   } //end if
+   // === END BREADCRUMB BACKTRACKING ===
+
+   // If no valid breadcrumb found, use traditional feeler-based escape
    Bot_PickEscapePlan (base_yaw);
 
    if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
@@ -3843,8 +3877,187 @@ void () Bot_EnterUnstick =
    } //end if
 }; //end of the function Bot_EnterUnstick
 
+// ===== DYNAMIC BREADCRUMBING: Short-Term Position Memory for Backtracking =====
+// Records current position into the ring buffer for stuck recovery.
+// Rate-limited to 2Hz (every 0.5 seconds) and only records safe positions.
+void () Breadcrumb_Update =
+{
+   // 1. Rate Limit (2Hz is sufficient for 2.5 second history)
+   if ((time < self.crumb_timer))
+   {
+      return ;
+   } //end if
+   self.crumb_timer = (time + 0.500);
+
+   // 2. Safety Checks - Only record valid, safe positions
+   // Don't record if we are in lava, slime, or falling through air
+   if (!(self.flags & FL_ONGROUND))
+   {
+      return ;
+   } //end if
+
+   local float content;
+   content = pointcontents (self.origin);
+   if ((content <= CONTENT_SLIME))
+   {
+      return ;
+   } //end if
+
+   // 3. Write to Buffer (Hardcoded cyclic switch for vanilla QC compatibility)
+   // Ring buffer overwrites oldest position when full
+   if ((self.crumb_index == 0.000))
+   {
+      self.crumb_pos_0 = self.origin;
+   } //end if
+   else
+   {
+      if ((self.crumb_index == 1.000))
+      {
+         self.crumb_pos_1 = self.origin;
+      } //end if
+      else
+      {
+         if ((self.crumb_index == 2.000))
+         {
+            self.crumb_pos_2 = self.origin;
+         } //end if
+         else
+         {
+            if ((self.crumb_index == 3.000))
+            {
+               self.crumb_pos_3 = self.origin;
+            } //end if
+            else
+            {
+               if ((self.crumb_index == 4.000))
+               {
+                  self.crumb_pos_4 = self.origin;
+               } //end if
+            } //end if
+         } //end if
+      } //end if
+   } //end if
+
+   // 4. Advance Index (Wrap around 0-4)
+   self.crumb_index = (self.crumb_index + 1.000);
+   if ((self.crumb_index > 4.000))
+   {
+      self.crumb_index = 0.000;
+   } //end if
+}; //end of the function Breadcrumb_Update
+
+// Find the nearest reachable breadcrumb for stuck recovery.
+// Returns position of a recent valid location the bot can backtrack to.
+// Prefers crumbs that are visible (LOS check) and not too close (useless).
+vector () Breadcrumb_GetRecoverySpot =
+{
+   local float i;
+   local vector cand;
+   local float best_dist;
+   local vector best_pos;
+   local float d;
+
+   best_dist = 9999.000;
+   best_pos = self.origin;  // Fallback if no valid crumbs
+
+   // Loop through all 5 crumbs
+   // We search for the nearest *reachable* crumb (not necessarily furthest)
+   // This safely unwinds the stuck path step-by-step
+   i = 0.000;
+   while ((i < 5.000))
+   {
+      // Extract value from ring buffer
+      if ((i == 0.000))
+      {
+         cand = self.crumb_pos_0;
+      } //end if
+      else
+      {
+         if ((i == 1.000))
+         {
+            cand = self.crumb_pos_1;
+         } //end if
+         else
+         {
+            if ((i == 2.000))
+            {
+               cand = self.crumb_pos_2;
+            } //end if
+            else
+            {
+               if ((i == 3.000))
+               {
+                  cand = self.crumb_pos_3;
+               } //end if
+               else
+               {
+                  cand = self.crumb_pos_4;
+               } //end if
+            } //end if
+         } //end if
+      } //end if
+
+      // Ignore empty/zero vectors (buffer not full yet)
+      if ((cand != '0.000 0.000 0.000'))
+      {
+         // Check if we can see it (don't path through the wall that stuck us)
+         traceline ((self.origin + '0.000 0.000 24.000'),(cand + '0.000 0.000 24.000'),TRUE,self);
+
+         if ((trace_fraction == 1.000))
+         {
+            d = vlen ((cand - self.origin));
+
+            // We want a crumb that is NOT too close (useless) but reachable
+            if (((d > 64.000) && (d < best_dist)))
+            {
+               best_dist = d;
+               best_pos = cand;
+            } //end if
+         } //end if
+      } //end if
+
+      i = (i + 1.000);
+   } //end while
+
+   return (best_pos);
+}; //end of the function Breadcrumb_GetRecoverySpot
+// ===== END BREADCRUMBING =====
+
 void (float dist) Bot_UnstickThink =
 {
+   // === BREADCRUMB RETRACE MODE: Exit conditions ===
+   if (self.is_retracing)
+   {
+      // Exit retrace mode if timer expires OR we're moving fast again
+      if (((time > self.escape_until_time) || (vlen (self.velocity) > 200.000)))
+      {
+         self.is_retracing = FALSE;
+         self.stuck_mode = BOT_MODE_COOLDOWN;
+         self.escape_cooldown_time = (time + 0.600);
+         self.stuck_score = 0.000;
+         self.last_progress_time = time;
+         self.last_origin = self.origin;
+         self.progress_check_time = (time + STUCK_PROGRESS_INTERVAL);
+
+         if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+         {
+            bprint ("[");
+            bprint (self.netname);
+            bprint ("] UNSTICK: Breadcrumb retrace complete (vel=");
+            bprint (ftos (vlen (self.velocity)));
+            bprint (")\n");
+         } //end if
+
+         return ;
+      } //end if
+
+      // Continue retracing - maintain direction toward rescue spot
+      // (ideal_yaw was set in Bot_EnterUnstick)
+      return ;
+   } //end if
+   // === END BREADCRUMB RETRACE MODE ===
+
+   // Standard unstick timeout
    if ((time > self.escape_until_time))
    {
       self.stuck_mode = BOT_MODE_COOLDOWN;
@@ -3904,6 +4117,9 @@ void (float dist) Bot_ProgressTick =
    } //end if
 
    self.progress_check_time = (time + STUCK_PROGRESS_INTERVAL);
+
+   // === BREADCRUMB MAINTENANCE: Record position history for stuck recovery ===
+   Breadcrumb_Update ();
 
    // Check both horizontal and vertical movement (important for stairs!)
    local vector horiz_delta;

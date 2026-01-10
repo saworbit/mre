@@ -332,6 +332,121 @@ Impact cluster → Where rocket will hit (if prediction correct)
 - **Degradation formula**: `degraded_aim = normalize((perfect_aim × 500) + random_offset)`
 - **Particle colors**: Blue=203 (perfect), Yellow=224 (degraded)
 
+### Dynamic Breadcrumbing System (2026-01-10)
+
+**NEW:** Bots now have short-term position memory for intelligent stuck recovery!
+
+The Dynamic Breadcrumbing System gives bots a "Hansel & Gretel" trail of recent valid positions. When stuck in geometry, knocked off-path by explosions, or wedged in corners, bots can backtrack to a known safe location instead of running into walls repeatedly.
+
+**Before:**
+- ❌ Bots stuck in corners run forward endlessly (feeler escape only moves forward)
+- ❌ Bots knocked off ledges stand below staring at unreachable waypoints
+- ❌ Explosion knockback puts bots in geometry traps with no reverse option
+- ❌ Only forward-facing escape attempts (8-direction feeler scan)
+
+**After:**
+- ✅ Bots remember last 5 valid positions (~2.5 seconds of history)
+- ✅ Stuck recovery first tries backtracking, then feeler escape
+- ✅ Corner wedges: walks back to position 1 second ago (known valid spot)
+- ✅ Ledge falls: retraces to ramp/stairs used recently
+- ✅ Complements existing feeler system (not a replacement)
+
+**How it works:**
+
+**1. Position Recording** (Automatic, 2Hz rate)
+```
+Every 0.5 seconds during normal movement:
+  - Check if bot is on ground (not falling)
+  - Check if position is safe (not in lava/slime)
+  - Store position in ring buffer (5 slots)
+  - Overwrite oldest position when full
+```
+- **Coverage**: Last 5 positions = ~2.5 seconds of movement history
+- **Safety**: Only records safe, grounded positions (no hazards)
+- **Performance**: 2Hz rate limit (not per-frame overhead)
+
+**2. Stuck Detection & Recovery**
+```
+When bot gets stuck:
+  1. Scan breadcrumb ring buffer for valid recovery spot
+  2. Check line-of-sight to each breadcrumb (can't path through walls)
+  3. Find nearest reachable breadcrumb (>64 units away, not too close)
+  4. If found: Enter "retrace mode" and walk back to that position
+  5. If not found: Fall back to feeler-based forward escape
+```
+
+**3. Retrace Mode**
+```
+While in retrace mode:
+  - Bot aims toward rescue spot (ideal_yaw)
+  - Exits when moving fast again (velocity >200 u/s)
+  - Exits when timeout expires (0.6-1.2 seconds)
+  - Returns to normal navigation after escape
+```
+
+**Real-World Scenarios:**
+
+**Corner Wedge Escape:**
+```
+Bot wedged in corner geometry → Can't move forward
+  1. Breadcrumb system finds position from 1 second ago
+  2. Bot enters retrace mode, turns around
+  3. Walks back to that known-valid position
+  4. Resumes normal navigation from safe spot
+```
+
+**Ledge Fall Recovery:**
+```
+Bot falls off catwalk → Standing below, can't reach waypoint above
+  1. Breadcrumb finds position on catwalk from 2 seconds ago
+  2. Bot realizes "I was up there recently, how did I get there?"
+  3. Backtracks toward ramp/stairs used to reach catwalk
+  4. Successfully navigates back up
+```
+
+**Explosion Knockback:**
+```
+Bot knocked into geometry trap by rocket → Normal path blocked
+  1. Breadcrumb finds pre-explosion position
+  2. Bot backtracks to where it was before knockback
+  3. Avoids running into new walls from displacement
+  4. Returns to familiar navigation area
+```
+
+**Debug Output** (`impulse 95` for LOG_CRITICAL):
+```
+[BotName] UNSTICK: Breadcrumb backtrack to '64 128 24' (dist=187.3)
+[BotName] UNSTICK: Breadcrumb retrace complete (vel=234.5)
+```
+
+**Technical Details:**
+- **Ring buffer**: 5 vector fields (crumb_pos_0 through crumb_pos_4)
+- **Sample rate**: 0.5 seconds (2Hz) via crumb_timer field
+- **Distance threshold**: Ignores breadcrumbs <64 units (too close, useless)
+- **LOS check**: Traceline ensures breadcrumb is reachable (not behind walls)
+- **Exit velocity**: Retrace ends when bot velocity >200 u/s (moving freely)
+- **Timeout**: 0.6-1.2 seconds max retrace duration (prevents infinite backtrack)
+- **Complementary**: Works alongside feeler escape (breadcrumb first, feeler fallback)
+
+**Usage:**
+```
+impulse 95        // Enable bot debug (shows backtrack attempts)
+impulse 208       // Spawn bots (×4)
+// Play for a few minutes, bots will get stuck occasionally
+// Console shows: "UNSTICK: Breadcrumb backtrack to..." when activated
+```
+
+**Why 5 positions?**
+- **2.5 seconds of history** (5 × 0.5s samples) is enough to escape local geometry traps
+- **Not too much memory** (5 vectors = 60 bytes per bot)
+- **Covers common scenarios**: Corner wedges (1s ago), ledge falls (2s ago), knockbacks (1-2s ago)
+
+**Integration with Existing Systems:**
+- **Feeler Escape**: Breadcrumb backtracking is tried FIRST, feeler forward escape is FALLBACK
+- **Progress Tracking**: Breadcrumb recording happens during `Bot_ProgressTick()` (automatic)
+- **Bad Spot Avoidance**: Breadcrumbs complement the bad_spot memory system (different timescales)
+- **Unstick Mode**: Retrace mode is a new substage of BOT_MODE_UNSTICK
+
 ### Randomized Bot Spawning (2026-01-10)
 
 **NEW:** Bot spawning is now randomized with duplicate avoidance for variety in matches!

@@ -24,4 +24,8 @@ float (entity wp) Influence_GetInterest;
 void (vector org, float amount) Influence_AddDanger;
 void (vector org, float amount) Influence_AddInterest;
 void () Influence_ShowMap;
+
+// Dynamic Breadcrumbing System (botmove.qc)
+void () Breadcrumb_Update;
+vector () Breadcrumb_GetRecoverySpot;
 // ---------------------------------------------------------
