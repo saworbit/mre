@@ -115,6 +115,11 @@ void () t_botmovetarget =
 
 void () bot_toucheditem =
 {
+   // ===== INTENT ESCALATION: Update pickup success signal =====
+   // Record that bot picked up an item (success signal for RESUPPLY/EXPLORE intents)
+   Bot_OnPickup (other);
+   // =============================================================
+
    if ((other.goalentity.goalentity == self))
    {
       if (VERBOSEBOT)

@@ -807,6 +807,97 @@ Previous system only handled shallow water traps. This general failsafe layer de
 - [Bot_HandleTerrainTrap() hard override](reaper_mre/botmove.qc#L2822-L2875)
 - [Integration point (before loop breaker)](reaper_mre/botmove.qc#L4448-L4453)
 
+### Intent Escalation: Automatic "Switch Gears" System (2026-01-11)
+
+**NEW:** Bots automatically detect when they're stuck in "valid" behaviors that don't produce results and escalate to different tactics!
+
+Previous systems handled movement pathologies (stuck, loops, terrain traps). This system handles **behavioral pathologies**: bots doing the "right thing" forever without progress (endless chasing, resupply loops, vertical stalemates, explore wandering).
+
+**The Problems:**
+- ❌ **Vertical stalemate**: Bot fights enemy on different floor, no LOS for 2+ minutes, never repositions
+- ❌ **Endless chasing**: Bot lost enemy 30s ago, still pursuing last known position, never gives up
+- ❌ **Resupply loop**: Bot seeks health pack behind blocked door, can't reach it, never abandons goal
+- ❌ **Explore wandering**: Bot roams empty area for 60s, finds no items/enemies, never forces exit
+- ❌ Old systems only handled MOVEMENT stuck (not advancing), missed TACTICAL stuck (wrong strategy)
+
+**The Solution:**
+- ✅ **Intent classification**: Tracks high-level behavior (Fight, Chase, Resupply, Explore, Unstick)
+- ✅ **Success signals**: Pickup items, see enemy, deal damage, make progress
+- ✅ **Fail accumulation**: +0.25 when failing, -0.25 when succeeding, +0.75 if looping/stuck
+- ✅ **Timeout thresholds**: Fight 2.5s, Chase 4s, Resupply 5s, Explore 6s, Unstick 2s
+- ✅ **Escalation graph**: Automatic intent switching when fail score ≥2.0 OR timeout exceeded
+
+**How it works:**
+
+**Classification (runs at 4Hz):**
+1. Has enemy visible recently (1.5s)? → **FIGHT** intent
+2. Has enemy but not visible? → **CHASE** intent
+3. No enemy but low resources (health<50, armor<25, ammo<5)? → **RESUPPLY** intent
+4. No enemy, good resources? → **EXPLORE** intent
+5. Stuck mode active? → **UNSTICK** intent
+
+**Success Signals (drive fail score):**
+- **FIGHT**: Succeeds if enemy visible in last 1s (else fails)
+- **CHASE**: Succeeds if enemy reacquired LOS in last 1.5s (else fails)
+- **RESUPPLY**: Succeeds if picked up item in last 2s (else fails)
+- **EXPLORE**: Succeeds if picked up item OR made progress in last 1-3s (else fails)
+- **UNSTICK**: Succeeds if making progress in last 0.8s (else fails)
+
+**Escalation Paths (when intent fails):**
+- **FIGHT → UNSTICK**: Lost LOS for 2.5s → Force reposition (fixes vertical stalemate)
+- **CHASE → RESUPPLY/EXPLORE**: Lost enemy for 4s → Give up pursuit, seek items OR explore
+- **RESUPPLY → EXPLORE**: Can't reach items for 5s → Leave area, find different resources
+- **EXPLORE → UNSTICK**: No pickups for 6s → Force exit line (prevents wandering)
+- **UNSTICK → EXPLORE**: Still stuck for 2s → Record fail, try different escape
+
+**Debug Output (LOG_CRITICAL):**
+```
+[Toxic] INTENT-ESCALATE: FIGHT → UNSTICK (reposition)
+[Toxic] INTENT-ESCALATE: CHASE → EXPLORE (lost enemy)
+[Toxic] INTENT-ESCALATE: RESUPPLY → EXPLORE (can't reach items)
+[Toxic] INTENT-ESCALATE: EXPLORE → UNSTICK (no progress)
+[Toxic] INTENT-ESCALATE: UNSTICK → EXPLORE (escape failed)
+```
+
+**Why This Fixes Vertical Stalemate:**
+Old system: Bot fights enemy on upper platform, loses LOS, keeps fighting air forever (intent correct, but failing).
+New system: FIGHT intent accumulates fail score (no enemy visible), escalates to UNSTICK after 2.5s, repositions using vertical resolver and ring-distance logic, resumes fight from better angle.
+
+**Why This Fixes Endless Chasing:**
+Old system: Bot chases enemy last known position, enemy teleported away 20s ago, bot still searching.
+New system: CHASE intent accumulates fail score (no LOS), escalates to EXPLORE after 4s, gives up pursuit, finds new targets/items.
+
+**Why This Fixes Resupply Loops:**
+Old system: Bot seeks mega health behind func_door, door needs button, bot can't reach health, fixates forever.
+New system: RESUPPLY intent accumulates fail score (no pickups), escalates to EXPLORE after 5s, leaves area, finds different health.
+
+**Technical Details:**
+- **Update frequency**: 4Hz (every 0.25s) to avoid intent churn
+- **Fail accumulation rate**: ±0.25 per update (8 updates = 2.0 score threshold)
+- **Spike bonuses**: +0.75 if loop detected OR hard stuck (faster escalation)
+- **Timeout override**: Escalates even if fail score <2.0 when timeout exceeded
+- **Intent reset**: Fail score and start time reset on natural intent change OR escalation
+- **Success signal hooks**: Pickup items (`bot_toucheditem`), enemy visible (`enemyvisible`)
+- **Integration point**: Lines 4715-4772 in botmove.qc (AFTER terrain trap/loop breaker, BEFORE goal selection)
+
+**Execution Order (think loop):**
+1. Progress tick (measure movement)
+2. Loop signature push (detect behavioral loops)
+3. Terrain trap resolver (handle movement pathologies)
+4. Loop breaker (force randomization)
+5. **Intent escalation** ← NEW (handle tactical pathologies)
+6. Goal selection / waypoint code (normal behavior)
+
+**Code References:**
+- [Intent constants (Fight/Chase/Resupply/Explore/Unstick)](reaper_mre/botmove.qc#L24-L29)
+- [Bot_IntentSucceeded() success signal checker](reaper_mre/botmove.qc#L2897-L2955)
+- [Bot_IntentTimeout() timeout thresholds](reaper_mre/botmove.qc#L2958-L2966)
+- [Bot_UpdateIntentFail() fail accumulation](reaper_mre/botmove.qc#L2969-L2996)
+- [Bot_EscalateIntent() escalation graph](reaper_mre/botmove.qc#L2999-L3107)
+- [Bot_OnPickup() pickup hook](reaper_mre/botsignl.qc#L120)
+- [Bot_OnEnemySeen() enemy sighting hook](reaper_mre/bot_ai.qc#L1309)
+- [Intent classification and escalation integration](reaper_mre/botmove.qc#L4715-L4772)
+
 ### Shallow Water Trap Escape (2026-01-10)
 
 **NOTE:** This water-specific handler is now superseded by the General Terrain Trap Resolver (2026-01-11), but remains for backwards compatibility.

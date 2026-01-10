@@ -1305,6 +1305,9 @@ void (float dist, float turn) aibot_run_slide =
    {
       self.combat_no_los_time = 0.000;
       self.combat_last_enemy_seen = time;
+      // ===== INTENT ESCALATION: Update enemy seen success signal =====
+      Bot_OnEnemySeen (self);
+      // =============================================================
    } //end if
    else
    {

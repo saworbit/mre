@@ -249,6 +249,17 @@ float (entity targ, entity inflictor) CanDamage;
 .float pid_last_error_y;  // Yaw derivative memory (for 'D' term)
 .float pid_last_update;   // Last PID update time (for dt calculation)
 // ===== END PID AIMING =====
+// ===== INTENT ESCALATION: Prevents Stuck-in-Valid-Behavior =====
+// Tracks high-level intent (Fight, Chase, Resupply, Explore, Unstick) and escalates
+// when intent fails to produce results (e.g., endless chasing, resupply loops).
+.float bot_intent;           // Current high-level intent (BOT_INTENT_* constants)
+.float bot_intent_start;     // When current intent began (for timeout checks)
+.float bot_intent_fail;      // Accumulates when intent not succeeding (0.0+)
+.float bot_last_pickup;      // Last time bot picked up any item (health/ammo/armor/powerup)
+.float bot_last_enemy_seen;  // Last time bot had LOS to enemy (updated in enemy eval)
+.float bot_last_damage_dealt;// Last time bot dealt damage to enemy (optional success signal)
+.float bot_intent_next_update; // Rate limiter for intent eval (4Hz)
+// ===== END INTENT ESCALATION =====
 // Rocket jump cooldown timer: prevents spam RJ (2s delay between attempts).
 .float rj_cooldown;
 // PHASE 3 FIX: Rocket jump verification timer for failure recovery

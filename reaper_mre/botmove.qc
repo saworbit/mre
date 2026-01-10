@@ -9,6 +9,8 @@ void(vector org, float traffic, float danger, string trig_target) SpawnSavedWayp
 void(vector org, vector angles, float velocity_gain, string rj_type_str) SpawnLearnedRJ_Live;
 // Forward declaration for ledge risk (defined later in this file)
 float(entity bot, vector pos, vector dir) Bot_LedgeRisk;
+// Forward declaration for loop detection (defined later in this file)
+float(entity bot) Loop_InLoop;
 
 // Progress-based stuck detection + unstick mode tuning
 float BOT_MODE_NORMAL = 0.000;
@@ -20,6 +22,13 @@ float BOT_LOS_FEET = 1.000;
 float BOT_LOS_TORSO = 2.000;
 float BOT_LOS_HEAD = 3.000;
 
+// Intent escalation: High-level behavioral intents
+float BOT_INTENT_FIGHT = 1.000;      // Engaging visible enemy (LOS required)
+float BOT_INTENT_CHASE = 2.000;      // Pursuing enemy without LOS (last known pos)
+float BOT_INTENT_RESUPPLY = 3.000;   // Seeking health/armor/ammo items
+float BOT_INTENT_EXPLORE = 4.000;    // Roaming for pickups or enemy contact
+float BOT_INTENT_UNSTICK = 5.000;    // Escape stuck state or reposition
+float BOT_INTENT_UPDATE_HZ = 4.000;  // Intent evaluation frequency (4Hz)
 
 float STUCK_PROGRESS_INTERVAL = 0.200;
 float STUCK_PROGRESS_DIST = 12.000;  // Horizontal progress threshold
@@ -2876,6 +2885,253 @@ void (entity bot) Bot_HandleTerrainTrap =
 
 // ===== END GENERAL TERRAIN TRAP RESOLVER =====
 
+// ===== INTENT ESCALATION: Prevents Stuck-in-Valid-Behavior =====
+// Stops bots from infinite loops in "correct" behaviors that don't produce results.
+// Examples: endless chasing (lost enemy), resupply loops (can't reach items),
+// vertical stalemates (fight with no LOS), explore wandering (no pickups).
+//
+// Each intent has success signals and timeouts. If intent fails for too long,
+// escalate to next-best intent and commit briefly.
+
+// Check if current intent is succeeding (has valid success signal)
+float (entity bot) Bot_IntentSucceeded =
+{
+   // RESUPPLY: success if we picked something up recently
+   if ((bot.bot_intent == BOT_INTENT_RESUPPLY))
+   {
+      if (((time - bot.bot_last_pickup) < 2.000))
+      {
+         return (TRUE);
+      } //end if
+      return (FALSE);
+   } //end if
+
+   // EXPLORE: success if we picked something up OR made meaningful progress
+   if ((bot.bot_intent == BOT_INTENT_EXPLORE))
+   {
+      if (((time - bot.bot_last_pickup) < 3.000))
+      {
+         return (TRUE);
+      } //end if
+      if (((time - bot.last_progress_time) < 1.000))
+      {
+         return (TRUE);
+      } //end if
+      return (FALSE);
+   } //end if
+
+   // CHASE: success if we reacquired LOS recently
+   if ((bot.bot_intent == BOT_INTENT_CHASE))
+   {
+      if (((time - bot.bot_last_enemy_seen) < 1.500))
+      {
+         return (TRUE);
+      } //end if
+      return (FALSE);
+   } //end if
+
+   // FIGHT: success if enemy is visible recently
+   if ((bot.bot_intent == BOT_INTENT_FIGHT))
+   {
+      if ((bot.enemy && ((time - bot.bot_last_enemy_seen) < 1.000)))
+      {
+         return (TRUE);
+      } //end if
+      // No LOS: fight is probably failing unless very brief
+      return (FALSE);
+   } //end if
+
+   // UNSTICK: success if we are moving again
+   if ((bot.bot_intent == BOT_INTENT_UNSTICK))
+   {
+      if (((time - bot.last_progress_time) < 0.800))
+      {
+         return (TRUE);
+      } //end if
+      return (FALSE);
+   } //end if
+
+   return (FALSE);
+}; //end of the function Bot_IntentSucceeded
+
+// Get timeout threshold for current intent
+float (entity bot) Bot_IntentTimeout =
+{
+   if ((bot.bot_intent == BOT_INTENT_FIGHT))    return (2.500);  // If can't see them, reposition quickly
+   if ((bot.bot_intent == BOT_INTENT_CHASE))    return (4.000);
+   if ((bot.bot_intent == BOT_INTENT_RESUPPLY)) return (5.000);
+   if ((bot.bot_intent == BOT_INTENT_EXPLORE))  return (6.000);
+   if ((bot.bot_intent == BOT_INTENT_UNSTICK))  return (2.000);
+   return (5.000);
+}; //end of the function Bot_IntentTimeout
+
+// Update intent fail score (accumulate when failing, decay when succeeding)
+void (entity bot) Bot_UpdateIntentFail =
+{
+   // Decay if succeeding
+   if (Bot_IntentSucceeded (bot))
+   {
+      bot.bot_intent_fail = (bot.bot_intent_fail - 0.250);
+      if ((bot.bot_intent_fail < 0.000))
+      {
+         bot.bot_intent_fail = 0.000;
+      } //end if
+      return ;
+   } //end if
+
+   // Accumulate when failing
+   bot.bot_intent_fail = (bot.bot_intent_fail + 0.250);
+
+   // Spike if loop detected (behavioral pathology)
+   if (Loop_InLoop (bot))
+   {
+      bot.bot_intent_fail = (bot.bot_intent_fail + 0.750);
+   } //end if
+
+   // Spike if hard stuck (movement pathology)
+   if (((time - bot.last_progress_time) > STUCK_TIME_LIMIT))
+   {
+      bot.bot_intent_fail = (bot.bot_intent_fail + 0.750);
+   } //end if
+}; //end of the function Bot_UpdateIntentFail
+
+// Escalate to next-best intent when current intent fails for too long
+void (entity bot) Bot_EscalateIntent =
+{
+   local float timeout;
+
+   timeout = Bot_IntentTimeout (bot);
+
+   // If we just entered the intent, give it a chance
+   if (((time - bot.bot_intent_start) < 1.000))
+   {
+      return ;
+   } //end if
+
+   // Escalate if fail score high OR we've exceeded timeout with no success
+   if (((bot.bot_intent_fail < 2.000) && ((time - bot.bot_intent_start) < timeout)))
+   {
+      return ;
+   } //end if
+
+   // Reset fail score and start time on escalation
+   bot.bot_intent_fail = 0.000;
+   bot.bot_intent_start = time;
+
+   if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+   {
+      bprint ("[");
+      bprint (bot.netname);
+      bprint ("] INTENT-ESCALATE: ");
+   } //end if
+
+   // ===== ESCALATION GRAPH: Switch gears based on current intent =====
+
+   // FIGHT → UNSTICK (reposition if LOS lost, vertical stalemate)
+   if ((bot.bot_intent == BOT_INTENT_FIGHT))
+   {
+      bot.bot_intent = BOT_INTENT_UNSTICK;
+      bot.stuck_mode = BOT_MODE_UNSTICK;
+      bot.escape_until_time = (time + 1.200);
+      if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+      {
+         bprint ("FIGHT → UNSTICK (reposition)\n");
+      } //end if
+      return ;
+   } //end if
+
+   // CHASE → RESUPPLY/EXPLORE (lost enemy, give up pursuit)
+   if ((bot.bot_intent == BOT_INTENT_CHASE))
+   {
+      // If low resources, resupply
+      if (((bot.health < 50.000) || (bot.armorvalue < 25.000) || (bot.currentammo < 5.000)))
+      {
+         bot.bot_intent = BOT_INTENT_RESUPPLY;
+         if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+         {
+            bprint ("CHASE → RESUPPLY (lost enemy, low resources)\n");
+         } //end if
+      } //end if
+      else
+      {
+         bot.bot_intent = BOT_INTENT_EXPLORE;
+         if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+         {
+            bprint ("CHASE → EXPLORE (lost enemy)\n");
+         } //end if
+      } //end else
+      return ;
+   } //end if
+
+   // RESUPPLY → EXPLORE (can't reach items, leave area)
+   if ((bot.bot_intent == BOT_INTENT_RESUPPLY))
+   {
+      bot.bot_intent = BOT_INTENT_EXPLORE;
+      if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+      {
+         bprint ("RESUPPLY → EXPLORE (can't reach items)\n");
+      } //end if
+      return ;
+   } //end if
+
+   // EXPLORE → UNSTICK (no pickups, force exit line)
+   if ((bot.bot_intent == BOT_INTENT_EXPLORE))
+   {
+      bot.bot_intent = BOT_INTENT_UNSTICK;
+      bot.stuck_mode = BOT_MODE_UNSTICK;
+      bot.escape_until_time = (time + 1.200);
+      if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+      {
+         bprint ("EXPLORE → UNSTICK (no progress)\n");
+      } //end if
+      return ;
+   } //end if
+
+   // UNSTICK → EXPLORE (still stuck, record fail and try different escape)
+   if ((bot.bot_intent == BOT_INTENT_UNSTICK))
+   {
+      // Record current direction as failed approach
+      bot.v_angle_x = 0.000;
+      bot.v_angle_z = 0.000;
+      makevectors (bot.v_angle);
+      RecordDirectionalFail (bot,v_forward);
+      // Clear commit and try exploring
+      bot.feeler_commit_until = 0.000;
+      bot.bot_intent = BOT_INTENT_EXPLORE;
+      if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+      {
+         bprint ("UNSTICK → EXPLORE (escape failed)\n");
+      } //end if
+      return ;
+   } //end if
+}; //end of the function Bot_EscalateIntent
+
+// Hook for item pickup (updates success signal)
+void (entity bot) Bot_OnPickup =
+{
+   bot.bot_last_pickup = time;
+   // Reduce fail score (picking up items = progress)
+   bot.bot_intent_fail = (bot.bot_intent_fail - 1.000);
+   if ((bot.bot_intent_fail < 0.000))
+   {
+      bot.bot_intent_fail = 0.000;
+   } //end if
+}; //end of the function Bot_OnPickup
+
+// Hook for enemy sighting (updates success signal)
+void (entity bot) Bot_OnEnemySeen =
+{
+   bot.bot_last_enemy_seen = time;
+   // Reduce fail score (seeing enemy = progress)
+   bot.bot_intent_fail = (bot.bot_intent_fail - 0.500);
+   if ((bot.bot_intent_fail < 0.000))
+   {
+      bot.bot_intent_fail = 0.000;
+   } //end if
+}; //end of the function Bot_OnEnemySeen
+
+// ===== END INTENT ESCALATION =====
+
 // ===== VERTICAL TACTICS: FIXES STALEMATE UNDER/OVER PLATFORMS =====
 
 // Check if bot has line-of-sight to enemy
@@ -4454,6 +4710,65 @@ void (float dist) Botmovetogoal =
 
    // Detect and break repetitive behavioral loops
    Loop_BreakLoop (self);
+   // =============================================================
+
+   // ===== INTENT ESCALATION: Classify and escalate stuck intents =====
+   // Runs at 4Hz to prevent intent churn. Classifies current high-level intent
+   // (Fight, Chase, Resupply, Explore, Unstick), updates fail metrics, and
+   // escalates to next-best intent if current intent fails for too long.
+   if ((time >= self.bot_intent_next_update))
+   {
+      self.bot_intent_next_update = (time + (1.000 / BOT_INTENT_UPDATE_HZ));
+
+      // Classify current intent based on bot state
+      local float prev_intent;
+      prev_intent = self.bot_intent;
+
+      if ((self.enemy && (self.enemy.health > 0.000)))
+      {
+         // Has enemy: FIGHT if visible recently, else CHASE
+         if (((time - self.bot_last_enemy_seen) < 1.500))
+         {
+            self.bot_intent = BOT_INTENT_FIGHT;
+         } //end if
+         else
+         {
+            self.bot_intent = BOT_INTENT_CHASE;
+         } //end else
+      } //end if
+      else
+      {
+         // No enemy: check resources
+         if (((self.health < 50.000) || (self.armorvalue < 25.000) || (self.currentammo < 5.000)))
+         {
+            self.bot_intent = BOT_INTENT_RESUPPLY;
+         } //end if
+         else
+         {
+            // Good resources, no enemy: explore for pickups/contact
+            self.bot_intent = BOT_INTENT_EXPLORE;
+         } //end else
+      } //end else
+
+      // Override with UNSTICK if stuck mode active
+      if ((self.stuck_mode == BOT_MODE_UNSTICK))
+      {
+         self.bot_intent = BOT_INTENT_UNSTICK;
+      } //end if
+
+      // If intent changed, reset start time
+      if ((self.bot_intent != prev_intent))
+      {
+         self.bot_intent_start = time;
+         self.bot_intent_fail = 0.000;  // Reset fail score on natural intent change
+      } //end if
+
+      // Update fail metrics (accumulate when failing, decay when succeeding)
+      Bot_UpdateIntentFail (self);
+
+      // Escalate if current intent has failed for too long
+      Bot_EscalateIntent (self);
+   } //end if
    // =============================================================
 
    if ((self.stuck_mode == BOT_MODE_UNSTICK))

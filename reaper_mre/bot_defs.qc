@@ -38,4 +38,12 @@ vector () Breadcrumb_GetRecoverySpot;
 float (entity bot) Bot_IsTerrainTrap;
 vector (entity bot) Bot_PickTerrainEscape;
 void (entity bot) Bot_HandleTerrainTrap;
+
+// Intent Escalation (botmove.qc)
+float (entity bot) Bot_IntentSucceeded;
+float (entity bot) Bot_IntentTimeout;
+void (entity bot) Bot_UpdateIntentFail;
+void (entity bot) Bot_EscalateIntent;
+void (entity bot) Bot_OnPickup;
+void (entity bot) Bot_OnEnemySeen;
 // ---------------------------------------------------------
