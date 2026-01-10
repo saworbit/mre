@@ -63,6 +63,47 @@ The Directional Fail Memory system tracks position + yaw combinations that led t
 - **Heavy penalty**: -500 points (typical feeler scores 150-400) strongly discourages retries
 - **Fallback safety**: Bots can still pick penalized directions if ALL options are bad (prevents stuck detection death spiral)
 
+### Shallow Water Trap Escape (2026-01-10)
+
+**NEW:** Bots detect and escape "ankle water" boundary oscillation using gradient-based pathfinding!
+
+In Quake, shallow water areas (waterlevel == 1) with recessed lips cause bots to get stuck bouncing at the boundary, unable to step out cleanly. This is especially common on classic maps like DM2.
+
+**The Problem:**
+- ❌ Bots enter shallow water, hit recessed exit lip
+- ❌ waterlevel flickers between 0↔1 causing boundary jitter
+- ❌ Movement code can't reliably step over small lip
+- ❌ Bot oscillates forever at water's edge
+
+**The Solution:**
+- ✅ Detects pattern: `waterlevel == 1` + no progress for 1.8s
+- ✅ Samples 7 directions using "highest ground" heuristic
+- ✅ Integrates with directional fail memory (avoids previously failed escape attempts)
+- ✅ Commits to escape direction for 1.2 seconds (prevents boundary re-entry jitter)
+- ✅ Conditional gating: Only checks when bot is actually in water (zero overhead on dry land)
+
+**How it works:**
+1. Bot stuck in ankle water for 1.8s → Pattern detected
+2. System samples 7 directions, traces ground height 160 units ahead
+3. Scores each direction: `height × 0.01 + clearance - fail_memory × 0.0016`
+4. Picks direction with highest ground (likely exit path)
+5. Records attempt in fail memory, commits for 1.2s to avoid jitter
+6. If still stuck after commit expires, tries different direction next time
+
+**Debug Output (LOG_CRITICAL):**
+```
+[Toxic] WATER-TRAP: Detected at (2176,-448) (waterlevel=1, no progress for 2.1s)
+[Toxic] WATER-ESCAPE: Best direction yaw=45° score=1.82
+[Toxic] WATER-TRAP: Escape commit yaw=45° until t=125.4
+```
+
+**Technical Details:**
+- **Ground sampling**: Traces down 256 units to find floor height
+- **7-ray pattern**: 0°, ±25°, ±60°, ±90° from current heading
+- **Clearance threshold**: Skips directions with <60% clearance
+- **Commit duration**: 1.2 seconds prevents boundary re-entry
+- **Performance**: Conditional check (`waterlevel > 0`) keeps dry-land overhead at zero
+
 ### Combat Reposition + Verticality-Aware Pursuit (2026-01-08)
 
 **NEW:** Bots stop "shadow chasing" directly under higher targets and reposition to shootable angles.

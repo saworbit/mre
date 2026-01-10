@@ -2393,6 +2393,191 @@ float (entity bot, vector dir) GetDirectionalPenalty =
    return (penalty);
 }; //end of the function GetDirectionalPenalty
 
+// ===== SHALLOW WATER TRAP ESCAPE =====
+// Detects and escapes "ankle water" boundary oscillation traps.
+// In Quake, shallow water areas (waterlevel == 1) with recessed lips cause bots
+// to get stuck bouncing at the boundary, unable to step out cleanly.
+
+// Sample ground height at a point using downward trace
+float (entity bot, vector p) SampleGroundHeight =
+{
+   local vector start;
+   local vector end;
+
+   start = (p + '0.000 0.000 48.000');
+   end = (p - '0.000 0.000 256.000');
+
+   traceline (start,end,TRUE,bot);
+   if ((trace_fraction == 1.000))
+   {
+      return (-99999.000);  // No ground found
+   } //end if
+
+   return (trace_endpos_z);
+}; //end of the function SampleGroundHeight
+
+// Pick best water escape direction using "highest ground" gradient heuristic
+// Samples 7 directions, prefers higher ground (step out) with directional fail memory
+vector (entity bot) PickWaterEscapeDir =
+{
+   local float angles[7];
+   local float i;
+   local float best_score;
+   local float score;
+   local vector best_dir;
+   local vector dir;
+   local vector sample_point;
+   local float range;
+   local float clear;
+   local float h;
+   local float mem_penalty;
+   local vector start;
+   local vector end;
+
+   // 7-ray pattern: center + symmetric spread
+   angles[0] = 0.000;
+   angles[1] = -25.000;
+   angles[2] = 25.000;
+   angles[3] = -60.000;
+   angles[4] = 60.000;
+   angles[5] = -90.000;
+   angles[6] = 90.000;
+
+   range = 160.000;  // Medium probe distance
+   best_score = -99999.000;
+
+   // Default to forward if all else fails
+   bot.v_angle_x = 0.000;
+   bot.v_angle_z = 0.000;
+   makevectors (bot.v_angle);
+   best_dir = v_forward;
+
+   i = 0.000;
+   while ((i < 7.000))
+   {
+      // Calculate direction vector
+      bot.v_angle_y = (bot.angles_y + angles[i]);
+      bot.v_angle_x = 0.000;
+      bot.v_angle_z = 0.000;
+      makevectors (bot.v_angle);
+      dir = v_forward;
+
+      // Check clearance in this direction
+      start = (bot.origin + '0.000 0.000 22.000');
+      end = (start + (dir * range));
+      traceline (start,end,TRUE,bot);
+      clear = trace_fraction;
+
+      // Skip if heavily blocked
+      if ((clear < 0.600))
+      {
+         i = (i + 1.000);
+         continue;
+      } //end if
+
+      // Sample point at traced distance
+      sample_point = (bot.origin + (dir * (range * clear)));
+
+      // Get ground height (prefer higher = step out)
+      h = SampleGroundHeight (bot,sample_point);
+
+      // Check directional fail memory
+      mem_penalty = GetDirectionalPenalty (bot,dir);
+
+      // Score: height (scaled down) + clearance - fail memory
+      score = ((h * 0.010) + clear - (mem_penalty * 0.001600));
+
+      if ((score > best_score))
+      {
+         best_score = score;
+         best_dir = dir;
+      } //end if
+
+      i = (i + 1.000);
+   } //end while
+
+   if ((bot_debug_enabled && (bot_debug_level >= LOG_VERBOSE)))
+   {
+      bprint ("[");
+      bprint (bot.netname);
+      bprint ("] WATER-ESCAPE: Best direction yaw=");
+      bprint (ftos (vectoyaw (best_dir)));
+      bprint ("° score=");
+      bprint (ftos (best_score));
+      bprint ("\n");
+   } //end if
+
+   return (best_dir);
+}; //end of the function PickWaterEscapeDir
+
+// Detect shallow water trap condition
+float (entity bot) IsShallowWaterTrap =
+{
+   // Must be in ankle water
+   if ((bot.waterlevel != 1.000))
+   {
+      return (FALSE);
+   } //end if
+
+   // Must be making no progress for 1.8 seconds
+   if (((time - bot.last_progress_time) > 1.800))
+   {
+      return (TRUE);
+   } //end if
+
+   return (FALSE);
+}; //end of the function IsShallowWaterTrap
+
+// Main handler: triggers escape behavior and sets commit window
+void (entity bot) HandleWaterTrap =
+{
+   local vector escape;
+
+   if (!IsShallowWaterTrap (bot))
+   {
+      return ;
+   } //end if
+
+   if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+   {
+      bprint ("[");
+      bprint (bot.netname);
+      bprint ("] WATER-TRAP: Detected at ");
+      bprint (vtos (bot.origin));
+      bprint (" (waterlevel=");
+      bprint (ftos (bot.waterlevel));
+      bprint (", no progress for ");
+      bprint (ftos (time - bot.last_progress_time));
+      bprint ("s)\n");
+   } //end if
+
+   // Break any existing commit so we can choose new escape line
+   bot.feeler_commit_until = 0.000;
+
+   // Pick escape direction using highest ground heuristic
+   escape = PickWaterEscapeDir (bot);
+
+   // Record this attempt in directional fail memory
+   RecordDirectionalFail (bot,escape);
+
+   // Commit hard for 1.2 seconds to avoid boundary jitter
+   bot.feeler_commit_dir = escape;
+   bot.feeler_commit_until = (time + 1.200);
+
+   if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+   {
+      bprint ("[");
+      bprint (bot.netname);
+      bprint ("] WATER-TRAP: Escape commit yaw=");
+      bprint (ftos (vectoyaw (escape)));
+      bprint ("° until t=");
+      bprint (ftos (bot.feeler_commit_until));
+      bprint ("\n");
+   } //end if
+}; //end of the function HandleWaterTrap
+
+// ===== END SHALLOW WATER TRAP ESCAPE =====
+
 float (entity bot, vector dir, float dist) Bot_JumpFeasibleSimple =
 {
    local vector start;
@@ -3515,6 +3700,15 @@ void (float dist) Botmovetogoal =
       Bot_UnstickThink (dist);
       return ;
    } //end if
+
+   // ===== SHALLOW WATER TRAP ESCAPE =====
+   // Only check if bot is actually in water to avoid frame budget overhead
+   // Detects ankle-water boundary oscillation (DM2 water exit, etc.)
+   if ((self.waterlevel > 0.000))
+   {
+      HandleWaterTrap (self);
+   } //end if
+   // =============================================================
 
    Botgoal = self.goalentity;
 

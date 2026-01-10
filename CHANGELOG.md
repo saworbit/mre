@@ -10,6 +10,14 @@
   - **Debug logging** in `reaper_mre/botmove.qc`: LOG_VERBOSE shows "FAIL-MEM: Record yaw=X° at (pos)" when failures recorded, "FAIL-MEM: Penalty -500 for yaw=X°" when penalties applied.
   - **Duplicate prevention** in `reaper_mre/botmove.qc`: Checks existing buffer entries before recording to avoid wasting slots on same pos+yaw combos.
   - **Result:** Bots avoid retrying same approach angles at bars, corners, and greebles. Prevents bar fixation loops and corner oscillation by remembering "tried approaching from 45° at this spot and it failed."
+- **Shallow water trap escape** to detect and escape ankle-water boundary oscillation:
+  - **Trap detection** in `reaper_mre/botmove.qc`: `IsShallowWaterTrap()` triggers when `waterlevel == 1` + no progress for 1.8s. Pattern-based detection (not map-specific).
+  - **Gradient-based escape** in `reaper_mre/botmove.qc`: `PickWaterEscapeDir()` samples 7 directions (0°, ±25°, ±60°, ±90°), traces ground height, scores as `height × 0.01 + clearance - fail_memory × 0.0016`. Prefers "highest ground" (likely exit path).
+  - **Ground sampling** in `reaper_mre/botmove.qc`: `SampleGroundHeight()` traces down 256 units to find floor height at sample points.
+  - **Escape commit** in `reaper_mre/botmove.qc`: `HandleWaterTrap()` picks best direction, records attempt in directional fail memory, commits for 1.2s to prevent boundary jitter.
+  - **Conditional gating** in `reaper_mre/botmove.qc`: Water trap check only runs when `self.waterlevel > 0` to avoid frame budget overhead on dry land (zero performance cost when not in water).
+  - **Debug logging** in `reaper_mre/botmove.qc`: LOG_CRITICAL shows "WATER-TRAP: Detected" when pattern triggers, LOG_VERBOSE shows "WATER-ESCAPE: Best direction yaw=X° score=Y".
+  - **Result:** Bots escape shallow water boundaries (DM2 water exits, etc.) by detecting oscillation pattern, sampling escape directions using ground height gradient, and committing to highest-ground path. Integrates with directional fail memory to avoid retrying failed exits.
 - **Bot cast identity system + entry lines** for consistent personalities:
   - **Data-driven cast** in `reaper_mre/botspawn.qc`: 36-slot roster with fixed names, colors, personalities, and skills.
   - **Join catchphrases** in `reaper_mre/botspawn.qc`: each bot announces a short entry line on spawn.
