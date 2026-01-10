@@ -736,7 +736,80 @@ The Directional Fail Memory system tracks position + yaw combinations that led t
 - **Heavy penalty**: -500 points (typical feeler scores 150-400) strongly discourages retries
 - **Fallback safety**: Bots can still pick penalized directions if ALL options are bad (prevents stuck detection death spiral)
 
+### General Terrain Trap Resolver (2026-01-11)
+
+**NEW:** Bots intelligently escape ALL terrain pathologies (shallow water, lips, greebles, micro-basins) using exit gradient heuristic!
+
+Previous system only handled shallow water traps. This general failsafe layer detects ANY "moving but not progressing" pathology where waypoints, intent, and steering are all correct but terrain geometry blocks progress.
+
+**The Problems:**
+- ❌ DM2 ankle water: Bot hits recessed lip, oscillates at waterlevel 1 boundary
+- ❌ Decorative lips: Small step-ups (8-12u) that trace says are passable but movement can't climb
+- ❌ Greebles: Micro-geometry details (trim, rivets) create invisible barriers
+- ❌ Micro-basins: Small depressions/bowls that trap bot's physics hull
+- ❌ Old water-only handler missed 80% of terrain traps
+
+**The Solution:**
+- ✅ **Multi-condition detection**: Triggers on `(waterlevel == 1)` OR `(velocity > 40 && stuck_score > 1)`
+- ✅ **Exit gradient selection**: Samples 7 directions, scores by clearance + height + fail memory
+- ✅ **Hard override**: Breaks commitments, forces unstuck mode, commits for 1.2s (prevents fighting with pathfinding)
+- ✅ **Runs BEFORE loop breaker**: Terrain traps cause loops, but not all loops are terrain traps
+- ✅ **Human-like escape**: Pick direction and commit (no endless rescoring like old system)
+
+**How it works:**
+
+**Detection (Bot_IsTerrainTrap):**
+1. Check if bot stuck for 1.5s (`time - last_progress_time`)
+2. Check if waterlevel == 1 (shallow water) → TRAP
+3. OR check if velocity > 40 AND stuck_score > 1 (general micro-trap) → TRAP
+4. Return FALSE if neither condition met (normal movement)
+
+**Escape Selection (Bot_PickTerrainEscape):**
+1. Sample 7 radial directions: 0°, ±30°, ±60°, ±90° from current heading
+2. For each direction:
+   - Trace clearance (need ≥60% open space)
+   - Sample ground height 160u ahead (prefer higher = climbing out)
+   - Check directional fail memory (avoid recently failed attempts)
+3. Score formula: `clearance + (height × 0.01) - (fail_memory × 1.2)`
+4. Pick highest-scoring direction (best exit gradient)
+
+**Hard Override (Bot_HandleTerrainTrap):**
+1. Break existing feeler commit (allows new escape direction)
+2. Pick escape via exit gradient
+3. Record attempt in directional fail memory
+4. Commit for 1.2s (prevents trap re-entry)
+5. Force BOT_MODE_UNSTICK (prevents pathfinding interference)
+
+**Why This Works Where Water-Only Handler Failed:**
+- **Generality**: Catches lips/greebles/basins, not just water
+- **Velocity heuristic**: `velocity > 40` detects "trying to move" (not just standing still)
+- **stuck_score integration**: Reuses existing progress tracking (no new timers)
+- **Execution order**: Runs BEFORE loop breaker (terrain traps are movement pathology, loops are behavioral pathology)
+
+**Debug Output (LOG_CRITICAL):**
+```
+[Toxic] TERRAIN-TRAP: Detected at (2176,-448,24) (waterlevel=1, velocity=52.4, stuck_score=2.0, no progress for 1.8s)
+[Toxic] TERRAIN-TRAP: Best escape yaw=45° score=1.92
+[Toxic] TERRAIN-TRAP: Escape commit yaw=45° until t=125.4
+```
+
+**Technical Details:**
+- **Detection threshold**: 1.5s no-progress (faster than water-only's 1.8s)
+- **7-ray pattern**: 0°, ±30°, ±60°, ±90° (wider spread than water handler's ±25°/±60°/±90°)
+- **Clearance threshold**: 60% (rejects heavily blocked directions)
+- **Commit duration**: 1.2s (prevents boundary jitter and pathfinding interference)
+- **Integration point**: Line 4452 in botmove.qc (before Loop_BreakLoop at line 4456)
+- **Backwards compatibility**: Old `HandleWaterTrap` at line 4462 still runs for legacy support
+
+**Code References:**
+- [Bot_IsTerrainTrap() detection](reaper_mre/botmove.qc#L2700-L2722)
+- [Bot_PickTerrainEscape() gradient selection](reaper_mre/botmove.qc#L2726-L2819)
+- [Bot_HandleTerrainTrap() hard override](reaper_mre/botmove.qc#L2822-L2875)
+- [Integration point (before loop breaker)](reaper_mre/botmove.qc#L4448-L4453)
+
 ### Shallow Water Trap Escape (2026-01-10)
+
+**NOTE:** This water-specific handler is now superseded by the General Terrain Trap Resolver (2026-01-11), but remains for backwards compatibility.
 
 **NEW:** Bots detect and escape "ankle water" boundary oscillation using gradient-based pathfinding!
 

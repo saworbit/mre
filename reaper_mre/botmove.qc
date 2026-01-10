@@ -2687,6 +2687,195 @@ void (entity bot) HandleWaterTrap =
 
 // ===== END SHALLOW WATER TRAP ESCAPE =====
 
+// ===== GENERAL TERRAIN TRAP RESOLVER =====
+// Handles movement pathologies that break all three layers (waypoints, intent, steering):
+// - Shallow water (waterlevel 1)
+// - Recessed lips/step-ups
+// - Micro-basins and greebles
+// - Any "moving but not progressing" trap
+//
+// This is a FAILSAFE LAYER that temporarily overrides intent and navigation.
+
+// Detect terrain trap condition (generalized beyond just water)
+float (entity bot) Bot_IsTerrainTrap =
+{
+   // No progress check: Must have been stuck for a bit
+   if ((time - bot.last_progress_time) < 1.500)
+   {
+      return (FALSE);
+   } //end if
+
+   // Shallow water trap (DM2 ankle water)
+   if ((bot.waterlevel == 1.000))
+   {
+      return (TRUE);
+   } //end if
+
+   // General micro-trap heuristic: moving (velocity > 40) but not making progress (stuck_score > 1)
+   // Catches lips, greebles, micro-basins, and other geometry pathologies
+   if (((vlen (bot.velocity) > 40.000) && (bot.stuck_score > 1.000)))
+   {
+      return (TRUE);
+   } //end if
+
+   return (FALSE);
+}; //end of the function Bot_IsTerrainTrap
+
+// Pick escape direction using exit gradient (height + openness + memory)
+// Reuses SampleGroundHeight and GetDirectionalPenalty from water trap code
+vector (entity bot) Bot_PickTerrainEscape =
+{
+   local float angles[7];
+   local float i;
+   local float best_score;
+   local float score;
+   local vector best_dir;
+   local vector dir;
+   local vector probe;
+   local float clear;
+   local float height;
+   local float mem_penalty;
+   local vector start;
+   local vector end;
+   local float range;
+
+   // 7-ray pattern: center + symmetric spread
+   angles[0] = 0.000;
+   angles[1] = -30.000;
+   angles[2] = 30.000;
+   angles[3] = -60.000;
+   angles[4] = 60.000;
+   angles[5] = -90.000;
+   angles[6] = 90.000;
+
+   range = 160.000;  // Probe distance
+   best_score = -99999.000;
+
+   // Default to forward if all else fails
+   bot.v_angle_x = 0.000;
+   bot.v_angle_z = 0.000;
+   makevectors (bot.v_angle);
+   best_dir = v_forward;
+
+   i = 0.000;
+   while ((i < 7.000))
+   {
+      // Calculate direction vector
+      bot.v_angle_y = (bot.angles_y + angles[i]);
+      bot.v_angle_x = 0.000;
+      bot.v_angle_z = 0.000;
+      makevectors (bot.v_angle);
+      dir = v_forward;
+
+      // Check clearance in this direction (swept trace)
+      start = (bot.origin + '0.000 0.000 22.000');
+      end = (start + (dir * range));
+      traceline (start,end,TRUE,bot);
+      clear = trace_fraction;
+
+      // Skip if heavily blocked (need at least 60% clearance)
+      if ((clear < 0.600))
+      {
+         i = (i + 1.000);
+         continue;
+      } //end if
+
+      // Sample point at traced distance
+      probe = (bot.origin + (dir * (range * clear)));
+
+      // Get ground height (prefer higher = climbing out of trap)
+      height = SampleGroundHeight (bot,probe);
+
+      // Check directional fail memory
+      mem_penalty = GetDirectionalPenalty (bot,dir);
+
+      // Score formula:
+      //   clear         = openness (0.6-1.0)
+      //   height * 0.01 = prefer higher ground (scaled down)
+      //   mem * -1.2    = avoid previously failed directions
+      score = (clear + (height * 0.010) - (mem_penalty * 1.200));
+
+      if ((score > best_score))
+      {
+         best_score = score;
+         best_dir = dir;
+      } //end if
+
+      i = (i + 1.000);
+   } //end while
+
+   if ((bot_debug_enabled && (bot_debug_level >= LOG_VERBOSE)))
+   {
+      bprint ("[");
+      bprint (bot.netname);
+      bprint ("] TERRAIN-TRAP: Best escape yaw=");
+      bprint (ftos (vectoyaw (best_dir)));
+      bprint ("° score=");
+      bprint (ftos (best_score));
+      bprint ("\n");
+   } //end if
+
+   return (best_dir);
+}; //end of the function Bot_PickTerrainEscape
+
+// Main terrain trap handler: hard override with commit window
+void (entity bot) Bot_HandleTerrainTrap =
+{
+   local vector escape;
+
+   if (!Bot_IsTerrainTrap (bot))
+   {
+      return ;
+   } //end if
+
+   if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+   {
+      bprint ("[");
+      bprint (bot.netname);
+      bprint ("] TERRAIN-TRAP: Detected at ");
+      bprint (vtos (bot.origin));
+      bprint (" (waterlevel=");
+      bprint (ftos (bot.waterlevel));
+      bprint (", velocity=");
+      bprint (ftos (vlen (bot.velocity)));
+      bprint (", stuck_score=");
+      bprint (ftos (bot.stuck_score));
+      bprint (", no progress for ");
+      bprint (ftos (time - bot.last_progress_time));
+      bprint ("s)\n");
+   } //end if
+
+   // Break any existing commit so we can choose new escape line
+   bot.feeler_commit_until = 0.000;
+
+   // Pick escape direction using exit gradient
+   escape = Bot_PickTerrainEscape (bot);
+
+   // Record this attempt in directional fail memory
+   RecordDirectionalFail (bot,escape);
+
+   // Commit hard for 1.2 seconds to avoid trap re-entry
+   bot.feeler_commit_dir = escape;
+   bot.feeler_commit_until = (time + 1.200);
+
+   // Force unstuck mode temporarily (prevents normal pathfinding from fighting us)
+   bot.stuck_mode = BOT_MODE_UNSTICK;
+   bot.escape_until_time = (time + 1.200);
+
+   if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+   {
+      bprint ("[");
+      bprint (bot.netname);
+      bprint ("] TERRAIN-TRAP: Escape commit yaw=");
+      bprint (ftos (vectoyaw (escape)));
+      bprint ("° until t=");
+      bprint (ftos (bot.feeler_commit_until));
+      bprint ("\n");
+   } //end if
+}; //end of the function Bot_HandleTerrainTrap
+
+// ===== END GENERAL TERRAIN TRAP RESOLVER =====
+
 // ===== VERTICAL TACTICS: FIXES STALEMATE UNDER/OVER PLATFORMS =====
 
 // Check if bot has line-of-sight to enemy
@@ -4255,6 +4444,14 @@ void (float dist) Botmovetogoal =
    // ===== BEHAVIORAL LOOP DETECTION =====
    // Push current state signature to buffer (every 0.25s)
    Loop_PushSig (self);
+
+   // ===== TERRAIN TRAP RESOLVER: FIRST failsafe layer =====
+   // Detects movement pathologies (shallow water, lips, micro-basins, greebles)
+   // and hard-overrides intent/navigation to escape. Runs BEFORE loop breaker
+   // because terrain traps can cause loops (but not all loops are terrain traps).
+   Bot_HandleTerrainTrap (self);
+   // =============================================================
+
    // Detect and break repetitive behavioral loops
    Loop_BreakLoop (self);
    // =============================================================

@@ -33,4 +33,9 @@ void () Influence_ShowMap;
 // Dynamic Breadcrumbing System (botmove.qc)
 void () Breadcrumb_Update;
 vector () Breadcrumb_GetRecoverySpot;
+
+// Terrain Trap Resolver (botmove.qc)
+float (entity bot) Bot_IsTerrainTrap;
+vector (entity bot) Bot_PickTerrainEscape;
+void (entity bot) Bot_HandleTerrainTrap;
 // ---------------------------------------------------------
