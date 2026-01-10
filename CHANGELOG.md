@@ -24,6 +24,29 @@
   - **Occlusion awareness** in `reaper_mre/kascam.qc`: Replaced `CamActionScore()` with visibility-checking version. Traces line-of-sight from camera to bot before scoring. Invisible targets get score=0 (prevents wall-staring). Exception: Quad-wielding or 15+ frag leaders get -500 penalty but remain considered. Mid-range combat (100-600u) gets +100 cinematic bonus, rocket launcher gets +50 priority.
   - **Intelligent framing** in `reaper_mre/kascam.qc`: Replaced `CamFlybyTarget()` with multi-candidate positioning. Probes 3 positions: over-the-shoulder right (150u back, 40u up, 40u right), over-the-shoulder left (if right blocked), high angle fallback (80u up, 60u back for cramped spaces). Backs off 10u from ceiling hits to avoid clipping.
   - **Result:** AI Director (`impulse 99`) now provides smooth, jitter-free camera movement, only tracks visible action (no wall-staring), and intelligently positions camera to avoid geometry clipping in tight corridors. Flyby mode (`impulse 50`) uses smart positioning for clear viewing angles.
+- **Vertical tactics** to fix under/over platform stalemates:
+  - **Entity fields** in `reaper_mre/botit_th.qc`: No new fields needed (uses existing enemy, origin references).
+  - **LOS helper** in `reaper_mre/botmove.qc`: `VT_HasLOS()` traces line-of-sight between bot and enemy at waist height (origin + 16u).
+  - **Vertical mode detection** in `reaper_mre/botmove.qc`: `VT_VerticalMode()` triggers when Z separation >96u AND no LOS. Also triggers if no progress for 1.5s while vertically separated.
+  - **Vertical penalty calculation** in `reaper_mre/botmove.qc`: `VT_VertPenalty()` flattens moveDir to XY plane, projects 160u ahead, compares before/after XY distance. Returns 1.0 (100pt penalty) if moving closer when <160u away. Returns -0.5 (50pt reward) if moving toward 256u "ring distance" for angle shots.
+  - **Combat integration** in `reaper_mre/botmove.qc`: Added vertical penalty check in `Bot_Feelers_Evaluate()` during combat mode, runs after pitch/under/rocket penalties. Penalty scaled by 100 (1.0 → -100pts, -0.5 → +50pts).
+  - **Result:** Bots back off to get shooting angles instead of stacking X/Y coordinates under/over enemies on platforms. Breaks vertical alignment loops by penalizing "get closer" moves when already too close with no LOS.
+- **Behavioral loop detection** to break repetitive movement patterns:
+  - **Entity fields** in `reaper_mre/botit_th.qc`: loop_sig0-5 (signature ring buffer), loop_sig_time (next sample timestamp).
+  - **Signature creation** in `reaper_mre/botmove.qc`: `Loop_MakeSig()` quantizes position to 32-unit grid (matches directional fail memory), buckets yaw into 30° increments (0-11), packs into float as `cellX × 100000 + cellY × 100 + yawBucket`.
+  - **Signature buffering** in `reaper_mre/botmove.qc`: `Loop_PushSig()` samples every 0.25s, shifts ring buffer (sig5←sig4←...←sig0).
+  - **Loop detection** in `reaper_mre/botmove.qc`: `Loop_InLoop()` counts matching signatures, returns TRUE if 4+ of 6 match (67% repetition over 1.5s window).
+  - **Loop breaker** in `reaper_mre/botmove.qc`: `Loop_BreakLoop()` records current forward direction as failed approach, forces `BOT_MODE_UNSTICK` for 1.2s, clears feeler commit to allow new direction.
+  - **Integration** in `reaper_mre/botmove.qc`: Called in `Botmovetogoal()` right after `Bot_ProgressTick()`, before unstick check (can trigger unstick mode).
+  - **Debug logging** in `reaper_mre/botmove.qc`: LOG_CRITICAL shows "LOOP-BREAK: Detected repetitive behavior at (pos), forcing reposition".
+  - **Result:** Bots detect and escape tiny circles, yaw flip loops (90°↔270° oscillation), and edge bouncing by recognizing 67% signature repetition and forcing unstick mode.
+- **Vertical awareness** for smooth cliff navigation:
+  - **Floor quality helper** in `reaper_mre/botmove.qc`: `Bot_CheckFloorQuality()` traces down 256u from point, returns 0.0 for voids/hazards (lava, slime, no floor), 0.8 for big drops (>64u, passable with minor fall damage), 1.0 for safe ground.
+  - **Enhanced feeler steering** in `reaper_mre/botmove.qc`: Replaced `Bot_SampleFeelers()` with vertical awareness version. After each horizontal feeler trace (if clear), checks floor quality at endpoint. Combines horizontal clearance with vertical quality: `effective_score = trace_fraction × floor_quality`. Voids treated as walls (0.0 × 1.0 = 0.0 < 0.55 threshold), big drops slightly penalized but passable (1.0 × 0.8 = 0.8 > 0.55).
+  - **Quality tuning** in `reaper_mre/botmove.qc`: Drop threshold 64u (fall damage ~10-15 HP), quality 0.8 chosen to pass 0.55 blocking threshold while still penalizing vs level ground. Prioritizes flow and aggression over minor fall damage.
+  - **Soft emergency braking** in `reaper_mre/botmove.qc`: Replaced hard stops (`velocity = 0 0 0`) in `CheckForHazards()` with soft deceleration in 3 locations (death pits, blocked jumps, hazard floors). New brake: `velocity = velocity × 0.1` (90% decel) + `velocity += v_forward × -50` (backward nudge). Preserves momentum for smooth physics response.
+  - **Debug logging** in `reaper_mre/botmove.qc`: LOG_CRITICAL shows "HAZARD: Edge Catch (soft stop)" when soft brake triggers.
+  - **Result:** Bots steer away from cliffs naturally (prediction) using floor quality checks in feelers. Emergency brake uses soft deceleration instead of freeze (reaction), preventing stuttering/vibration at edges. Camera movement smooth and continuous. Bots freely drop down from platforms (>64u drops passable) for tactical mobility.
 - **Bot cast identity system + entry lines** for consistent personalities:
   - **Data-driven cast** in `reaper_mre/botspawn.qc`: 36-slot roster with fixed names, colors, personalities, and skills.
   - **Join catchphrases** in `reaper_mre/botspawn.qc`: each bot announces a short entry line on spawn.

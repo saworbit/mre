@@ -213,6 +213,14 @@ float (entity targ, entity inflictor) CanDamage;
 .vector recent_pos4;
 .vector recent_pos5;
 .float recent_pos_idx;
+// Behavioral loop detection: Signature buffer (position cell + yaw bucket + intent)
+.float loop_sig0;
+.float loop_sig1;
+.float loop_sig2;
+.float loop_sig3;
+.float loop_sig4;
+.float loop_sig5;
+.float loop_sig_time;  // Next time to push a signature sample
 // Area abandonment memory for repeated stuck spots.
 .vector last_stuck_origin;
 .float last_stuck_time;

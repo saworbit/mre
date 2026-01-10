@@ -984,8 +984,15 @@ void () CheckForHazards =
       // Is it a "Death Pit" (Slime/Lava/Void)?
       if (((content_type <= CONTENT_SLIME) || (trace_fraction == 1.000)))
       {
-         // STOP! Don't run in!
-         self.velocity = '0.000 0.000 0.000';
+         // [SOFT STOP] Decelerate rapidly instead of freezing (prevents stuttering)
+         // 1. Cut velocity by 90% (rapid friction)
+         self.velocity = (self.velocity * 0.100);
+
+         // 2. Add a tiny backward nudge to unstick from the edge lip
+         makevectors (self.angles);
+         self.velocity = (self.velocity + (v_forward * -50.000));
+
+         // 3. Force immediate rotation away from the hazard
          if ((self.hazard_escape_until <= time))
          {
             escape_yaw = (self.angles_y + 135.000);
@@ -1005,7 +1012,7 @@ void () CheckForHazards =
             {
                bprint ("[");
                bprint (self.netname);
-               bprint ("] HAZARD: Stop (drop/lava)\n");
+               bprint ("] HAZARD: Edge Catch (soft stop)\n");
                self.hazard_log_time = (time + 0.500);
             } //end if
          } //end if
@@ -1031,7 +1038,11 @@ void () CheckForHazards =
          traceline (land_spot,(land_spot - '0.000 0.000 250.000'),TRUE,self);
          if ((trace_fraction == 1.000))
          {
-            self.velocity = '0.000 0.000 0.000';
+            // [SOFT STOP] Decelerate rapidly instead of freezing
+            self.velocity = (self.velocity * 0.100);
+            makevectors (self.angles);
+            self.velocity = (self.velocity + (v_forward * -50.000));
+
             if ((self.hazard_escape_until <= time))
             {
                escape_yaw = (self.angles_y + 135.000);
@@ -1051,7 +1062,7 @@ void () CheckForHazards =
                {
                   bprint ("[");
                   bprint (self.netname);
-                  bprint ("] HAZARD: Blocked jump (no landing)\n");
+                  bprint ("] HAZARD: Blocked jump (no landing, soft stop)\n");
                   self.hazard_log_time = (time + 0.500);
                } //end if
             } //end if
@@ -1060,7 +1071,10 @@ void () CheckForHazards =
          land_content = pointcontents (trace_endpos);
          if (((land_content == CONTENT_LAVA) || (land_content == CONTENT_SLIME)))
          {
-            self.velocity = '0.000 0.000 0.000';
+            // [SOFT STOP] Decelerate rapidly instead of freezing
+            self.velocity = (self.velocity * 0.100);
+            makevectors (self.angles);
+            self.velocity = (self.velocity + (v_forward * -50.000));
             if ((self.hazard_escape_until <= time))
             {
                escape_yaw = (self.angles_y + 135.000);
@@ -1979,6 +1993,43 @@ float (float dist, float base_yaw) Bot_TraversalStrafe =
 // FEELER STEERING: 5-trace corridor centring and cornering
 // Returns yaw bias (degrees to adjust heading)
 // Sets global feeler_speed_scale (0.0-1.0)
+// [VERTICAL AWARENESS] Helper: Check if a point is over safe ground
+// Returns: 1.0 if safe, < 1.0 if hazard/void
+float (vector p, entity bot) Bot_CheckFloorQuality =
+{
+   local vector down;
+   local float depth;
+
+   down = p;
+   down_z = (down_z - 256.000);  // Look down 256 units
+
+   traceline (p,down,TRUE,bot);
+
+   // 1. VOID CHECK: If we hit nothing, it's a deep pit
+   if ((trace_fraction == 1.000))
+   {
+      return (0.000);
+   } //end if
+
+   // 2. HAZARD CHECK: If we hit lava/slime, it's a death trap
+   if ((pointcontents (trace_endpos) <= CONTENT_SLIME))
+   {
+      return (0.000);
+   } //end if
+
+   // 3. DEPTH CHECK: Slight penalty for big drops, but DON'T block them
+   // Flow and aggression > minor fall damage. Being stuck = predictable = dead.
+   depth = (p_z - trace_endpos_z);
+   if ((depth > 64.000))
+   {
+      return (0.800);  // Slight penalty, but freely passable
+   } //end if
+
+   return (1.000);  // Safe ground
+}; //end of the function Bot_CheckFloorQuality
+
+// [VERTICAL AWARENESS] Enhanced Feeler Steering with Cliff Detection
+// Now treats cliffs/voids as walls in the steering system (prediction vs reaction)
 float (entity bot, float base_yaw, float dt) Bot_SampleFeelers =
 {
    local vector start;
@@ -1989,6 +2040,11 @@ float (entity bot, float base_yaw, float dt) Bot_SampleFeelers =
    local float fr;
    local float l;
    local float r;
+   local float f_qual;
+   local float fl_qual;
+   local float fr_qual;
+   local float l_qual;
+   local float r_qual;
    local float bias;
    local float yaw_bias;
    local float range;
@@ -2016,34 +2072,87 @@ float (entity bot, float base_yaw, float dt) Bot_SampleFeelers =
    fwd = v_forward;
    right = v_right;
 
-   // 5 feeler traces: forward, forward-left, forward-right, left, right
+   // --- TRACE 1: Forward ---
    traceline (start,(start + (fwd * range)),TRUE,bot);
    f = trace_fraction;
+   // If wall is clear, check floor
+   if ((f == 1.000))
+   {
+      f_qual = Bot_CheckFloorQuality (trace_endpos,bot);
+   } //end if
+   else
+   {
+      f_qual = 1.000;  // Wall collision handles itself
+   } //end else
 
+   // --- TRACE 2: Forward-Left ---
    traceline (start,(start + ((fwd * diag_len) + (right * -diag_side))),TRUE,bot);
    fl = trace_fraction;
+   if ((fl == 1.000))
+   {
+      fl_qual = Bot_CheckFloorQuality (trace_endpos,bot);
+   } //end if
+   else
+   {
+      fl_qual = 1.000;
+   } //end else
 
+   // --- TRACE 3: Forward-Right ---
    traceline (start,(start + ((fwd * diag_len) + (right * diag_side))),TRUE,bot);
    fr = trace_fraction;
+   if ((fr == 1.000))
+   {
+      fr_qual = Bot_CheckFloorQuality (trace_endpos,bot);
+   } //end if
+   else
+   {
+      fr_qual = 1.000;
+   } //end else
 
+   // --- TRACE 4: Left (Side) ---
    traceline (start,(start + (right * -side_len)),TRUE,bot);
    l = trace_fraction;
+   if ((l == 1.000))
+   {
+      l_qual = Bot_CheckFloorQuality (trace_endpos,bot);
+   } //end if
+   else
+   {
+      l_qual = 1.000;
+   } //end else
 
+   // --- TRACE 5: Right (Side) ---
    traceline (start,(start + (right * side_len)),TRUE,bot);
    r = trace_fraction;
+   if ((r == 1.000))
+   {
+      r_qual = Bot_CheckFloorQuality (trace_endpos,bot);
+   } //end if
+   else
+   {
+      r_qual = 1.000;
+   } //end else
+
+   // --- CALCULATE BIAS ---
+   // We combine Wall Fraction with Floor Quality.
+   // Effective score = trace_fraction * floor_quality
+   // If floor is bad (0.0), effective score becomes 0.0 (blocked).
 
    bias = 0.000;
 
-   // Corridor centring: if left wall close, steer right (and vice versa)
-   bias = (bias + ((l - r) * 22.000));
+   // Corridor / Ledge Centering
+   // If Left is void (l_qual=0) and Right is safe (r_qual=1), we steer Right.
+   bias = (bias + (((l * l_qual) - (r * r_qual)) * 22.000));
 
-   // Cornering: if front-left blocked more than front-right, steer right
-   bias = (bias + ((fl - fr) * 28.000));
+   // Cornering / Cliff Avoidance
+   bias = (bias + (((fl * fl_qual) - (fr * fr_qual)) * 28.000));
 
-   // Imminent collision: forward blocked, pick clearer diagonal aggressively
-   if ((f < 0.550))
+   // Imminent Collision / Cliff Edge
+   // If forward is blocked by wall OR void
+   if (((f * f_qual) < 0.550))
    {
-      if ((fl < fr))
+      // Pick the safer diagonal
+      if (((fl * fl_qual) < (fr * fr_qual)))
       {
          bias = (bias + 35.000);
       } //end if
@@ -2051,7 +2160,7 @@ float (entity bot, float base_yaw, float dt) Bot_SampleFeelers =
       {
          bias = (bias - 35.000);
       } //end else
-      feeler_speed_scale = 0.600;  // Slow down approaching walls
+      feeler_speed_scale = 0.600;  // Slow down
    } //end if
 
    // Clamp raw bias so it cannot dominate intent
@@ -2577,6 +2686,218 @@ void (entity bot) HandleWaterTrap =
 }; //end of the function HandleWaterTrap
 
 // ===== END SHALLOW WATER TRAP ESCAPE =====
+
+// ===== VERTICAL TACTICS: FIXES STALEMATE UNDER/OVER PLATFORMS =====
+
+// Check if bot has line-of-sight to enemy
+float (entity bot, entity e) VT_HasLOS =
+{
+   local vector start;
+   local vector end;
+
+   start = (bot.origin + '0.000 0.000 16.000');
+   end = (e.origin + '0.000 0.000 16.000');
+   traceline (start,end,TRUE,bot);
+   return ((trace_fraction == 1.000));
+}; //end of the function VT_HasLOS
+
+// Detect when vertical mode should activate (significant Z separation + no LOS)
+float (entity bot, entity e) VT_VerticalMode =
+{
+   local float dz;
+   local float xy;
+   local vector d;
+
+   d = (e.origin - bot.origin);
+   dz = d_z;
+   d_z = 0.000;
+   xy = vlen (d);
+
+   // Trigger if vertical separation > 96 units
+   if ((fabs (dz) < 96.000))
+   {
+      return (FALSE);
+   } //end if
+
+   // Close XY and no LOS = classic "under platform" trap
+   if (((xy < 160.000) && !VT_HasLOS (bot,e)))
+   {
+      return (TRUE);
+   } //end if
+
+   // Also trigger if no progress while vertically separated and no LOS
+   if ((((time - bot.last_progress_time) > 1.500) && !VT_HasLOS (bot,e)))
+   {
+      return (TRUE);
+   } //end if
+
+   return (FALSE);
+}; //end of the function VT_VerticalMode
+
+// Calculate vertical penalty for candidate move direction
+float (entity bot, entity e, vector moveDir) VT_VertPenalty =
+{
+   local vector d;
+   local float dz;
+   local float xy;
+   local float desired;
+   local float after_xy;
+   local vector p;
+   local float before_err;
+   local float after_err;
+
+   d = (e.origin - bot.origin);
+   dz = d_z;
+   d_z = 0.000;
+   xy = vlen (d);
+
+   // Predict 0.4s ahead along moveDir (flatten Z for XY distance)
+   local vector flat_dir;
+   flat_dir = moveDir;
+   flat_dir_z = 0.000;
+   flat_dir = normalize (flat_dir);
+   p = (bot.origin + (flat_dir * 160.000));  // 160 units probe
+   d = (e.origin - p);
+   d_z = 0.000;
+   after_xy = vlen (d);
+
+   if (((fabs (dz) > 96.000) && !VT_HasLOS (bot,e)))
+   {
+      // Big penalty for going "more under" (reducing XY when already too close)
+      if (((xy < 160.000) && (after_xy < xy)))
+      {
+         return (1.000);  // 100 penalty points (scaled by 100 in scoring)
+      } //end if
+
+      // Encourage moving toward a ring distance to get angles
+      desired = 256.000;
+      before_err = fabs ((xy - desired));
+      after_err = fabs ((after_xy - desired));
+
+      if ((after_err < before_err))
+      {
+         return (-0.500);  // Negative = reward (50 bonus points)
+      } //end if
+   } //end if
+
+   return (0.000);
+}; //end of the function VT_VertPenalty
+
+// ===== END VERTICAL TACTICS =====
+
+// ===== BEHAVIORAL LOOP DETECTION: STOPS REPETITIVE CIRCLES =====
+
+// Create signature for current bot state (position cell + yaw bucket)
+float (entity bot) Loop_MakeSig =
+{
+   local vector p;
+   local float yawb;
+   local float cellx;
+   local float celly;
+
+   // Use 32-unit grid (same as CoarsePos)
+   p = CoarsePos (bot.origin);
+   cellx = (p_x / 32.000);
+   celly = (p_y / 32.000);
+
+   // Yaw bucket: 0-11 (30 degree buckets)
+   yawb = floor ((bot.angles_y / 30.000));
+   while ((yawb < 0.000))
+   {
+      yawb = (yawb + 12.000);
+   } //end while
+   while ((yawb >= 12.000))
+   {
+      yawb = (yawb - 12.000);
+   } //end while
+
+   // Pack into float signature (cheap and dirty)
+   return (((cellx * 100000.000) + (celly * 100.000)) + yawb);
+}; //end of the function Loop_MakeSig
+
+// Push current signature to buffer (call every 0.25s)
+void (entity bot) Loop_PushSig =
+{
+   local float s;
+
+   if ((time < bot.loop_sig_time))
+   {
+      return ;
+   } //end if
+
+   bot.loop_sig_time = (time + 0.250);
+
+   s = Loop_MakeSig (bot);
+
+   // Ring buffer shift
+   bot.loop_sig5 = bot.loop_sig4;
+   bot.loop_sig4 = bot.loop_sig3;
+   bot.loop_sig3 = bot.loop_sig2;
+   bot.loop_sig2 = bot.loop_sig1;
+   bot.loop_sig1 = bot.loop_sig0;
+   bot.loop_sig0 = s;
+}; //end of the function Loop_PushSig
+
+// Detect if bot is in behavioral loop (4/6 signatures same)
+float (entity bot) Loop_InLoop =
+{
+   local float s;
+   local float count;
+
+   s = bot.loop_sig0;
+   count = 0.000;
+
+   if ((bot.loop_sig0 == s)) count = (count + 1.000);
+   if ((bot.loop_sig1 == s)) count = (count + 1.000);
+   if ((bot.loop_sig2 == s)) count = (count + 1.000);
+   if ((bot.loop_sig3 == s)) count = (count + 1.000);
+   if ((bot.loop_sig4 == s)) count = (count + 1.000);
+   if ((bot.loop_sig5 == s)) count = (count + 1.000);
+
+   // 4/6 same = likely loop
+   if ((count >= 4.000))
+   {
+      return (TRUE);
+   } //end if
+
+   return (FALSE);
+}; //end of the function Loop_InLoop
+
+// Force breaker action to escape behavioral loop
+void (entity bot) Loop_BreakLoop =
+{
+   local vector fwd_dir;
+
+   if (!Loop_InLoop (bot))
+   {
+      return ;
+   } //end if
+
+   if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+   {
+      bprint ("[");
+      bprint (bot.netname);
+      bprint ("] LOOP-BREAK: Detected repetitive behavior at ");
+      bprint (vtos (bot.origin));
+      bprint (", forcing reposition\n");
+   } //end if
+
+   // Record current forward as a fail
+   bot.v_angle_x = 0.000;
+   bot.v_angle_z = 0.000;
+   makevectors (bot.v_angle);
+   fwd_dir = v_forward;
+   RecordDirectionalFail (bot,fwd_dir);
+
+   // Force unstick mode for a moment
+   bot.stuck_mode = BOT_MODE_UNSTICK;
+   bot.escape_until_time = (time + 1.200);
+
+   // Clear commit to allow new direction
+   bot.feeler_commit_until = 0.000;
+}; //end of the function Loop_BreakLoop
+
+// ===== END BEHAVIORAL LOOP DETECTION =====
 
 float (entity bot, vector dir, float dist) Bot_JumpFeasibleSimple =
 {
@@ -3209,6 +3530,14 @@ void (entity bot, float mode, float wall_side, float base_yaw) Bot_Feelers_Evalu
       score = (score - under_penalty);
       score = (score - rocket_penalty);
       score = (score - range_penalty);
+
+      // Vertical tactics: Penalize moving under/over enemy when Z-separated and no LOS
+      if (VT_VerticalMode (bot,bot.enemy))
+      {
+         local float vert_penalty;
+         vert_penalty = VT_VertPenalty (bot,bot.enemy,dir);
+         score = (score - (vert_penalty * 100.000));  // Scale penalty to scoring range
+      } //end if
    } //end if
 
    score = (score - (heat_penalty * 0.500));
@@ -3695,6 +4024,14 @@ void (float dist) Botmovetogoal =
 
    // Progress-based stuck detection + unstick mode commit window
    Bot_ProgressTick (dist);
+
+   // ===== BEHAVIORAL LOOP DETECTION =====
+   // Push current state signature to buffer (every 0.25s)
+   Loop_PushSig (self);
+   // Detect and break repetitive behavioral loops
+   Loop_BreakLoop (self);
+   // =============================================================
+
    if ((self.stuck_mode == BOT_MODE_UNSTICK))
    {
       Bot_UnstickThink (dist);

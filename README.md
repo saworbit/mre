@@ -159,6 +159,148 @@ impulse 51        // Follow mode (over-shoulder with smooth interpolation)
 - **LOS trace**: `traceline(camera, bot, TRUE, camera)` checks occlusion
 - **Multi-candidate probing**: `traceline(bot, candidate_pos, TRUE, bot)` finds clear shots
 
+### Vertical Tactics: Platform Stalemate Fix (2026-01-10)
+
+**NEW:** Bots no longer get stuck in vertical alignment loops under/over enemies on platforms!
+
+Classic problem: Two bots separated vertically (one on platform, one below) both try to minimize horizontal distance, resulting in perfect X/Y stacking with zero tactical value. Neither can shoot cleanly, both become predictable.
+
+**The Problem:**
+- ❌ Bot A on platform, Bot B below → both move to minimize XY distance
+- ❌ Both end up at same X/Y coordinates with only Z separation
+- ❌ Platform geometry blocks line-of-sight for both bots
+- ❌ No one repositions → stalemate continues indefinitely
+- ❌ Decision system keeps reselecting "get closer" because XY error metric doesn't punish vertical obstruction
+
+**The Solution:**
+- ✅ **Vertical Mode Detection**: Triggers when Z separation >96u AND no line-of-sight
+- ✅ **Alignment Penalty**: Moving closer when already under/over enemy gets -100 penalty
+- ✅ **Ring Distance Reward**: Moving toward 256u "angle distance" gets +50 bonus
+- ✅ **Integrated Scoring**: Vertical penalty applied in combat feeler evaluation
+
+**How it works:**
+1. `VT_VerticalMode()` checks: `fabs(dz) > 96u` AND `!HasLOS()` → Vertical tactics active
+2. For each movement candidate, `VT_VertPenalty()` predicts XY distance after move
+3. If moving closer when already <160u away → Apply -100 penalty (scaled to -100pts in scoring)
+4. If moving toward 256u "ring distance" → Apply +50 reward (optimal angle positioning)
+5. Bot backs off to get shooting angles instead of camping under platform
+
+**Debug Output (LOG_TACTICAL):**
+```
+[Wanton] VERTICAL-MODE: Active (dz=128u, no LOS)
+[Wanton] VERT-PENALTY: -100 for moving closer (XY 140u → 110u)
+[Wanton] VERT-REWARD: +50 for angle positioning (XY 140u → 245u)
+```
+
+**Technical Details:**
+- **LOS check**: `traceline(bot+16u, enemy+16u, TRUE, bot)` at waist height
+- **Prediction**: Flattens moveDir to XY plane, projects 160u ahead
+- **Ring distance**: 256u empirically determined as optimal for most weapons
+- **Integration**: Runs after pitch/under/rocket penalties in `Bot_Feelers_Evaluate()`
+
+### Behavioral Loop Detection (2026-01-10)
+
+**NEW:** Bots detect and break repetitive movement patterns (circles, bouncing, yaw flips)!
+
+Classic problem: Bots get into behavioral loops where they repeat the same actions despite making no progress. Common patterns include tiny circles, repeated yaw flips (90°↔270°), and edge bouncing.
+
+**The Problem:**
+- ❌ Bot circles in same 64u area repeating identical moves
+- ❌ Yaw flips between two angles every 0.5s (180° oscillation)
+- ❌ Bounces into same edge/corner repeatedly
+- ❌ Decision system thinks it's "trying" but has no hard signal of behavioral repetition
+- ❌ Stuck detection only triggers on position freeze, not movement loops
+
+**The Solution:**
+- ✅ **State Signature Buffer**: 6-sample ring buffer tracks position cell + yaw bucket every 0.25s
+- ✅ **Loop Detection**: 4/6 matching signatures = behavioral loop detected
+- ✅ **Forced Unstick**: Triggers unstuck mode for 1.2s to escape pattern
+- ✅ **Fail Memory Integration**: Records failed direction before breaking loop
+
+**How it works:**
+1. Every 0.25s, `Loop_PushSig()` creates signature from bot state:
+   - Position: 32-unit grid cell (e.g., `2144,-2176`)
+   - Yaw: 30° bucket (0-11, e.g., yaw 95° → bucket 3)
+   - Packed into float: `cellX × 100000 + cellY × 100 + yawBucket`
+2. `Loop_InLoop()` checks if 4+ of last 6 signatures match
+3. If loop detected → `Loop_BreakLoop()`:
+   - Records current direction as failed approach
+   - Forces `BOT_MODE_UNSTICK` for 1.2s
+   - Clears feeler commit to allow new direction selection
+4. Unstuck system takes over, picks escape route
+
+**Debug Output (LOG_CRITICAL):**
+```
+[Cheater] LOOP-BREAK: Detected repetitive behavior at (2144,-2176), forcing reposition
+[Cheater] FAIL-MEM: Record yaw=95° at (2144,-2176)
+```
+
+**Technical Details:**
+- **Signature interval**: 0.25s prevents noise from micro-movements
+- **Grid quantization**: 32-unit cells match directional fail memory resolution
+- **Yaw buckets**: 30° buckets (12 total) catch similar angles
+- **Detection threshold**: 4/6 same = 67% repetition (1.5s window)
+- **Integration**: Called in `Botmovetogoal()` right after progress tick
+
+### Vertical Awareness: Smooth Cliff Navigation (2026-01-10)
+
+**NEW:** Bots treat cliffs/voids as obstacles during steering (prediction vs reaction) and use soft emergency braking!
+
+Classic problem: Feeler steering only sees horizontal walls, treats cliffs as "open space" until emergency brake triggers. This causes stuttering/vibration at edges as bot alternates between "move forward" and "STOP" commands.
+
+**The Problem:**
+- ❌ Feelers trace horizontal clearance, don't check floor below
+- ❌ Cliff edge appears as "clear path" to steering system
+- ❌ Bot moves forward → CheckForHazards sees void → `velocity = 0 0 0` (freeze)
+- ❌ Next frame: steering says "go" → hazard check says "stop" → vibration loop
+- ❌ Camera jitters, bot appears indecisive, stuck at edges
+
+**The Solution:**
+- ✅ **Floor Quality Check**: After each feeler trace, checks ground 256u below endpoint
+- ✅ **Steer-Repulsive Voids**: Cliffs get quality = 0.0 (treated as walls in steering)
+- ✅ **Passable Drops**: Big drops (>64u) get quality = 0.8 (slight penalty, freely passable)
+- ✅ **Soft Emergency Brake**: Decelerate 90% + backward nudge instead of freeze
+
+**How it works:**
+
+**1. Predictive Cliff Detection (`Bot_CheckFloorQuality`)**
+- For each feeler endpoint (if horizontal trace was clear):
+  - Trace down 256u to find floor
+  - **Void/Death Pit**: `return 0.0` (lava, slime, or no floor)
+  - **Big Drop** (>64u): `return 0.8` (minor fall damage OK, flow > caution)
+  - **Safe Ground**: `return 1.0`
+- Effective score: `trace_fraction × floor_quality`
+  - `1.0 × 0.0 = 0.0 < 0.55` → Blocked (void)
+  - `1.0 × 0.8 = 0.8 > 0.55` → Passable (drop)
+  - `1.0 × 1.0 = 1.0 > 0.55` → Clear (level)
+
+**2. Smooth Edge Handling (`CheckForHazards`)**
+- Old: `velocity = '0 0 0'` → Hard freeze → stuttering
+- New:
+  ```c
+  velocity = velocity × 0.1       // 90% deceleration
+  velocity += v_forward × -50     // Backward nudge
+  ```
+- Result: Bot "catches itself" at edge with momentum preserved
+
+**Why This Works:**
+- **Prediction**: Bot sees cliff 200u ahead, steers away naturally (like corridor walls)
+- **Reaction**: If emergency brake still triggers, soft deceleration prevents freeze
+- **Camera**: Continuous curve motion instead of stop-and-go snapping
+- **Flow**: Minor fall damage (drops >64u) < being predictable sitting duck
+
+**Debug Output (LOG_CRITICAL):**
+```
+[Toxic] HAZARD: Edge Catch (soft stop)
+```
+
+**Technical Details:**
+- **Floor trace depth**: 256u matches standard hazard check depth
+- **Drop threshold**: 64u (fall damage ~10-15 HP, acceptable tradeoff for mobility)
+- **Quality tuning**: 0.8 chosen to pass 0.55 threshold while still penalizing vs level ground
+- **Soft brake**: 0.1 multiplier leaves 10% velocity for smooth physics response
+- **Integration**: Floor quality checked in `Bot_SampleFeelers()`, soft brake in `CheckForHazards()`
+
 ### Combat Reposition + Verticality-Aware Pursuit (2026-01-08)
 
 **NEW:** Bots stop "shadow chasing" directly under higher targets and reposition to shootable angles.
