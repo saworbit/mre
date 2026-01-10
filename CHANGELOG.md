@@ -1,5 +1,11 @@
 ## 2026-01-10
 
+- **Randomized bot spawning** with duplicate avoidance for variety:
+  - **Random selection** in `reaper_mre/botspawn.qc`: `AddAnotherBot()` generates random ID (1-36) using `floor(random() * 36.0) + 1` instead of sequential `NUMBOTS`.
+  - **Duplicate avoidance** in `reaper_mre/botspawn.qc`: Checks last 8 spawns (LAST_BOT_ID_0-7 ring buffer) before accepting random ID. Retries up to 20 times to find unused bot.
+  - **Global tracking** in `reaper_mre/botit_th.qc`: Added LAST_BOT_ID_0-7 float globals to maintain spawn history across all bot spawns.
+  - **Debug output** in `reaper_mre/botspawn.qc`: `dprint()` shows "Random bot ID: X (attempts: Y)" when `developer 1` enabled.
+  - **Result:** `impulse 205` and `impulse 208` now spawn random bots from full 36-character roster instead of always spawning Reaper → Omicron → Toxic → Karen in sequence. Different matchups every session.
 - **Directional fail memory** to prevent repeated failed approaches:
   - **Position + yaw bucketing** in `reaper_mre/botmove.qc`: 6-entry ring buffer tracks failed approaches (32-unit grid, 30° yaw buckets, 20s TTL).
   - **Heavy penalty (not hard blocking)** in `reaper_mre/botmove.qc`: Failed directions get -500 penalty (was -120), applied directly to score. Bots strongly avoid failed approaches but can still use them as "last resort" when ALL directions are bad. Prevents stuck detection death spiral caused by hard blocking.

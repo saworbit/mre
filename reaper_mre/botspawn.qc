@@ -1189,7 +1189,54 @@ void () AddAnotherBot =
 
    if (!teamplay)
    {
-      Bot_AssignIdentity (newbot,NUMBOTS);
+      // Randomize bot identity selection (1-36 bot profiles)
+      // Avoid duplicates by checking last 8 spawns
+      local float random_id;
+      local float attempts;
+      local float is_duplicate;
+      local string debug_str;
+
+      attempts = 0.000;
+      is_duplicate = TRUE;
+
+      // Try up to 20 times to find a bot not in recent history
+      while (((attempts < 20.000) && is_duplicate))
+      {
+         random_id = (floor ((random () * 36.000)) + SPAWNFLAG_SUPERSPIKE);
+
+         // Check if this ID was used recently
+         is_duplicate = FALSE;
+         if ((random_id == LAST_BOT_ID_0)) is_duplicate = TRUE;
+         if ((random_id == LAST_BOT_ID_1)) is_duplicate = TRUE;
+         if ((random_id == LAST_BOT_ID_2)) is_duplicate = TRUE;
+         if ((random_id == LAST_BOT_ID_3)) is_duplicate = TRUE;
+         if ((random_id == LAST_BOT_ID_4)) is_duplicate = TRUE;
+         if ((random_id == LAST_BOT_ID_5)) is_duplicate = TRUE;
+         if ((random_id == LAST_BOT_ID_6)) is_duplicate = TRUE;
+         if ((random_id == LAST_BOT_ID_7)) is_duplicate = TRUE;
+
+         attempts = (attempts + SPAWNFLAG_SUPERSPIKE);
+      } //end while
+
+      // Update history (ring buffer)
+      LAST_BOT_ID_7 = LAST_BOT_ID_6;
+      LAST_BOT_ID_6 = LAST_BOT_ID_5;
+      LAST_BOT_ID_5 = LAST_BOT_ID_4;
+      LAST_BOT_ID_4 = LAST_BOT_ID_3;
+      LAST_BOT_ID_3 = LAST_BOT_ID_2;
+      LAST_BOT_ID_2 = LAST_BOT_ID_1;
+      LAST_BOT_ID_1 = LAST_BOT_ID_0;
+      LAST_BOT_ID_0 = random_id;
+
+      dprint ("Random bot ID: ");
+      debug_str = ftos (random_id);
+      dprint (debug_str);
+      dprint (" (attempts: ");
+      debug_str = ftos (attempts);
+      dprint (debug_str);
+      dprint (")\n");
+
+      Bot_AssignIdentity (newbot,random_id);
       newbot.colormap = (newbot.fClientNo + SPAWNFLAG_SUPERSPIKE);
       if (NAMEBOTS)
       {

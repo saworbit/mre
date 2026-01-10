@@ -24,6 +24,42 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 ## Latest Features (2026-01)
 
+### Randomized Bot Spawning (2026-01-10)
+
+**NEW:** Bot spawning is now randomized with duplicate avoidance for variety in matches!
+
+When using `impulse 205` (spawn 1 bot) or `impulse 208` (spawn 4 bots), the system now randomly selects from the full roster of 36 bot personalities instead of always spawning them in sequential order.
+
+**Before:**
+- ❌ Always spawned bots in same order: Reaper → Omicron → Toxic → Karen...
+- ❌ Predictable matchups every session
+- ❌ Same bot colors and personalities every time
+
+**After:**
+- ✅ Random selection from 36 bot profiles on each spawn
+- ✅ Duplicate avoidance checks last 8 spawns (prevents immediate repeats)
+- ✅ Retry logic (up to 20 attempts) ensures variety
+- ✅ Different matchups every session for fresh gameplay
+
+**How it works:**
+1. Player uses `impulse 205` or `impulse 208` to spawn bot(s)
+2. System generates random ID (1-36) for each bot
+3. Checks last 8 spawns to avoid immediate duplicates
+4. Retries random selection if duplicate found (max 20 attempts)
+5. Assigns randomly selected identity (name, colors, personality, skill)
+
+**Example spawn sequences:**
+- Session 1: Thresh → Camper → DoomGuy → Omicron
+- Session 2: Zeus → Frog → Terminator → Slash
+- Session 3: Bitterman → Toxic → Oak → Gladiator
+
+**Technical Details:**
+- **Random selection**: `random() * 36.0` generates uniform distribution across all bot IDs
+- **Duplicate tracking**: 8-entry ring buffer maintains spawn history
+- **Retry limit**: 20 attempts prevents infinite loops if roster exhausted
+- **Identity mapping**: `Bot_AssignIdentity()` maps ID to name/colors/personality/skill
+- **Debug output**: `dprint()` shows selected ID and retry attempts (requires `developer 1`)
+
 ### Directional Fail Memory (2026-01-10)
 
 **NEW:** Bots remember failed approach angles and avoid repeating the same mistakes!

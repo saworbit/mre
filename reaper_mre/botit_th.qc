@@ -403,6 +403,15 @@ float MULTIENEMY    = 2048.000;
 float VERBOSEBOT;
 float BOTSPEED;
 float NUMBOTS;
+// Bot spawn randomization: Track last 8 bot IDs to avoid immediate duplicates
+float LAST_BOT_ID_0;
+float LAST_BOT_ID_1;
+float LAST_BOT_ID_2;
+float LAST_BOT_ID_3;
+float LAST_BOT_ID_4;
+float LAST_BOT_ID_5;
+float LAST_BOT_ID_6;
+float LAST_BOT_ID_7;
 float GRAVITY;
 float MAXJUMP;
 float INVGRENADELEVELDIST;
