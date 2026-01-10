@@ -104,6 +104,61 @@ In Quake, shallow water areas (waterlevel == 1) with recessed lips cause bots to
 - **Commit duration**: 1.2 seconds prevents boundary re-entry
 - **Performance**: Conditional check (`waterlevel > 0`) keeps dry-land overhead at zero
 
+### AI Cameraman Upgrades (2026-01-10)
+
+**NEW:** Spectator camera now features smooth motion interpolation, occlusion awareness, and intelligent framing!
+
+The AI Director (`impulse 99`) has been upgraded from simple attachment logic to cinematic-quality camera work with three major improvements.
+
+**The Problems:**
+- ❌ Camera jitters when bot physics updates at different rate than framerate
+- ❌ Camera tracks bots behind walls (stares at boring geometry)
+- ❌ Camera clips into walls in tight corridors (over-the-shoulder view buried in geometry)
+
+**The Solutions:**
+- ✅ **Motion Smoothing**: Exponential decay interpolation decouples camera from bot physics tick rate
+- ✅ **Occlusion Awareness**: Visibility checks prevent tracking bots behind walls
+- ✅ **Intelligent Framing**: Multi-candidate positioning probes for clear viewing angles
+
+**How it works:**
+
+**1. Motion Smoothing (Anti-Jitter)**
+- Camera position interpolates using `CamLerpVector()` with frametime-based smoothing
+- Angle tracking uses 8× frametime multiplier for responsive action tracking
+- Smoothness varies by mode:
+  - Fixed/Death: 2.0 (slow, dramatic drifts)
+  - Flyby: 4.0 (cinematic follow)
+  - Combat: 10.0 (fast action tracking)
+
+**2. Occlusion Awareness (No Wall-Staring)**
+- `CamActionScore()` traces line-of-sight from camera to bot before scoring
+- Can't see target → score = 0 (forces director to pick visible action)
+- Exception: Quad-wielding or high-frag leaders (15+ frags) get -500 penalty but still considered
+- Mid-range combat (100-600u) gets +100 bonus for cinematic value
+- Rocket launcher combat gets +50 priority
+
+**3. Intelligent Framing (Smart Positioning)**
+- `CamFlybyTarget()` probes 3 candidate positions:
+  1. Over-the-shoulder (right): 150u behind, 40u up, 40u right
+  2. Over-the-shoulder (left): If right is blocked by wall
+  3. High angle (fallback): 80u up, 60u back for cramped spaces
+- If ceiling hit, backs off 10u from wall to avoid clipping
+
+**Usage:**
+```
+impulse 208       // Spawn bots (repeat 3-4×)
+impulse 99        // AI Director (auto-tracking with occlusion awareness)
+impulse 50        // Flyby mode (cinematic orbiting with smart positioning)
+impulse 51        // Follow mode (over-shoulder with smooth interpolation)
+```
+
+**Technical Details:**
+- **Frametime-based interpolation**: `f = smooth_speed × frametime` (clamped to 1.0)
+- **Angle normalization**: `CamReAngle()` prevents 0°→360° wrap-around snapping
+- **Pitch clamping**: ±80° prevents awkward upside-down views
+- **LOS trace**: `traceline(camera, bot, TRUE, camera)` checks occlusion
+- **Multi-candidate probing**: `traceline(bot, candidate_pos, TRUE, bot)` finds clear shots
+
 ### Combat Reposition + Verticality-Aware Pursuit (2026-01-08)
 
 **NEW:** Bots stop "shadow chasing" directly under higher targets and reposition to shootable angles.

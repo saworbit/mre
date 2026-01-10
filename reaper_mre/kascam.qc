@@ -30,102 +30,67 @@ entity (entity ent) CamCycle =
 
 // ===== AI CAMERAMAN: Action Scoring System =====
 // Rates each bot by "excitement level" for intelligent camera tracking
+// [AI CAMERA] Occlusion-aware action scoring (prevents wall-staring)
 float (entity ent) CamActionScore =
 {
    local float score;
    local float dist_to_action;
 
-   score = 0;
+   score = 0.000;
 
-   // Dead/invalid entities get no score
-   if (!ent || ent.deadflag != DEAD_NO || ent.health <= 0)
+   // 1. VALIDITY CHECKS
+   if ((!ent || (ent.deadflag != DEAD_NO)) || (ent.health <= 0.000))
    {
-      return 0;
-   }
+      return (0.000);
+   } //end if
 
-   // COMBAT BONUS: Currently in a fight
-   if (ent.enemy != world && ent.enemy.health > 0)
+   // 2. VISIBILITY CHECK (The Critical AI Upgrade)
+   // Can the camera SEE this potential target?
+   // We trace from current camera pos to the target
+   traceline (self.origin,ent.origin,TRUE,self);
+
+   if (((trace_fraction < 1.000) && (trace_ent != ent)))
    {
-      score = score + 300;  // Active combat = high priority
-
-      // Close-quarters combat is more exciting
-      dist_to_action = vlen(ent.origin - ent.enemy.origin);
-      if (dist_to_action < 250)
+      // We can't see them directly.
+      // Only rare exception: If they are the LEADER or have QUAD, we might want to find them anyway.
+      // Otherwise, massive penalty.
+      if (((ent.items & IT_QUAD) || (ent.frags > 15.000)))
       {
-         score = score + 200;  // CQC bonus
-      }
-
-      // Low health combat = desperation (very exciting!)
-      if (ent.health < 40)
+         score = (score - 500.000);  // Still try, but low priority
+      } //end if
+      else
       {
-         score = score + 150;  // Underdog bonus
-      }
-      if (ent.enemy.health < 40)
+         return (0.000);  // Don't switch to boring walls
+      } //end if
+   } //end if
+
+   // 3. COMBAT HEURISTICS
+   if ((ent.enemy != world) && (ent.enemy.health > 0.000))
+   {
+      score = (score + 300.000);  // Base combat score
+
+      dist_to_action = vlen ((ent.origin - ent.enemy.origin));
+
+      // Bonus: Mid-range fights are more cinematic than point-blank hugging
+      if ((dist_to_action > 100.000) && (dist_to_action < 600.000))
       {
-         score = score + 100;  // Finishing blow bonus
-      }
-   }
+         score = (score + 100.000);
+      } //end if
 
-   // MOVEMENT BONUS: High-skill movement
-   if (vlen(ent.velocity) > 400)
-   {
-      score = score + 80;  // Fast movement (bunny hopping, rocket jumps)
-   }
-
-   // POWERUP BONUS: Has quad/pent/ring
-   if (ent.items & IT_QUAD)
-   {
-      score = score + 250;  // Quad damage = carnage potential
-   }
-   if (ent.items & IT_INVULNERABILITY)
-   {
-      score = score + 150;  // Pentagram = unstoppable
-   }
-   if (ent.items & IT_INVISIBILITY)
-   {
-      score = score + 100;  // Ring = stealth plays
-   }
-
-   // WEAPON BONUS: Has rockets (high action potential)
-   if (ent.weapon == IT_ROCKET_LAUNCHER && ent.ammo_rockets > 0)
-   {
-      score = score + 50;
-   }
-   if (ent.weapon == IT_LIGHTNING && ent.ammo_cells > 5)
-   {
-      score = score + 40;
-   }
-
-   // TACTICAL BONUS: Show off Fear Engine routing (MRE feature!)
-   // Bots making tactical decisions based on danger/traffic
-   if (ent.classname == "dmbot")
-   {
-      // If bot is wounded and avoiding combat (tactical retreat)
-      if (ent.health < 50 && !ent.enemy)
+      // Bonus: Rockets are fun to watch
+      if ((ent.weapon == IT_ROCKET_LAUNCHER))
       {
-         score = score + 120;  // Survival tactics = interesting AI
-      }
+         score = (score + 50.000);
+      } //end if
+   } //end if
 
-      // If bot is seeking powerup (strategic play)
-      if (ent.goalentity && ent.goalentity.classname == "item_artifact_super_damage")
-      {
-         score = score + 150;  // Quad pursuit
-      }
-   }
-
-   // LEADER BONUS: Top scorer gets attention
-   if (ent.frags > 5)
+   // 4. VELOCITY BONUS (Bunny hopping is cool)
+   if ((vlen (ent.velocity) > 350.000))
    {
-      score = score + (ent.frags * 10);  // Scale with skill
-   }
+      score = (score + 50.000);
+   } //end if
 
-   // STREAK BONUS: High frag count = hot action
-   if (ent.frags > 10)
-   {
-      score = score + 100;  // High scorer!
-   }
-
-   return score;
+   return (score);
 }; //end of the function CamActionScore
 
 void (entity ent) CamVectors =
@@ -380,75 +345,94 @@ float /* ERROR: Could not determine return type */ (vector vec) TryFlybyVector =
    return (fabs ((333.000 - vl)));
 }; //end of the function TryFlybyVector
 
+// [AI CAMERA] Smoothly interpolate vector to reduce camera jitter
+// Uses exponential decay smoothing to decouple camera from bot physics tick rate
+vector (vector current, vector target, float smooth_speed) CamLerpVector =
+{
+   local vector diff;
+   local float f;
+
+   // Calculate difference
+   diff = (target - current);
+
+   // Determine interpolation factor based on frametime
+   // Higher smooth_speed = faster snapping, Lower = more "cinematic" weight
+   f = (smooth_speed * frametime);
+
+   // Clamp to prevent overshooting
+   if ((f > 1.000))
+   {
+      f = 1.000;
+   } //end if
+
+   return (current + (diff * f));
+}; //end of the function CamLerpVector
+
+// [AI CAMERA] Smooth camera movement with frametime-based interpolation
 void (float speedv, float speeda) CamUpdatePos =
 {
-   local vector vec;
-   local vector v1;
-   local float vl;
+   local vector ideal_ang;
+   local float smooth_factor;
+   local vector new_ang;
 
-   traceline (self.origin,self.dest,TRUE,self);
-   if ((trace_fraction != CARRIED))
+   // 1. POSITION SMOOTHING
+   // If we are in a fixed mode, snap. If flying/following, smooth.
+   if ((self.state == CAM_FIXED) || (self.state == CAM_DEATH))
    {
-      speedv = REGULARTARGET;
-      speeda = REGULARTARGET;
-   } //end if
-   if ((speedv == REGULARTARGET))
-   {
-      setorigin (self,self.dest);
-
+      smooth_factor = 2.000;  // Slow, dramatic drifts
    } //end if
    else
    {
-      vec = (self.dest - self.origin);
-      vl = vlen (vec);
-      vec = normalize (vec);
-      vl = CamHurry (vl,speedv);
-      vec = (vl * vec);
-      setorigin (self,(self.origin + vec));
-   } //end if
-   self.fixangle = TRUE;
-   self.movetype = MOVETYPE_NONE;
-   if ((self.state != CAM_DEATH))
-   {
-      vec = vectoangles ((self.dest1 - self.dest));
-
-   } //end if
-   else
-   {
-      vec = vectoangles ((self.dest1 - self.origin));
-   } //end if
-   vec_z = REGULARTARGET;
-   vec_x = CamReAngle ((360.000 - vec_x));
-   vec_y = CamReAngle (vec_y);
-   if ((vec_x > 70.000))
-   {
-      vec_x = 70.000;
-
-   } //end if
-   else
-   {
-      if ((vec_x < -70.000))
+      if ((self.state == CAM_FLYBY))
       {
-         vec_x = -70.000;
+         smooth_factor = 4.000;  // Cinematic follow
+      } //end if
+      else
+      {
+         smooth_factor = 10.000;  // Fast action (combat)
       } //end if
    } //end if
-   if ((speeda == REGULARTARGET))
-   {
-      self.angles = vec;
-      self.mangle = VEC_ORIGIN;
 
+   // Instead of complex acceleration math, use robust linear interpolation
+   // This decouples the camera framerate from the bot's physics tick rate
+   setorigin (self,CamLerpVector (self.origin,self.dest,smooth_factor));
+
+   // 2. ANGLE SMOOTHING
+   self.fixangle = TRUE;
+   self.movetype = MOVETYPE_NONE;
+
+   if ((self.state != CAM_DEATH))
+   {
+      ideal_ang = vectoangles ((self.dest1 - self.origin));
    } //end if
    else
    {
-      v1 = CamSmooth ((self.angles_x - vec_x),self.mangle_x,speeda);
-      self.mangle_x = v1_y;
-      self.angles_x = (vec_x + v1_x);
-      v1 = CamSmooth ((self.angles_y - vec_y),self.mangle_y,speeda);
-      self.mangle_y = v1_y;
-      self.angles_y = (vec_y + v1_x);
-      self.angles_x = CamReAngle (self.angles_x);
-      self.angles_y = CamReAngle (self.angles_y);
+      ideal_ang = vectoangles ((self.dest1 - self.origin));
    } //end if
+
+   // Normalize angles to prevent 0->360 wrap-around snapping
+   ideal_ang_x = CamReAngle (ideal_ang_x);  // Pitch
+   ideal_ang_y = CamReAngle (ideal_ang_y);  // Yaw
+
+   // Clamp pitch to avoid awkward upside-down views
+   if ((ideal_ang_x > 80.000))
+   {
+      ideal_ang_x = 80.000;
+   } //end if
+   if ((ideal_ang_x < -80.000))
+   {
+      ideal_ang_x = -80.000;
+   } //end if
+
+   // Smooth the angles (Action needs faster tracking than position)
+   self.angles_x = CamReAngle (self.angles_x);
+   self.angles_y = CamReAngle (self.angles_y);
+
+   new_ang_x = (self.angles_x + (CamReAngle ((ideal_ang_x - self.angles_x)) * (frametime * 8.000)));
+   new_ang_y = (self.angles_y + (CamReAngle ((ideal_ang_y - self.angles_y)) * (frametime * 8.000)));
+   new_ang_z = 0.000;  // Keep horizon level
+
+   self.angles = new_ang;
    self.v_angle = self.angles;
 }; //end of the function CamUpdatePos
 
@@ -483,13 +467,49 @@ void () CamGoDeath =
    self.movetarget = world;
    self.search_time = (time + CAM_FREE);
 }; //end of the function CamGoDeath
+// [AI CAMERA] Smart camera positioning with occlusion avoidance
+// Finds a spot that sees the player and gives a clear view
 vector (entity ent) CamFlybyTarget =
 {
-   local vector vec;
+   local vector spot;
+   local vector dir_back;
+   local vector dir_up;
+   local vector dir_right;
 
-   vec = ent.origin;
-   vec_z = (ent.absmax_z - EF_DIMLIGHT);
-   return (vec);
+   makevectors (ent.v_angle);
+
+   // Base vectors relative to the target's view
+   dir_back = (v_forward * -150.000);  // Behind
+   dir_up = (v_up * 40.000);           // Up
+   dir_right = (v_right * 40.000);     // Side
+
+   // CANDIDATE 1: Classic Over-the-shoulder (Right)
+   spot = ((ent.origin + dir_back) + dir_up) + dir_right;
+   traceline (ent.origin,spot,TRUE,ent);
+   if ((trace_fraction == 1.000))
+   {
+      return (spot);  // Clear shot? Take it.
+   } //end if
+
+   // CANDIDATE 2: Over-the-shoulder (Left - if right is blocked)
+   spot = ((ent.origin + dir_back) + dir_up) - dir_right;
+   traceline (ent.origin,spot,TRUE,ent);
+   if ((trace_fraction == 1.000))
+   {
+      return (spot);
+   } //end if
+
+   // CANDIDATE 3: High Angle (Safety fallback for cramped corridors)
+   // Look down from ceiling height
+   spot = (ent.origin + (v_up * 80.000)) + (v_forward * -60.000);
+   traceline (ent.origin,spot,TRUE,ent);
+   // If we hit a ceiling, pull it in closer to the trace end
+   if ((trace_fraction < 1.000))
+   {
+      spot = (trace_endpos + (v_forward * 10.000));  // Back off slightly from wall
+   } //end if
+
+   return (spot);
 }; //end of the function CamFlybyTarget
 
 void (entity newtarg) CamInitFlybyMode =

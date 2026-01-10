@@ -159,11 +159,23 @@ impulse 99        // Back to AI auto-tracking
 impulse 98        // Return to player
 ```
 
-**AI Director Features:**
-- Automatically tracks most exciting action
-- Scores combat intensity, health drama, powerup plays
-- Smooth flyby transitions between targets
-- Re-evaluates best target every 2 seconds
+**AI Director Features (2026-01-10 Upgrades):**
+- **Motion Smoothing**: Frametime-based interpolation eliminates jitter
+  - Camera movement decoupled from bot physics tick rate
+  - Smooth factors: 2.0 (death), 4.0 (flyby), 10.0 (combat)
+  - Angle tracking with 8× frametime multiplier for responsive action
+- **Occlusion Awareness**: Only tracks visible action
+  - Traces line-of-sight before scoring targets
+  - Invisible bots get score=0 (no wall-staring!)
+  - Exception: Quad/high-frag leaders (15+) still considered with -500 penalty
+- **Intelligent Framing**: Probes multiple positions for clear shots
+  - Over-the-shoulder (right): 150u back, 40u up, 40u right
+  - Over-the-shoulder (left): If right blocked by wall
+  - High angle fallback: 80u up, 60u back for cramped spaces
+- **Action Scoring**: Prioritizes exciting moments
+  - Combat intensity, mid-range fights (100-600u), rocket launcher usage
+  - Fast movement (bunny hops, rocket jumps)
+  - Re-evaluates best target every 2 seconds
 
 ---
 
