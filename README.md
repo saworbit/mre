@@ -238,6 +238,100 @@ while (nearby_tele)
 - **Horizontal threshold**: 12 units (reduced from 16 to balance with vertical)
 - **Teleporter radius**: 128 units (catches nearby pads without false positives)
 
+### Projectile Prediction Enhancements (2026-01-10)
+
+**NEW:** Bots now accurately hit targets on moving platforms with skill-based accuracy!
+
+The Projectile Prediction System has been enhanced with moving platform compensation and skill-based accuracy degradation. All bots now use the quadratic prediction solver (previously only nightmare bots), but lower-skill bots get random inaccuracy added to create human-like miss rates.
+
+**Before:**
+- ❌ Bots miss targets riding moving trains/platforms
+- ❌ Sharp discontinuity: Skill 0-2 use simple leading, Skill 3 use quadratic
+- ❌ No visual feedback for prediction quality
+- ❌ Lower-skill bots are "dumb" (wrong algorithm), not "inaccurate"
+
+**After:**
+- ✅ Moving platform velocity compensation (trains, elevators, doors)
+- ✅ All skill levels use quadratic prediction (enables platform support)
+- ✅ Smooth accuracy progression: 35% → 42% → 85% → 100%
+- ✅ Debug visualization shows prediction quality (blue=perfect, yellow=degraded)
+
+**How it works:**
+
+**1. Moving Platform Compensation**
+```c
+if ((targ.flags & FL_ONGROUND) && targ.groundentity)
+{
+    if (groundentity is func_train/func_door/func_plat)
+    {
+        v = targ.velocity + groundentity.velocity;  // Add platform motion
+    }
+}
+```
+- Detects when target is standing on moving entity
+- Adds platform velocity to target's walking velocity
+- Quadratic solver predicts intercept with combined motion
+- Result: Perfect rockets on DM2 trains, E1M1 platforms, elevators
+
+**2. Skill-Based Accuracy Degradation**
+```c
+// Skill 0: 70u offset (~8° cone, 35% accuracy)
+// Skill 1: 50u offset (~6° cone, 42% accuracy)
+// Skill 2: 15u offset (~2° cone, 85% accuracy)
+// Skill 3: 0u offset (perfect aim, 100% accuracy)
+```
+- Perfect aim calculated via quadratic solver
+- Random 3D offset added based on skill level
+- Offset scales with distance (consistent angular error)
+- Result: Lower-skill bots miss realistically, nightmare bots rarely miss
+
+**3. Debug Visualization** (`impulse 95` required)
+- **Blue particles**: Perfect prediction path (nightmare bots)
+- **Yellow particles**: Degraded aim path (lower-skill bots)
+- **Particle trail**: 10 particles from bot to predicted impact point
+- **Impact marker**: Cluster of particles at predicted hit location
+
+**Usage:**
+```
+impulse 95        // Enable bot debug mode
+map dm2           // Load DM2 (has moving train)
+impulse 208       // Spawn bots (×4)
+noclip            // Fly around to see particle trails
+```
+
+**Debug Output (Console):**
+```
+Blue particle trail → Nightmare bot shooting at moving target
+Yellow particle trail → Novice bot shooting with random offset
+Impact cluster → Where rocket will hit (if prediction correct)
+```
+
+**Accuracy by Skill Level:**
+
+| Skill | Offset | Cone | Accuracy | Usage |
+|-------|--------|------|----------|-------|
+| 0 | 70 units | ~8° | 35% | Novice (easy to beat) |
+| 1 | 50 units | ~6° | 42% | Beginner (learning) |
+| 2 | 15 units | ~2° | 85% | Skilled (challenging) |
+| 3 | 0 units | 0° | 100% | Nightmare (perfect) |
+
+**Moving Platform Scenarios:**
+
+**DM2 Train:**
+- Old: Rockets miss players riding train (only compensates walking)
+- New: Rockets lead train velocity + player strafe (full motion)
+
+**E1M1 Platform Lift:**
+- Old: Bots shoot where target was, not where they're going
+- New: Bots predict lift velocity and intercept perfectly
+
+**Technical Details:**
+- **Platform detection**: Checks `groundentity.classname` for func_train/door/plat
+- **Velocity addition**: `v = targ.velocity + groundentity.velocity`
+- **Quadratic solver**: Already implemented in `PredictAim()` (botmath.qc:69-174)
+- **Degradation formula**: `degraded_aim = normalize((perfect_aim × 500) + random_offset)`
+- **Particle colors**: Blue=203 (perfect), Yellow=224 (degraded)
+
 ### Randomized Bot Spawning (2026-01-10)
 
 **NEW:** Bot spawning is now randomized with duplicate avoidance for variety in matches!

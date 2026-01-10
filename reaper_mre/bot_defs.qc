@@ -13,6 +13,10 @@ void (float dist) ai_botrun;
 void (float dist) ai_botseek;
 float (entity e) itemweight;
 
+// Projectile Prediction System (botmath.qc)
+vector (vector perfect_aim, float skill_level) DegradeAimBySkill;
+void (vector aim_dir, entity targ, float range, float is_degraded) ShowPredictionDebug;
+
 // Influence Map System (ai_influence.qc)
 entity (vector org) FindClosestWaypoint;
 float (entity wp) Influence_GetDanger;

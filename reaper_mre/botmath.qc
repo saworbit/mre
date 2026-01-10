@@ -86,8 +86,24 @@ vector (entity targ, float proj_speed) PredictAim =
    // Adjust for target height (aim at chest/center, not origin floor)
    D_z = (D_z + ((targ.mins_z + targ.maxs_z) * 0.500));
 
-   // Get target velocity
+   // ===== MOVING PLATFORM COMPENSATION =====
+   // If target is standing on a moving entity (train, door, platform),
+   // add the platform's velocity to the target's velocity for accurate prediction.
+   // Without this, bots miss targets riding trains/elevators.
    v = targ.velocity;
+
+   if ((targ.flags & FL_ONGROUND) && targ.groundentity)
+   {
+      // Check if standing on a moving platform
+      if ((targ.groundentity.classname == "func_train") ||
+          (targ.groundentity.classname == "func_door") ||
+          (targ.groundentity.classname == "func_plat"))
+      {
+         // Add platform velocity to target velocity (relative motion)
+         v = (v + targ.groundentity.velocity);
+      } //end if
+   } //end if
+   // ===== END MOVING PLATFORM COMPENSATION =====
 
    // ===== QUADRATIC EQUATION SETUP =====
    // Solving: t^2 * (v^2 - s^2) + t * (2 * D·v) + |D|^2 = 0
@@ -157,6 +173,103 @@ vector (entity targ, float proj_speed) PredictAim =
    return (normalize ((aim_spot - self.origin)));
 }; //end of the function PredictAim
 // ===== END ORACLE AIMING =====
+
+// ===== SKILL-BASED ACCURACY DEGRADATION =====
+// Adds random inaccuracy to aim based on bot skill level.
+// Makes lower-skill bots miss more often, creating human-like imperfection.
+// Skill 0-1: 30-40% accuracy (large random offset)
+// Skill 2: 85% accuracy (small random offset)
+// Skill 3: 100% accuracy (perfect aim, no offset)
+vector (vector perfect_aim, float skill_level) DegradeAimBySkill =
+{
+   local vector offset;
+   local float max_offset;
+   local vector degraded_aim;
+
+   // Skill 3: Perfect aim (no degradation)
+   if ((skill_level >= 3.000))
+   {
+      return (perfect_aim);
+   } //end if
+
+   // Calculate max offset based on skill
+   // Skill 0: 70 units offset at 500u range (~8° cone of error)
+   // Skill 1: 50 units offset at 500u range (~6° cone of error)
+   // Skill 2: 15 units offset at 500u range (~2° cone of error)
+   if ((skill_level < 1.000))
+   {
+      max_offset = 70.000;
+   } //end if
+   else if ((skill_level < 2.000))
+   {
+      max_offset = 50.000;
+   } //end if
+   else
+   {
+      max_offset = 15.000;
+   } //end if
+
+   // Generate random offset in 3D
+   // Each axis gets random value between -max_offset and +max_offset
+   offset_x = ((random () * max_offset * 2.000) - max_offset);
+   offset_y = ((random () * max_offset * 2.000) - max_offset);
+   offset_z = ((random () * max_offset * 2.000) - max_offset);
+
+   // Add offset to perfect aim vector
+   // Scale perfect_aim to ~500 units for consistent offset behavior
+   degraded_aim = ((perfect_aim * 500.000) + offset);
+
+   // Return normalized degraded aim
+   return (normalize (degraded_aim));
+}; //end of the function DegradeAimBySkill
+// ===== END SKILL-BASED ACCURACY DEGRADATION =====
+
+// ===== PREDICTION DEBUG VISUALIZATION =====
+// Shows predicted impact point and aim cone for debugging prediction accuracy.
+// Spawns colored particles at intercept point for visual feedback.
+// Blue = Perfect prediction, Yellow = Degraded aim (skill-based inaccuracy)
+void (vector aim_dir, entity targ, float range, float is_degraded) ShowPredictionDebug =
+{
+   local vector impact_point;
+   local float particle_color;
+   local float particle_count;
+
+   // Only show if bot debug is enabled
+   if (!bot_debug_enabled)
+   {
+      return ;
+   } //end if
+
+   // Calculate predicted impact point
+   impact_point = (self.origin + (aim_dir * range));
+
+   // Choose particle color based on whether aim was degraded
+   if (is_degraded)
+   {
+      particle_color = 224.000; // Yellow (degraded aim)
+      particle_count = 10.000;
+   } //end if
+   else
+   {
+      particle_color = 203.000; // Blue (perfect aim)
+      particle_count = 15.000;
+   } //end if
+
+   // Spawn particles at predicted impact point
+   particle (impact_point,'0.000 0.000 30.000',particle_color,particle_count);
+
+   // Draw line of sight (small particles along aim vector)
+   local vector step;
+   local float i;
+   step = (aim_dir * 50.000);
+   i = 0.000;
+   while ((i < 10.000))
+   {
+      particle ((self.origin + (step * i)),'0.000 0.000 10.000',particle_color,2.000);
+      i = (i + 1.000);
+   } //end while
+}; //end of the function ShowPredictionDebug
+// ===== END PREDICTION DEBUG VISUALIZATION =====
 
 // ===== ARTILLERY SOLVER: Perfect Grenade Arc (Quadratic Equation) =====
 // Solves projectile motion equation to find optimal grenade aim point.

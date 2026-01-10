@@ -205,24 +205,25 @@ vector () botaim =
       {
          if ((self.weapon & IT_ROCKET_LAUNCHER))
          {
-            // ===== ORACLE AIMING: Use quadratic prediction for high-skill bots =====
-            // Skill > 2: Use perfect interception math (PredictAim)
-            // Skill <= 2: Use simple linear leading (leadtarget)
-            if ((self.skil > 2.000))
-            {
-               // Perfect aim: solves quadratic equation for exact intercept
-               // Rocket speed: 1000 units/second
-               local vector aim_dir;
-               aim_dir = PredictAim (self.enemy,1000.000);
+            // ===== ORACLE AIMING: Quadratic prediction with skill-based accuracy =====
+            // All skill levels use PredictAim for moving platform support,
+            // but lower-skill bots get random inaccuracy added (DegradeAimBySkill).
+            // Skill 0-1: 30-40% accuracy (large random offset)
+            // Skill 2: 85% accuracy (small random offset)
+            // Skill 3: 100% accuracy (perfect aim)
+            local vector aim_dir;
+            aim_dir = PredictAim (self.enemy,1000.000);
 
-               // Convert direction back to target point for floor shooting logic
-               tg = (src + (aim_dir * vlen ((self.enemy.origin - src))));
-            } //end if
-            else
-            {
-               // Standard linear leading for lower-skill bots
-               tg = leadtarget (src,tg,0.001);
-            } //end if
+            // Apply skill-based accuracy degradation
+            local vector perfect_aim;
+            perfect_aim = aim_dir;
+            aim_dir = DegradeAimBySkill (aim_dir,self.skil);
+
+            // Debug visualization (requires impulse 95 bot debug mode)
+            ShowPredictionDebug (aim_dir,self.enemy,vlen ((self.enemy.origin - src)),(self.skil < 3.000));
+
+            // Convert direction back to target point for floor shooting logic
+            tg = (src + (aim_dir * vlen ((self.enemy.origin - src))));
             // ===== END ORACLE AIMING =====
 
             // ===== SPLASH MASTERY: Floor Shooting (The 'Floor Frag') =====

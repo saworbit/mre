@@ -94,6 +94,54 @@ impulse 96    // Cycle to LOG_TACTICAL (recommended for combat analysis)
 [Cheater] FEELER: Exploration mode activated (no waypoints nearby)
 ```
 
+### Projectile Prediction Visualization
+
+When `impulse 95` bot debug mode is enabled, bots display **visual particle trails** showing their projectile aim predictions in real-time.
+
+**What You See:**
+
+- **Blue particles** = Perfect aim (nightmare bots, skill 3)
+  - Shows exact quadratic prediction with moving platform compensation
+  - 10-particle trail from bot to predicted impact point
+  - Particle cluster at impact location
+
+- **Yellow particles** = Degraded aim (lower-skill bots, skills 0-2)
+  - Shows aim after skill-based random offset is applied
+  - Demonstrates intentional inaccuracy for difficulty scaling
+  - Larger spread indicates lower skill level
+
+**Usage:**
+```
+impulse 95        // Enable bot debug (also enables prediction viz)
+// Watch bots fire rockets - you'll see colored particle trails
+impulse 95        // Disable debug when done
+```
+
+**When to Use:**
+- **Debug accuracy issues**: Verify bots are aiming correctly
+- **Test platform compensation**: Confirm bots lead targets on moving trains/lifts
+- **Analyze skill progression**: Compare blue (perfect) vs yellow (degraded) aim
+- **Performance tuning**: Ensure prediction runs every frame without lag
+
+**Technical Details:**
+- Blue particles: Color 203 (bright blue in Quake palette)
+- Yellow particles: Color 224 (bright yellow in Quake palette)
+- Trail: 10 particles spaced evenly along aim vector
+- Impact: 5-10 particles at predicted hit location
+- Duration: ~5 seconds (standard Quake particle lifetime)
+
+**Example Scenario:**
+
+```
+// Test moving platform compensation on DM2
+map dm2
+skill 3
+impulse 208       // Spawn nightmare bot
+impulse 95        // Enable debug visualization
+// Watch bot shoot rockets at enemies riding the train
+// Blue particles should lead the train's movement perfectly
+```
+
 ---
 
 ## 📹 AI Cameraman (Spectator System)
@@ -351,6 +399,20 @@ quit
 python tools/analyze_bot_logs.py qconsole.log
 ```
 
+### "I want to test projectile prediction and accuracy"
+```
+map dm2           // DM2 has moving train platforms
+skill 3           // Nightmare bots (perfect aim)
+impulse 208       // Spawn bot 1
+impulse 208       // Spawn bot 2
+impulse 95        // Enable debug (shows blue prediction particles)
+// Watch blue trails perfectly lead targets on moving trains
+
+skill 0           // Switch to easy bots (degraded aim)
+impulse 208       // Spawn easy bot
+// Compare yellow trails (intentional inaccuracy) vs blue trails
+```
+
 ### "I want to teach bots new techniques"
 ```
 impulse 199       // Enable observation
@@ -444,6 +506,6 @@ All MRE impulses are within the safe 0-255 range.
 
 ---
 
-**Last Updated:** 2026-01-07
+**Last Updated:** 2026-01-10
 **Project:** Modern Reaper Enhancements (MRE)
 **Build:** 492,994 bytes (Fuzzy Logic)
