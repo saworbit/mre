@@ -738,6 +738,14 @@ void () BotPostThink =
    } //end if
    // =================================
 
+   // ===== PID AIMING CONTROLLER: Smooth Aim Update =====
+   // Update bot aim smoothly using PID control instead of instant snap.
+   // This replaces the traditional ChangeYaw/ChangePitch logic with physics-based smoothing.
+   // The PID controller reads ideal_yaw/ideal_pitch (set throughout the code) and smoothly
+   // transitions to those targets with realistic acceleration/deceleration.
+   Bot_UpdateAimPID ();
+   // ===== END PID AIMING =====
+
    fraglimit = cvar ("fraglimit");
    if ((fraglimit && (self.frags >= fraglimit)))
    {

@@ -240,6 +240,15 @@ float (entity targ, entity inflictor) CanDamage;
 .float is_retracing;      // State flag: Currently trying to backtrack to a breadcrumb?
 .vector old_goal_pos;     // Saved goal position before entering retrace mode
 // ===== END BREADCRUMBING =====
+// ===== PID AIMING CONTROLLER: Smooth, Human-Like Aim =====
+// Physics-based aim control loop (Proportional-Integral-Derivative).
+// Replaces robotic snap-to-target with smooth acceleration/deceleration.
+.float pid_error_sum_x;   // Pitch integral accumulator (for 'I' term)
+.float pid_error_sum_y;   // Yaw integral accumulator (for 'I' term)
+.float pid_last_error_x;  // Pitch derivative memory (for 'D' term)
+.float pid_last_error_y;  // Yaw derivative memory (for 'D' term)
+.float pid_last_update;   // Last PID update time (for dt calculation)
+// ===== END PID AIMING =====
 // Rocket jump cooldown timer: prevents spam RJ (2s delay between attempts).
 .float rj_cooldown;
 // PHASE 3 FIX: Rocket jump verification timer for failure recovery

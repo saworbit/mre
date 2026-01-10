@@ -481,3 +481,188 @@ float (float value, float min_val, float max_val, float power) inverse_smooth_cu
    return ((1.000 - smooth_curve (value, min_val, max_val, power)));
 }; //end of inverse_smooth_curve
 // ===== END FUZZY LOGIC =====
+
+// ===== PID AIMING CONTROLLER: Smooth, Human-Like Aim =====
+// Implements a physics-based control loop (Proportional-Integral-Derivative)
+// to replace robotic snap-to-target aiming with smooth acceleration/deceleration.
+// This makes bot aim look human: smooth acceleration, potential overshoot, micro-corrections.
+//
+// Mathematical foundation:
+//   Output = (Kp × Error) + (Ki × ∫Error dt) + (Kd × dError/dt)
+//
+// P (Proportional): "Target is left, turn left" (strength ∝ distance)
+// I (Integral): "Haven't reached target yet, push harder" (fixes steady lag)
+// D (Derivative): "Approaching too fast, slow down!" (prevents overshoot)
+
+// ===== ANGLE DIFFERENCE NORMALIZATION =====
+// Handles angle wrapping (359° → 1° = +2°, not -358°).
+// Returns angle difference normalized to [-180, 180] range.
+float (float ang) Math_AngleDiff =
+{
+   // Wrap angle to [-180, 180] range
+   while ((ang > 180.000))
+   {
+      ang = (ang - 360.000);
+   } //end while
+   while ((ang < -180.000))
+   {
+      ang = (ang + 360.000);
+   } //end while
+   return (ang);
+}; //end of Math_AngleDiff
+
+// ===== PID CONTROLLER CORE =====
+// Calculates the angular velocity (delta angle) needed to correct aiming error.
+// Parameters:
+//   bot: Entity running the PID loop
+//   current_ang: Current angle (pitch or yaw)
+//   ideal_ang: Desired target angle
+//   dt: Frame time delta (time since last update)
+//   axis_idx: 0 = pitch (X), 1 = yaw (Y)
+// Returns: Delta angle to apply this frame
+float (entity bot, float current_ang, float ideal_ang, float dt, float axis_idx) Math_PID =
+{
+   local float error;
+   local float derivative;
+   local float output;
+   local float Kp;
+   local float Ki;
+   local float Kd;
+   local float error_sum;
+   local float last_error;
+
+   // ===== TUNING VALUES: The "Personality" =====
+   // Fast, snappy aim:      Kp=12.0, Ki=0.0, Kd=0.5
+   // Smooth, cinematic aim: Kp=4.0,  Ki=0.1, Kd=1.0
+   // Balanced (default):    Kp=10.0, Ki=0.5, Kd=0.8
+   Kp = 10.000;
+   Ki = 0.500;
+   Kd = 0.800;
+
+   // Safety: Prevent divide-by-zero if dt is 0
+   if ((dt <= 0.000))
+   {
+      return (0.000);
+   } //end if
+
+   // 1. Calculate Error (Where I am vs Where I want to be)
+   error = Math_AngleDiff ((ideal_ang - current_ang));
+
+   // 2. Anti-Windup (Reset I term if target changed drastically)
+   // If error is huge (>45°), clear integral history to prevent spin-up
+   if ((fabs (error) > 45.000))
+   {
+      if ((axis_idx == 0.000))
+      {
+         bot.pid_error_sum_x = 0.000;
+      } //end if
+      else
+      {
+         bot.pid_error_sum_y = 0.000;
+      } //end else
+   } //end if
+
+   // 3. Process by Axis (Pitch X or Yaw Y)
+   if ((axis_idx == 0.000))
+   {
+      // PITCH (X axis)
+      // Accumulate integral term
+      bot.pid_error_sum_x = (bot.pid_error_sum_x + (error * dt));
+
+      // Clamp integral to prevent windup (prevents infinite spin)
+      if ((bot.pid_error_sum_x > 10.000))
+      {
+         bot.pid_error_sum_x = 10.000;
+      } //end if
+      if ((bot.pid_error_sum_x < -10.000))
+      {
+         bot.pid_error_sum_x = -10.000;
+      } //end if
+
+      // Calculate derivative (rate of change of error)
+      derivative = ((error - bot.pid_last_error_x) / dt);
+      bot.pid_last_error_x = error;
+
+      // Compute PID output
+      output = ((Kp * error) + (Ki * bot.pid_error_sum_x) + (Kd * derivative));
+   } //end if
+   else
+   {
+      // YAW (Y axis)
+      // Accumulate integral term
+      bot.pid_error_sum_y = (bot.pid_error_sum_y + (error * dt));
+
+      // Clamp integral to prevent windup
+      if ((bot.pid_error_sum_y > 10.000))
+      {
+         bot.pid_error_sum_y = 10.000;
+      } //end if
+      if ((bot.pid_error_sum_y < -10.000))
+      {
+         bot.pid_error_sum_y = -10.000;
+      } //end if
+
+      // Calculate derivative (rate of change of error)
+      derivative = ((error - bot.pid_last_error_y) / dt);
+      bot.pid_last_error_y = error;
+
+      // Compute PID output
+      output = ((Kp * error) + (Ki * bot.pid_error_sum_y) + (Kd * derivative));
+   } //end else
+
+   // 4. Return Delta (scaled by frametime)
+   return (output * dt);
+}; //end of Math_PID
+
+// ===== PID AIM UPDATE: Integration Function =====
+// Replaces traditional ChangeYaw/ChangePitch logic with smooth PID control.
+// Call this instead of ChangeYaw() + ChangePitch() for smooth aim.
+// Uses frametime for physics-correct delta calculations.
+void () Bot_UpdateAimPID =
+{
+   local float delta_yaw;
+   local float delta_pitch;
+   local float dt;
+
+   // Calculate delta time since last update
+   if ((self.pid_last_update == 0.000))
+   {
+      // First update, initialize timestamp
+      self.pid_last_update = time;
+      return ;
+   } //end if
+
+   dt = (time - self.pid_last_update);
+   self.pid_last_update = time;
+
+   // Safety: Prevent divide-by-zero or huge corrections
+   if (((dt <= 0.000) || (dt > 0.200)))
+   {
+      return ;
+   } //end if
+
+   // YAW (Horizontal aiming)
+   // axis_idx = 1
+   delta_yaw = Math_PID (self, self.angles_y, self.ideal_yaw, dt, 1.000);
+   self.angles_y = (self.angles_y + delta_yaw);
+
+   // PITCH (Vertical aiming)
+   // axis_idx = 0
+   delta_pitch = Math_PID (self, self.angles_x, self.ideal_pitch, dt, 0.000);
+   self.angles_x = (self.angles_x + delta_pitch);
+
+   // Clamp pitch to valid range (-45 to +45 degrees)
+   // Prevents bots from looking straight up/down (engine limitation)
+   if ((self.angles_x > 45.000))
+   {
+      self.angles_x = 45.000;
+   } //end if
+   if ((self.angles_x < -45.000))
+   {
+      self.angles_x = -45.000;
+   } //end if
+
+   // Keep head level (no roll)
+   self.angles_z = 0.000;
+}; //end of Bot_UpdateAimPID
+// ===== END PID AIMING CONTROLLER =====

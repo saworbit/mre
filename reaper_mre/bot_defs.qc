@@ -17,6 +17,11 @@ float (entity e) itemweight;
 vector (vector perfect_aim, float skill_level) DegradeAimBySkill;
 void (vector aim_dir, entity targ, float range, float is_degraded) ShowPredictionDebug;
 
+// PID Aiming Controller (botmath.qc)
+float (float ang) Math_AngleDiff;
+float (entity bot, float current_ang, float ideal_ang, float dt, float axis_idx) Math_PID;
+void () Bot_UpdateAimPID;
+
 // Influence Map System (ai_influence.qc)
 entity (vector org) FindClosestWaypoint;
 float (entity wp) Influence_GetDanger;

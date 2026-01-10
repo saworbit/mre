@@ -1026,6 +1026,15 @@ void () ChangePitch =
    local float ideal;
    local float move;
 
+   // ===== PID AIMING: Skip traditional pitch updates for bots =====
+   // Bots use the PID controller (Bot_UpdateAimPID) for smooth aiming.
+   // This function is only used for monsters and legacy code compatibility.
+   if (self.isbot)
+   {
+      return ;
+   } //end if
+   // ===== END PID AIMING =====
+
    current_pitch = self.angles_x;
    ideal = self.ideal_pitch;
    if ((ideal > 45.000))

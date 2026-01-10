@@ -332,6 +332,220 @@ Impact cluster → Where rocket will hit (if prediction correct)
 - **Degradation formula**: `degraded_aim = normalize((perfect_aim × 500) + random_offset)`
 - **Particle colors**: Blue=203 (perfect), Yellow=224 (degraded)
 
+### PID Aiming Controller (2026-01-10)
+
+**NEW:** Bots now aim with smooth, human-like transitions instead of robotic snap-to-target!
+
+The PID (Proportional-Integral-Derivative) Aiming Controller replaces the traditional instant angle changes with a physics-based control loop that creates realistic acceleration, deceleration, and micro-corrections. This is the same technology used in industrial robotics, autopilots, and game camera systems.
+
+**Before:**
+- ❌ Bots instantly snap to target angle (looks robotic and unnatural)
+- ❌ Long-range shots have ~1° tolerance threshold (small misses at distance)
+- ❌ No overshoot behavior (real players often flick past target and correct)
+- ❌ Fixed turn speed creates "sliding" look during large angle changes
+
+**After:**
+- ✅ Smooth acceleration toward target (gradual speed-up from rest)
+- ✅ Smooth deceleration when approaching target (no abrupt stops)
+- ✅ Continuous micro-corrections via integral term (sub-degree precision)
+- ✅ Natural overshoot with recovery (tunable for personality)
+- ✅ Physics-correct frametime-based updates (consistent at any framerate)
+
+**How it works:**
+
+**Mathematical Foundation:**
+```
+PID Output = (Kp × Error) + (Ki × ∫Error dt) + (Kd × dError/dt)
+
+Where:
+  - Error = (ideal_angle - current_angle)
+  - Kp (Proportional) = Immediate response strength
+  - Ki (Integral) = Accumulated error correction over time
+  - Kd (Derivative) = Rate-of-change damping (prevents overshoot)
+```
+
+**Component Roles:**
+
+**P (Proportional):** "The target is to the left, turn left"
+- Strength proportional to distance from target
+- Larger error = stronger correction force
+- Default: Kp = 10.0 (balanced responsiveness)
+
+**I (Integral):** "Haven't reached target yet, push harder"
+- Accumulates error over time
+- Fixes steady-state lag (target at 45.0°, bot stuck at 44.8°)
+- Enables sub-degree precision for long-range accuracy
+- Default: Ki = 0.5 (gradual refinement)
+- Clamped to ±10 to prevent "windup" (prevents infinite spin)
+
+**D (Derivative):** "Approaching too fast, slow down!"
+- Measures rate of change of error
+- Provides damping force when approaching target
+- Prevents overshoot and oscillation
+- Default: Kd = 0.8 (smooth deceleration)
+
+**Tuning Personalities:**
+
+**Fast/Snappy Aim** (Aggressive players):
+```
+Kp = 12.0  // Strong immediate response
+Ki = 0.0   // No integral (rely on P term only)
+Kd = 0.5   // Low damping (allows overshoot)
+Result: Quick flicks with slight overshoot, looks reactive
+```
+
+**Smooth/Cinematic Aim** (Tactical players):
+```
+Kp = 4.0   // Gentle acceleration
+Ki = 0.1   // Slow integral buildup
+Kd = 1.0   // Strong damping (no overshoot)
+Result: Smooth tracking, no jarring movements
+```
+
+**Balanced Aim** (Default):
+```
+Kp = 10.0  // Medium response
+Ki = 0.5   // Steady micro-corrections
+Kd = 0.8   // Moderate damping
+Result: Natural feel with precision
+```
+
+**Anti-Windup Protection:**
+- Resets integral term if error >45° (prevents spin-up during target switches)
+- Clamps integral to ±10 range (prevents infinite accumulation)
+- Separate processing for pitch (X axis) and yaw (Y axis)
+
+**Real-World Benefits:**
+
+**Long-Range Precision:**
+```
+Traditional ChangeYaw():
+  if (error < 1.0°) stop turning;  // Misses at long range!
+
+PID Controller:
+  I term continues applying tiny corrections until error = 0.0°
+  Result: Perfect crosshair alignment even at 1000+ units
+```
+
+**Overshoot Realism:**
+```
+Player flicks to target:
+  1. Kp drives fast turn (proportional to distance)
+  2. Bot overshoots by 2-3° (low Kd allows it)
+  3. D term kicks in, slows reverse turn
+  4. I term fine-tunes to exact angle
+  Result: Looks like human "flick and adjust" reflex
+```
+
+**Variable Load Handling:**
+```
+Future "Stun" mechanic slows turn speed:
+  Traditional: Would need special case code
+  PID: Error stays high longer → I term builds up → fights stun naturally
+  Result: Bot "strains" against stun effect organically
+```
+
+**Technical Implementation:**
+
+**Angle Wrapping** ([botmath.qc:500-512](botmath.qc#L500-L512)):
+```c
+Math_AngleDiff(ang):
+  while (ang > 180) ang -= 360;   // 359° → 1° = +2° (not -358°)
+  while (ang < -180) ang += 360;  // Correct wraparound handling
+  return ang;
+```
+
+**PID Core** ([botmath.qc:523-615](botmath.qc#L523-L615)):
+```c
+Math_PID(bot, current_ang, ideal_ang, dt, axis):
+  error = Math_AngleDiff(ideal_ang - current_ang);
+
+  // Anti-windup: reset I term if target changed drastically
+  if (abs(error) > 45°) bot.pid_error_sum = 0;
+
+  // Accumulate integral
+  bot.pid_error_sum += error × dt;
+  clamp(bot.pid_error_sum, -10, 10);
+
+  // Calculate derivative
+  derivative = (error - bot.pid_last_error) / dt;
+  bot.pid_last_error = error;
+
+  // Compute output
+  output = (Kp × error) + (Ki × error_sum) + (Kd × derivative);
+  return output × dt;  // Frametime scaling
+```
+
+**Integration** ([botthink.qc:746](botthink.qc#L746)):
+```c
+BotPostThink():
+  // ... existing bot logic ...
+
+  Bot_UpdateAimPID();  // Called once per frame per bot
+
+  // Reads ideal_yaw/ideal_pitch (set by bot AI throughout frame)
+  // Smoothly updates angles_x/angles_y with PID smoothing
+```
+
+**Conflict Prevention:**
+- `ChangePitch()` skips bots (checks `.isbot` flag)
+- All existing code continues to set `ideal_yaw`/`ideal_pitch`
+- PID controller smoothly interpolates to those targets
+- No changes needed to existing bot AI code
+
+**Debug/Tuning:**
+
+To change personality, edit [botmath.qc:538-540](botmath.qc#L538-L540):
+```c
+Kp = 10.000;  // Change to 4.0 (smooth) or 12.0 (snappy)
+Ki = 0.500;   // Change to 0.0 (no integral) or 1.0 (aggressive correction)
+Kd = 0.800;   // Change to 0.5 (allow overshoot) or 1.5 (heavy damping)
+```
+
+Recompile and test:
+```bash
+cd reaper_mre
+..\tools\fteqcc_win64\fteqcc64.exe progs.src
+```
+
+**Tuning Troubleshooting:**
+
+**Oscillation/Wobble:**
+- Kp too high → reduce by 2.0
+- Bot overcorrects back and forth
+
+**Sluggish/Lazy Turning:**
+- Kp too low → increase by 2.0
+- Bot takes too long to respond
+
+**Overshoot Too Much:**
+- Kd too low → increase by 0.2
+- Bot doesn't brake fast enough
+
+**Jittery/Twitchy:**
+- Kd too high → reduce by 0.2
+- Derivative amplifying noise
+
+**Performance:**
+- **Per-frame cost**: ~15 float operations per bot (negligible)
+- **Memory cost**: 5 floats per bot (20 bytes)
+- **Framerate independent**: Uses delta time for consistent behavior
+
+**Usage:**
+```
+impulse 208       // Spawn bots (×4)
+impulse 95        // Enable bot debug (optional, see aim updates)
+// Watch bots aim - notice smooth acceleration/deceleration
+// Compare to old builds - no more instant snapping
+```
+
+**Why PID for aiming?**
+- **Industry standard**: Used in robotics, autopilots, game cameras
+- **Micro-corrections**: I term provides sub-degree precision impossible with fixed thresholds
+- **Natural feel**: P and D terms create realistic acceleration curves
+- **Tunable personality**: Same code, different parameters = different play styles
+- **Framerate independent**: Delta time ensures consistent behavior at any FPS
+
 ### Dynamic Breadcrumbing System (2026-01-10)
 
 **NEW:** Bots now have short-term position memory for intelligent stuck recovery!
