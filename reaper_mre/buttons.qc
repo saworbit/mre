@@ -45,7 +45,7 @@ void () button_fire =
 void () button_use =
 {
    self.enemy = activator;
-   if ((other.classname == "dmbot"))
+   if ((other.isbot))
    {
       bot_triggered (other);
    } //end if
@@ -64,7 +64,7 @@ void () button_touch =
       } //end if
    } //end if
    self.enemy = other;
-   if ((other.classname == "dmbot"))
+   if ((other.isbot))
    {
       bot_triggered (other);
    } //end if
@@ -76,7 +76,7 @@ void () button_killed =
    self.enemy = damage_attacker;
    self.health = self.max_health;
    self.takedamage = DAMAGE_NO;
-   if ((other.classname == "dmbot"))
+   if ((other.isbot))
    {
       bot_triggered (other);
    } //end if

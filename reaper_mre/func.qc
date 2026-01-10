@@ -26,11 +26,11 @@ void () fix_watertype_bug =
 {
    local entity bot;
 
-   bot = find (world,classname,"dmbot");
+   bot = findbot (world);
    while (bot)
    {
       bot.watertype = MSG_BROADCAST;
-      bot = find (bot,classname,"dmbot");
+      bot = findbot (bot);
    } //end while
 }; //end of the function fix_watertype_bug
 entity () find_bot =
@@ -42,7 +42,7 @@ entity () find_bot =
 
    selected = world;
    best_dist = 9999.000;
-   head = find (world,classname,"dmbot");
+   head = findbot (world);
    while (head)
    {
       dist = vlen ((self.origin - head.origin));
@@ -53,7 +53,7 @@ entity () find_bot =
          best_dist = dist;
          selected = head;
       } //end if
-      head = find (head,classname,"dmbot");
+      head = findbot (head);
    } //end while
    return (selected);
 }; //end of the function find_bot

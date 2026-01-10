@@ -21,14 +21,14 @@ void (entity e, float newskin) skinChange =
    {
       if ((e.classname == "player"))
       {
-         b = find (world,classname,"dmbot");
+         b = findbot (world);
          while (b)
          {
             if ((b.team == e.team))
             {
                b.skin = e.skin;
             } //end if
-            b = find (b,classname,"dmbot");
+            b = findbot (b);
          } //end while
       } //end if
    } //end if
@@ -45,11 +45,11 @@ void () removeSkins =
       e.skin = FALSE;
       e = find (e,classname,"player");
    } //end while
-   e = find (world,classname,"dmbot");
+   e = findbot (world);
    while (e)
    {
       e.skin = FALSE;
-      e = find (e,classname,"dmbot");
+      e = findbot (e);
    } //end while
 }; //end of the function removeSkins
 

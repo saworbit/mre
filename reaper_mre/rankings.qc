@@ -132,7 +132,7 @@ void (float clientno) botInvalidClientNo =
 {
    local entity bot;
 
-   bot = find (world,classname,"dmbot");
+   bot = findbot (world);
    while (bot)
    {
       if ((bot.fClientNo == clientno))
@@ -154,7 +154,7 @@ void (float clientno) botInvalidClientNo =
          } //end if
          return ;
       } //end if
-      bot = find (bot,classname,"dmbot");
+      bot = findbot (bot);
    } //end while
 }; //end of the function botInvalidClientNo
 

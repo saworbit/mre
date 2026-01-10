@@ -146,11 +146,11 @@ void () health_touch =
          return ;
       } //end if
    } //end if
-   if ((other.classname == "dmbot"))
+   if ((other.isbot))
    {
       bot_toucheditem ();
    } //end if
-   if ((other.classname == "player"))
+   if ((other.classname == "player" && !other.isbot))
    {
       sprint (other,"You receive ");
       s = ftos (self.healamount);
@@ -158,7 +158,7 @@ void () health_touch =
       sprint (other," health\n");
    } //end if
    sound (other,CHAN_ITEM,self.noise,TRUE,ATTN_NORM);
-   if ((other.classname == "player"))
+   if ((other.classname == "player" && !other.isbot))
    {
       stuffcmd (other,"bf\n");
    } //end if
@@ -265,16 +265,16 @@ void () armor_touch =
       self.nextthink = (time + LOOPTIME);
    } //end if
    self.think = SUB_regen;
-   if ((other.classname == "dmbot"))
+   if ((other.isbot))
    {
       bot_toucheditem ();
    } //end if
-   if ((other.classname == "player"))
+   if ((other.classname == "player" && !other.isbot))
    {
       sprint (other,"You got armor\n");
    } //end if
    sound (other,CHAN_ITEM,"items/armor1.wav",TRUE,ATTN_NORM);
-   if ((other.classname == "player"))
+   if ((other.classname == "player" && !other.isbot))
    {
       stuffcmd (other,"bf\n");
    } //end if
@@ -514,14 +514,14 @@ void () weapon_touch =
          } //end if
       } //end if
    } //end if
-   if ((other.classname == "player"))
+   if ((other.classname == "player" && !other.isbot))
    {
       sprint (other,"You got the ");
       sprint (other,self.netname);
       sprint (other,"\n");
    } //end if
    sound (other,CHAN_ITEM,"weapons/pkup.wav",H_ROTTEN,ATTN_NORM);
-   if ((other.classname == "player"))
+   if ((other.classname == "player" && !other.isbot))
    {
       stuffcmd (other,"bf\n");
    } //end if
@@ -686,19 +686,19 @@ void () ammo_touch =
       } //end if
       other.ammo_cells = (other.ammo_cells + self.aflag);
    } //end if
-   if ((other.classname == "dmbot"))
+   if ((other.isbot))
    {
       bot_toucheditem ();
    } //end if
    bound_other_ammo ();
-   if ((other.classname == "player"))
+   if ((other.classname == "player" && !other.isbot))
    {
       sprint (other,"You got the ");
       sprint (other,self.netname);
       sprint (other,"\n");
    } //end if
    sound (other,CHAN_ITEM,"weapons/lock4.wav",H_ROTTEN,ATTN_NORM);
-   if ((other.classname == "player"))
+   if ((other.classname == "player" && !other.isbot))
    {
       stuffcmd (other,"bf\n");
    } //end if
@@ -897,14 +897,14 @@ void () key_touch =
    {
       return ;
    } //end if
-   if ((other.classname == "player"))
+   if ((other.classname == "player" && !other.isbot))
    {
       sprint (other,"You got the ");
       sprint (other,self.netname);
       sprint (other,"\n");
    } //end if
    sound (other,CHAN_ITEM,self.noise,WEAPON_SHOTGUN,ATTN_NORM);
-   if ((other.classname == "player"))
+   if ((other.classname == "player" && !other.isbot))
    {
       stuffcmd (other,"bf\n");
    } //end if
@@ -1072,7 +1072,7 @@ void () powerup_touch =
    {
       return ;
    } //end if
-   if ((other.classname == "player"))
+   if ((other.classname == "player" && !other.isbot))
    {
       sprint (other,"You got the ");
       sprint (other,self.netname);
@@ -1095,7 +1095,7 @@ void () powerup_touch =
       self.think = SUB_regen;
    } //end if
    sound (other,CHAN_VOICE,self.noise,TRUE,ATTN_NORM);
-   if ((other.classname == "player"))
+   if ((other.classname == "player" && !other.isbot))
    {
       stuffcmd (other,"bf\n");
    } //end if
@@ -1222,7 +1222,7 @@ void () BackpackTouch =
          return ;
       } //end if
    } //end if
-   if ((other.classname == "dmbot"))
+   if ((other.isbot))
    {
       bot_toucheditem ();
    } //end if
@@ -1249,7 +1249,7 @@ void () BackpackTouch =
    } //end if
    other.items = (other.items | new);
    bound_other_ammo ();
-   if ((other.classname == "player"))
+   if ((other.classname == "player" && !other.isbot))
    {
       sprint (other,"You get ");
       if (self.ammo_shells)
@@ -1279,7 +1279,7 @@ void () BackpackTouch =
       sprint (other,"\n");
    } //end if
    sound (other,CHAN_ITEM,"weapons/lock4.wav",TRUE,ATTN_NORM);
-   if ((other.classname == "player"))
+   if ((other.classname == "player" && !other.isbot))
    {
       stuffcmd (other,"bf\n");
    } //end if

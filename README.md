@@ -2518,9 +2518,23 @@ This project builds upon the classic **Reaper Bot** (1998) with modern enhanceme
 
 ## Known Issues (2026-01)
 
-- Bot model colors appear identical in-world even though the scoreboard shows distinct colors.
-  - What we tried: restored `colormap = fClientNo + 1`, removed shirt/pants colormap packing, enforced `FL_CLIENT` on bot spawn, and verified colors are sent via `msgUpdateColorsToAll`.
-  - Suspected causes: engine setting that disables model colors (`r_nocolors` / `r_noskins`), or a player model that does not support color ranges.
+- **Bot model colors appear identical in-world** even though the scoreboard shows distinct colors.
+
+  **What we tried:**
+  1. Restored `colormap = fClientNo + 1`, removed shirt/pants colormap packing, enforced `FL_CLIENT` on bot spawn
+  2. Verified colors are sent via `msgUpdateColorsToAll()` with proper shirt/pants values
+  3. Changed bot classname from "dmbot" to "player" (since engine applies colors to "player" entities)
+     - Added `.isbot` flag to distinguish bots from real players
+     - Created `findbot()` helper function to iterate bots (since `find(world, classname, "dmbot")` no longer works)
+     - Protected all network commands (`stuffcmd`, `sprint`) to skip bots (prevents "Parm 0 not a client" crash)
+     - Updated 100+ references across codebase from classname checks to `isbot` checks
+
+  **Result:** Scoreboard colors correct, no crashes, but in-world model colors still identical
+
+  **Suspected causes:**
+  - Engine setting that disables model colors (`r_nocolors 1` / `r_noskins 1`)
+  - Player model (`progs/player.mdl`) may not have proper color ranges defined
+  - Engine may require additional network message for in-world color updates beyond `MSG_UPDATECOLORS`
 
 ---
 ## 🙏 Credits

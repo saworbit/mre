@@ -57,7 +57,7 @@ void () SetChangeParms =
    {
       parm4 = ((parm4 + (self.skin * FL_ONGROUND)) + (IT_ARMOR2 * SKINSMODE));
    } //end if
-   e = find (world,classname,"dmbot");
+   e = findbot (world);
    offset = WEAPON_SHOTGUN;
    toffset = WEAPON_SHOTGUN;
    parm10 = CAM_IDLE;
@@ -93,7 +93,7 @@ void () SetChangeParms =
             } //end if
          } //end if
       } //end if
-      e = find (e,classname,"dmbot");
+      e = findbot (e);
    } //end while
 }; //end of the function SetChangeParms
 
@@ -1039,6 +1039,9 @@ void () CheckPowerups =
    {
       return ;
    } //end if
+   // Skip network commands (sprint/stuffcmd) for bots
+   local float skip_network;
+   skip_network = self.isbot;
    if (self.invisible_finished)
    {
       if ((self.invisible_sound < time))
@@ -1050,15 +1053,15 @@ void () CheckPowerups =
       {
          if ((self.invisible_time == TRUE))
          {
-            sprint (self,"Ring of Shadows magic is fading\n");
-            stuffcmd (self,"bf\n");
+            if (!skip_network) sprint (self,"Ring of Shadows magic is fading\n");
+            if (!skip_network) stuffcmd (self,"bf\n");
             sound (self,CHAN_AUTO,"items/inv2.wav",TRUE,ATTN_NORM);
             self.invisible_time = (time + TRUE);
          } //end if
          if ((self.invisible_time < time))
          {
             self.invisible_time = (time + TRUE);
-            stuffcmd (self,"bf\n");
+            if (!skip_network) stuffcmd (self,"bf\n");
          } //end if
       } //end if
       if ((self.invisible_finished < time))
@@ -1081,15 +1084,15 @@ void () CheckPowerups =
       {
          if ((self.invincible_time == TRUE))
          {
-            sprint (self,"Protection is almost burned out\n");
-            stuffcmd (self,"bf\n");
+            if (!skip_network) sprint (self,"Protection is almost burned out\n");
+            if (!skip_network) stuffcmd (self,"bf\n");
             sound (self,CHAN_AUTO,"items/protect2.wav",TRUE,ATTN_NORM);
             self.invincible_time = (time + TRUE);
          } //end if
          if ((self.invincible_time < time))
          {
             self.invincible_time = (time + TRUE);
-            stuffcmd (self,"bf\n");
+            if (!skip_network) stuffcmd (self,"bf\n");
          } //end if
       } //end if
       if ((self.invincible_finished < time))
@@ -1114,15 +1117,15 @@ void () CheckPowerups =
       {
          if ((self.super_time == TRUE))
          {
-            sprint (self,"Quad Damage is wearing off\n");
-            stuffcmd (self,"bf\n");
+            if (!skip_network) sprint (self,"Quad Damage is wearing off\n");
+            if (!skip_network) stuffcmd (self,"bf\n");
             sound (self,CHAN_AUTO,"items/damage2.wav",TRUE,ATTN_NORM);
             self.super_time = (time + TRUE);
          } //end if
          if ((self.super_time < time))
          {
             self.super_time = (time + TRUE);
-            stuffcmd (self,"bf\n");
+            if (!skip_network) stuffcmd (self,"bf\n");
          } //end if
       } //end if
       if ((self.super_damage_finished < time))
@@ -1148,15 +1151,15 @@ void () CheckPowerups =
       {
          if ((self.rad_time == TRUE))
          {
-            sprint (self,"Air supply in Biosuit expiring\n");
-            stuffcmd (self,"bf\n");
+            if (!skip_network) sprint (self,"Air supply in Biosuit expiring\n");
+            if (!skip_network) stuffcmd (self,"bf\n");
             sound (self,CHAN_AUTO,"items/suit2.wav",TRUE,ATTN_NORM);
             self.rad_time = (time + TRUE);
          } //end if
          if ((self.rad_time < time))
          {
             self.rad_time = (time + TRUE);
-            stuffcmd (self,"bf\n");
+            if (!skip_network) stuffcmd (self,"bf\n");
          } //end if
       } //end if
       if ((self.radsuit_finished < time))
@@ -1327,13 +1330,13 @@ void () ClientConnect =
       botInvalidClientNo (self.fClientNo);
    } //end if
    clientSetUsed (self.fClientNo);
-   bot = find (world,classname,"dmbot");
+   bot = findbot (world);
    while (bot)
    {
       msgUpdateNameToPlayer (self,bot.fClientNo,bot.netname);
       msgUpdateColorsToPlayer (self,bot.fClientNo,bot.fShirt,bot.fPants);
       msgUpdateFragsToPlayer (self,bot.fClientNo,bot.frags);
-      bot = find (bot,classname,"dmbot");
+      bot = findbot (bot);
    } //end while
    bprint (self.netname);
    bprint (" entered the game\n");
@@ -1374,7 +1377,7 @@ void (entity targ, entity attacker) ClientObituary =
    local string deathstring2;
 
    rnum = random ();
-   if (((targ.classname == "player") || (targ.classname == "dmbot")))
+   if ((targ.classname == "player"))
    {
       if ((attacker.classname == "teledeath"))
       {
@@ -1384,13 +1387,13 @@ void (entity targ, entity attacker) ClientObituary =
          bprint (attacker.owner.teamname);
          bprint (attacker.owner.netname);
          bprint ("\n");
-         if ((attacker.owner.classname == "dmbot"))
+         if ((attacker.owner.isbot))
          {
             TELEFRAGFLAG = TRUE;
          } //end if
          attacker.owner.frags = (attacker.owner.frags + TRUE);
          countkill (attacker.owner,targ);
-         if ((attacker.owner.classname == "dmbot"))
+         if ((attacker.owner.isbot))
          {
             msgUpdateFragsToAll (attacker.owner.fClientNo,attacker.owner.frags);
          } //end if
@@ -1404,18 +1407,18 @@ void (entity targ, entity attacker) ClientObituary =
          bprint ("'s telefrag\n");
          countkill (targ,targ);
          targ.frags = (targ.frags - TRUE);
-         if ((targ.classname == "dmbot"))
+         if ((targ.isbot))
          {
             msgUpdateFragsToAll (targ.fClientNo,targ.frags);
          } //end if
          return ;
       } //end if
-      if (((attacker.classname == "player") || (attacker.classname == "dmbot")))
+      if ((attacker.classname == "player"))
       {
          if ((targ == attacker))
          {
             attacker.frags = (attacker.frags - TRUE);
-            if ((attacker.classname == "dmbot"))
+            if ((attacker.isbot))
             {
                msgUpdateFragsToAll (attacker.fClientNo,attacker.frags);
             } //end if
@@ -1452,7 +1455,7 @@ void (entity targ, entity attacker) ClientObituary =
             if ((deathmatch == TE_LIGHTNING1))
             {
                targ.frags = (targ.frags - CARRIED);
-               if ((targ.classname == "dmbot"))
+               if ((targ.isbot))
                {
                   msgUpdateFragsToAll (targ.fClientNo,targ.frags);
                } //end if
@@ -1463,7 +1466,7 @@ void (entity targ, entity attacker) ClientObituary =
                if ((deathmatch != TE_LIGHTNING1))
                {
                   attacker.frags = (attacker.frags + TRUE);
-                  if ((attacker.classname == "dmbot"))
+                  if ((attacker.isbot))
                   {
                      msgUpdateFragsToAll (attacker.fClientNo,attacker.frags);
                   } //end if
@@ -1473,7 +1476,7 @@ void (entity targ, entity attacker) ClientObituary =
 
             // ===== CHAT HOOK: KILL =====
             // If attacker is a bot (and not suicide), taunt victim (35% chance)
-            if ((attacker.classname == "dmbot"))
+            if ((attacker.isbot))
             {
                local entity oself;
 
@@ -1561,7 +1564,7 @@ void (entity targ, entity attacker) ClientObituary =
          targ.frags = (targ.frags - TRUE);
          rnum = targ.watertype;
          countkill (targ,targ);
-         if ((targ.classname == "dmbot"))
+         if ((targ.isbot))
          {
             msgUpdateFragsToAll (targ.fClientNo,targ.frags);
          } //end if

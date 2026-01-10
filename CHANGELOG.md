@@ -6,6 +6,13 @@
   - **Global tracking** in `reaper_mre/botit_th.qc`: Added LAST_BOT_ID_0-7 float globals to maintain spawn history across all bot spawns.
   - **Debug output** in `reaper_mre/botspawn.qc`: `dprint()` shows "Random bot ID: X (attempts: Y)" when `developer 1` enabled.
   - **Result:** `impulse 205` and `impulse 208` now spawn random bots from full 36-character roster instead of always spawning Reaper → Omicron → Toxic → Karen in sequence. Different matchups every session.
+- **Bot color rendering attempt** to fix identical in-world model colors:
+  - **Bot classname change** in `reaper_mre/botspawn.qc`: Changed bot classname from "dmbot" to "player" (engine applies colors to "player" entities). Added `.isbot` flag to distinguish bots from real players.
+  - **Bot finder helper** in `reaper_mre/botspawn.qc`: Created `findbot()` function to iterate bots (since `find(world, classname, "dmbot")` no longer works after classname change).
+  - **Bot finder helper declaration** in `reaper_mre/bot_defs.qc`: Added `entity (entity start) findbot;` forward declaration.
+  - **Codebase updates** (100+ references across 12 files): Replaced all `find(world, classname, "dmbot")` with `findbot(world)`. Replaced all `.classname == "dmbot"` checks with `.isbot` checks. Simplified `((x.classname == "player") || (x.classname == "dmbot"))` to `(x.classname == "player")`.
+  - **Network command protection** in `reaper_mre/items.qc` and `reaper_mre/client.qc`: Protected all `stuffcmd()` and `sprint()` calls to skip bots using `if (!other.isbot)` checks. Prevents "Parm 0 not a client" crash (network commands only work on real networked clients, not bots).
+  - **Result:** Scoreboard colors correct, no crashes, but in-world model colors still identical. Suspect engine setting (`r_nocolors`/`r_noskins`), missing player.mdl color ranges, or need additional network message beyond `MSG_UPDATECOLORS`.
 - **Directional fail memory** to prevent repeated failed approaches:
   - **Position + yaw bucketing** in `reaper_mre/botmove.qc`: 6-entry ring buffer tracks failed approaches (32-unit grid, 30° yaw buckets, 20s TTL).
   - **Heavy penalty (not hard blocking)** in `reaper_mre/botmove.qc`: Failed directions get -500 penalty (was -120), applied directly to score. Bots strongly avoid failed approaches but can still use them as "last resort" when ALL directions are bad. Prevents stuck detection death spiral caused by hard blocking.

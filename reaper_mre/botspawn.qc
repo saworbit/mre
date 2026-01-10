@@ -1,6 +1,24 @@
 
 void () AddAnotherBot;
 
+// Helper function to find bots (since they now use classname "player")
+// Returns next bot entity after 'start', or world if none found
+entity (entity start) findbot =
+{
+   local entity e;
+
+   e = find (start,classname,"player");
+   while (e)
+   {
+      if (e.isbot)
+      {
+         return (e);
+      } //end if
+      e = find (e,classname,"player");
+   } //end while
+   return (world);
+}; //end of the function findbot
+
 void () initBotLevel =
 {
    local float num;
@@ -334,7 +352,8 @@ void () PutBotInServer =
    local entity item;
    local float cache_len;
 
-   self.classname = "dmbot";
+   self.classname = "player";  // Use "player" so engine applies colors correctly
+   self.isbot = TRUE;  // Mark as bot (distinguishes from real players)
    self.flags = (self.flags | FL_CLIENT);
    self.colormap = (self.fClientNo + SPAWNFLAG_SUPERSPIKE);
    self.health = MUST_HAVE;
@@ -1322,12 +1341,12 @@ void (entity ply, float n) removeTeamBots =
    local entity e;
 
    i = n;
-   e = find (world,classname,"dmbot");
+   e = findbot (world);
    while ((i > CAM_IDLE))
    {
       while (((e != world) && (e.team != ply.team)))
       {
-         e = find (e,classname,"dmbot");
+         e = findbot (e);
       } //end while
       if (!e)
       {
@@ -1348,7 +1367,7 @@ void () removeAllBots =
 {
    local entity e;
 
-   e = find (world,classname,"dmbot");
+   e = findbot (world);
    while (e)
    {
       if (!e)
@@ -1362,7 +1381,7 @@ void () removeAllBots =
       remove (e.movetarget);
       remove (e.goalentity);
       remove (e);
-      e = find (e,classname,"dmbot");
+      e = findbot (e);
    } //end while
    NUMBOTS = CAM_IDLE;
    dprint ("All bots removed.\n");
@@ -1437,14 +1456,14 @@ void () UpdateTeamColors =
 {
    local entity e;
 
-   e = find (world,classname,"dmbot");
+   e = findbot (world);
    while (e)
    {
       if ((e.colormap == self.colormap))
       {
          e.team = self.team;
       } //end if
-      e = find (e,classname,"dmbot");
+      e = findbot (e);
    } //end while
 }; //end of the function UpdateTeamColors
 

@@ -806,7 +806,7 @@ void (entity node, entity targ, float len, entity item, float depth) cacheRouteT
    // ===== END HAZARD COSTING =====
 
    // Blockage check: if the path is obstructed mid-route, inflate cost and cool down.
-   if ((self.classname == "dmbot"))
+   if ((self.isbot))
    {
       if ((time > self.reroute_time))
       {
@@ -851,7 +851,7 @@ void (entity node, entity targ, float len, entity item, float depth) cacheRouteT
       enemy = findradius (item.origin,SEARCH_RADIUS);
       while (enemy)
       {
-         if (((enemy.classname == "player") || (enemy.classname == "dmbot")))
+         if ((enemy.classname == "player"))
          {
             dist = vlen ((enemy.origin - item.origin));
             if ((dist < enemy_dist))
@@ -908,7 +908,7 @@ void (entity node, entity targ, float len, entity item) cacheRoute =
 {
    // PHASE 2 FIX: Pass depth = 1 to start recursion
    cacheRouteTarget (node,targ,len,item,SPAWNFLAG_SUPERSPIKE);
-   if ((other.classname == "dmbot"))
+   if ((other.isbot))
    {
       if ((other.rocketcache == item))
       {

@@ -166,7 +166,7 @@ void () Bot_CheckGoalFixation =
    {
       return ;
    } //end if
-   if (((goal.classname == "player") || (goal.classname == "dmbot")))
+   if ((goal.classname == "player"))
    {
       return ;
    } //end if

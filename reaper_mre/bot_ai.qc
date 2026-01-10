@@ -106,7 +106,7 @@ void () Stack_Pop_Safe =
             }
          }
          // Skip if enemy is dead
-         if ((tempgoal.classname == "player") || (tempgoal.classname == "dmbot"))
+         if (tempgoal.classname == "player")
          {
             if (tempgoal.deadflag != DEAD_NO)
             {
@@ -454,7 +454,7 @@ void () CallForHelp =
    } //end if
 
    HELPING = TRUE;
-   e = find (world,classname,"dmbot");
+   e = findbot (world);
    while (e)
    {
       if ((e != self))
@@ -514,7 +514,7 @@ void () CallForHelp =
             } //end if
          } //end if
       } //end if
-      e = find (e,classname,"dmbot");
+      e = findbot (e);
    } //end while
    HELPING = FALSE;
 }; //end of the function CallForHelp
@@ -744,7 +744,7 @@ float () BotfindBot =
 
    if (!self.lastbot)
    {
-      self.lastbot = find (world,classname,"dmbot");
+      self.lastbot = findbot (world);
    } //end if
    n = MOVETYPE_STEP;
    while ((n > FALSE))
@@ -768,10 +768,10 @@ float () BotfindBot =
             } //end if
          } //end if
       } //end if
-      self.lastbot = find (bots,classname,"dmbot");
+      self.lastbot = findbot (bots);
       if (!self.lastbot)
       {
-         self.lastbot = find (world,classname,"dmbot");
+         self.lastbot = findbot (world);
       } //end if
    } //end while
    return (FALSE);
@@ -844,7 +844,7 @@ entity() FindBestEnemy =
     } //end while
 
     // SCAN BOTS (Don't forget to check other bots!)
-    head = find (world,classname,"dmbot");
+    head = findbot (world);
     while (head)
     {
         if ((head != self) && (head.health > 0.000))
@@ -876,7 +876,7 @@ entity() FindBestEnemy =
                 } //end if
             } //end if
         } //end if
-        head = find (head,classname,"dmbot");
+        head = findbot (head);
     } //end while
 
     // ===== DEBUG LOGGING: Target Selection (Change-Only) =====
@@ -1075,7 +1075,7 @@ void () BotListen =
    } //end while
 
    // Scan for bots (same logic as players)
-   head = find (world,classname,"dmbot");
+   head = findbot (world);
    while (head)
    {
       if ((head != self) && (head.health > FALSE))
@@ -1131,7 +1131,7 @@ void () BotListen =
             } //end if
          } //end if
       } //end if
-      head = find (head,classname,"dmbot");
+      head = findbot (head);
    } //end while
 }; //end of the function BotListen
 

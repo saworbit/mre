@@ -103,7 +103,7 @@ void () plat_center_touch =
    self = self.enemy;
    if ((self.state == STATE_BOTTOM))
    {
-      if ((other.classname == "dmbot"))
+      if ((other.isbot))
       {
          if ((other.goalentity.goalentity == self))
          {
@@ -117,7 +117,7 @@ void () plat_center_touch =
    {
       if ((self.state == STATE_TOP))
       {
-         if ((other.classname == "dmbot"))
+         if ((other.isbot))
          {
             if ((other.goalentity.goalentity == self))
             {
@@ -145,7 +145,7 @@ void () plat_outside_touch =
    self = self.enemy;
    if ((self.state == STATE_TOP))
    {
-      if ((other.classname == "dmbot"))
+      if ((other.isbot))
       {
          if ((other.goalentity.goalentity == self))
          {

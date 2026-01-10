@@ -47,7 +47,7 @@ void (entity noisemaker, entity noiseobject) signalnoise =
    } //end if
 
    range_sq = 1000000.000; // 1000u radius squared
-   bot = find (world,classname,"dmbot");
+   bot = findbot (world);
    while (bot)
    {
       diff = (bot.origin - noisemaker.origin);
@@ -58,7 +58,7 @@ void (entity noisemaker, entity noiseobject) signalnoise =
          bot.search_time = (time + 5.000);
          bot.noise_target = noisemaker;
       } //end if
-      bot = find (bot,classname,"dmbot");
+      bot = findbot (bot);
    } //end while
 }; //end of the function signalnoise
 float (entity e) hearnoise =

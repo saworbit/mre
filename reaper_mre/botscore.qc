@@ -34,7 +34,7 @@ void (entity killer, entity killed) countkill =
       killed.playerdeaths = (killed.playerdeaths + TRUE);
       if ((skill == TRUE))
       {
-         if ((killed.classname == "dmbot"))
+         if ((killed.isbot))
          {
             killed.skil = (killed.skil + (adj * random ()));
             if ((killed.skil > MOVETYPE_WALK))
@@ -47,7 +47,7 @@ void (entity killer, entity killed) countkill =
    } //end if
    else
    {
-      if ((killer.classname == "dmbot"))
+      if ((killer.isbot))
       {
          killed.botdeaths = (killed.botdeaths + TRUE);
          if ((skill == TRUE))
@@ -65,7 +65,7 @@ void (entity killer, entity killed) countkill =
          // ===== NEMESIS SYSTEM: Set Grudge =====
          // When a bot kills another bot, the victim holds a grudge for 30 seconds.
          // This creates revenge behavior and makes bot fights feel more personal.
-         if ((killed.classname == "dmbot"))
+         if ((killed.isbot))
          {
             killed.nemesis = killer;
             killed.nemesis_time = (time + 30.000);
@@ -80,7 +80,7 @@ void (entity killer, entity killed) countkill =
    } //end if
    else
    {
-      if ((killed.classname == "dmbot"))
+      if ((killed.isbot))
       {
          killer.botkills = (killer.botkills + TRUE);
       } //end if
@@ -217,7 +217,7 @@ entity (float scoretype) SortPlayers =
       } //end if
       e = find (e,classname,"player");
    } //end while
-   e = find (world,classname,"dmbot");
+   e = findbot (world);
    while (e)
    {
       if (!sort)
@@ -273,7 +273,7 @@ entity (float scoretype) SortPlayers =
             } while ((walk.chain != e));
          } //end if
       } //end if
-      e = find (e,classname,"dmbot");
+      e = findbot (e);
    } //end while
    return (sort);
 }; //end of the function SortPlayers

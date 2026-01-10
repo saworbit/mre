@@ -33,7 +33,7 @@ void () W_FireAxe =
 
    source = (self.origin + '0.000 0.000 16.000');
    dir = v_forward;
-   if ((self.classname == "dmbot"))
+   if ((self.isbot))
    {
       dir = botaim ();
    } //end if
@@ -202,7 +202,7 @@ void () W_FireShotgun =
    self.punchangle_x = CONTENT_SOLID;
    self.ammo_shells = (self.ammo_shells - WEAPON_SHOTGUN);
    self.currentammo = (self.ammo_shells - WEAPON_SHOTGUN);
-   if ((self.classname == "dmbot"))
+   if ((self.isbot))
    {
       dir = botaim ();
 
@@ -228,7 +228,7 @@ void () W_FireSuperShotgun =
    self.ammo_shells = (self.ammo_shells - WEAPON_ROCKET);
    self.currentammo = (self.ammo_shells - WEAPON_ROCKET);
    dir = aim (self,100000.000);
-   if ((self.classname == "dmbot"))
+   if ((self.isbot))
    {
       dir = botaim ();
    } //end if
@@ -316,7 +316,7 @@ void () W_FireRocket =
    missile.movetype = MOVETYPE_FLYMISSILE;
    missile.solid = SOLID_BBOX;
    makevectors (self.v_angle);
-   if ((self.classname == "dmbot"))
+   if ((self.isbot))
    {
       missile.velocity = botaim ();
       bfwd = botaim ();
@@ -334,7 +334,7 @@ void () W_FireRocket =
    missile.think = SUB_Remove;
    setmodel (missile,"progs/missile.mdl");
    setsize (missile,VEC_ORIGIN,VEC_ORIGIN);
-   if ((self.classname == "dmbot"))
+   if ((self.isbot))
    {
       setorigin (missile,((self.origin + (bfwd * WEAPON_ROCKET)) + '0.000 0.000 16.000'));
 
@@ -364,9 +364,9 @@ void (vector p1, vector p2, entity from, float damage) LightningDamage =
    {
       particle (trace_endpos,'0.000 0.000 100.000',225.000,(damage * WEAPON_SPIKES));
       T_Damage (trace_ent,from,from,damage);
-      if (((self.classname == "player") || (self.classname == "dmbot")))
+      if ((self.classname == "player"))
       {
-         if (((other.classname == "player") || (other.classname == "dmbot")))
+         if ((other.classname == "player"))
          {
             trace_ent.velocity_z = (trace_ent.velocity_z + 400.000);
          } //end if
@@ -398,13 +398,13 @@ void () W_FireLightning =
    {
       self.weapon = W_BestWeapon ();
       W_SetCurrentAmmo ();
-      if ((self.classname == "dmbot"))
+      if ((self.isbot))
       {
          self.think = self.th_run;
       } //end if
       return ;
    } //end if
-   if ((self.classname == "dmbot"))
+   if ((self.isbot))
    {
       wlevel = CheckWaterLevel ();
       if ((wlevel > WEAPON_SHOTGUN))
@@ -436,7 +436,7 @@ void () W_FireLightning =
    self.currentammo = (self.ammo_cells - WEAPON_SHOTGUN);
    org = (self.origin + '0.000 0.000 16.000');
    dir = v_forward;
-   if ((self.classname == "dmbot"))
+   if ((self.isbot))
    {
       dir = botaim ();
    } //end if
@@ -504,7 +504,7 @@ void () W_FireGrenade =
    } //end if
    else
    {
-      if ((self.classname == "dmbot"))
+      if ((self.isbot))
       {
          missile.velocity = botaim ();
          missile.velocity = (missile.velocity * SEARCH_RADIUS);
@@ -562,7 +562,7 @@ void () W_FireSuperSpikes =
    self.ammo_nails = (self.ammo_nails - WEAPON_ROCKET);
    self.currentammo = (self.ammo_nails - WEAPON_ROCKET);
    dir = aim (self,1000.000);
-   if ((self.classname == "dmbot"))
+   if ((self.isbot))
    {
       dir = botaim ();
    } //end if
@@ -588,7 +588,7 @@ void (float ox) W_FireSpikes =
    {
       self.weapon = W_BestWeapon ();
       W_SetCurrentAmmo ();
-      if ((self.classname == "dmbot"))
+      if ((self.isbot))
       {
          self.think = self.th_run;
       } //end if
@@ -599,7 +599,7 @@ void (float ox) W_FireSpikes =
    self.ammo_nails = (self.ammo_nails - WEAPON_SHOTGUN);
    self.currentammo = (self.ammo_nails - WEAPON_SHOTGUN);
    dir = aim (self,1000.000);
-   if ((self.classname == "dmbot"))
+   if ((self.isbot))
    {
       dir = botaim ();
    } //end if

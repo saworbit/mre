@@ -115,7 +115,7 @@ void () door_use =
    local entity oself;
 
    signalnoise (other,self);
-   if ((other.classname == "dmbot"))
+   if ((other.isbot))
    {
       bot_touched ();
    } //end if
@@ -177,11 +177,11 @@ void () door_touch =
       } //end if
       sound (other,CHAN_VOICE,"misc/talk.wav",TRUE,ATTN_NORM);
    } //end if
-   if ((other.enemy.classname == "dmbot"))
+   if ((other.enemy.isbot))
    {
       enemy_touched ();
    } //end if
-   if ((other.classname == "dmbot"))
+   if ((other.isbot))
    {
       bot_touched ();
    } //end if

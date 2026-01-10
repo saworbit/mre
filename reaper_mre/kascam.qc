@@ -23,7 +23,7 @@ entity (entity ent) CamCycle =
    } //end if
    if ((self.cnt == CARRIED))
    {
-      ent = find (ent,classname,"dmbot");
+      ent = findbot (ent);
    } //end if
    return (ent);
 }; //end of the function CamCycle
@@ -1707,7 +1707,7 @@ void () CamDirectorThink =
    }
 
    // Scan bots
-   scan_ent = find(world, classname, "dmbot");
+   scan_ent = findbot(world);
    while (scan_ent)
    {
       current_score = CamActionScore(scan_ent);
@@ -1716,7 +1716,7 @@ void () CamDirectorThink =
          best_score = current_score;
          best_target = scan_ent;
       }
-      scan_ent = find(scan_ent, classname, "dmbot");
+      scan_ent = findbot(scan_ent);
    }
 
    // If we found an exciting target, switch to them

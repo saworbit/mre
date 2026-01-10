@@ -44,7 +44,7 @@ void () multi_trigger =
    } //end if
    self.takedamage = DAMAGE_NO;
    activator = self.enemy;
-   if ((activator.classname == "dmbot"))
+   if ((activator.isbot))
    {
       bot_triggered (activator);
    } //end if
@@ -84,7 +84,7 @@ void () multi_touch =
          return ;
       } //end if
    } //end if
-   if ((other.classname == "dmbot"))
+   if ((other.isbot))
    {
       self.enemy = other;
       bot_touched ();
@@ -322,7 +322,7 @@ void () tdeath_touch =
    {
       return ;
    } //end if
-   if (((other.classname == "player") || (other.classname == "dmbot")))
+   if ((other.classname == "player"))
    {
       if ((other.invincible_finished > time))
       {
@@ -398,7 +398,7 @@ void () teleport_touch =
    org = (t.origin + (FL_MONSTER * v_forward));
    spawn_tfog (org);
    spawn_tdeath (t.origin,other);
-   if ((other.enemy.classname == "dmbot"))
+   if ((other.enemy.isbot))
    {
       enemy_touched ();
    } //end if
@@ -415,11 +415,11 @@ void () teleport_touch =
       addTarget (other.movetarget.movetarget,self);
       other.movetarget.movetarget = self;
    } //end if
-   if ((other.classname == "dmbot"))
+   if ((other.isbot))
    {
       bot_touched ();
    } //end if
-   if (((other.classname == "player") || (other.classname == "dmbot")))
+   if ((other.classname == "player"))
    {
       other.fixangle = TRUE;
       other.teleport_time = (time + 0.700);
@@ -600,7 +600,7 @@ void () trigger_push_touch =
          } //end if
          else
          {
-            if ((other.classname == "dmbot"))
+            if ((other.isbot))
             {
                if (((self.movedir_x < 0.100) && (self.movedir_y < 0.100)))
                {
@@ -614,7 +614,7 @@ void () trigger_push_touch =
                } //end if
             } //end if
          } //end if
-         if ((other.enemy.classname == "dmbot"))
+         if ((other.enemy.isbot))
          {
             enemy_touched ();
          } //end if

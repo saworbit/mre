@@ -106,6 +106,7 @@ float (entity targ, entity inflictor) CanDamage;
 .float botkills;
 .float fShirt;
 .float fPants;
+.float isbot;  // Flag to distinguish bots from real players (1=bot, 0=player)
 .float botdeaths;
 .float suicides;
 // Cached enemy velocity used for predictive chase when LOS drops.

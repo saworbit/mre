@@ -80,7 +80,7 @@ void (entity targ, entity attacker) Killed =
 
    // ===== DANGER & GLORY: Semantic Map Learning =====
    // 1. MARK DANGER (Victim died here)
-   if ((self.classname == "dmbot"))
+   if ((self.isbot))
    {
       local entity d_node;
       d_node = findradius (self.origin,200.000);
@@ -112,7 +112,7 @@ void (entity targ, entity attacker) Killed =
    } //end if
 
    // 2. MARK GLORY (Attacker got a kill here)
-   if ((((attacker.classname == "dmbot") && (attacker != world)) && (attacker != self)))
+   if ((((attacker.isbot) && (attacker != world)) && (attacker != self)))
    {
       local entity g_node;
       g_node = findradius (attacker.origin,150.000);
@@ -257,7 +257,7 @@ void (entity targ, entity inflictor, entity attacker, float damage) T_Damage =
       dir = normalize (dir);
       targ.velocity = (targ.velocity + ((dir * damage) * EF_DIMLIGHT));
    } //end if
-   if ((((inflictor != world) && (targ.movetype == MOVETYPE_STEP)) && (targ.classname == "dmbot")))
+   if ((((inflictor != world) && (targ.movetype == MOVETYPE_STEP)) && (targ.isbot)))
    {
       dir = (targ.origin - ((inflictor.absmin + inflictor.absmax) * 0.500));
       dir = normalize (dir);
@@ -289,7 +289,7 @@ void (entity targ, entity inflictor, entity attacker, float damage) T_Damage =
    } //end if
    oldself = self;
    self = targ;
-   if ((self.classname == "dmbot"))
+   if ((self.isbot))
    {
       if ((attacker != world))
       {
