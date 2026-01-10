@@ -1460,6 +1460,35 @@ entity (entity start, entity goal) AStarSolve =
                   edge_cost = (edge_cost - (neighbor.traffic_score * 2.000)); // Seek fight
                } //end if
             } //end if
+
+            // ===== INFLUENCE MAP: Real-time Tactical Danger =====
+            // Apply dynamic danger from recent explosions/deaths (decays over 10 seconds)
+            // Bravery factor based on health: Low HP = Cowardly, High HP = Brave
+            local float current_danger;
+            local float bravery_multiplier;
+
+            current_danger = Influence_GetDanger (neighbor);
+            if ((current_danger > 0.000))
+            {
+               // Determine bravery based on bot health
+               if ((self.health < 50.000))
+               {
+                  // Cowardly (low health): Treat danger zones as walls (10x multiplier)
+                  bravery_multiplier = 10.000;
+               } //end if
+               else if ((self.health > 80.000))
+               {
+                  // Brave (high health): Largely ignore danger (0.5x multiplier)
+                  bravery_multiplier = 0.500;
+               } //end if
+               else
+               {
+                  // Neutral (medium health): Normal danger avoidance (2x multiplier)
+                  bravery_multiplier = 2.000;
+               } //end if
+
+               edge_cost = (edge_cost + (current_danger * bravery_multiplier));
+            } //end if
             // ===================================================
 
             tentative_g = (lowest.g_score + edge_cost);

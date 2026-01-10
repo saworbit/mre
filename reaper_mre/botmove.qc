@@ -2,6 +2,7 @@
 float() bot_rocket_jump;
 // Forward declaration for problem solver (defined in bot_ai.qc)
 entity(entity door_ent) FindButtonForDoor;
+void(entity door_ent) Bot_SolveBlockedDoor;
 // Forward declaration for breadcrumb waypoints (defined in botroute.qc)
 void(vector org, float traffic, float danger, string trig_target) SpawnSavedWaypoint;
 // Forward declaration for live learning RJ waypoints (defined in botroute.qc)
@@ -21,7 +22,8 @@ float BOT_LOS_HEAD = 3.000;
 
 
 float STUCK_PROGRESS_INTERVAL = 0.200;
-float STUCK_PROGRESS_DIST = 16.000;
+float STUCK_PROGRESS_DIST = 12.000;  // Horizontal progress threshold
+float STUCK_PROGRESS_VERT = 8.000;   // Vertical progress threshold (stairs)
 float STUCK_TIME_LIMIT = 1.000;
 float STUCK_SCORE_THRESH = 5.000;
 float STUCK_PUSH_SPEED = 20.000;
@@ -1433,9 +1435,9 @@ void (float dist) strafemove =
       return ;
    } //end if
 
-   // ===== STAIR SMOOTHING: The "Step Up" =====
+   // ===== STAIR SMOOTHING: Enhanced Step Climbing =====
    // If blocked, check if it's just a low step (stairs/debris).
-   // Trace 22 units (above step height) to see if path is clear at knee level.
+   // Trace 30 units (above step height) to see if path is clear at knee level.
    local vector step_trace_dest;
    local vector dir;
    local float angle_rad;
@@ -1451,22 +1453,22 @@ void (float dist) strafemove =
    dir = normalize(dir);
 
    step_trace_dest = (self.origin + (dir * dist));
-   step_trace_dest_z = (self.origin_z + 22.000); // Check slightly above standard step height (18)
+   step_trace_dest_z = (self.origin_z + 30.000); // Check higher for multi-step stairs
 
    // Trace forward at knee height
-   traceline((self.origin + '0.000 0.000 22.000'), step_trace_dest, TRUE, self);
+   traceline((self.origin + '0.000 0.000 30.000'), step_trace_dest, TRUE, self);
 
    if ((trace_fraction == 1.000))
    {
       // Knee-height is clear! The blockage is below our knees (a step).
-      // Nudge the bot UP so it can slide over it.
-      // We don't jump (too high), we just pop velocity to clear the friction.
+      // Give a proper hop to clear stairs smoothly.
+      // Allow consecutive hops for multi-step stairs.
+      self.velocity_z = 270.000; // Full hop velocity (matches standard jump)
       if ((self.flags & FL_ONGROUND))
       {
-         self.velocity_z = 210.000; // Small hop (just enough to clear stairs)
          self.flags = (self.flags - FL_ONGROUND);
-         return ;
       } //end if
+      return ;
    } //end if
    // =======================================
 
@@ -1485,42 +1487,40 @@ void (float dist) strafemove =
        slide_yaw = vectoyaw(slide_dir);
        if (walkmove(slide_yaw, dist)) return ;
 
-       // ===== PROBLEM SOLVER: Obstacle Solver (Door/Button Logic) =====
-       // If we are blocked by a door, find the switch!
-       // Check what we hit
+       // ===== PROBLEM SOLVER: Enhanced Door/Button Logic =====
+       // If we are stuck against a closed door, activate the solver.
        if ((trace_ent.classname == "func_door"))
        {
           // Is the door closed/closing? (State 0=Closed, 1=Opening, 2=Open, 3=Closing)
           if ((trace_ent.state == 0.000))
           {
-             // PROBLEM: Locked Door.
-             // SOLUTION: Find the button.
-             local entity key_button;
-             key_button = FindButtonForDoor (trace_ent);
-             if (key_button)
-             {
-                // Found the specific button that opens THIS door.
-                // Override current goal to go press it.
-                if ((self.goalentity != key_button))
-                {
-                   self.goalentity = key_button;
-                   // Retarget navigation immediately
-                   return ;
-                } //end if
-             } //end if
-             else
-             {
-                // No button? Maybe it's a shoot-to-open door?
-                if ((trace_ent.health > 0.000))
-                {
-                   // Attack the door!
-                   self.enemy = trace_ent;
-                   self.th_missile ();
-                } //end if
-             } //end if
+             Bot_SolveBlockedDoor (trace_ent);
+             return ;
           } //end if
        } //end if
-       // ===== END PROBLEM SOLVER: Obstacle Solver =====
+
+       // ===== PROBLEM SOLVER: Teleporter Pad Navigation =====
+       // If blocked and there's a nearby teleporter, navigate directly onto it
+       // This prevents bots from shuffling around the edges of teleporter pads
+       local entity nearby_tele;
+       nearby_tele = findradius (self.origin,128.000);
+       while (nearby_tele)
+       {
+          if ((nearby_tele.classname == "trigger_teleport"))
+          {
+             // Found a nearby teleporter - aim for its center
+             self.ideal_yaw = vectoyaw ((nearby_tele.origin - self.origin));
+             ChangeYaw ();
+             // Give a small jump to help navigate onto the trigger volume
+             if ((self.flags & FL_ONGROUND))
+             {
+                self.velocity_z = 200.000;
+             } //end if
+             return ;
+          } //end if
+          nearby_tele = nearby_tele.chain;
+       } //end while
+       // ===== END PROBLEM SOLVER =====
    }
 
    if (self.enemy)
@@ -3904,9 +3904,20 @@ void (float dist) Bot_ProgressTick =
    } //end if
 
    self.progress_check_time = (time + STUCK_PROGRESS_INTERVAL);
-   moved = vlen ((self.origin - self.last_origin));
 
-   if ((moved > STUCK_PROGRESS_DIST))
+   // Check both horizontal and vertical movement (important for stairs!)
+   local vector horiz_delta;
+   local float horiz_moved;
+   local float vert_moved;
+
+   horiz_delta = (self.origin - self.last_origin);
+   horiz_delta_z = 0.000;  // Ignore vertical component for horizontal check
+   horiz_moved = vlen (horiz_delta);
+   vert_moved = fabs ((self.origin_z - self.last_origin_z));
+
+   // Consider progress made if EITHER horizontal OR vertical movement exceeds threshold
+   // This prevents false stuck triggers when climbing stairs (vertical progress counts!)
+   if (((horiz_moved > STUCK_PROGRESS_DIST) || (vert_moved > STUCK_PROGRESS_VERT)))
    {
       self.last_progress_time = time;
       if ((self.stuck_score > 0.000))

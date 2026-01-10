@@ -1724,4 +1724,10 @@ void (entity targ, entity attacker) ClientObituary =
          bprint (" died\n");
       } //end if
    } //end if
+
+   // ===== INFLUENCE MAP: Paint Danger at Death Location =====
+   // Register death location as dangerous (bots should avoid camping spots)
+   // Magnitude: Medium (30 influence, per spec)
+   Influence_AddDanger (targ.origin,30.000);
+   // ===== END INFLUENCE MAP =====
 }; //end of the function ClientObituary

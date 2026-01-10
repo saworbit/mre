@@ -295,6 +295,14 @@ float (entity targ, entity inflictor) CanDamage;
 .float scent_time;
 // Traffic heatmap: how many times anyone has touched this node (main street vs back alley).
 .float traffic_score;
+// ===== INFLUENCE MAP SYSTEM: Real-time Tactical Awareness =====
+// Dynamic danger level (0.0-100.0): explosions, enemy fire, recent deaths.
+.float infl_danger;
+// Dynamic interest level (0.0-100.0): powerups, strategic control points.
+.float infl_interest;
+// Last update timestamp for lazy decay calculation (performance optimization).
+.float infl_last_update;
+// ===== END INFLUENCE MAP =====
 // Player Observation Learning: marks this as a learned rocket jump waypoint (TRUE/FALSE).
 .float rj_learned;
 // Player Observation Learning: learned pitch angle for this RJ (-90 to 0 degrees).

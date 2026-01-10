@@ -12,4 +12,12 @@ float () bot_rocket_jump;
 void (float dist) ai_botrun;
 void (float dist) ai_botseek;
 float (entity e) itemweight;
+
+// Influence Map System (ai_influence.qc)
+entity (vector org) FindClosestWaypoint;
+float (entity wp) Influence_GetDanger;
+float (entity wp) Influence_GetInterest;
+void (vector org, float amount) Influence_AddDanger;
+void (vector org, float amount) Influence_AddInterest;
+void () Influence_ShowMap;
 // ---------------------------------------------------------

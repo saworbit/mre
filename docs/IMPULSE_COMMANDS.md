@@ -211,6 +211,79 @@ SpawnSavedWaypoint('128 -64 24', 89.2, 67.4);
 ======================================
 ```
 
+### Influence Map Visualization
+
+| Impulse | Function | Usage | Description |
+|---------|----------|-------|-------------|
+| `120` | **Show Influence Map** | Any time | Visualizes danger/interest zones on waypoint network |
+
+**Usage:**
+```
+impulse 120       // Display influence map for 5 seconds
+developer 1       // Enable to see detailed influence calculations
+```
+
+**What it shows:**
+- **Red particles**: Danger zones (recent explosions and deaths)
+- **Green particles**: Interest zones (powerups and strategic points)
+- **Particle intensity**: Scales with influence strength (0-100)
+
+**Visual Output:**
+- Particles spawn at waypoint locations with active influence
+- Particle count: 5-50 per waypoint (scales with influence level)
+- Duration: 5 seconds (particles fade naturally)
+- Only shows waypoints with significant influence (>5 threshold)
+
+**Console Output:**
+```
+===========================================
+  INFLUENCE MAP VISUALIZATION
+===========================================
+Red particles = Danger zones (explosions/deaths)
+Green particles = Interest zones (powerups/sounds)
+Particle intensity = Influence strength (0-100)
+
+Influence map displayed for 5 seconds.
+```
+
+**When to use:**
+- **Debug tactical pathfinding**: See why bots route around certain areas
+- **Verify danger propagation**: Check that explosions create proper danger zones
+- **Test health-based bravery**: Low-HP bots should avoid red zones
+- **Performance analysis**: Ensure influence decay is working (old zones should fade)
+
+**Technical Details:**
+- **Red particles**: Color 73 (bright red in Quake palette)
+- **Green particles**: Color 115 (bright green in Quake palette)
+- **Particle velocity**: `'0 0 50'` (upward drift for visibility)
+- **Threshold**: Only displays waypoints with influence >5.0
+- **Lazy decay**: Values recalculated on visualization (shows current state)
+
+**Example Scenarios:**
+
+**1. Rocket Explosion Zone**
+```
+// Fire rockets at choke point
+impulse 120       // Shows red particle cloud at explosion site
+                  // Danger spreads to neighbor waypoints with 50% falloff
+                  // Wounded bots (HP<50) will route around this zone
+```
+
+**2. Death Location Avoidance**
+```
+// Bot dies in corridor
+impulse 120       // Shows red particles at death location (30 influence)
+                  // High-HP bots (HP>80) mostly ignore it
+                  // Low-HP bots (HP<50) treat it as impassable
+```
+
+**3. Powerup Interest (Future)**
+```
+// Quad damage spawns
+impulse 120       // Shows green particles at powerup location
+                  // Bots prioritize paths toward green zones
+```
+
 ---
 
 ## 🎓 Player Observation Learning

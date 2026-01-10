@@ -1488,32 +1488,41 @@ void () ImpulseCommands =
                   } //end if
                   else
                   {
-                     if ((self.impulse == 199.000) && (self.classname == "player"))
+                     if ((self.impulse == 120.000) && (self.classname == "player"))
                      {
-                        // ===== PLAYER OBSERVATION MODE TOGGLE ===== (Player-only)
-                        // Logs player actions (rocket jumps, trick jumps) for bot learning
-                        self.observer_mode = !self.observer_mode;
-
-                        bprint ("\n");
-                        if (self.observer_mode)
-                        {
-                           bprint ("PLAYER OBSERVATION: ENABLED\n");
-                           bprint ("  Recording player techniques for bot learning:\n");
-                           bprint ("  - Rocket jump detection (self-damage events)\n");
-                           bprint ("  - Position, velocity, angles, timing\n");
-                           bprint ("  - Strategic context (nearby items, goals)\n");
-                           bprint ("  Log format: PLAYER_RJ_DAMAGE markers in qconsole.log\n");
-                           bprint ("  Use tools/learn_rj_from_player.py to analyze\n");
-                        } //end if
-                        else
-                        {
-                           bprint ("PLAYER OBSERVATION: DISABLED\n");
-                        } //end if
-                        bprint ("\n");
+                        // ===== INFLUENCE MAP VISUALIZATION ===== (Player-only)
+                        // Shows real-time danger/interest zones as colored particles
+                        Influence_ShowMap ();
                      } //end if
                      else
                      {
-                        botImpulseCommand ();
+                        if ((self.impulse == 199.000) && (self.classname == "player"))
+                        {
+                           // ===== PLAYER OBSERVATION MODE TOGGLE ===== (Player-only)
+                           // Logs player actions (rocket jumps, trick jumps) for bot learning
+                           self.observer_mode = !self.observer_mode;
+
+                           bprint ("\n");
+                           if (self.observer_mode)
+                           {
+                              bprint ("PLAYER OBSERVATION: ENABLED\n");
+                              bprint ("  Recording player techniques for bot learning:\n");
+                              bprint ("  - Rocket jump detection (self-damage events)\n");
+                              bprint ("  - Position, velocity, angles, timing\n");
+                              bprint ("  - Strategic context (nearby items, goals)\n");
+                              bprint ("  Log format: PLAYER_RJ_DAMAGE markers in qconsole.log\n");
+                              bprint ("  Use tools/learn_rj_from_player.py to analyze\n");
+                           } //end if
+                           else
+                           {
+                              bprint ("PLAYER OBSERVATION: DISABLED\n");
+                           } //end if
+                           bprint ("\n");
+                        } //end if
+                        else
+                        {
+                           botImpulseCommand ();
+                        } //end if
                      } //end if
                   } //end if
                } //end if

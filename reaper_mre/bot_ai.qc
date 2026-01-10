@@ -428,6 +428,92 @@ entity (entity door_ent) FindButtonForDoor =
    } //end while
    return (world);
 }; //end of the function FindButtonForDoor
+
+// [NEW] Intelligent Door Solver
+// Decides whether to shoot a button, run to it, or attack the door directly.
+void (entity door_ent) Bot_SolveBlockedDoor =
+{
+   local entity button;
+   local vector aim_ang;
+   local vector aim_vec;
+
+   // 1. Find the specific button that targets this door
+   button = FindButtonForDoor (door_ent);
+
+   // CASE A: No Button Found?
+   // It might be a "shoot-to-open" door (like in Base maps)
+   if ((button == world))
+   {
+      if ((door_ent.health > FALSE))
+      {
+         // It's a destructible door. Attack it!
+         self.enemy = door_ent;
+         self.th_missile ();
+      } //end if
+      return ;
+   } //end if
+
+   // CASE B: Shootable Button (Remote Activation)
+   // If the button has health, we don't need to walk to it; we just need to hit it.
+   if ((button.health > FALSE))
+   {
+      // Can we see the button from here?
+      traceline ((self.origin + self.view_ofs),button.origin,TRUE,self);
+
+      if ((trace_fraction == SPAWNFLAG_SUPERSPIKE))
+      {
+         // VISIBLE: Aim and Fire!
+
+         // Calculate aim angles
+         aim_vec = (button.origin - (self.origin + self.view_ofs));
+         aim_ang = vectoangles (aim_vec);
+
+         // Lock aim on the button
+         self.ideal_yaw = aim_ang_y;
+         self.ideal_pitch = aim_ang_x;
+         ChangeYaw ();
+         ChangePitch ();
+
+         // Stop moving so we don't faceplant into the door while shooting
+         self.velocity = '0.000 0.000 0.000';
+
+         // Fire weapon (if cooldown allows)
+         if ((time > self.attack_finished))
+         {
+            self.button0 = SPAWNFLAG_SUPERSPIKE;
+            self.attack_finished = (time + 0.500);
+         } //end if
+         return ;
+      } //end if
+      else
+      {
+         // NOT VISIBLE: We need to move to a position where we can see it.
+         // Treat it like a touch button for navigation purposes until visible.
+      } //end else
+   } //end if
+
+   // CASE C: Touch Button (or Hidden Shoot Button)
+   // We must physically navigate to the button location.
+
+   // Prevent "shimmering" (resetting goal repeatedly)
+   if ((self.goalentity == button))
+   {
+      return ;
+   } //end if
+
+   // push current goal (where we wanted to go) to memory stack
+   // so we can resume the path after the door opens.
+   Stack_Push ();
+
+   // Override goal to the button
+   self.goalentity = button;
+
+   // Optional: Play a sound or log to confirm decision
+   if (bot_debug_enabled)
+   {
+      dprint ("Bot rerouting to button\n");
+   } //end if
+}; //end of the function Bot_SolveBlockedDoor
 // ===== END PROBLEM SOLVER: Button/Door Solver =====
 
 void () CallForHelp =

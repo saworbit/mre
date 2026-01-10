@@ -24,6 +24,220 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 ## Latest Features (2026-01)
 
+### Graph-Based Influence Map System (2026-01-10)
+
+**NEW:** Bots now use tactical pathfinding with real-time danger/interest awareness!
+
+The Influence Map System adds a dynamic tactical layer on top of the waypoint navigation graph. Instead of always taking the shortest path, bots now evaluate routes based on recent explosions, deaths, and powerup locations. High-health bots charge through danger zones while wounded bots route around them.
+
+**Before:**
+- ❌ Bots always take shortest path (Dijkstra algorithm)
+- ❌ No awareness of danger zones (explosion sites, death locations)
+- ❌ Repeatedly run through active combat hotspots
+- ❌ Tactical decisions only at waypoint selection, not pathfinding
+
+**After:**
+- ✅ Waypoint-based danger/interest scoring (0-100 range)
+- ✅ Lazy decay optimization (explosions fade over 10 seconds, interest over 20 seconds)
+- ✅ Spatial propagation to neighbor waypoints (creates "danger zones")
+- ✅ Health-based bravery: Low HP avoids danger like walls, high HP ignores it
+- ✅ Visual debugging via `impulse 120` (red = danger, green = interest)
+
+**How it works:**
+
+**1. Event Hooks (Real-Time Influence)**
+- **Explosions**: When rocket/grenade explodes, add danger influence = `damage × 0.5` at impact point
+- **Deaths**: When bot/player dies, add danger influence = `30` at death location
+- **Spatial Propagation**: Danger spreads to neighbor waypoints with 50% falloff
+
+**2. Lazy Decay (Performance Optimization)**
+- Influence values stored on waypoints, only recalculated when queried
+- **Danger decay**: -10 points per second, cutoff at 10 seconds
+- **Interest decay**: -5 points per second, cutoff at 20 seconds
+- Zero frame overhead when no influence events active
+
+**3. Health-Based Bravery (Tactical Decision-Making)**
+- **Low HP** (<50 HP): 10× multiplier → danger zones become impassable walls
+- **Medium HP** (50-80 HP): 2× multiplier → normal danger avoidance
+- **High HP** (>80 HP): 0.5× multiplier → charges through danger zones
+
+**4. A* Pathfinding Integration**
+```
+edge_cost += (current_danger × bravery_multiplier)
+```
+- Wounded bot: 50 danger × 10 = +500 cost (blocks path)
+- Healthy bot: 50 danger × 0.5 = +25 cost (minor penalty)
+
+**Usage:**
+```
+impulse 120       // Show influence map (red particles = danger, green = interest)
+developer 1       // Enable to see influence calculations in console
+```
+
+**Debug Output (Console):**
+```
+Influence map displayed for 5 seconds.
+Red particles = Danger zones (explosions/deaths)
+Green particles = Interest zones (powerups/sounds)
+Particle intensity = Influence strength (0-100)
+```
+
+**Technical Details:**
+- **Graph-based**: Uses existing waypoint network, not 2D grid (performance)
+- **Linear decay**: Simpler than exponential for QuakeC performance
+- **FindClosestWaypoint()**: O(N) scan of all BotPaths to apply influence
+- **Propagation**: Spreads to movetarget1-4 neighbors with 50% falloff
+- **Particle visualization**: Red (color 73), green (color 115), count scales 5-50
+
+### Door Solver System (2026-01-10)
+
+**NEW:** Bots intelligently distinguish between "Touch" buttons and "Shoot" buttons!
+
+The Door Solver System adds intelligent button/door handling. Bots now understand the difference between shootable buttons (requiring aim and fire) and touch buttons (requiring navigation). This eliminates false navigation to remote-activated buttons and enables proper door puzzle solving.
+
+**Before:**
+- ❌ Bots navigate to ALL buttons, even shootable ones
+- ❌ No remote door activation via shooting buttons
+- ❌ Simple emergency brake when blocked by door
+- ❌ Can't solve button→door puzzles
+
+**After:**
+- ✅ Three-case logic: Destructible door → attack it, Shootable button → aim and fire, Touch button → navigate to it
+- ✅ Line-of-sight checks before shooting
+- ✅ Goal stack preservation (saves current goal, resumes after door opens)
+- ✅ Proper aim calculation with pitch/yaw adjustment
+
+**How it works:**
+
+**1. Find Button for Blocked Door**
+- When bot collides with door/plat/train, call `FindButtonForDoor(door_ent)`
+- Returns the button entity that targets this specific door
+
+**2. Three-Case Decision Logic**
+
+**Case A: No Button Found (Destructible Door)**
+```c
+if (button == world && door.health > 0)
+{
+   self.enemy = door;
+   self.th_missile();  // Attack the door directly
+}
+```
+
+**Case B: Shootable Button (Remote Activation)**
+```c
+if (button.health > 0)
+{
+   traceline(self.origin + view_ofs, button.origin, TRUE, self);
+   if (trace_fraction == 1.0)  // Can see button
+   {
+      aim_ang = vectoangles(button.origin - self.origin);
+      self.ideal_yaw = aim_ang_y;
+      self.ideal_pitch = aim_ang_x;
+      ChangeYaw(); ChangePitch();
+      self.button0 = 1;  // Fire!
+   }
+}
+```
+
+**Case C: Touch Button (Navigation Required)**
+```c
+Stack_Push();  // Save current goal
+self.goalentity = button;  // Navigate to button
+```
+
+**Usage:**
+- Just play! System activates automatically when bot encounters doors
+- Watch bots shoot distant buttons instead of running to them
+- Bots save their current goal and resume after opening doors
+
+**Technical Details:**
+- **Button discovery**: `FindButtonForDoor()` searches all entities with matching `target` field
+- **LOS check**: `traceline()` prevents shooting through walls
+- **Aim calculation**: `vectoangles()` converts position delta to angles
+- **Goal preservation**: Stack-based goal management prevents forgetting original objective
+
+### Stair/Teleporter Navigation Fixes (2026-01-10)
+
+**NEW:** Bots smoothly climb stairs without getting stuck and actively navigate onto teleporter pads!
+
+Two critical navigation fixes eliminate stuck issues on steps and spawn pads. Enhanced stair climbing with proper hop velocity handles multi-step configurations, while vertical stuck detection prevents false triggers during climbing. Teleporter pad navigation actively centers bots on trigger volumes.
+
+**Before:**
+- ❌ Bots get stuck on consecutive stairs (hop velocity too weak)
+- ❌ Stuck detection falsely triggers during vertical movement
+- ❌ Bots shuffle around edges of teleporter pads without entering
+
+**After:**
+- ✅ Increased trace height (22→30 units) detects taller stairs
+- ✅ Increased hop velocity (210→270 units) enables smooth multi-step climbing
+- ✅ Vertical progress tracking (8 unit threshold) counts climbing as valid progress
+- ✅ Active teleporter navigation aims for center and gives small hop
+
+**How it works:**
+
+**1. Enhanced Stair Smoothing**
+```c
+// Check 30 units up (was 22) for multi-step detection
+step_trace_dest_z = self.origin_z + 30.0;
+traceline(self.origin + '0 0 30', step_trace_dest, TRUE, self);
+
+if (trace_fraction == 1.0)  // Knee-height clear
+{
+   self.velocity_z = 270.0;  // Full jump hop (was 210)
+}
+```
+- **Taller detection**: 30-unit trace catches multi-step stairs
+- **Proper hop**: 270 velocity matches standard jump for consecutive steps
+
+**2. Vertical Stuck Detection**
+```c
+// Check both horizontal AND vertical progress
+horiz_moved = vlen(self.origin_xy - self.last_origin_xy);
+vert_moved = fabs(self.origin_z - self.last_origin_z);
+
+if (horiz_moved > 12.0 || vert_moved > 8.0)  // EITHER counts
+{
+   self.last_progress_time = time;  // Not stuck!
+}
+```
+- **Before**: Only horizontal movement counted → stair climbing = "stuck"
+- **After**: Vertical movement counts too → stair climbing = valid progress
+
+**3. Teleporter Pad Navigation**
+```c
+// When blocked, search nearby for teleporter
+nearby_tele = findradius(self.origin, 128.0);
+while (nearby_tele)
+{
+   if (nearby_tele.classname == "trigger_teleport")
+   {
+      // Aim for center and hop onto it
+      self.ideal_yaw = vectoyaw(nearby_tele.origin - self.origin);
+      ChangeYaw();
+      self.velocity_z = 200.0;  // Small hop onto trigger
+      return;
+   }
+}
+```
+- **Pattern detection**: Finds teleporter within 128 units when stuck
+- **Active navigation**: Aims for center, gives hop to enter trigger volume
+- **Immediate return**: Prevents other stuck handling from interfering
+
+**Debug Output (LOG_CRITICAL):**
+```
+[Toxic] STAIR-SMOOTH: Detected multi-step at (2176,512), hop=270
+[Karen] VERT-PROGRESS: Moved 12u vertically (counts as progress)
+[Wanton] TELE-NAV: Aiming for trigger_teleport at (512,256)
+```
+
+**Technical Details:**
+- **Stair trace height**: 30 units (matches player step_height + margin)
+- **Hop velocity**: 270 units (standard jump, enables 2-3 consecutive steps)
+- **Vertical threshold**: 8 units (balances noise vs real climbing)
+- **Horizontal threshold**: 12 units (reduced from 16 to balance with vertical)
+- **Teleporter radius**: 128 units (catches nearby pads without false positives)
+
 ### Randomized Bot Spawning (2026-01-10)
 
 **NEW:** Bot spawning is now randomized with duplicate avoidance for variety in matches!

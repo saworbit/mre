@@ -384,6 +384,12 @@ void (entity inflictor, entity attacker, float damage, entity ignore) T_RadiusDa
       } //end if
       head = head.chain;
    } //end while
+
+   // ===== INFLUENCE MAP: Paint Danger at Explosion Site =====
+   // Register explosion location as dangerous for tactical pathfinding
+   // Magnitude scales with damage (50 damage → 25 influence)
+   Influence_AddDanger (inflictor.origin,(damage * 0.500));
+   // ===== END INFLUENCE MAP =====
 }; //end of the function T_RadiusDamage
 
 void (entity attacker, float damage) T_BeamDamage =
