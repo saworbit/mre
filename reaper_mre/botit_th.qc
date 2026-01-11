@@ -201,6 +201,9 @@ float (entity targ, entity inflictor) CanDamage;
 .entity last_goal_entity;
 .float last_goal_dist;
 .float last_goal_progress_time;
+// Goal arbitration state (commit window + priority).
+.float goal_commit_until;
+.float goal_priority;
 // Recent jump pad/lift memory for elevation seeking.
 .vector last_pad_origin;
 .float last_pad_time;
@@ -259,6 +262,10 @@ float (entity targ, entity inflictor) CanDamage;
 .float bot_last_enemy_seen;  // Last time bot had LOS to enemy (updated in enemy eval)
 .float bot_last_damage_dealt;// Last time bot dealt damage to enemy (optional success signal)
 .float bot_intent_next_update; // Rate limiter for intent eval (4Hz)
+// Intent override requests (commit + priority).
+.float intent_request;
+.float intent_request_pri;
+.float intent_request_until;
 // ===== END INTENT ESCALATION =====
 // ===== FLOW GOVERNOR: Priority-Based Arbitration =====
 // Prevents competing control loops by arbitrating who controls movement.

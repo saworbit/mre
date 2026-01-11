@@ -28,6 +28,7 @@ float BOT_INTENT_CHASE = 2.000;      // Pursuing enemy without LOS (last known p
 float BOT_INTENT_RESUPPLY = 3.000;   // Seeking health/armor/ammo items
 float BOT_INTENT_EXPLORE = 4.000;    // Roaming for pickups or enemy contact
 float BOT_INTENT_UNSTICK = 5.000;    // Escape stuck state or reposition
+float BOT_INTENT_HOLD = 6.000;       // Hold position (ambush/wait)
 float BOT_INTENT_UPDATE_HZ = 4.000;  // Intent evaluation frequency (4Hz)
 
 // Flow Governor: Driver IDs for arbitration
@@ -2980,6 +2981,33 @@ void (entity bot) Bot_HandleTerrainTrap =
 // Each intent has success signals and timeouts. If intent fails for too long,
 // escalate to next-best intent and commit briefly.
 
+void (entity bot, float intent, float pri, float commit_secs, string reason) Bot_RequestIntent =
+{
+   if (!bot)
+   {
+      return ;
+   } //end if
+
+   if ((time < bot.intent_request_until))
+   {
+      if ((pri < bot.intent_request_pri))
+      {
+         return ;
+      } //end if
+      if ((pri == bot.intent_request_pri))
+      {
+         if ((intent != bot.intent_request))
+         {
+            return ;
+         } //end if
+      } //end if
+   } //end if
+
+   bot.intent_request = intent;
+   bot.intent_request_pri = pri;
+   bot.intent_request_until = (time + commit_secs);
+}; //end of the function Bot_RequestIntent
+
 // Check if current intent is succeeding (has valid success signal)
 float (entity bot) Bot_IntentSucceeded =
 {
@@ -3038,6 +3066,12 @@ float (entity bot) Bot_IntentSucceeded =
       return (FALSE);
    } //end if
 
+   // HOLD: always valid while committed
+   if ((bot.bot_intent == BOT_INTENT_HOLD))
+   {
+      return (TRUE);
+   } //end if
+
    return (FALSE);
 }; //end of the function Bot_IntentSucceeded
 
@@ -3049,6 +3083,7 @@ float (entity bot) Bot_IntentTimeout =
    if ((bot.bot_intent == BOT_INTENT_RESUPPLY)) return (5.000);
    if ((bot.bot_intent == BOT_INTENT_EXPLORE))  return (6.000);
    if ((bot.bot_intent == BOT_INTENT_UNSTICK))  return (2.000);
+   if ((bot.bot_intent == BOT_INTENT_HOLD))     return (1.000);
    return (5.000);
 }; //end of the function Bot_IntentTimeout
 
@@ -3086,6 +3121,11 @@ void (entity bot) Bot_UpdateIntentFail =
 void (entity bot) Bot_EscalateIntent =
 {
    local float timeout;
+
+   if ((bot.bot_intent == BOT_INTENT_HOLD))
+   {
+      return ;
+   } //end if
 
    timeout = Bot_IntentTimeout (bot);
 
@@ -4964,6 +5004,21 @@ void (float dist) Botmovetogoal =
       return ;
    } //end if
 
+   if (((time < self.intent_request_until) && (self.intent_request == BOT_INTENT_HOLD)))
+   {
+      if ((self.bot_intent != BOT_INTENT_HOLD))
+      {
+         self.bot_intent = BOT_INTENT_HOLD;
+         self.bot_intent_start = time;
+         self.bot_intent_fail = 0.000;
+      } //end if
+      self.stuck_score = 0.000;
+      self.last_progress_time = time;
+      self.last_origin = self.origin;
+      self.progress_check_time = (time + STUCK_PROGRESS_INTERVAL);
+      return ;
+   } //end if
+
    // ===== DYNAMIC STUCK WIGGLE: Micro-Jump on Velocity Stall =====
    // If the bot is trying to move but velocity is near zero, don't wait 1 second.
    // Try an immediate micro-jump to clear small geometry lips/steps.
@@ -5014,7 +5069,11 @@ void (float dist) Botmovetogoal =
       local float prev_intent;
       prev_intent = self.bot_intent;
 
-      if ((self.enemy && (self.enemy.health > 0.000)))
+      if ((time < self.intent_request_until))
+      {
+         self.bot_intent = self.intent_request;
+      } //end if
+      else if ((self.enemy && (self.enemy.health > 0.000)))
       {
          // Has enemy: FIGHT if visible recently, else CHASE
          if (((time - self.bot_last_enemy_seen) < 1.500))
@@ -5053,11 +5112,18 @@ void (float dist) Botmovetogoal =
          self.bot_intent_fail = 0.000;  // Reset fail score on natural intent change
       } //end if
 
-      // Update fail metrics (accumulate when failing, decay when succeeding)
-      Bot_UpdateIntentFail (self);
+      if ((time < self.intent_request_until))
+      {
+         self.bot_intent_fail = 0.000;
+      } //end if
+      else
+      {
+         // Update fail metrics (accumulate when failing, decay when succeeding)
+         Bot_UpdateIntentFail (self);
 
-      // Escalate if current intent has failed for too long
-      Bot_EscalateIntent (self);
+         // Escalate if current intent has failed for too long
+         Bot_EscalateIntent (self);
+      } //end else
    } //end if
    // =============================================================
 

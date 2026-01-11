@@ -20,7 +20,14 @@ void (vector aim_dir, entity targ, float range, float is_degraded) ShowPredictio
 // PID Aiming Controller (botmath.qc)
 float (float ang) Math_AngleDiff;
 float (entity bot, float current_ang, float ideal_ang, float dt, float axis_idx) Math_PID;
+void (float req_yaw, float req_pitch, float set_yaw, float set_pitch) Bot_RequestAim;
 void () Bot_UpdateAimPID;
+
+// Goal Arbitration (botgoal.qc)
+void (entity owner, float pri, float commit_secs, entity ent, vector org, string reason) Bot_RequestGoal;
+
+// Intent Requests (botmove.qc)
+void (entity bot, float intent, float pri, float commit_secs, string reason) Bot_RequestIntent;
 
 // Influence Map System (ai_influence.qc)
 entity (vector org) FindClosestWaypoint;

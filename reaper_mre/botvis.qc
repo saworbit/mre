@@ -47,6 +47,8 @@ float (entity targ) infrontofbot =
    local float dot;
    local float lnd;
    local float idle_scan;
+   local vector scan_angles;
+   local float scan_yaw;
 
    if ((self.skil == MOVETYPE_WALK))
    {
@@ -73,15 +75,18 @@ float (entity targ) infrontofbot =
    } //end if
    // Idle scan: occasionally yaw sweep when no enemy to widen sightlines.
    idle_scan = CAM_IDLE;
+   scan_angles = self.angles;
    if (!self.enemy)
    {
       if ((random () < 0.100))
       {
-         self.angles_y = (self.angles_y + ((random () - 0.500) * 90.000));
+         scan_yaw = (self.angles_y + ((random () - 0.500) * 90.000));
+         Bot_RequestAim (scan_yaw,0.000,TRUE,FALSE);
+         scan_angles_y = scan_yaw;
          idle_scan = TRUE;
       } //end if
    } //end if
-   makevectors (self.angles);
+   makevectors (scan_angles);
    vec = normalize ((targ.origin - self.origin));
    dot = (vec * v_forward);
    fov = (0.700 - (self.skil * 0.280));

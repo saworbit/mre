@@ -423,15 +423,10 @@ void () checkyaw =
       current_pitch = desired_pitch;
    } //end if
 
-   // 5. Apply Final Angle
-   self.ideal_pitch = current_pitch;
-   if ((abs_diff > 0.500))
-   {
-      self.angles_x = current_pitch;
-      self.fixangle = TRUE;
-   } //end if
+   // 5. Apply Final Aim Request (PID updates actual angles)
+   Bot_RequestAim (0.000,current_pitch,FALSE,TRUE);
 
-   // NOTE: We do NOT call ChangePitch() because we handled pitch update manually above.
+   // NOTE: We do NOT call ChangePitch(); the PID controller applies pitch updates.
    // The engine's ChangeYaw() still runs automatically for yaw (left/right) smoothing.
 }; //end of the function checkyaw
 // ===== END ENHANCED AIM =====
@@ -498,8 +493,8 @@ void () BotPostThink =
                         // (Real ambush behavior: hear noise → take position → wait)
                         if (((self.health > 80.000) && (self.items & ((IT_ROCKET_LAUNCHER + IT_SUPER_NAILGUN) + IT_LIGHTNING))))
                         {
-                           // STOP moving - set velocity to zero
-                           self.velocity = '0.000 0.000 0.000';
+                           // Request a short hold to set up the ambush
+                           Bot_RequestIntent (self,6.000,70.000,1.500,"ambush");
 
                            // Face the noise source
                            self.ideal_yaw = vectoyaw ((sound_maker.origin - self.origin));

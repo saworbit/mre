@@ -139,28 +139,37 @@ void (entity bot) bot_triggered =
 {
    local vector org;
    local entity Botgoal;
+   local entity dest;
 
    Botgoal = bot.goalentity;
    if ((Botgoal.goalentity != self))
    {
       return ;
    } //end if
-   Botgoal.goalentity = find (world,targetname,self.target);
-   if ((Botgoal.goalentity.classname == "light"))
+   dest = find (world,targetname,self.target);
+   org = Botgoal.origin;
+   if ((dest && (dest.classname != "light")))
+   {
+      org = ((dest.absmax + dest.absmin) * 0.500);
+      org_z = (dest.absmin_z + TRUE);
+   } //end if
+   Bot_RequestGoal (bot,80.000,0.800,dest,org,"triggered");
+   if ((Botgoal.goalentity != dest))
+   {
+      return ;
+   } //end if
+   if ((dest && (dest.classname == "light")))
    {
       bot.nav_search_time = time;
       return ;
    } //end if
-   if (Botgoal.goalentity)
+   if (dest)
    {
       bot.nav_search_time = (time + MOVETYPE_WALK);
-      org = ((Botgoal.goalentity.absmax + Botgoal.goalentity.absmin) * 0.500);
-      org_z = (Botgoal.goalentity.absmin_z + TRUE);
       if ((Botgoal.classname != "BotTarget"))
       {
          objerror ("bad bot target in bot_touch! 3\n");
       } //end if
-      setorigin (Botgoal,org);
       Botgoal.goalentity.lastbot = bot;
       Botgoal.goalentity.lasttime = time;
       if (VERBOSEBOT)
@@ -247,8 +256,7 @@ void () enemy_touched =
    {
       objerror ("ERROR - bad bot target!\n");
    } //end if
-   setorigin (self.goalentity,org);
-   self.goalentity.goalentity = self.enemy;
+   Bot_RequestGoal (self,90.000,0.500,self.enemy,org,"enemy touched");
    self.combat_search_time = (time + MOVETYPE_STEP);
    if ((self.lefty & GETGOODY))
    {

@@ -144,6 +144,63 @@ void (entity target, float ttl) Bot_AddAvoidTarget =
    } //end else
 }; //end of the function Bot_AddAvoidTarget
 
+void (entity owner, float pri, float commit_secs, entity ent, vector org, string reason) Bot_RequestGoal =
+{
+   local float same_goal;
+
+   if (!owner)
+   {
+      return ;
+   } //end if
+
+   same_goal = FALSE;
+   if ((ent == owner.goalentity))
+   {
+      same_goal = TRUE;
+   } //end if
+   if ((owner.goalentity && (ent == owner.goalentity.goalentity)))
+   {
+      same_goal = TRUE;
+   } //end if
+
+   if ((time < owner.goal_commit_until))
+   {
+      if ((pri < owner.goal_priority))
+      {
+         return ;
+      } //end if
+      if ((pri == owner.goal_priority))
+      {
+         if (!same_goal)
+         {
+            return ;
+         } //end if
+      } //end if
+   } //end if
+
+   owner.goal_priority = pri;
+   owner.goal_commit_until = (time + commit_secs);
+
+   if (!ent)
+   {
+      return ;
+   } //end if
+
+   if ((((owner.goalentity == world) || (!owner.goalentity)) && (ent.classname == "BotTarget")))
+   {
+      owner.goalentity = ent;
+      return ;
+   } //end if
+
+   if (((owner.goalentity == world) || (!owner.goalentity)))
+   {
+      return ;
+   } //end if
+
+   owner.goalentity.goalentity = ent;
+   setorigin (owner.goalentity,org);
+}; //end of the function Bot_RequestGoal
+
 void () Bot_CheckGoalFixation =
 {
    local entity goal;
@@ -176,7 +233,7 @@ void () Bot_CheckGoalFixation =
    } //end if
    if ((goal.solid == SOLID_NOT) && (goal.modelindex == 0.000))
    {
-      self.goalentity.goalentity = self.goalentity;
+      Bot_RequestGoal (self,70.000,0.500,self.goalentity,self.goalentity.origin,"fixate reset");
       self.nav_search_time = time;
       self.last_goal_progress_time = time;
       self.last_goal_dist = 999999.000;
@@ -214,7 +271,7 @@ void () Bot_CheckGoalFixation =
       } //end if
       self.last_goal_progress_time = time;
       self.last_goal_dist = 999999.000;
-      self.goalentity.goalentity = self.goalentity;
+      Bot_RequestGoal (self,70.000,0.500,self.goalentity,self.goalentity.origin,"fixate avoid");
       self.nav_search_time = time;
    } //end if
 }; //end of the function Bot_CheckGoalFixation
@@ -1309,12 +1366,11 @@ void () goForAir =
       bestorg_z = (bestorg_z + 200.000);
    } //end if
    botTarget = self.goalentity;
-   botTarget.goalentity = botTarget;
+   Bot_RequestGoal (self,85.000,0.800,botTarget,bestorg,"air seek");
    if ((self.goalentity.classname != "BotTarget"))
    {
       objerror ("bad bot target in botgoal! 1\n");
    } //end if
-   setorigin (botTarget,bestorg);
 }; //end of the function goForAir
 
 void (entity item) ageCache =
@@ -1820,7 +1876,7 @@ void () aibot_chooseGoal =
             {
                // Small diversity bias: occasionally favor less-frequent items.
                weight = (weight + (random () * 5.000));
-               botTarget.goalentity = e;
+               Bot_RequestGoal (self,60.000,0.000,e,botTarget.origin,"choose goal");
                best = weight;
                bestorg = org;
                // Predictive intercept: bias the goal toward a fast enemy's path.
@@ -1885,7 +1941,7 @@ void () aibot_chooseGoal =
             if ((weight > best))
             {
                best = weight;
-               botTarget.goalentity = e;
+               Bot_RequestGoal (self,60.000,0.000,e,botTarget.origin,"choose path");
                self.pendingcache = e.pendingcache;
                self.pendinglen = e.pendinglen;
                bestorg = e.origin;
@@ -1925,7 +1981,7 @@ void () aibot_chooseGoal =
       if (global_item)
       {
          // Found a high-value item elsewhere in the map! Go get it.
-         botTarget.goalentity = global_item;
+         Bot_RequestGoal (self,50.000,0.000,global_item,botTarget.origin,"global goal");
          bestorg = global_item.origin;
          // Give bot more time to travel there before giving up
          self.nav_search_time = (time + 5.000);
@@ -1933,7 +1989,7 @@ void () aibot_chooseGoal =
       else
       {
          // Map is empty/boring? Fallback to random wander.
-         botTarget.goalentity = botTarget;
+         Bot_RequestGoal (self,40.000,0.000,botTarget,botTarget.origin,"roam");
          bestorg = chooseRoamTarget (FALSE);
          // Check again soon
          self.nav_search_time = (time + 0.500);

@@ -57,7 +57,7 @@ void () Stack_Push =
 void () Stack_Pop =
 {
    // Restore goal from level 1 (top of stack)
-   self.goalentity.goalentity = self.goal_stack1;
+   Bot_RequestGoal (self,60.000,0.000,self.goal_stack1,self.goalentity.origin,"stack pop");
    // Shift stack down: level 2 → level 1, level 3 → level 2
    self.goal_stack1 = self.goal_stack2;
    self.goal_stack2 = self.goal_stack3;
@@ -112,9 +112,9 @@ void () Stack_Pop_Safe =
             {
                continue;  // Enemy dead, try next stack entry
             }
-         }
+         } //end if
          // Goal is valid! Restore it
-         self.goalentity.goalentity = tempgoal;
+         Bot_RequestGoal (self,60.000,0.000,tempgoal,self.goalentity.origin,"stack restore");
          valid_goal_found = TRUE;
       }
    }
@@ -122,7 +122,7 @@ void () Stack_Pop_Safe =
    // If no valid goal found in stack, fall back to choosing new goal
    if (!valid_goal_found)
    {
-      self.goalentity.goalentity = self.goalentity;  // Reset to idle
+      Bot_RequestGoal (self,50.000,0.000,self.goalentity,self.goalentity.origin,"stack idle");
    }
 }; //end of Stack_Pop_Safe
 
@@ -496,7 +496,7 @@ void (entity door_ent) Bot_SolveBlockedDoor =
    // We must physically navigate to the button location.
 
    // Prevent "shimmering" (resetting goal repeatedly)
-   if ((self.goalentity == button))
+   if ((self.goalentity && (self.goalentity.goalentity == button)))
    {
       return ;
    } //end if
@@ -506,7 +506,7 @@ void (entity door_ent) Bot_SolveBlockedDoor =
    Stack_Push ();
 
    // Override goal to the button
-   self.goalentity = button;
+   Bot_RequestGoal (self,80.000,1.000,button,self.goalentity.origin,"door button");
 
    // Optional: Play a sound or log to confirm decision
    if (bot_debug_enabled)
@@ -690,7 +690,7 @@ void () BotHuntTarget =
       self.lefty = (self.lefty - (self.lefty & ONTRAIN));
    } //end if
    Stack_Push();  // Save current goal before redirecting to enemy (Phase 8: Target Stack)
-   self.goalentity.goalentity = self.enemy;
+   Bot_RequestGoal (self,90.000,1.000,self.enemy,self.enemy.origin,"hunt target");
    if ((self.enemy.enemy == world))
    {
       self.enemy.enemy = self;
@@ -699,7 +699,6 @@ void () BotHuntTarget =
    {
       objerror ("bad bot target in bot_ai! 2\n");
    } //end if
-   setorigin (self.goalentity,self.enemy.origin);
    self.think = self.th_run;
    self.strafeonly = FALSE;
 
@@ -2441,7 +2440,7 @@ float (float minweight) aibot_checkforGoodies =
       } //end if
       if ((weight > best))
       {
-         botTarget.goalentity = e;
+         Bot_RequestGoal (self,60.000,0.000,e,botTarget.origin,"goodie pick");
          best = weight;
       } //end if
       e = e.chain;
@@ -2468,7 +2467,7 @@ float (float minweight) aibot_checkforGoodies =
          return (TRUE);
       } //end if
    } //end if
-   botTarget.goalentity = self.enemy;
+   Bot_RequestGoal (self,90.000,0.300,self.enemy,botTarget.origin,"goodie fallback");
    return (FALSE);
 }; //end of the function aibot_checkforGoodies
 
@@ -2482,8 +2481,7 @@ void (float dist) ai_endgetGoody =
    {
       objerror ("bad bot target in bot_ai! 7\n");
    } //end if
-   setorigin (self.goalentity,self.lastseenpos);
-   self.goalentity.goalentity = self.enemy;
+   Bot_RequestGoal (self,90.000,0.300,self.enemy,self.lastseenpos,"goody end");
    if (enemyvisible (self.enemy))
    {
       self.lastseenpos = self.enemy.origin;
@@ -2616,7 +2614,5 @@ void (float dist) ai_botgetGoody =
    {
       objerror ("bad bot target in bot_ai! 8\n");
    } //end if
-   setorigin (self.goalentity,self.lastseenpos);
-   self.goalentity.goalentity = self.enemy;
+   Bot_RequestGoal (self,90.000,0.300,self.enemy,self.lastseenpos,"goody reset");
 }; //end of the function ai_botgetGoody
-

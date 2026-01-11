@@ -374,9 +374,9 @@ void () PutBotInServer =
    self.lefty = STRAFE_DIR;
    if ((self.goalentity == world))
    {
-      self.goalentity = botmovetarget ();
+      Bot_RequestGoal (self,100.000,0.000,botmovetarget(),self.origin,"spawn target");
    } //end if
-   self.goalentity.goalentity = world;
+   Bot_RequestGoal (self,100.000,0.000,world,self.goalentity.origin,"spawn idle");
    SetNewParms ();
    DecodeLevelParms ();
    W_SetCurrentAmmo ();
@@ -1466,6 +1466,5 @@ void () UpdateTeamColors =
       e = findbot (e);
    } //end while
 }; //end of the function UpdateTeamColors
-
 
 

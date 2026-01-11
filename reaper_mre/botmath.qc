@@ -614,6 +614,18 @@ float (entity bot, float current_ang, float ideal_ang, float dt, float axis_idx)
    return (output * dt);
 }; //end of Math_PID
 
+void (float req_yaw, float req_pitch, float set_yaw, float set_pitch) Bot_RequestAim =
+{
+   if (set_yaw)
+   {
+      self.ideal_yaw = req_yaw;
+   } //end if
+   if (set_pitch)
+   {
+      self.ideal_pitch = req_pitch;
+   } //end if
+}; //end of Bot_RequestAim
+
 // ===== PID AIM UPDATE: Integration Function =====
 // Replaces traditional ChangeYaw/ChangePitch logic with smooth PID control.
 // Call this instead of ChangeYaw() + ChangePitch() for smooth aim.

@@ -1,5 +1,21 @@
 ## 2026-01-11
 
+- **Single-writer aim** for bot view control:
+  - **Goal:** Only `Bot_UpdateAimPID()` writes `angles_x/angles_y/fixangle`, eliminating jitter from ad-hoc writes.
+  - **Helper** in `reaper_mre/botmath.qc`: `Bot_RequestAim()` sets `ideal_yaw/ideal_pitch` without touching view angles.
+  - **Refactor** in `reaper_mre/botthink.qc` and `reaper_mre/botvis.qc`: `checkyaw()` and `infrontofbot()` now request aim targets instead of writing angles directly. Idle scan uses a local yaw for FOV checks while requesting the yaw change.
+  - **Result:** PID remains the sole writer of view angles, smoothing aim without oscillation or snap-jitter.
+- **Goal arbitration (single writer)** for goal selection and goal chaining:
+  - **Helper** in `reaper_mre/botgoal.qc`: `Bot_RequestGoal(owner, pri, commit_secs, ent, org, reason)` enforces commit window + priority override rules before writing `goalentity.goalentity` and updating the BotTarget origin.
+  - **Entity fields** in `reaper_mre/botit_th.qc`: Added `.goal_commit_until` and `.goal_priority` to track active goal commitments.
+  - **Routed goal writes** in `reaper_mre/botgoal.qc`, `reaper_mre/bot_ai.qc`, `reaper_mre/botsignl.qc`, `reaper_mre/botspawn.qc`, and `reaper_mre/plats.qc` (aibot_chooseGoal, BotHuntTarget, bot_triggered, enemy_touched, Bot_CheckGoalFixation, goForAir, stack pop/restore). Prevents churn and conflicting goal overrides.
+  - **Result:** Goal changes are centralized and consistent, with higher-priority requests able to override while lower-priority ones respect commit windows.
+- **Intent-based hold** to remove stop-motion decisions from `BotPostThink`:
+  - **Helper** in `reaper_mre/botmove.qc`: `Bot_RequestIntent()` stores intent overrides with priority + commit window.
+  - **New intent** in `reaper_mre/botmove.qc`: `BOT_INTENT_HOLD` keeps the bot in a hold state during ambush/wait windows.
+  - **Refactor** in `reaper_mre/botthink.qc`: Ambush logic now requests a hold intent instead of zeroing velocity. `Botmovetogoal()` consumes the hold request and returns early without issuing movement.
+  - **Result:** BotPostThink no longer decides to stop moving; movement controller owns stop/hold behavior while preserving the ambush wait.
+
 - **Flow Governor (Priority-Based Arbitration)** to prevent competing control loops from fighting each other:
   - **Problem:** Multiple failsafe systems (terrain trap, loop breaker, vertical reposition, intent escalation) were directly overriding bot movement, causing oscillation between "escape" and "chase" modes, re-entering loops immediately after breaking them, and vertical reposition being overridden by chase then retriggering.
   - **Solution:** Priority-based arbitration layer where each system "requests control" with a priority and commit window. Only highest-priority driver owns movement goal at any time. TraceFlow steering always executes, but steers toward Governor's goal.
@@ -648,4 +664,3 @@
   - **DM4 waypoint upgrade** in `reaper_mre/maps/dm4.qc`: All 343 waypoints updated to new 4-parameter format with empty string targets (`""`). Future waypoint dumps will include button targets discovered during gameplay—creates self-improving navigation that learns secret sequences.
   - **Python tool update** in `tools/generate_dm4_waypoints.py`: Updated header comments to document Phase 6 format: `SpawnSavedWaypoint(origin, traffic_score, danger_scent, target)`.
   - **Result:** Bots solve button→door puzzles proactively instead of reactively! When waypoint has target link, bot auto-fires button while approaching—no more running into locked doors. System learns from gameplay: bots manually press button once, waypoint saves target, future bots know to shoot button automatically. Creates emergent secret-solving behavior from navigation memory. 🎯🚪
-
