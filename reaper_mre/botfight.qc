@@ -162,6 +162,14 @@ vector () botaim =
    local float splash_z;
    local entity e;
 
+   if (self.botaim_override_active)
+   {
+      if ((vlen (self.botaim_override) > 0.001))
+      {
+         return (normalize (self.botaim_override));
+      } //end if
+   } //end if
+
    if (REBOUND)
    {
       tg = REBOUNDSPOT;

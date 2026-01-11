@@ -819,11 +819,12 @@ float /* ERROR: Could not determine return type */ (float vz, float dist, float 
 // - Wide Gap? Aim shallower (45°) to convert explosion force into forward speed.
 float() bot_rocket_jump =
 {
-   local vector old_angles;
    local vector jumpv;
    local vector dir;
    local float dist;
    local float pitch_aim;
+   local vector aim_angles;
+   local vector aim_dir;
 
    // 1. Safety Checks
    if ((self.ammo_rockets < 1)) return (FALSE);
@@ -836,9 +837,6 @@ float() bot_rocket_jump =
    // We need to know where the goal is relative to us
    dir = normalize((self.goalentity.origin - self.origin));
    dist = vlen((self.goalentity.origin - self.origin));
-
-   // Save current view to restore later
-   old_angles = self.angles;
 
    // 2b. Ceiling Clearance Check (from link-based RJ system)
    // Prevents RJ in tight spaces where upward blast would hit ceiling and kill bot
@@ -913,39 +911,39 @@ float() bot_rocket_jump =
    } //end if
    // else: use the learned pitch angle from the nearby RJ waypoint
 
-   // 4. Set Aim Angles
+   // 4. Compute Aim Angles (without writing view angles)
    // Pitch: look down/back based on calculated need
-   self.angles_x = pitch_aim;
+   aim_angles_x = pitch_aim;
 
    // Yaw: Face exactly OPPOSITE to the target direction
    // This ensures the explosion pushes us directly toward the goal
-   self.angles_y = (vectoyaw(dir) + 180.000);
+   aim_angles_y = (vectoyaw (dir) + 180.000);
+   aim_angles_z = 0.000;
 
-   ChangePitch ();
-   ChangeYaw ();
+   makevectors (aim_angles);
+   aim_dir = v_forward;
+
+   Bot_RequestAim (aim_angles_y,pitch_aim,TRUE,TRUE,AIM_OWNER_NAV,R_NONE,"rocket jump");
+   self.botaim_override = aim_dir;
+   self.botaim_override_active = TRUE;
 
    // 5. Execute Sequence
-   makevectors (self.angles);
    W_FireRocket (); // Fire at the calculated angle
+   self.botaim_override_active = FALSE;
+   self.botaim_override = '0.000 0.000 0.000';
 
    // Synchronized jump to catch blast
    // Base vertical jump + heavy kick from the explosion direction
    jumpv = '0.000 0.000 270.000';
 
-   // Add forward momentum relative to where we want to go (v_forward is pointing back)
+   // Add forward momentum relative to where we want to go (aim_dir is pointing back)
    // We invert v_forward because we are looking backwards
    // AGGRESSIVE LEAP: Tripled from -120 to -320 (running speed) to clear wide gaps like DM2 Quad
-   jumpv = (jumpv + (v_forward * -320.000));
+   jumpv = (jumpv + (aim_dir * -320.000));
 
    Botjump (jumpv);
 
-   // 6. Cleanup
-   // Restore original aim immediately so bot doesn't lose track of enemies
-   self.angles = old_angles;
-   ChangePitch ();
-   ChangeYaw ();
-
-   // Set cooldown (prevents spam) and reset stuck counter (successful escape)
+   // 6. Cleanup: Set cooldown (prevents spam) and reset stuck counter (successful escape)
    self.rj_cooldown = (time + 2.000);
    self.stuck_count = 0;
    self.stuck_score = 0.000;
@@ -5489,8 +5487,8 @@ void (float dist) Botmovetogoal =
       {
          // Do we have a clear shot?
          // (Optional: Look straight at goal to ensure jump trajectory)
-         self.ideal_yaw = vectoyaw(Botgoal.origin - self.origin);
-         ChangeYaw();
+         self.ideal_yaw = vectoyaw (Botgoal.origin - self.origin);
+         Bot_RequestAim (self.ideal_yaw,0.000,TRUE,FALSE,AIM_OWNER_NAV,R_NONE,"jump node");
 
          // EXECUTE JUMP
          // We use the standard jump velocity (270)

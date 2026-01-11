@@ -306,6 +306,8 @@ float (entity targ, entity inflictor) CanDamage;
 .float aim_hold_pitch;
 .float aim_hold_set_yaw;
 .float aim_hold_set_pitch;
+.vector botaim_override;
+.float botaim_override_active;
 .float idle_scan_next;
 .float move_req_mode;
 .float move_req_style;

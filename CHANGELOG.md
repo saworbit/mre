@@ -33,6 +33,10 @@
   - **Aim requests** in `reaper_mre/botmath.qc`: `Bot_RequestAim()` ignores late overwrites if an aim request already exists during apply.
   - **Hazard scheduling** in `reaper_mre/botmove.qc`: hazard checks now run after movement heading is computed; loop-break is suppressed during hazard escape.
   - **Result:** Keeps arbitration stable within a tick and aligns hazard steering with actual movement intent.
+- **Removed remaining movement yaw writers** that bypassed the aim arbiter:
+  - **Rocket jump** in `reaper_mre/botmove.qc`: replaces direct `angles_x/angles_y` writes and `ChangeYaw()` with `Bot_RequestAim()` plus a temporary `botaim_override` vector for the fired rocket.
+  - **Action jump nodes** in `reaper_mre/botmove.qc`: replaces `ChangeYaw()` with a `Bot_RequestAim()` yaw request.
+  - **Result:** Movement no longer writes view yaw directly during these sequences, avoiding PID aim contention.
 
 - **Flow Governor (Priority-Based Arbitration)** to prevent competing control loops from fighting each other:
   - **Problem:** Multiple failsafe systems (terrain trap, loop breaker, vertical reposition, intent escalation) were directly overriding bot movement, causing oscillation between "escape" and "chase" modes, re-entering loops immediately after breaking them, and vertical reposition being overridden by chase then retriggering.
