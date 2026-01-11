@@ -269,6 +269,7 @@ void () checkyaw =
    local float missile_factor;
    local vector spotty_squid;
    local float desired_pitch;
+   local float desired_yaw;
    local float current_pitch;
    local float diff;
    local float time_delta;
@@ -363,6 +364,7 @@ void () checkyaw =
    // Replaces instant ChangePitch with gradual rotation based on skill level
 
    los_angles = vectoangles (los);
+   desired_yaw = los_angles_y;
 
    // Calculate desired pitch (-90 to 90 range)
    desired_pitch = los_angles_x;
@@ -424,18 +426,270 @@ void () checkyaw =
    } //end if
 
    // 5. Apply Final Aim Request (PID updates actual angles)
-   Bot_RequestAim (0.000,current_pitch,FALSE,TRUE);
+   Bot_RequestAim (desired_yaw,current_pitch,TRUE,TRUE,AIM_OWNER_COMBAT,R_COMBAT_SEEN_ENEMY,"combat");
 
    // NOTE: We do NOT call ChangePitch(); the PID controller applies pitch updates.
    // The engine's ChangeYaw() still runs automatically for yaw (left/right) smoothing.
 }; //end of the function checkyaw
 // ===== END ENHANCED AIM =====
 
+void () Bot_FrameBegin =
+{
+   self.frame_begin_time = time;
+   self.dbg_tick = (self.dbg_tick + 1.000);
+   self.goal_req_ent = world;
+   self.goal_req_org = '0.000 0.000 0.000';
+   self.goal_req_pri = -1.000;
+   self.goal_req_commit_secs = 0.000;
+   self.goal_req_reason = string_null;
+   self.goal_req_reason_code = R_NONE;
+
+   self.intent_req = 0.000;
+   self.intent_req_pri = 0.000;
+   self.intent_req_commit_secs = 0.000;
+   self.intent_req_reason = string_null;
+   self.intent_req_reason_code = R_NONE;
+
+   self.aim_req_set_yaw = FALSE;
+   self.aim_req_set_pitch = FALSE;
+   self.aim_req_owner = AIM_OWNER_NONE;
+   self.aim_req_mode = 0.000;
+   self.aim_req_reason = string_null;
+   self.aim_req_reason_code = R_NONE;
+
+   self.move_req_mode = BOT_MOVE_NONE;
+   self.move_req_style = BOT_MOVE_STYLE_NONE;
+   self.move_req_pri = 0.000;
+   self.move_req_commit_secs = 0.000;
+   self.move_req_target = world;
+   self.move_req_org = '0.000 0.000 0.000';
+   self.move_req_speed = 0.000;
+
+   self.dbg_apply_count_this_tick = 0.000;
+   self.dbg_apply_tick_time = time;
+}; //end of the function Bot_FrameBegin
+
+void () Bot_Arbitrate =
+{
+   local float same_goal;
+   local float style;
+
+   if ((self.goal_req_pri >= 0.000))
+   {
+      same_goal = FALSE;
+      if ((self.goal_req_ent == self.goalentity))
+      {
+         same_goal = TRUE;
+      } //end if
+      if ((self.goalentity && (self.goal_req_ent == self.goalentity.goalentity)))
+      {
+         same_goal = TRUE;
+      } //end if
+
+      if ((time < self.goal_commit_until))
+      {
+         if ((self.goal_req_pri < self.goal_priority))
+         {
+            same_goal = -1.000;
+         } //end if
+         else if ((self.goal_req_pri == self.goal_priority))
+         {
+            if (!same_goal)
+            {
+               same_goal = -1.000;
+            } //end if
+         } //end if
+      } //end if
+
+      if ((same_goal != -1.000))
+      {
+         self.goal_priority = self.goal_req_pri;
+         self.goal_commit_until = (time + self.goal_req_commit_secs);
+         self.goal_reason = self.goal_req_reason;
+         self.goal_reason_code = self.goal_req_reason_code;
+
+         if (self.goal_req_ent)
+         {
+            if ((((self.goalentity == world) || (!self.goalentity)) && (self.goal_req_ent.classname == "BotTarget")))
+            {
+               self.goalentity = self.goal_req_ent;
+            } //end if
+            else if (!((self.goalentity == world) || (!self.goalentity)))
+            {
+               self.goalentity.goalentity = self.goal_req_ent;
+               setorigin (self.goalentity,self.goal_req_org);
+            } //end else
+         } //end if
+      } //end if
+   } //end if
+
+   if (self.intent_req)
+   {
+      if ((time < self.intent_request_until))
+      {
+         if ((self.intent_req_pri < self.intent_request_pri))
+         {
+            self.intent_req = 0.000;
+         } //end if
+         else if ((self.intent_req_pri == self.intent_request_pri))
+         {
+            if ((self.intent_req != self.intent_request))
+            {
+               self.intent_req = 0.000;
+            } //end if
+         } //end if
+      } //end if
+
+      if (self.intent_req)
+      {
+         self.intent_request = self.intent_req;
+         self.intent_request_pri = self.intent_req_pri;
+         self.intent_request_until = (time + self.intent_req_commit_secs);
+         self.intent_reason = self.intent_req_reason;
+         self.intent_reason_code = self.intent_req_reason_code;
+      } //end if
+   } //end if
+
+   if (self.move_req_mode)
+   {
+      if ((time < self.move_commit_until))
+      {
+         if ((self.move_req_pri < self.move_priority))
+         {
+            self.move_req_mode = BOT_MOVE_NONE;
+         } //end if
+         else if ((self.move_req_pri == self.move_priority))
+         {
+            if ((self.move_req_mode != self.move_mode))
+            {
+               self.move_req_mode = BOT_MOVE_NONE;
+            } //end if
+         } //end if
+      } //end if
+
+      if (self.move_req_mode)
+      {
+         style = self.move_req_style;
+         if (!style)
+         {
+            if ((self.move_req_mode == BOT_MOVE_STAND))
+            {
+               style = BOT_MOVE_STYLE_HOLD;
+            } //end if
+            else if (((self.move_req_mode == BOT_MOVE_CHARGE) || (self.move_req_mode == BOT_MOVE_NAILCHARGE)))
+            {
+               style = BOT_MOVE_STYLE_STRAFE;
+            } //end if
+            else
+            {
+               style = BOT_MOVE_STYLE_ADVANCE;
+            } //end else
+         } //end if
+
+         self.move_mode = self.move_req_mode;
+         self.move_style = style;
+         self.move_priority = self.move_req_pri;
+         self.move_commit_until = (time + self.move_req_commit_secs);
+         self.move_target = self.move_req_target;
+         self.move_target_org = self.move_req_org;
+         self.move_speed = self.move_req_speed;
+      } //end if
+   } //end if
+   else if ((time > self.move_commit_until))
+   {
+      self.move_mode = BOT_MOVE_STAND;
+      self.move_style = BOT_MOVE_STYLE_HOLD;
+      self.move_speed = 0.000;
+   } //end else
+}; //end of the function Bot_Arbitrate
+
+void () Bot_FrameApply =
+{
+   local float saved_angles_x;
+   local float saved_angles_y;
+   local float saved_angles_z;
+   local float saved_ideal_yaw;
+   local float saved_ideal_pitch;
+   local float aim_yaw;
+   local float aim_pitch;
+
+   self.dbg_apply_count_this_tick = (self.dbg_apply_count_this_tick + 1.000);
+   if ((self.dbg_apply_count_this_tick > 1.000))
+   {
+      if (bot_debug_enabled)
+      {
+         bprint ("[");
+         bprint (self.netname);
+         bprint ("] apply count > 1\n");
+      } //end if
+      Bot_DbgEvent (self,DBG_EVT_APPLY_COUNT,self.dbg_apply_count_this_tick,0.000,R_NONE,"apply count");
+   } //end if
+
+   saved_angles_x = self.angles_x;
+   saved_angles_y = self.angles_y;
+   saved_angles_z = self.angles_z;
+
+   Bot_MoveControllerApply ();
+
+   self.angles_x = saved_angles_x;
+   self.angles_y = saved_angles_y;
+   self.angles_z = saved_angles_z;
+
+   if (!self.aim_hold_set_yaw)
+   {
+      self.aim_hold_yaw = self.angles_y;
+      self.aim_hold_set_yaw = TRUE;
+   } //end if
+   if (!self.aim_hold_set_pitch)
+   {
+      self.aim_hold_pitch = self.angles_x;
+      self.aim_hold_set_pitch = TRUE;
+   } //end if
+
+   // Capture movement-updated ideal angles before aim overrides.
+   saved_ideal_yaw = self.ideal_yaw;
+   saved_ideal_pitch = self.ideal_pitch;
+
+   aim_yaw = self.aim_hold_yaw;
+   aim_pitch = self.aim_hold_pitch;
+   if (self.aim_req_set_yaw)
+   {
+      aim_yaw = self.aim_req_yaw;
+   } //end if
+   if (self.aim_req_set_pitch)
+   {
+      aim_pitch = self.aim_req_pitch;
+   } //end if
+   if ((self.aim_req_set_yaw || self.aim_req_set_pitch))
+   {
+      self.aim_owner = self.aim_req_owner;
+      self.aim_mode = self.aim_req_mode;
+      self.aim_reason = self.aim_req_reason;
+      self.aim_reason_code = self.aim_req_reason_code;
+   } //end if
+
+   self.aim_final_yaw = aim_yaw;
+   self.aim_final_pitch = aim_pitch;
+
+   self.ideal_yaw = aim_yaw;
+   self.ideal_pitch = aim_pitch;
+
+   Bot_UpdateAimPID ();
+
+   self.ideal_yaw = saved_ideal_yaw;
+   self.ideal_pitch = saved_ideal_pitch;
+}; //end of the function Bot_FrameApply
+
 void () BotPostThink =
 {
    local float fraglimit;
    local float enemy_dist;
    local float think_delay;
+
+   if ((self.frame_begin_time != time))
+   {
+      Bot_FrameBegin ();
+   } //end if
 
    if (self.enemy)
    {
@@ -494,11 +748,10 @@ void () BotPostThink =
                         if (((self.health > 80.000) && (self.items & ((IT_ROCKET_LAUNCHER + IT_SUPER_NAILGUN) + IT_LIGHTNING))))
                         {
                            // Request a short hold to set up the ambush
-                           Bot_RequestIntent (self,6.000,70.000,1.500,"ambush");
+                           Bot_RequestIntent (self,6.000,70.000,1.500,R_AMBUSH,"ambush");
 
                            // Face the noise source
-                           self.ideal_yaw = vectoyaw ((sound_maker.origin - self.origin));
-                           ChangeYaw ();
+                           Bot_RequestAim (vectoyaw ((sound_maker.origin - self.origin)),0.000,TRUE,FALSE,AIM_OWNER_SOUND,R_SOUND_HEARD,"sound");
 
                            // Wait 1.5 seconds for them to round the corner into our line of fire
                            // (Don't move goalentity, just stop and face the sound)
@@ -530,6 +783,11 @@ void () BotPostThink =
    // ===== END CUNNING AI: Ambush =====
 
    checkyaw ();
+
+   Bot_Arbitrate ();
+   Bot_FrameApply ();
+   Bot_DbgTraceTick (self);
+
    if (self.pather)
    {
       if (CheckDropPath ())
@@ -732,14 +990,6 @@ void () BotPostThink =
       } //end if
    } //end if
    // =================================
-
-   // ===== PID AIMING CONTROLLER: Smooth Aim Update =====
-   // Update bot aim smoothly using PID control instead of instant snap.
-   // This replaces the traditional ChangeYaw/ChangePitch logic with physics-based smoothing.
-   // The PID controller reads ideal_yaw/ideal_pitch (set throughout the code) and smoothly
-   // transitions to those targets with realistic acceleration/deceleration.
-   Bot_UpdateAimPID ();
-   // ===== END PID AIMING =====
 
    fraglimit = cvar ("fraglimit");
    if ((fraglimit && (self.frags >= fraglimit)))

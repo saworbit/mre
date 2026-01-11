@@ -614,15 +614,44 @@ float (entity bot, float current_ang, float ideal_ang, float dt, float axis_idx)
    return (output * dt);
 }; //end of Math_PID
 
-void (float req_yaw, float req_pitch, float set_yaw, float set_pitch) Bot_RequestAim =
+void (float req_yaw, float req_pitch, float set_yaw, float set_pitch, float owner, float reason_code, string reason) Bot_RequestAim =
 {
+   if ((self.frame_begin_time != time))
+   {
+      Bot_FrameBegin ();
+   } //end if
+   if (self.move_apply_active)
+   {
+      if ((self.aim_req_set_yaw || self.aim_req_set_pitch))
+      {
+         return ;
+      } //end if
+   } //end if
+   self.aim_req_owner = owner;
+   self.aim_req_reason = reason;
+   self.aim_req_reason_code = reason_code;
+   self.aim_req_mode = 0.000;
    if (set_yaw)
    {
-      self.ideal_yaw = req_yaw;
+      self.aim_req_mode = (self.aim_req_mode + 1.000);
    } //end if
    if (set_pitch)
    {
-      self.ideal_pitch = req_pitch;
+      self.aim_req_mode = (self.aim_req_mode + 2.000);
+   } //end if
+   if (set_yaw)
+   {
+      self.aim_req_yaw = req_yaw;
+      self.aim_req_set_yaw = TRUE;
+      self.aim_hold_yaw = req_yaw;
+      self.aim_hold_set_yaw = TRUE;
+   } //end if
+   if (set_pitch)
+   {
+      self.aim_req_pitch = req_pitch;
+      self.aim_req_set_pitch = TRUE;
+      self.aim_hold_pitch = req_pitch;
+      self.aim_hold_set_pitch = TRUE;
    } //end if
 }; //end of Bot_RequestAim
 

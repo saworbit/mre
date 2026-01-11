@@ -15,6 +15,24 @@
   - **New intent** in `reaper_mre/botmove.qc`: `BOT_INTENT_HOLD` keeps the bot in a hold state during ambush/wait windows.
   - **Refactor** in `reaper_mre/botthink.qc`: Ambush logic now requests a hold intent instead of zeroing velocity. `Botmovetogoal()` consumes the hold request and returns early without issuing movement.
   - **Result:** BotPostThink no longer decides to stop moving; movement controller owns stop/hold behavior while preserving the ambush wait.
+- **Frame arbiter + single-apply pipeline** to prevent decision churn within a tick:
+  - **New frame flow** in `reaper_mre/botthink.qc`: `Bot_FrameBegin()` clears per-tick requests, `Bot_Arbitrate()` selects winners, `Bot_FrameApply()` applies movement + aim once.
+  - **Think loop change** in `reaper_mre/botthink.qc`: `BotPostThink()` now calls `Bot_Arbitrate()` then `Bot_FrameApply()`; apply count debug (`dbg_apply_count_this_tick`) must remain 1.
+  - **Result:** Guarantees a single "arbiter then apply" pass per frame and reduces aim/move jitter from repeated writes.
+- **Movement single-writer enforcement** to keep movement output centralized:
+  - **Controller** in `reaper_mre/botmove.qc`: `Bot_MoveControllerApply()` is the only place that outputs movement for the tick.
+  - **Guard** in `reaper_mre/botmove.qc`: `Bot_WalkMove()` logs if `walkmove()` is called outside the controller.
+  - **Refactors** in `reaper_mre/dmbot.qc` and helpers: movement helpers now request move modes/targets instead of writing movement directly.
+  - **Result:** Movement ownership is explicit and debuggable; no "secret writers".
+- **BotTarget spawn safety** to avoid invalid goal entities after request clearing:
+  - **Init fix** in `reaper_mre/botspawn.qc`: bots always get a BotTarget for `goalentity`, and invalid goal entities are replaced.
+  - **Request sentinel** in `reaper_mre/botthink.qc`: per-tick goal requests use a `goal_req_pri` sentinel so spawn goals are not wiped before arbitration.
+  - **Result:** Eliminates "bad bot target in botgoal" errors and missing initial goals.
+- **Request deferral + hazard timing cleanup** to reduce mid-frame churn:
+  - **Goal requests** in `reaper_mre/botgoal.qc`: `Bot_RequestGoal()` now always queues during apply; no direct goal writes while the movement controller runs.
+  - **Aim requests** in `reaper_mre/botmath.qc`: `Bot_RequestAim()` ignores late overwrites if an aim request already exists during apply.
+  - **Hazard scheduling** in `reaper_mre/botmove.qc`: hazard checks now run after movement heading is computed; loop-break is suppressed during hazard escape.
+  - **Result:** Keeps arbitration stable within a tick and aligns hazard steering with actual movement intent.
 
 - **Flow Governor (Priority-Based Arbitration)** to prevent competing control loops from fighting each other:
   - **Problem:** Multiple failsafe systems (terrain trap, loop breaker, vertical reposition, intent escalation) were directly overriding bot movement, causing oscillation between "escape" and "chase" modes, re-entering loops immediately after breaking them, and vertical reposition being overridden by chase then retriggering.

@@ -3,6 +3,7 @@
 defs.qc
 bot_defs.qc
 botit_th.qc
+botdebug.qc
 kascam.qc
 func.qc
 subs.qc

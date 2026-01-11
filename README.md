@@ -24,6 +24,30 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 
 ## Latest Features (2026-01)
 
+### Frame Arbiter + Single Writer Controllers (2026-01-11)
+
+**NEW:** One "arbiter then apply" pass per tick for bot intent, goal, movement, and aim.
+
+**Problem:** Multiple systems could make decisions and write movement/aim more than once per frame, causing jitter or "decision twice per tick" behavior.
+
+**Solution: Frame arbiter pipeline**
+
+1. **Collect requests** (`Bot_FrameBegin()` clears per-tick request fields)
+2. **Arbitrate** (`Bot_Arbitrate()` selects final goal/aim/move winners with commit windows)
+3. **Apply once** (`Bot_FrameApply()` runs the movement controller and aim controller once)
+
+**Single-writer enforcement:**
+
+- `Bot_MoveControllerApply()` is the only place that outputs movement for the tick.
+- `Bot_WalkMove()` logs if `walkmove()` is called outside the controller.
+- Movement helpers now request modes/targets instead of pushing movement directly.
+
+**Why it matters:**
+
+- Prevents double-decisions within one frame
+- Reduces aim and movement jitter
+- Makes ownership and debugging much clearer (apply count should always be 1)
+
 ### Flow Governor: Priority-Based Arbitration (2026-01-11)
 
 **NEW:** Competing control loops now arbitrated cleanly—no more oscillation between escape/chase modes!
@@ -3426,6 +3450,14 @@ This project builds upon the classic **Reaper Bot** (1998) with modern enhanceme
   - Engine setting that disables model colors (`r_nocolors 1` / `r_noskins 1`)
   - Player model (`progs/player.mdl`) may not have proper color ranges defined
   - Engine may require additional network message for in-world color updates beyond `MSG_UPDATECOLORS`
+
+- **Bots can jitter/spin after the arbiter + PID aim refactor** (under investigation).
+
+  **Suspected cause:**
+  - **Competing yaw writers**: movement logic still calls `ChangeYaw()`/`Bot_SmoothTurn()` while the PID aim controller updates `angles_y`. This means movement and aim fight over the same view yaw each tick.
+
+  **Next step:**
+  - Decouple **movement yaw** from **view yaw** so only `Bot_UpdateAimPID()` writes `angles_y` while movement uses its own yaw signal for `walkmove()` and steering.
 
 ---
 ## 🙏 Credits

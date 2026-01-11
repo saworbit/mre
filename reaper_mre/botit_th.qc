@@ -25,6 +25,8 @@ float LOG_DEBUG    = 5.000;   // Everything (deep debugging)
 float bot_debug_level /* = 0.000 */;  // Current verbosity level (0 = off)
 float bot_debug_feeler /* = 0.000 */;  // Toggle feeler-specific logging (impulse 97)
 float bot_skill_adapt /* = 0.000 */;  // Enable adaptive skill tuning (cvar bot_skill_adapt)
+float bot_dbg_trace_enabled /* = 0.000 */;  // Structured telemetry toggle (impulse 121)
+float bot_dbg_spin_enabled /* = 1.000 */;  // Auto-dump on spin detection (1=on)
 
 void () setWatcherMode;
 
@@ -148,6 +150,8 @@ float (entity targ, entity inflictor) CanDamage;
 .float stuck_score;
 .float progress_check_time;
 .float stuck_mode;
+.float unstick_reason_code;
+.string unstick_reason;
 .float escape_until_time;
 .float escape_cooldown_time;
 .vector escape_dir;
@@ -204,6 +208,15 @@ float (entity targ, entity inflictor) CanDamage;
 // Goal arbitration state (commit window + priority).
 .float goal_commit_until;
 .float goal_priority;
+// Per-tick goal request (cleared in Bot_FrameBegin).
+.entity goal_req_ent;
+.vector goal_req_org;
+.float goal_req_pri;
+.float goal_req_commit_secs;
+.string goal_req_reason;
+.float goal_req_reason_code;
+.string goal_reason;
+.float goal_reason_code;
 // Recent jump pad/lift memory for elevation seeking.
 .vector last_pad_origin;
 .float last_pad_time;
@@ -262,11 +275,54 @@ float (entity targ, entity inflictor) CanDamage;
 .float bot_last_enemy_seen;  // Last time bot had LOS to enemy (updated in enemy eval)
 .float bot_last_damage_dealt;// Last time bot dealt damage to enemy (optional success signal)
 .float bot_intent_next_update; // Rate limiter for intent eval (4Hz)
-// Intent override requests (commit + priority).
+// Intent override (commit + priority) and per-tick requests.
 .float intent_request;
 .float intent_request_pri;
 .float intent_request_until;
+.float intent_req;
+.float intent_req_pri;
+.float intent_req_commit_secs;
+.string intent_req_reason;
+.float intent_req_reason_code;
+.string intent_reason;
+.float intent_reason_code;
 // ===== END INTENT ESCALATION =====
+// ===== FRAME REQUESTS: Move + Aim (cleared in Bot_FrameBegin) =====
+.float aim_req_yaw;
+.float aim_req_pitch;
+.float aim_req_set_yaw;
+.float aim_req_set_pitch;
+.float aim_req_owner;
+.float aim_req_mode;
+.string aim_req_reason;
+.float aim_req_reason_code;
+.float aim_owner;
+.float aim_mode;
+.string aim_reason;
+.float aim_reason_code;
+.float aim_final_yaw;
+.float aim_final_pitch;
+.float aim_hold_yaw;
+.float aim_hold_pitch;
+.float aim_hold_set_yaw;
+.float aim_hold_set_pitch;
+.float idle_scan_next;
+.float move_req_mode;
+.float move_req_style;
+.float move_req_pri;
+.float move_req_commit_secs;
+.entity move_req_target;
+.vector move_req_org;
+.float move_req_speed;
+// Selected move (after arbitration).
+.float move_mode;
+.float move_style;
+.float move_priority;
+.float move_commit_until;
+.entity move_target;
+.vector move_target_org;
+.float move_speed;
+// ===== END FRAME REQUESTS =====
 // ===== FLOW GOVERNOR: Priority-Based Arbitration =====
 // Prevents competing control loops by arbitrating who controls movement.
 // Only one driver owns the bot's movement goal at a time (highest priority wins).
@@ -290,6 +346,25 @@ float (entity targ, entity inflictor) CanDamage;
 .float self_vel_hist_idx;
 // Adrenaline focus level (0.0-1.0) used to tighten aim and speed reactions.
 .float adrenaline;
+// Debug: apply count per tick + walkmove guard.
+.float dbg_apply_count_this_tick;
+.float dbg_apply_tick_time;
+.float move_apply_active;
+.float dbg_walkmove_warned;
+.float frame_begin_time;
+.float dbg_tick;
+.float dbg_trace_head;
+.float dbg_event_head;
+.float dbg_last_yaw;
+.float dbg_last_aim_owner;
+.float dbg_last_intent;
+.float dbg_last_unstick;
+.entity dbg_last_goal_ent;
+.float dbg_spin_ticks;
+.float dbg_aim_flip_count;
+.float dbg_aim_flip_window_start;
+.float dbg_spin_trigger_time;
+.float wiggle_jump_time;
 // Skill-based memory flag for pre-cached route knowledge at spawn.
 .float has_memory;
 // Ring buffer for jump velocity pattern smoothing (prevents erratic air movement).

@@ -372,11 +372,16 @@ void () PutBotInServer =
    self.invincible_time = CAM_IDLE;
    self.yaw_speed = (45.000 + (25.000 * self.skil));
    self.lefty = STRAFE_DIR;
-   if ((self.goalentity == world))
+   if (((!self.goalentity) || (self.goalentity == world) || (self.goalentity.classname != "BotTarget")))
    {
-      Bot_RequestGoal (self,100.000,0.000,botmovetarget(),self.origin,"spawn target");
+      if ((self.goalentity && (self.goalentity != world) && (self.goalentity.classname != "BotTarget")))
+      {
+         remove (self.goalentity);
+      } //end if
+      self.goalentity = botmovetarget ();
+      self.goalentity.goalentity = world;
    } //end if
-   Bot_RequestGoal (self,100.000,0.000,world,self.goalentity.origin,"spawn idle");
+   Bot_RequestGoal (self,100.000,0.000,world,self.origin,R_SPAWN_IDLE,"spawn idle");
    SetNewParms ();
    DecodeLevelParms ();
    W_SetCurrentAmmo ();
@@ -416,6 +421,10 @@ void () PutBotInServer =
    else
    {
       setorigin (self.movetarget,self.origin);
+   } //end if
+   if ((self.goalentity && (self.goalentity.classname == "BotTarget")))
+   {
+      setorigin (self.goalentity,self.origin);
    } //end if
    self.movetarget.movetarget = world;
    clearCache (self);
@@ -1466,5 +1475,3 @@ void () UpdateTeamColors =
       e = findbot (e);
    } //end while
 }; //end of the function UpdateTeamColors
-
-

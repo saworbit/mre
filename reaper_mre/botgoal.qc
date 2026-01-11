@@ -144,61 +144,38 @@ void (entity target, float ttl) Bot_AddAvoidTarget =
    } //end else
 }; //end of the function Bot_AddAvoidTarget
 
-void (entity owner, float pri, float commit_secs, entity ent, vector org, string reason) Bot_RequestGoal =
+void (entity owner, float pri, float commit_secs, entity ent, vector org, float reason_code, string reason) Bot_RequestGoal =
 {
-   local float same_goal;
-
    if (!owner)
    {
       return ;
    } //end if
-
-   same_goal = FALSE;
-   if ((ent == owner.goalentity))
+   if ((owner.frame_begin_time != time))
    {
-      same_goal = TRUE;
-   } //end if
-   if ((owner.goalentity && (ent == owner.goalentity.goalentity)))
-   {
-      same_goal = TRUE;
+      Bot_FrameBegin ();
    } //end if
 
-   if ((time < owner.goal_commit_until))
+   if ((owner.goal_req_pri >= 0.000))
    {
-      if ((pri < owner.goal_priority))
+      if ((pri < owner.goal_req_pri))
       {
          return ;
       } //end if
-      if ((pri == owner.goal_priority))
+      if ((pri == owner.goal_req_pri))
       {
-         if (!same_goal)
+         if ((ent != owner.goal_req_ent))
          {
             return ;
          } //end if
       } //end if
    } //end if
 
-   owner.goal_priority = pri;
-   owner.goal_commit_until = (time + commit_secs);
-
-   if (!ent)
-   {
-      return ;
-   } //end if
-
-   if ((((owner.goalentity == world) || (!owner.goalentity)) && (ent.classname == "BotTarget")))
-   {
-      owner.goalentity = ent;
-      return ;
-   } //end if
-
-   if (((owner.goalentity == world) || (!owner.goalentity)))
-   {
-      return ;
-   } //end if
-
-   owner.goalentity.goalentity = ent;
-   setorigin (owner.goalentity,org);
+   owner.goal_req_pri = pri;
+   owner.goal_req_commit_secs = commit_secs;
+   owner.goal_req_ent = ent;
+   owner.goal_req_org = org;
+   owner.goal_req_reason = reason;
+   owner.goal_req_reason_code = reason_code;
 }; //end of the function Bot_RequestGoal
 
 void () Bot_CheckGoalFixation =
@@ -233,7 +210,7 @@ void () Bot_CheckGoalFixation =
    } //end if
    if ((goal.solid == SOLID_NOT) && (goal.modelindex == 0.000))
    {
-      Bot_RequestGoal (self,70.000,0.500,self.goalentity,self.goalentity.origin,"fixate reset");
+      Bot_RequestGoal (self,70.000,0.500,self.goalentity,self.goalentity.origin,R_GOAL_FIXATE_RESET,"fixate reset");
       self.nav_search_time = time;
       self.last_goal_progress_time = time;
       self.last_goal_dist = 999999.000;
@@ -271,7 +248,7 @@ void () Bot_CheckGoalFixation =
       } //end if
       self.last_goal_progress_time = time;
       self.last_goal_dist = 999999.000;
-      Bot_RequestGoal (self,70.000,0.500,self.goalentity,self.goalentity.origin,"fixate avoid");
+      Bot_RequestGoal (self,70.000,0.500,self.goalentity,self.goalentity.origin,R_GOAL_FIXATE_AVOID,"fixate avoid");
       self.nav_search_time = time;
    } //end if
 }; //end of the function Bot_CheckGoalFixation
@@ -1366,7 +1343,7 @@ void () goForAir =
       bestorg_z = (bestorg_z + 200.000);
    } //end if
    botTarget = self.goalentity;
-   Bot_RequestGoal (self,85.000,0.800,botTarget,bestorg,"air seek");
+   Bot_RequestGoal (self,85.000,0.800,botTarget,bestorg,R_GOAL_AIR_SEEK,"air seek");
    if ((self.goalentity.classname != "BotTarget"))
    {
       objerror ("bad bot target in botgoal! 1\n");
@@ -1876,7 +1853,7 @@ void () aibot_chooseGoal =
             {
                // Small diversity bias: occasionally favor less-frequent items.
                weight = (weight + (random () * 5.000));
-               Bot_RequestGoal (self,60.000,0.000,e,botTarget.origin,"choose goal");
+               Bot_RequestGoal (self,60.000,0.000,e,botTarget.origin,R_GOAL_CHOOSE,"choose goal");
                best = weight;
                bestorg = org;
                // Predictive intercept: bias the goal toward a fast enemy's path.
@@ -1941,7 +1918,7 @@ void () aibot_chooseGoal =
             if ((weight > best))
             {
                best = weight;
-               Bot_RequestGoal (self,60.000,0.000,e,botTarget.origin,"choose path");
+               Bot_RequestGoal (self,60.000,0.000,e,botTarget.origin,R_GOAL_CHOOSE_PATH,"choose path");
                self.pendingcache = e.pendingcache;
                self.pendinglen = e.pendinglen;
                bestorg = e.origin;
@@ -1981,7 +1958,7 @@ void () aibot_chooseGoal =
       if (global_item)
       {
          // Found a high-value item elsewhere in the map! Go get it.
-         Bot_RequestGoal (self,50.000,0.000,global_item,botTarget.origin,"global goal");
+         Bot_RequestGoal (self,50.000,0.000,global_item,botTarget.origin,R_NAV_GLOBAL,"global goal");
          bestorg = global_item.origin;
          // Give bot more time to travel there before giving up
          self.nav_search_time = (time + 5.000);
@@ -1989,7 +1966,7 @@ void () aibot_chooseGoal =
       else
       {
          // Map is empty/boring? Fallback to random wander.
-         Bot_RequestGoal (self,40.000,0.000,botTarget,botTarget.origin,"roam");
+         Bot_RequestGoal (self,40.000,0.000,botTarget,botTarget.origin,R_NAV_ROAM,"roam");
          bestorg = chooseRoamTarget (FALSE);
          // Check again soon
          self.nav_search_time = (time + 0.500);

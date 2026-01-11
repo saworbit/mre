@@ -55,6 +55,9 @@ impulse 208
 | `95` | **Debug Toggle** | ✅ Yes | Enable/disable bot debug logging |
 | `96` | **Verbosity Cycle** | ✅ Yes | Cycle through 6 verbosity levels |
 | `97` | **Feeler Debug** | ✅ Yes | Toggle feeler steering exploration logs |
+| `121` | **Telemetry Toggle** | ✅ Yes | Enable/disable structured per-tick telemetry |
+| `122` | **Telemetry Trace Dump** | ✅ Yes | Dump per-tick trace ring buffer |
+| `123` | **Telemetry Event Dump** | ✅ Yes | Dump event ring buffer (changes only) |
 
 ### Debug Verbosity Levels (impulse 96)
 
@@ -72,6 +75,20 @@ Press `impulse 96` repeatedly to cycle through:
 impulse 95    // Turn on logging
 impulse 96    // Cycle to LOG_TACTICAL (recommended for combat analysis)
 ```
+
+**Telemetry Quick Start:**
+```
+impulse 121       // Enable structured telemetry
+set bot_dbg_id 2  // (Optional) focus bot by client id
+set bot_dbg_n 120 // (Optional) number of trace ticks to dump
+impulse 122       // Dump trace
+impulse 123       // Dump events
+```
+
+**Telemetry Cvars:**
+- `bot_dbg_id` - Bot client id to dump (0 = aim at a bot or first bot)
+- `bot_dbg_n` - Trace entries to dump (default 120)
+- `bot_dbg_event_n` - Event entries to dump (default 20)
 
 **Console Output Examples:**
 
@@ -449,6 +466,9 @@ These impulses are **restricted to human players** only (bots cannot trigger the
 - `95` - Debug toggle
 - `96` - Verbosity cycling
 - `97` - Feeler debug
+- `121` - Telemetry toggle
+- `122` - Telemetry trace dump
+- `123` - Telemetry event dump
 - `199` - Observation mode
 
 **Why?** These modify global state and should only be controlled by the human player.
@@ -485,13 +505,13 @@ All MRE impulses are within the safe 0-255 range.
 | Range | Category | Count | Description |
 |-------|----------|-------|-------------|
 | 1-8 | Weapons | 8 | Standard Quake weapon selection |
-| 95-97 | Debug | 3 | Logging controls (player-only) |
+| 95-97, 121-123 | Debug | 6 | Logging + telemetry controls (player-only) |
 | 50-61, 98-99 | Camera | 8 | AI Cameraman spectator system |
 | 100 | Navigation | 1 | Waypoint dump |
 | 199 | Learning | 1 | Player observation mode (player-only) |
 | 208 | Bots | 1 | Add bot |
 
-**Total Custom Impulses:** 14 (plus 8 standard weapon impulses)
+**Total Custom Impulses:** 17 (plus 8 standard weapon impulses)
 
 ---
 

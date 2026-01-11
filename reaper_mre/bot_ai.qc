@@ -57,7 +57,7 @@ void () Stack_Push =
 void () Stack_Pop =
 {
    // Restore goal from level 1 (top of stack)
-   Bot_RequestGoal (self,60.000,0.000,self.goal_stack1,self.goalentity.origin,"stack pop");
+   Bot_RequestGoal (self,60.000,0.000,self.goal_stack1,self.goalentity.origin,R_GOAL_STACK,"stack pop");
    // Shift stack down: level 2 → level 1, level 3 → level 2
    self.goal_stack1 = self.goal_stack2;
    self.goal_stack2 = self.goal_stack3;
@@ -114,7 +114,7 @@ void () Stack_Pop_Safe =
             }
          } //end if
          // Goal is valid! Restore it
-         Bot_RequestGoal (self,60.000,0.000,tempgoal,self.goalentity.origin,"stack restore");
+         Bot_RequestGoal (self,60.000,0.000,tempgoal,self.goalentity.origin,R_GOAL_STACK,"stack restore");
          valid_goal_found = TRUE;
       }
    }
@@ -122,7 +122,7 @@ void () Stack_Pop_Safe =
    // If no valid goal found in stack, fall back to choosing new goal
    if (!valid_goal_found)
    {
-      Bot_RequestGoal (self,50.000,0.000,self.goalentity,self.goalentity.origin,"stack idle");
+      Bot_RequestGoal (self,50.000,0.000,self.goalentity,self.goalentity.origin,R_GOAL_STACK,"stack idle");
    }
 }; //end of Stack_Pop_Safe
 
@@ -469,13 +469,10 @@ void (entity door_ent) Bot_SolveBlockedDoor =
          aim_ang = vectoangles (aim_vec);
 
          // Lock aim on the button
-         self.ideal_yaw = aim_ang_y;
-         self.ideal_pitch = aim_ang_x;
-         ChangeYaw ();
-         ChangePitch ();
+         Bot_RequestAim (aim_ang_y,aim_ang_x,TRUE,TRUE,AIM_OWNER_COMBAT,R_COMBAT_SEEN_ENEMY,"combat");
 
-         // Stop moving so we don't faceplant into the door while shooting
-         self.velocity = '0.000 0.000 0.000';
+         // Hold position while shooting so we don't faceplant into the door
+         Bot_RequestIntent (self,BOT_INTENT_HOLD,80.000,0.500,R_TRIGGER_BUTTON,"door button");
 
          // Fire weapon (if cooldown allows)
          if ((time > self.attack_finished))
@@ -506,7 +503,7 @@ void (entity door_ent) Bot_SolveBlockedDoor =
    Stack_Push ();
 
    // Override goal to the button
-   Bot_RequestGoal (self,80.000,1.000,button,self.goalentity.origin,"door button");
+   Bot_RequestGoal (self,80.000,1.000,button,self.goalentity.origin,R_TRIGGER_BUTTON,"door button");
 
    // Optional: Play a sound or log to confirm decision
    if (bot_debug_enabled)
@@ -690,7 +687,7 @@ void () BotHuntTarget =
       self.lefty = (self.lefty - (self.lefty & ONTRAIN));
    } //end if
    Stack_Push();  // Save current goal before redirecting to enemy (Phase 8: Target Stack)
-   Bot_RequestGoal (self,90.000,1.000,self.enemy,self.enemy.origin,"hunt target");
+   Bot_RequestGoal (self,90.000,1.000,self.enemy,self.enemy.origin,R_COMBAT_HUNT_TARGET,"hunt target");
    if ((self.enemy.enemy == world))
    {
       self.enemy.enemy = self;
@@ -1819,7 +1816,7 @@ void (float dist, float turn) aibot_run_slide =
       } //end if
       if ((rnd < 0.500))
       {
-         walkmove ((self.ideal_yaw + 180.000),(dis * 0.500));
+         Bot_WalkMove ((self.ideal_yaw + 180.000),(dis * 0.500));
       } //end if
       return ;
    } //end if
@@ -2440,7 +2437,7 @@ float (float minweight) aibot_checkforGoodies =
       } //end if
       if ((weight > best))
       {
-         Bot_RequestGoal (self,60.000,0.000,e,botTarget.origin,"goodie pick");
+         Bot_RequestGoal (self,60.000,0.000,e,botTarget.origin,R_NAV_ITEM_PICKUP,"goodie pick");
          best = weight;
       } //end if
       e = e.chain;
@@ -2467,7 +2464,7 @@ float (float minweight) aibot_checkforGoodies =
          return (TRUE);
       } //end if
    } //end if
-   Bot_RequestGoal (self,90.000,0.300,self.enemy,botTarget.origin,"goodie fallback");
+   Bot_RequestGoal (self,90.000,0.300,self.enemy,botTarget.origin,R_GOAL_GOODY_FALLBACK,"goodie fallback");
    return (FALSE);
 }; //end of the function aibot_checkforGoodies
 
@@ -2481,7 +2478,7 @@ void (float dist) ai_endgetGoody =
    {
       objerror ("bad bot target in bot_ai! 7\n");
    } //end if
-   Bot_RequestGoal (self,90.000,0.300,self.enemy,self.lastseenpos,"goody end");
+   Bot_RequestGoal (self,90.000,0.300,self.enemy,self.lastseenpos,R_GOAL_GOODY_END,"goody end");
    if (enemyvisible (self.enemy))
    {
       self.lastseenpos = self.enemy.origin;
@@ -2614,5 +2611,5 @@ void (float dist) ai_botgetGoody =
    {
       objerror ("bad bot target in bot_ai! 8\n");
    } //end if
-   Bot_RequestGoal (self,90.000,0.300,self.enemy,self.lastseenpos,"goody reset");
+   Bot_RequestGoal (self,90.000,0.300,self.enemy,self.lastseenpos,R_GOAL_GOODY_RESET,"goody reset");
 }; //end of the function ai_botgetGoody

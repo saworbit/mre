@@ -153,7 +153,7 @@ void (entity bot) bot_triggered =
       org = ((dest.absmax + dest.absmin) * 0.500);
       org_z = (dest.absmin_z + TRUE);
    } //end if
-   Bot_RequestGoal (bot,80.000,0.800,dest,org,"triggered");
+   Bot_RequestGoal (bot,80.000,0.800,dest,org,R_TRIGGERED,"triggered");
    if ((Botgoal.goalentity != dest))
    {
       return ;
@@ -256,7 +256,7 @@ void () enemy_touched =
    {
       objerror ("ERROR - bad bot target!\n");
    } //end if
-   Bot_RequestGoal (self,90.000,0.500,self.enemy,org,"enemy touched");
+   Bot_RequestGoal (self,90.000,0.500,self.enemy,org,R_COMBAT_ENEMY_TOUCHED,"enemy touched");
    self.combat_search_time = (time + MOVETYPE_STEP);
    if ((self.lefty & GETGOODY))
    {

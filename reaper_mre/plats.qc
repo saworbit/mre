@@ -54,7 +54,7 @@ void () plat_hit_top =
       if ((self.lasttime > (time - MOVETYPE_BOUNCE)))
       {
          self.lastbot.search_time = time;
-         Bot_RequestGoal (self.lastbot,70.000,0.500,self.lastbot.goalentity,self.lastbot.goalentity.origin,"plat reset");
+         Bot_RequestGoal (self.lastbot,70.000,0.500,self.lastbot.goalentity,self.lastbot.goalentity.origin,R_GOAL_PLAT_RESET,"plat reset");
       } //end if
    } //end if
 }; //end of the function plat_hit_top
@@ -68,7 +68,7 @@ void () plat_hit_bottom =
       if ((self.lasttime > (time - MOVETYPE_BOUNCE)))
       {
          self.lastbot.search_time = (time + 0.500);
-         Bot_RequestGoal (self.lastbot,70.000,0.500,self.lastbot.goalentity,self.lastbot.goalentity.origin,"plat reset");
+         Bot_RequestGoal (self.lastbot,70.000,0.500,self.lastbot.goalentity,self.lastbot.goalentity.origin,R_GOAL_PLAT_RESET,"plat reset");
       } //end if
    } //end if
 }; //end of the function plat_hit_bottom

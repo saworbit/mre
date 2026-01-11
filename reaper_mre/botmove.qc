@@ -11,6 +11,8 @@ void(vector org, vector angles, float velocity_gain, string rj_type_str) SpawnLe
 float(entity bot, vector pos, vector dir) Bot_LedgeRisk;
 // Forward declaration for loop detection (defined later in this file)
 float(entity bot) Loop_InLoop;
+// Forward declaration for unstick entry (defined later in this file)
+void (float reason_code, string reason) Bot_EnterUnstick;
 
 // Progress-based stuck detection + unstick mode tuning
 float BOT_MODE_NORMAL = 0.000;
@@ -48,11 +50,28 @@ float STUCK_SCORE_THRESH = 5.000;
 float STUCK_PUSH_SPEED = 20.000;
 float STUCK_PUSH_DIST = 40.000;
 
+float (float yaw, float dist) Bot_WalkMove =
+{
+   if (!self.move_apply_active)
+   {
+      if ((bot_debug_enabled && !self.dbg_walkmove_warned))
+      {
+         bprint ("[");
+         bprint (self.netname);
+         bprint ("] walkmove outside controller\n");
+         self.dbg_walkmove_warned = TRUE;
+      } //end if
+   } //end if
+   return (walkmove (yaw,dist));
+}; //end of the function Bot_WalkMove
+
 // PHASE 4 REFACTOR: CanRocketJumpHeight, CanCrossGap moved to botmath.qc
 
 void () halfwalkmove =
 {
-   walkmove (self.strafeyaw,self.strafedist);
+   self.move_apply_active = TRUE;
+   Bot_WalkMove (self.strafeyaw,self.strafedist);
+   self.move_apply_active = FALSE;
    self.think = self.strafethink;
    self.nextthink = (time + 0.050);
 }; //end of the function halfwalkmove
@@ -70,7 +89,7 @@ float (float s_yaw, float s_dist) botwalkmove =
    {
       halfdist = (0.550 * s_dist);
    } //end if
-   if (!walkmove (s_yaw,halfdist))
+   if (!Bot_WalkMove (s_yaw,halfdist))
    {
       return (FALSE);
    } //end if
@@ -957,15 +976,40 @@ void () CheckForHazards =
    local vector land_spot;
    local float land_content;
    local float escape_yaw;
+   local float base_yaw;
+   local vector look_angles;
+   local vector goal_dir;
 
    // Only check if we are on the ground
    if (!(self.flags & FL_ONGROUND))
    {
       return ;
    } //end if
+   if ((self.hazard_escape_until > time))
+   {
+      return ;
+   } //end if
+
+   base_yaw = self.ideal_yaw;
+   if ((self.fg_driver != FG_DRV_NONE) && (vlen (self.fg_goalDir) > 0.000))
+   {
+      base_yaw = vectoyaw (self.fg_goalDir);
+   } //end if
+   else if (self.goalentity)
+   {
+      goal_dir = (self.goalentity.origin - self.origin);
+      if ((vlen (goal_dir) > 1.000))
+      {
+         base_yaw = vectoyaw (goal_dir);
+      } //end if
+   } //end else
+   look_angles = self.angles;
+   look_angles_x = 0.000;
+   look_angles_y = base_yaw;
+   look_angles_z = 0.000;
 
    // 1. Look ahead (based on ideal_yaw - where bot is trying to move)
-   makevectors (self.angles);
+   makevectors (look_angles);
    spot = (self.origin + (v_forward * 60.000));  // Look 60 units ahead
    spot_z = self.origin_z;
 
@@ -1010,19 +1054,18 @@ void () CheckForHazards =
          self.velocity = (self.velocity * 0.100);
 
          // 2. Add a tiny backward nudge to unstick from the edge lip
-         makevectors (self.angles);
          self.velocity = (self.velocity + (v_forward * -50.000));
 
          // 3. Force immediate rotation away from the hazard
          if ((self.hazard_escape_until <= time))
          {
-            escape_yaw = (self.angles_y + 135.000);
+            escape_yaw = (base_yaw + 135.000);
             if ((random () < 0.500))
             {
-               escape_yaw = (self.angles_y - 135.000);
+               escape_yaw = (base_yaw - 135.000);
             } //end if
             self.hazard_escape_yaw = escape_yaw;
-            self.hazard_escape_until = (time + 0.600);
+            self.hazard_escape_until = (time + 1.200);
             self.bad_spot_origin = self.origin;
             self.bad_spot_radius = 220.000;
             self.bad_spot_expire_time = (time + 10.000);
@@ -1061,18 +1104,17 @@ void () CheckForHazards =
          {
             // [SOFT STOP] Decelerate rapidly instead of freezing
             self.velocity = (self.velocity * 0.100);
-            makevectors (self.angles);
             self.velocity = (self.velocity + (v_forward * -50.000));
 
             if ((self.hazard_escape_until <= time))
             {
-               escape_yaw = (self.angles_y + 135.000);
+               escape_yaw = (base_yaw + 135.000);
                if ((random () < 0.500))
                {
-                  escape_yaw = (self.angles_y - 135.000);
+                  escape_yaw = (base_yaw - 135.000);
                } //end if
                self.hazard_escape_yaw = escape_yaw;
-               self.hazard_escape_until = (time + 0.600);
+               self.hazard_escape_until = (time + 1.200);
                self.bad_spot_origin = self.origin;
                self.bad_spot_radius = 220.000;
                self.bad_spot_expire_time = (time + 10.000);
@@ -1094,17 +1136,16 @@ void () CheckForHazards =
          {
             // [SOFT STOP] Decelerate rapidly instead of freezing
             self.velocity = (self.velocity * 0.100);
-            makevectors (self.angles);
             self.velocity = (self.velocity + (v_forward * -50.000));
             if ((self.hazard_escape_until <= time))
             {
-               escape_yaw = (self.angles_y + 135.000);
+               escape_yaw = (base_yaw + 135.000);
                if ((random () < 0.500))
                {
-                  escape_yaw = (self.angles_y - 135.000);
+                  escape_yaw = (base_yaw - 135.000);
                } //end if
                self.hazard_escape_yaw = escape_yaw;
-               self.hazard_escape_until = (time + 0.600);
+               self.hazard_escape_until = (time + 1.200);
                self.bad_spot_origin = self.origin;
                self.bad_spot_radius = 220.000;
                self.bad_spot_expire_time = (time + 10.000);
@@ -1406,7 +1447,7 @@ void (float dist) strafemove =
    if (!self.enemy)
    {
       self.ideal_yaw = (self.ideal_yaw + ((random () - 0.500) * 180.000));
-      walkmove (self.ideal_yaw,dist);
+      Bot_WalkMove (self.ideal_yaw,dist);
       return ;
    } //end if
 
@@ -1449,7 +1490,7 @@ void (float dist) strafemove =
    // =======================================
 
    // --- Attempt Primary Move ---
-   if (walkmove ((self.ideal_yaw + ofs),dist))
+   if (Bot_WalkMove ((self.ideal_yaw + ofs),dist))
    {
       return ;
    } //end if
@@ -1504,7 +1545,7 @@ void (float dist) strafemove =
        slide_dir = move_dir - (wall_normal * (move_dir * wall_normal));
        slide_dir = normalize(slide_dir);
        slide_yaw = vectoyaw(slide_dir);
-       if (walkmove(slide_yaw, dist)) return ;
+       if (Bot_WalkMove(slide_yaw, dist)) return ;
 
        // ===== PROBLEM SOLVER: Enhanced Door/Button Logic =====
        // If we are stuck against a closed door, activate the solver.
@@ -1549,7 +1590,7 @@ void (float dist) strafemove =
 
    // Try alternate direction
    ofs = (-1 * ofs);
-   if (walkmove ((self.ideal_yaw + ofs),dist))
+   if (Bot_WalkMove ((self.ideal_yaw + ofs),dist))
    {
       return ;
    } //end if
@@ -1566,7 +1607,7 @@ void (float dist) strafemove =
        slide_dir = move_dir - (wall_normal * (move_dir * wall_normal));
        slide_dir = normalize(slide_dir);
        slide_yaw = vectoyaw(slide_dir);
-       if (walkmove(slide_yaw, dist)) return ;
+       if (Bot_WalkMove(slide_yaw, dist)) return ;
    }
 
    if ((self.flags & (FL_INWATER + FL_ONGROUND)))
@@ -1666,7 +1707,7 @@ float (float dist) trysidestep =
    traceline (start,(start + (BOTSPEED * dir)),FALSE,self);
    if ((trace_fraction != SPAWNFLAG_SUPERSPIKE))
    {
-      if (walkmove ((self.ideal_yaw - 90.000),(dist * 0.600)))
+      if (Bot_WalkMove ((self.ideal_yaw - 90.000),(dist * 0.600)))
       {
          return (TRUE);
       } //end if
@@ -1675,7 +1716,7 @@ float (float dist) trysidestep =
    traceline (start,(start + (BOTSPEED * dir)),FALSE,self);
    if ((trace_fraction != TRUE))
    {
-      if (walkmove ((self.ideal_yaw + 90.000),(dist * 0.600)))
+      if (Bot_WalkMove ((self.ideal_yaw + 90.000),(dist * 0.600)))
       {
          return (TRUE);
       } //end if
@@ -1685,15 +1726,15 @@ float (float dist) trysidestep =
    {
       return (TRUE);
    } //end if
-   if (walkmove ((self.ideal_yaw + 135.000),(dist * 0.400)))
+   if (Bot_WalkMove ((self.ideal_yaw + 135.000),(dist * 0.400)))
    {
       return (TRUE);
    } //end if
-   if (walkmove ((self.ideal_yaw - 135.000),(dist * 0.400)))
+   if (Bot_WalkMove ((self.ideal_yaw - 135.000),(dist * 0.400)))
    {
       return (TRUE);
    } //end if
-   if (walkmove ((self.ideal_yaw + 180.000),(dist * 0.500)))
+   if (Bot_WalkMove ((self.ideal_yaw + 180.000),(dist * 0.500)))
    {
       return (TRUE);
    } //end if
@@ -1814,17 +1855,17 @@ void (float dist) BotmovetoWindTunnel =
 
 void (float dist) BotmovetoVisiblegoal =
 {
-   if (walkmove (self.ideal_yaw,SPAWNFLAG_LASER))
+   if (Bot_WalkMove (self.ideal_yaw,SPAWNFLAG_LASER))
    {
       botwalkmove (self.ideal_yaw,(dist - SPAWNFLAG_LASER));
       return ;
    } //end if
-   if (walkmove ((self.ideal_yaw + 45.000),SPAWNFLAG_LASER))
+   if (Bot_WalkMove ((self.ideal_yaw + 45.000),SPAWNFLAG_LASER))
    {
       movetogoal ((dist - SPAWNFLAG_LASER));
       return ;
    } //end if
-   if (walkmove ((self.ideal_yaw - 45.000),SPAWNFLAG_LASER))
+   if (Bot_WalkMove ((self.ideal_yaw - 45.000),SPAWNFLAG_LASER))
    {
       movetogoal ((dist - SPAWNFLAG_LASER));
       return ;
@@ -2000,7 +2041,7 @@ float (float dist, float base_yaw) Bot_TraversalStrafe =
          self.travel_bhop_jump_time = (time + 0.400);
          return (TRUE);
       } //end if
-      if (walkmove ((base_yaw + (side * 25.000)),dist))
+      if (Bot_WalkMove ((base_yaw + (side * 25.000)),dist))
       {
          return (TRUE);
       } //end if
@@ -2584,7 +2625,7 @@ vector (entity bot) PickWaterEscapeDir =
    while ((i < 7.000))
    {
       // Calculate direction vector
-      bot.v_angle_y = (bot.angles_y + angles[i]);
+      bot.v_angle_y = (bot.ideal_yaw + angles[i]);
       bot.v_angle_x = 0.000;
       bot.v_angle_z = 0.000;
       makevectors (bot.v_angle);
@@ -2861,7 +2902,7 @@ vector (entity bot) Bot_PickTerrainEscape =
    while ((i < 7.000))
    {
       // Calculate direction vector
-      bot.v_angle_y = (bot.angles_y + angles[i]);
+      bot.v_angle_y = (bot.ideal_yaw + angles[i]);
       bot.v_angle_x = 0.000;
       bot.v_angle_z = 0.000;
       makevectors (bot.v_angle);
@@ -2927,6 +2968,10 @@ void (entity bot) Bot_HandleTerrainTrap =
    {
       return ;
    } //end if
+   if (((bot.stuck_mode == BOT_MODE_UNSTICK) && (time < bot.escape_until_time)))
+   {
+      return ;
+   } //end if
 
    if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
    {
@@ -2955,9 +3000,24 @@ void (entity bot) Bot_HandleTerrainTrap =
    // Governor handles commit window and breaks conflicting commits
    FG_Request (bot,100.000,FG_DRV_TERRAIN,escape,1.200);
 
-   // Force unstuck mode temporarily (prevents normal pathfinding from fighting us)
-   bot.stuck_mode = BOT_MODE_UNSTICK;
+   // Force a bounded unstick window with a stable escape direction
+   if ((bot.stuck_mode != BOT_MODE_UNSTICK))
+   {
+      Bot_EnterUnstick (R_UNSTICK_TERRAIN,"terrain trap");
+   } //end if
    bot.escape_until_time = (time + 1.200);
+   bot.is_retracing = FALSE;
+   bot.escape_dir = escape;
+   bot.last_escape_dir = escape;
+   bot.best_dir = escape;
+   bot.best_ideal_yaw = vectoyaw (escape);
+   bot.best_forward_scale = 1.000;
+   bot.best_strafe_bias = 0.000;
+   bot.best_wants_jump = FALSE;
+   bot.best_blocked = FALSE;
+   bot.best_step_ok = FALSE;
+   bot.feeler_commit_dir = escape;
+   bot.feeler_commit_until = bot.escape_until_time;
 
    if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
    {
@@ -2966,7 +3026,7 @@ void (entity bot) Bot_HandleTerrainTrap =
       bprint ("] TERRAIN-TRAP: Escape commit yaw=");
       bprint (ftos (vectoyaw (escape)));
       bprint ("° until t=");
-      bprint (ftos (bot.feeler_commit_until));
+      bprint (ftos (bot.escape_until_time));
       bprint ("\n");
    } //end if
 }; //end of the function Bot_HandleTerrainTrap
@@ -2981,31 +3041,112 @@ void (entity bot) Bot_HandleTerrainTrap =
 // Each intent has success signals and timeouts. If intent fails for too long,
 // escalate to next-best intent and commit briefly.
 
-void (entity bot, float intent, float pri, float commit_secs, string reason) Bot_RequestIntent =
+void (entity bot, float mode, float style, float pri, float commit_secs, entity target, vector org, float speed) Bot_RequestMove =
 {
    if (!bot)
    {
       return ;
    } //end if
-
-   if ((time < bot.intent_request_until))
+   if ((self.frame_begin_time != time))
    {
-      if ((pri < bot.intent_request_pri))
+      Bot_FrameBegin ();
+   } //end if
+
+   if ((pri < bot.move_req_pri))
+   {
+      return ;
+   } //end if
+   if ((pri == bot.move_req_pri))
+   {
+      if ((mode != bot.move_req_mode))
       {
          return ;
       } //end if
-      if ((pri == bot.intent_request_pri))
+   } //end if
+
+   bot.move_req_mode = mode;
+   bot.move_req_style = style;
+   bot.move_req_pri = pri;
+   bot.move_req_commit_secs = commit_secs;
+   bot.move_req_target = target;
+   bot.move_req_org = org;
+   bot.move_req_speed = speed;
+}; //end of the function Bot_RequestMove
+
+void (float mode, float dist) Bot_RequestMoveMode =
+{
+   local float style;
+   local entity targ;
+   local vector org;
+
+   if ((self.frame_begin_time != time))
+   {
+      Bot_FrameBegin ();
+   } //end if
+
+   style = BOT_MOVE_STYLE_ADVANCE;
+   targ = self.goalentity;
+   org = self.origin;
+   if (targ)
+   {
+      org = targ.origin;
+   } //end if
+
+   if ((mode == BOT_MOVE_STAND))
+   {
+      style = BOT_MOVE_STYLE_HOLD;
+      targ = world;
+      org = self.origin;
+   } //end if
+   else if (((mode == BOT_MOVE_CHARGE) || (mode == BOT_MOVE_NAILCHARGE)))
+   {
+      style = BOT_MOVE_STYLE_STRAFE;
+      targ = self.enemy;
+      if (targ)
       {
-         if ((intent != bot.intent_request))
-         {
-            return ;
-         } //end if
+         org = targ.origin;
+      } //end if
+   } //end if
+   else if (((mode == BOT_MOVE_CHASE) || (mode == BOT_MOVE_RUN)))
+   {
+      targ = self.enemy;
+      if (targ)
+      {
+         org = targ.origin;
       } //end if
    } //end if
 
-   bot.intent_request = intent;
-   bot.intent_request_pri = pri;
-   bot.intent_request_until = (time + commit_secs);
+   Bot_RequestMove (self,mode,style,50.000,0.200,targ,org,dist);
+}; //end of the function Bot_RequestMoveMode
+
+void (entity bot, float intent, float pri, float commit_secs, float reason_code, string reason) Bot_RequestIntent =
+{
+   if (!bot)
+   {
+      return ;
+   } //end if
+   if ((self.frame_begin_time != time))
+   {
+      Bot_FrameBegin ();
+   } //end if
+
+   if ((pri < bot.intent_req_pri))
+   {
+      return ;
+   } //end if
+   if ((pri == bot.intent_req_pri))
+   {
+      if ((intent != bot.intent_req))
+      {
+         return ;
+      } //end if
+   } //end if
+
+   bot.intent_req = intent;
+   bot.intent_req_pri = pri;
+   bot.intent_req_commit_secs = commit_secs;
+   bot.intent_req_reason = reason;
+   bot.intent_req_reason_code = reason_code;
 }; //end of the function Bot_RequestIntent
 
 // Check if current intent is succeeding (has valid success signal)
@@ -3563,6 +3704,8 @@ float (entity bot) Loop_MakeSig =
    local float yawb;
    local float cellx;
    local float celly;
+   local float move_yaw;
+   local vector goal_dir;
 
    // Use 32-unit grid (same as CoarsePos)
    p = CoarsePos (bot.origin);
@@ -3570,7 +3713,22 @@ float (entity bot) Loop_MakeSig =
    celly = (p_y / 32.000);
 
    // Yaw bucket: 0-11 (30 degree buckets)
-   yawb = floor ((bot.angles_y / 30.000));
+   // Use movement yaw (goal/driver) instead of view yaw to avoid aim-driven loops.
+   move_yaw = bot.ideal_yaw;
+   if ((bot.fg_driver != FG_DRV_NONE) && (vlen (bot.fg_goalDir) > 0.000))
+   {
+      move_yaw = vectoyaw (bot.fg_goalDir);
+   } //end if
+   else if (bot.goalentity)
+   {
+      goal_dir = (bot.goalentity.origin - bot.origin);
+      if ((vlen (goal_dir) > 1.000))
+      {
+         move_yaw = vectoyaw (goal_dir);
+      } //end if
+   } //end else
+
+   yawb = floor ((move_yaw / 30.000));
    while ((yawb < 0.000))
    {
       yawb = (yawb + 12.000);
@@ -3637,6 +3795,15 @@ void (entity bot) Loop_BreakLoop =
 {
    local vector fwd_dir;
 
+   if (((bot.stuck_mode == BOT_MODE_UNSTICK) && (time < bot.escape_until_time)))
+   {
+      return ;
+   } //end if
+   if ((bot.hazard_escape_until > time))
+   {
+      return ;
+   } //end if
+
    if (!Loop_InLoop (bot))
    {
       return ;
@@ -3662,8 +3829,8 @@ void (entity bot) Loop_BreakLoop =
    // Use forward direction as initial goal (steering will refine)
    FG_Request (bot,90.000,FG_DRV_LOOP,fwd_dir,1.200);
 
-   // Force unstick mode for a moment
-   bot.stuck_mode = BOT_MODE_UNSTICK;
+   // Force unstick mode for a moment with a fresh escape plan
+   Bot_EnterUnstick (R_UNSTICK_LOOP,"loop break");
    bot.escape_until_time = (time + 1.200);
 }; //end of the function Loop_BreakLoop
 
@@ -4521,12 +4688,12 @@ void (float dist, float mode) Bot_ApplyFeelerMove =
    } //end else
 
    strafe_yaw = (self.best_ideal_yaw + self.best_strafe_bias);
-   if (!walkmove (strafe_yaw,move_dist))
+   if (!Bot_WalkMove (strafe_yaw,move_dist))
    {
-      if (!walkmove (self.best_ideal_yaw,move_dist))
+      if (!Bot_WalkMove (self.best_ideal_yaw,move_dist))
       {
          alt_yaw = (self.best_ideal_yaw - self.best_strafe_bias);
-         walkmove (alt_yaw,(move_dist * 0.800));
+         Bot_WalkMove (alt_yaw,(move_dist * 0.800));
       } //end if
    } //end if
 }; //end of the function Bot_ApplyFeelerMove
@@ -4538,7 +4705,7 @@ void (float base_yaw) Bot_PickEscapePlan =
    self.last_escape_dir = self.best_dir;
 }; //end of the function Bot_PickEscapePlan
 
-void () Bot_EnterUnstick =
+void (float reason_code, string reason) Bot_EnterUnstick =
 {
    local float base_yaw;
    local float age;
@@ -4547,6 +4714,9 @@ void () Bot_EnterUnstick =
    {
       return ;
    } //end if
+
+   self.unstick_reason_code = reason_code;
+   self.unstick_reason = reason;
 
    // Mark repeated stuck spots as temporary bad zones.
    if ((self.last_stuck_time))
@@ -4576,10 +4746,19 @@ void () Bot_EnterUnstick =
    } //end if
 
    base_yaw = self.ideal_yaw;
-   if (!base_yaw)
+   if ((self.fg_driver != FG_DRV_NONE) && (vlen (self.fg_goalDir) > 0.000))
    {
-      base_yaw = self.angles_y;
+      base_yaw = vectoyaw (self.fg_goalDir);
    } //end if
+   else if (self.goalentity)
+   {
+      local vector goal_dir;
+      goal_dir = (self.goalentity.origin - self.origin);
+      if ((vlen (goal_dir) > 1.000))
+      {
+         base_yaw = vectoyaw (goal_dir);
+      } //end if
+   } //end else
 
    // Record directional failure: this approach got us stuck
    self.v_angle_x = 0.000;
@@ -4942,7 +5121,7 @@ void (float dist) Bot_ProgressTick =
    {
       if (((self.stuck_score > STUCK_SCORE_THRESH) || ((time - self.last_progress_time) > STUCK_TIME_LIMIT)))
       {
-         Bot_EnterUnstick ();
+         Bot_EnterUnstick (R_UNSTICK_NO_PROGRESS,"no progress");
       } //end if
    } //end if
 }; //end of the function Bot_ProgressTick
@@ -4985,26 +5164,13 @@ void (float dist) Botmovetogoal =
 
    self.oldorigin = self.origin;
 
-   // ===== PHASE 9: PROACTIVE HAZARD CHECK (Before Movement) =====
-   // Check ground ahead for gaps, lava, and death pits BEFORE committing to movement.
-   // This prevents bots from casually walking into hazards (Layer 1 - Prevention).
-   // Phase 4's mid-air system (Layer 2) handles aerial hazards during flight.
-   CheckForHazards ();
-   // =============================================================
-
    // ===== PHASE 11: WATER SURVIVAL CHECK (Drowning Prevention) =====
    // Check if bot is underwater and running out of air, force surface if needed.
    // This prevents bots from suffocating in deep water zones.
    CheckWaterSurvival ();
    // =============================================================
 
-   if ((self.hazard_escape_until > time))
-   {
-      Bot_HazardEscapeThink (dist);
-      return ;
-   } //end if
-
-   if (((time < self.intent_request_until) && (self.intent_request == BOT_INTENT_HOLD)))
+   if (((self.stuck_mode != BOT_MODE_UNSTICK) && (time < self.intent_request_until) && (self.intent_request == BOT_INTENT_HOLD)))
    {
       if ((self.bot_intent != BOT_INTENT_HOLD))
       {
@@ -5026,10 +5192,11 @@ void (float dist) Botmovetogoal =
    if (((vlen (self.velocity) < 10.000) && (self.flags & FL_ONGROUND)))
    {
       // Try a micro-jump (20% chance to avoid spamming every frame)
-      if ((random () < 0.200))
+      if (((time > self.wiggle_jump_time) && ((time - self.last_progress_time) > 0.500) && (self.stuck_mode == BOT_MODE_NORMAL) && (random () < 0.150)))
       {
          self.velocity_z = 220.000;  // Small hop
          sound (self,CHAN_BODY,"player/plyrjmp8.wav",1.000,ATTN_NORM);
+         self.wiggle_jump_time = (time + 0.600);
       } //end if
    } //end if
    // ===== END DYNAMIC STUCK WIGGLE =====
@@ -5051,7 +5218,6 @@ void (float dist) Botmovetogoal =
    // and hard-overrides intent/navigation to escape. Runs BEFORE loop breaker
    // because terrain traps can cause loops (but not all loops are terrain traps).
    Bot_HandleTerrainTrap (self);
-   // =============================================================
 
    // Detect and break repetitive behavioral loops
    Loop_BreakLoop (self);
@@ -5065,64 +5231,67 @@ void (float dist) Botmovetogoal =
    {
       self.bot_intent_next_update = (time + (1.000 / BOT_INTENT_UPDATE_HZ));
 
-      // Classify current intent based on bot state
-      local float prev_intent;
-      prev_intent = self.bot_intent;
-
-      if ((time < self.intent_request_until))
-      {
-         self.bot_intent = self.intent_request;
-      } //end if
-      else if ((self.enemy && (self.enemy.health > 0.000)))
-      {
-         // Has enemy: FIGHT if visible recently, else CHASE
-         if (((time - self.bot_last_enemy_seen) < 1.500))
-         {
-            self.bot_intent = BOT_INTENT_FIGHT;
-         } //end if
-         else
-         {
-            self.bot_intent = BOT_INTENT_CHASE;
-         } //end else
-      } //end if
-      else
-      {
-         // No enemy: check resources
-         if (((self.health < 50.000) || (self.armorvalue < 25.000) || (self.currentammo < 5.000)))
-         {
-            self.bot_intent = BOT_INTENT_RESUPPLY;
-         } //end if
-         else
-         {
-            // Good resources, no enemy: explore for pickups/contact
-            self.bot_intent = BOT_INTENT_EXPLORE;
-         } //end else
-      } //end else
-
-      // Override with UNSTICK if stuck mode active
       if ((self.stuck_mode == BOT_MODE_UNSTICK))
       {
          self.bot_intent = BOT_INTENT_UNSTICK;
-      } //end if
-
-      // If intent changed, reset start time
-      if ((self.bot_intent != prev_intent))
-      {
          self.bot_intent_start = time;
-         self.bot_intent_fail = 0.000;  // Reset fail score on natural intent change
-      } //end if
-
-      if ((time < self.intent_request_until))
-      {
          self.bot_intent_fail = 0.000;
       } //end if
       else
       {
-         // Update fail metrics (accumulate when failing, decay when succeeding)
-         Bot_UpdateIntentFail (self);
+         // Classify current intent based on bot state
+         local float prev_intent;
+         prev_intent = self.bot_intent;
 
-         // Escalate if current intent has failed for too long
-         Bot_EscalateIntent (self);
+         if ((time < self.intent_request_until))
+         {
+            self.bot_intent = self.intent_request;
+         } //end if
+         else if ((self.enemy && (self.enemy.health > 0.000)))
+         {
+            // Has enemy: FIGHT if visible recently, else CHASE
+            if (((time - self.bot_last_enemy_seen) < 1.500))
+            {
+               self.bot_intent = BOT_INTENT_FIGHT;
+            } //end if
+            else
+            {
+               self.bot_intent = BOT_INTENT_CHASE;
+            } //end else
+         } //end if
+         else
+         {
+            // No enemy: check resources
+            if (((self.health < 50.000) || (self.armorvalue < 25.000) || (self.currentammo < 5.000)))
+            {
+               self.bot_intent = BOT_INTENT_RESUPPLY;
+            } //end if
+            else
+            {
+               // Good resources, no enemy: explore for pickups/contact
+               self.bot_intent = BOT_INTENT_EXPLORE;
+            } //end else
+         } //end else
+
+         // If intent changed, reset start time
+         if ((self.bot_intent != prev_intent))
+         {
+            self.bot_intent_start = time;
+            self.bot_intent_fail = 0.000;  // Reset fail score on natural intent change
+         } //end if
+
+         if ((time < self.intent_request_until))
+         {
+            self.bot_intent_fail = 0.000;
+         } //end if
+         else
+         {
+            // Update fail metrics (accumulate when failing, decay when succeeding)
+            Bot_UpdateIntentFail (self);
+
+            // Escalate if current intent has failed for too long
+            Bot_EscalateIntent (self);
+         } //end else
       } //end else
    } //end if
    // =============================================================
@@ -5284,6 +5453,18 @@ void (float dist) Botmovetogoal =
       } //end if
    } //end if
    // ===== END FEELER STEERING =====
+
+   // ===== PHASE 9: PROACTIVE HAZARD CHECK (Before Movement) =====
+   // Check ground ahead for gaps, lava, and death pits BEFORE committing to movement.
+   // This prevents bots from casually walking into hazards (Layer 1 - Prevention).
+   // Phase 4's mid-air system (Layer 2) handles aerial hazards during flight.
+   CheckForHazards ();
+   if (((self.hazard_escape_until > time) && (self.stuck_mode != BOT_MODE_UNSTICK)))
+   {
+      Bot_HazardEscapeThink (dist);
+      return ;
+   } //end if
+   // =============================================================
 
    // ===== TRAVERSAL STRAFE-JUMPING =====
    if (Bot_TraversalStrafe (dist,self.ideal_yaw))
@@ -5653,4 +5834,58 @@ void (float dist) Botmovetogoal =
    strafemove ((dist * 0.800));
    return ;
 }; //end of the function Botmovetogoal
+
+void () Bot_MoveControllerApply =
+{
+   local float dist;
+   local float apply_mode;
+
+   self.move_apply_active = TRUE;
+
+   dist = self.move_speed;
+   if ((dist <= 0.000))
+   {
+      dist = BOTSPEED;
+   } //end if
+
+   apply_mode = self.move_mode;
+   if ((self.stuck_mode == BOT_MODE_UNSTICK))
+   {
+      if (((apply_mode == BOT_MOVE_NONE) || (apply_mode == BOT_MOVE_STAND)))
+      {
+         apply_mode = BOT_MOVE_RUN;
+      } //end if
+   } //end if
+
+   if ((apply_mode == BOT_MOVE_STAND))
+   {
+      ai_botstand ();
+   } //end if
+   else if ((apply_mode == BOT_MOVE_SEEK))
+   {
+      ai_botseek (dist);
+   } //end if
+   else if ((apply_mode == BOT_MOVE_RUN))
+   {
+      ai_botrun (dist);
+   } //end if
+   else if ((apply_mode == BOT_MOVE_CHASE))
+   {
+      aibot_chase (dist);
+   } //end if
+   else if ((apply_mode == BOT_MOVE_CHARGE))
+   {
+      ai_botcharge (dist);
+   } //end if
+   else if ((apply_mode == BOT_MOVE_NAILCHARGE))
+   {
+      ai_botnailcharge (dist);
+   } //end if
+   else
+   {
+      ai_botstand ();
+   } //end else
+
+   self.move_apply_active = FALSE;
+}; //end of the function Bot_MoveControllerApply
 

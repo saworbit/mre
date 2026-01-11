@@ -16,7 +16,7 @@ void () bot_start = [12.000, bot_walk]
 
 void () bot_stand1 = [12.000, bot_walk]
 {
-   ai_botstand ();
+   Bot_RequestMoveMode (BOT_MOVE_STAND,0.000);
    BotPostThink ();
 }; //end of the function bot_stand1
 
@@ -41,7 +41,7 @@ void () bot_walk = [6.000, bot_walk]
       self.frame = (self.frame + self.walkframe);
    } //end if
    self.walkframe = (self.walkframe + TRUE);
-   ai_botseek (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_SEEK,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_walk
 
@@ -66,7 +66,7 @@ void () bot_run = [6.000, bot_run]
       self.frame = (self.frame + self.walkframe);
    } //end if
    self.walkframe = (self.walkframe + TRUE);
-   ai_botrun (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_RUN,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_run
 
@@ -91,7 +91,7 @@ void () bot_chase = [6.000, bot_chase]
       self.frame = (self.frame + self.walkframe);
    } //end if
    self.walkframe = (self.walkframe + TRUE);
-   aibot_chase (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_CHASE,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_chase
 
@@ -106,7 +106,7 @@ void () bot_shot2 = [114.000, bot_shot3]
    self.weaponframe = FL_SWIM;
    if ((self.skil > 0.900))
    {
-      ai_botcharge (BOTSPEED);
+      Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
    } //end if
    BotPostThink ();
 }; //end of the function bot_shot2
@@ -116,7 +116,7 @@ void () bot_shot3 = [115.000, bot_shot4]
    self.weaponframe = MOVETYPE_WALK;
    if ((self.skil > FALSE))
    {
-      ai_botcharge (BOTSPEED);
+      Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
    } //end if
    BotPostThink ();
 }; //end of the function bot_shot3
@@ -126,12 +126,12 @@ void () bot_shot4 = [116.000, bot_shot5]
    self.weaponframe = MOVETYPE_STEP;
    if ((self.skil > FALSE))
    {
-      ai_botcharge (BOTSPEED);
+      Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
 
    } //end if
    else
    {
-      ai_botcharge ((BOTSPEED * 0.500));
+      Bot_RequestMoveMode (BOT_MOVE_CHARGE,(BOTSPEED * 0.500));
    } //end if
    BotPostThink ();
 }; //end of the function bot_shot4
@@ -139,14 +139,14 @@ void () bot_shot4 = [116.000, bot_shot5]
 void () bot_shot5 = [117.000, bot_shot6]
 {
    self.weaponframe = MOVETYPE_FLY;
-   ai_botcharge (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_shot5
 
 void () bot_shot6 = [118.000, bot_run]
 {
    self.weaponframe = MOVETYPE_TOSS;
-   ai_botcharge (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_shot6
 
@@ -159,35 +159,35 @@ void () bot_trigger1 = [113.000, bot_trigger2]
 void () bot_trigger2 = [114.000, bot_trigger3]
 {
    self.weaponframe = FL_SWIM;
-   ai_botseek (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_SEEK,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_trigger2
 
 void () bot_trigger3 = [115.000, bot_trigger4]
 {
    self.weaponframe = MOVETYPE_WALK;
-   ai_botseek (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_SEEK,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_trigger3
 
 void () bot_trigger4 = [116.000, bot_trigger5]
 {
    self.weaponframe = MOVETYPE_STEP;
-   ai_botseek (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_SEEK,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_trigger4
 
 void () bot_trigger5 = [117.000, bot_trigger6]
 {
    self.weaponframe = MOVETYPE_FLY;
-   ai_botseek (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_SEEK,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_trigger5
 
 void () bot_trigger6 = [118.000, bot_walk]
 {
    self.weaponframe = MOVETYPE_TOSS;
-   ai_botseek (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_SEEK,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_trigger6
 
@@ -199,7 +199,7 @@ void () bot_axe1 = [119.000, bot_axe2]
 void () bot_axe2 = [120.000, bot_axe3]
 {
    self.weaponframe = FL_SWIM;
-   ai_botcharge (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_axe2
 
@@ -213,7 +213,7 @@ void () bot_axe3 = [121.000, bot_axe4]
 void () bot_axe4 = [122.000, bot_run]
 {
    self.weaponframe = MOVETYPE_STEP;
-   ai_botcharge (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_axe4
 
@@ -225,7 +225,7 @@ void () bot_axeb1 = [125.000, bot_axeb2]
 void () bot_axeb2 = [126.000, bot_axeb3]
 {
    self.weaponframe = MOVETYPE_TOSS;
-   ai_botcharge (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_axeb2
 
@@ -233,14 +233,14 @@ void () bot_axeb3 = [127.000, bot_axeb4]
 {
    self.weaponframe = MOVETYPE_PUSH;
    W_FireAxe ();
-   ai_botcharge (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_axeb3
 
 void () bot_axeb4 = [128.000, bot_run]
 {
    self.weaponframe = FL_CLIENT;
-   ai_botcharge (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_axeb4
 
@@ -252,7 +252,7 @@ void () bot_axec1 = [131.000, bot_axec2]
 void () bot_axec2 = [132.000, bot_axec3]
 {
    self.weaponframe = FL_SWIM;
-   ai_botcharge (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_axec2
 
@@ -260,14 +260,14 @@ void () bot_axec3 = [133.000, bot_axec4]
 {
    self.weaponframe = MOVETYPE_WALK;
    W_FireAxe ();
-   ai_botcharge (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_axec3
 
 void () bot_axec4 = [134.000, bot_run]
 {
    self.weaponframe = MOVETYPE_STEP;
-   ai_botcharge (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_axec4
 
@@ -279,7 +279,7 @@ void () bot_axed1 = [137.000, bot_axed2]
 void () bot_axed2 = [138.000, bot_axed3]
 {
    self.weaponframe = MOVETYPE_TOSS;
-   ai_botcharge (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_axed2
 
@@ -287,14 +287,14 @@ void () bot_axed3 = [139.000, bot_axed4]
 {
    self.weaponframe = MOVETYPE_PUSH;
    W_FireAxe ();
-   ai_botcharge (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_axed3
 
 void () bot_axed4 = [140.000, bot_run]
 {
    self.weaponframe = FL_CLIENT;
-   ai_botcharge (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_axed4
 
@@ -377,7 +377,7 @@ void () bot_nail1 = [103.000, bot_nail2]
    } //end if
    SuperDamageSound ();
    W_FireSpikes (MOVETYPE_STEP);
-   ai_botnailcharge (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_NAILCHARGE,BOTSPEED);
    self.attack_finished = (time + 0.200);
    BotPostThink ();
 }; //end of the function bot_nail1
@@ -392,7 +392,7 @@ void () bot_nail2 = [104.000, bot_nail1]
    } //end if
    SuperDamageSound ();
    W_FireSpikes (CONTENT_SLIME);
-   ai_botnailcharge (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_NAILCHARGE,BOTSPEED);
    self.attack_finished = (time + 0.200);
    BotPostThink ();
 }; //end of the function bot_nail2
@@ -407,7 +407,7 @@ void () bot_light1 = [105.000, bot_light2]
    } //end if
    SuperDamageSound ();
    W_FireLightning ();
-   ai_botnailcharge (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_NAILCHARGE,BOTSPEED);
    self.attack_finished = (time + 0.200);
    BotPostThink ();
 }; //end of the function bot_light1
@@ -422,7 +422,7 @@ void () bot_light2 = [106.000, bot_light1]
    } //end if
    SuperDamageSound ();
    W_FireLightning ();
-   ai_botnailcharge (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_NAILCHARGE,BOTSPEED);
    self.attack_finished = (time + 0.200);
    BotPostThink ();
 }; //end of the function bot_light2
@@ -439,7 +439,7 @@ void () bot_rocket2 = [108.000, bot_rocket3]
    self.weaponframe = FL_SWIM;
    if ((self.skil > FL_SWIM))
    {
-      ai_botcharge (BOTSPEED);
+      Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
    } //end if
    BotPostThink ();
 }; //end of the function bot_rocket2
@@ -449,7 +449,7 @@ void () bot_rocket3 = [109.000, bot_rocket4]
    self.weaponframe = MOVETYPE_WALK;
    if ((self.skil > TRUE))
    {
-      ai_botcharge (BOTSPEED);
+      Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
    } //end if
    BotPostThink ();
 }; //end of the function bot_rocket3
@@ -459,7 +459,7 @@ void () bot_rocket4 = [110.000, bot_rocket5]
    self.weaponframe = MOVETYPE_STEP;
    if ((self.skil > TRUE))
    {
-      ai_botcharge (BOTSPEED);
+      Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
    } //end if
    BotPostThink ();
 }; //end of the function bot_rocket4
@@ -469,7 +469,7 @@ void () bot_rocket5 = [111.000, bot_rocket6]
    self.weaponframe = MOVETYPE_FLY;
    if ((self.skil > FALSE))
    {
-      ai_botcharge (BOTSPEED);
+      Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
    } //end if
    BotPostThink ();
 }; //end of the function bot_rocket5
@@ -477,7 +477,7 @@ void () bot_rocket5 = [111.000, bot_rocket6]
 void () bot_rocket6 = [112.000, bot_run]
 {
    self.weaponframe = MOVETYPE_TOSS;
-   ai_botcharge (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_rocket6
 
@@ -503,21 +503,21 @@ void () bot_rebound3 = [109.000, bot_rebound4]
 void () bot_rebound4 = [110.000, bot_rebound5]
 {
    self.weaponframe = MOVETYPE_STEP;
-   aibot_chase (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_CHASE,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_rebound4
 
 void () bot_rebound5 = [111.000, bot_rebound6]
 {
    self.weaponframe = MOVETYPE_FLY;
-   aibot_chase (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_CHASE,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_rebound5
 
 void () bot_rebound6 = [112.000, bot_chase]
 {
    self.weaponframe = MOVETYPE_TOSS;
-   aibot_chase (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_CHASE,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_rebound6
 
@@ -535,12 +535,12 @@ void () bot_pain2 = [36.000, bot_pain3]
    r = ((MOVETYPE_STEP * random ()) + self.skil);
    if ((r > FL_SWIM))
    {
-      ai_botrun (BOTSPEED);
+      Bot_RequestMoveMode (BOT_MOVE_RUN,BOTSPEED);
 
    } //end if
    else
    {
-      ai_botcharge (BOTSPEED);
+      Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
    } //end if
    BotPostThink ();
 }; //end of the function bot_pain2
@@ -549,12 +549,12 @@ void () bot_pain3 = [37.000, bot_pain4]
 {
    if ((self.skil >= TRUE))
    {
-      ai_botrun (BOTSPEED);
+      Bot_RequestMoveMode (BOT_MOVE_RUN,BOTSPEED);
 
    } //end if
    else
    {
-      ai_botcharge (BOTSPEED);
+      Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
    } //end if
    BotPostThink ();
 }; //end of the function bot_pain3
@@ -563,12 +563,12 @@ void () bot_pain4 = [38.000, bot_pain5]
 {
    if ((self.skil > FALSE))
    {
-      ai_botrun (BOTSPEED);
+      Bot_RequestMoveMode (BOT_MOVE_RUN,BOTSPEED);
 
    } //end if
    else
    {
-      ai_botcharge (BOTSPEED);
+      Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
    } //end if
    BotPostThink ();
 }; //end of the function bot_pain4
@@ -577,19 +577,19 @@ void () bot_pain5 = [39.000, bot_pain6]
 {
    if ((self.skil > FL_SWIM))
    {
-      ai_botrun (BOTSPEED);
+      Bot_RequestMoveMode (BOT_MOVE_RUN,BOTSPEED);
 
    } //end if
    else
    {
-      ai_botcharge (BOTSPEED);
+      Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
    } //end if
    BotPostThink ();
 }; //end of the function bot_pain5
 
 void () bot_pain6 = [40.000, bot_run]
 {
-   ai_botrun (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_RUN,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_pain6
 
@@ -608,12 +608,12 @@ void () bot_axpain2 = [30.000, bot_axpain3]
    r = ((MOVETYPE_STEP * random ()) + self.skil);
    if ((r > FL_SWIM))
    {
-      ai_botrun (BOTSPEED);
+      Bot_RequestMoveMode (BOT_MOVE_RUN,BOTSPEED);
 
    } //end if
    else
    {
-      ai_botcharge (BOTSPEED);
+      Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
    } //end if
    BotPostThink ();
 }; //end of the function bot_axpain2
@@ -622,26 +622,26 @@ void () bot_axpain3 = [31.000, bot_axpain4]
 {
    if ((self.skil >= TRUE))
    {
-      ai_botrun (BOTSPEED);
+      Bot_RequestMoveMode (BOT_MOVE_RUN,BOTSPEED);
    } //end if
    BotPostThink ();
 }; //end of the function bot_axpain3
 
 void () bot_axpain4 = [32.000, bot_axpain5]
 {
-   ai_botcharge (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_CHARGE,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_axpain4
 
 void () bot_axpain5 = [33.000, bot_axpain6]
 {
-   ai_botrun (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_RUN,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_axpain5
 
 void () bot_axpain6 = [34.000, bot_run]
 {
-   ai_botrun (BOTSPEED);
+   Bot_RequestMoveMode (BOT_MOVE_RUN,BOTSPEED);
    BotPostThink ();
 }; //end of the function bot_axpain6
 
@@ -1040,3 +1040,4 @@ void () bot_die_ax9 = [49.000, bot_die_ax9]
 {
    BotDead ();
 }; //end of the function bot_die_ax9
+

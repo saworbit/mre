@@ -78,10 +78,11 @@ float (entity targ) infrontofbot =
    scan_angles = self.angles;
    if (!self.enemy)
    {
-      if ((random () < 0.100))
+      if ((time > self.idle_scan_next))
       {
+         self.idle_scan_next = (time + 1.000 + (random () * 1.000));
          scan_yaw = (self.angles_y + ((random () - 0.500) * 90.000));
-         Bot_RequestAim (scan_yaw,0.000,TRUE,FALSE);
+         Bot_RequestAim (scan_yaw,0.000,TRUE,FALSE,AIM_OWNER_IDLE,R_IDLE_SCAN,"idle_scan");
          scan_angles_y = scan_yaw;
          idle_scan = TRUE;
       } //end if
