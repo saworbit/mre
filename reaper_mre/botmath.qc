@@ -555,10 +555,12 @@ float (entity bot, float current_ang, float ideal_ang, float dt, float axis_idx)
       if ((axis_idx == 0.000))
       {
          bot.pid_error_sum_x = 0.000;
+         bot.pid_last_error_x = error;
       } //end if
       else
       {
          bot.pid_error_sum_y = 0.000;
+         bot.pid_last_error_y = error;
       } //end else
    } //end if
 
@@ -664,13 +666,29 @@ void () Bot_UpdateAimPID =
    local float delta_yaw;
    local float delta_pitch;
    local float dt;
+   local float max_yaw_step;
+   local float max_pitch_step;
+   local float error_yaw;
+   local float error_pitch;
 
    // Calculate delta time since last update
    if ((self.pid_last_update == 0.000))
    {
-      // First update, initialize timestamp
+      // First update: snap to ideal aim so only this controller writes angles.
       self.pid_last_update = time;
-      return ;
+      self.angles_y = self.ideal_yaw;
+      self.angles_x = self.ideal_pitch;
+      if ((self.angles_x > 45.000))
+      {
+         self.angles_x = 45.000;
+      } //end if
+     if ((self.angles_x < -45.000))
+     {
+        self.angles_x = -45.000;
+     } //end if
+     self.angles_z = 0.000;
+     self.fixangle = TRUE;
+     return ;
    } //end if
 
    dt = (time - self.pid_last_update);
@@ -682,14 +700,37 @@ void () Bot_UpdateAimPID =
       return ;
    } //end if
 
+   error_yaw = Math_AngleDiff ((self.ideal_yaw - self.angles_y));
+   error_pitch = (self.ideal_pitch - self.angles_x);
+
    // YAW (Horizontal aiming)
    // axis_idx = 1
    delta_yaw = Math_PID (self, self.angles_y, self.ideal_yaw, dt, 1.000);
+   max_yaw_step = (240.000 * dt);
+   delta_yaw = clamp (delta_yaw, -max_yaw_step, max_yaw_step);
+   if (((delta_yaw * error_yaw) < 0.000))
+   {
+      delta_yaw = 0.000;
+   } //end if
+   if ((fabs (delta_yaw) > fabs (error_yaw)))
+   {
+      delta_yaw = error_yaw;
+   } //end if
    self.angles_y = (self.angles_y + delta_yaw);
 
    // PITCH (Vertical aiming)
    // axis_idx = 0
    delta_pitch = Math_PID (self, self.angles_x, self.ideal_pitch, dt, 0.000);
+   max_pitch_step = (180.000 * dt);
+   delta_pitch = clamp (delta_pitch, -max_pitch_step, max_pitch_step);
+   if (((delta_pitch * error_pitch) < 0.000))
+   {
+      delta_pitch = 0.000;
+   } //end if
+   if ((fabs (delta_pitch) > fabs (error_pitch)))
+   {
+      delta_pitch = error_pitch;
+   } //end if
    self.angles_x = (self.angles_x + delta_pitch);
 
    // Clamp pitch to valid range (-45 to +45 degrees)
@@ -703,7 +744,16 @@ void () Bot_UpdateAimPID =
       self.angles_x = -45.000;
    } //end if
 
+   // Wrap yaw to keep values bounded (prevents drift/jitter in traces)
+   self.angles_y = Math_AngleDiff (self.angles_y);
+
+   // Keep v_angle in sync so the engine doesn't overwrite view angles.
+   self.v_angle_x = self.angles_x;
+   self.v_angle_y = self.angles_y;
+   self.v_angle_z = 0.000;
+   self.fixangle = TRUE;
+
    // Keep head level (no roll)
    self.angles_z = 0.000;
-}; //end of Bot_UpdateAimPID
+ }; //end of Bot_UpdateAimPID
 // ===== END PID AIMING CONTROLLER =====

@@ -1133,7 +1133,7 @@ void () BotListen =
                   // SMART REACTION: Don't target (can't shoot walls).
                   // Instead, FACE the sound source so we're ready when they appear.
                   self.ideal_yaw = vectoyaw ((head.origin - self.origin));
-                  ChangeYaw ();
+                  Bot_RequestAim (self.ideal_yaw,0.000,TRUE,FALSE,AIM_OWNER_SOUND,R_SOUND_HEARD,"sound");
 
                   // Suppressive fire: spam splash weapons at heard locations (corner denial).
                   if (((dist < spam_range) && (dist > spam_min_range)) && (self.ammo_rockets > FALSE))
@@ -1194,7 +1194,7 @@ void () BotListen =
                if (heard)
                {
                   self.ideal_yaw = vectoyaw ((head.origin - self.origin));
-                  ChangeYaw ();
+                  Bot_RequestAim (self.ideal_yaw,0.000,TRUE,FALSE,AIM_OWNER_SOUND,R_SOUND_HEARD,"sound");
 
                   if (((dist < spam_range) && (dist > spam_min_range)) && (self.ammo_rockets > FALSE))
                   {
@@ -1233,13 +1233,13 @@ void () ai_botturn =
    {
       return ;
    } //end if
-   ChangeYaw ();
+   Bot_RequestAim (self.ideal_yaw,0.000,TRUE,FALSE,AIM_OWNER_NAV,R_NAV_ROAM,"turn");
 }; //end of the function ai_botturn
 
 void () aibot_run_melee =
 {
    self.ideal_yaw = vectoyaw ((self.enemy.origin - self.origin));
-   ChangeYaw ();
+   Bot_RequestAim (self.ideal_yaw,0.000,TRUE,FALSE,AIM_OWNER_COMBAT,R_COMBAT_SEEN_ENEMY,"melee");
    if (FacingIdeal ())
    {
       self.attack_state = AS_STRAIGHT;
@@ -1535,7 +1535,7 @@ void (float dist, float turn) aibot_run_slide =
    } //end if
    // ===== END COMBAT REPOSITION =====
 
-   ChangeYaw ();
+   Bot_RequestAim (self.ideal_yaw,0.000,TRUE,FALSE,AIM_OWNER_COMBAT,R_COMBAT_SEEN_ENEMY,"combat slide");
    ofs = 90.000;
    dis = dist;
    self.strafeonly = (self.strafeonly - TRUE);
@@ -2147,11 +2147,7 @@ void (float dist) ai_botrun =
                {
                   // Face the enemy (or behind us)
                   self.ideal_yaw = vectoyaw ((self.enemy.origin - self.origin));
-                  ChangeYaw ();
-
-                  // Look DOWN (grenade at feet)
-                  self.angles_x = 80.000;
-                  makevectors (self.angles);
+                  Bot_RequestAim (self.ideal_yaw,80.000,TRUE,TRUE,AIM_OWNER_COMBAT,R_COMBAT_SEEN_ENEMY,"retreat trap");
 
                   // Fire grenade at our own feet (or slightly towards enemy)
                   W_FireGrenade ();
@@ -2527,7 +2523,7 @@ void (float dist) ai_botgetGoody =
       if ((((self.enemy.items & IT_INVULNERABILITY) || (self.skil < TRUE)) || (weap == IT_AXE)))
       {
          self.ideal_yaw = goody_yaw;
-         ChangeYaw ();
+         Bot_RequestAim (self.ideal_yaw,0.000,TRUE,FALSE,AIM_OWNER_NAV,R_NAV_ITEM_PICKUP,"goody");
 
       } //end if
       else
@@ -2560,7 +2556,7 @@ void (float dist) ai_botgetGoody =
             self.ideal_yaw = vectoyaw ((predicted_pos - self.origin));
             // ===== END PROJECTILE PREDICTION =====
 
-            ChangeYaw ();
+            Bot_RequestAim (self.ideal_yaw,0.000,TRUE,FALSE,AIM_OWNER_COMBAT,R_COMBAT_SEEN_ENEMY,"combat");
             if ((self.attack_state == AS_MELEE))
             {
                aibot_run_melee ();

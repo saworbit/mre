@@ -17,6 +17,15 @@ float BOT_MOVE_STYLE_ADVANCE = 2.000;
 float BOT_MOVE_STYLE_RETREAT = 3.000;
 float BOT_MOVE_STYLE_STRAFE = 4.000;
 
+// Flow Governor: Driver IDs for arbitration
+float FG_DRV_NONE = 0.000;           // No active driver
+float FG_DRV_TERRAIN = 1.000;        // Terrain trap resolver (pri 100)
+float FG_DRV_LOOP = 2.000;           // Loop breaker (pri 90)
+float FG_DRV_VERTICAL = 3.000;       // Vertical reposition (pri 80)
+float FG_DRV_INTENT = 4.000;         // Intent director (pri 60)
+float FG_DRV_ROUTE = 5.000;          // Route memory (pri 40)
+float FG_DRV_ROAM = 6.000;           // Default roam (pri 20)
+
 // Aim ownership (debug/arbiter)
 float AIM_OWNER_NONE = 0.000;
 float AIM_OWNER_COMBAT = 1.000;
@@ -32,6 +41,7 @@ float DBG_EVT_INTENT_CHANGE = 3.000;
 float DBG_EVT_UNSTICK_ENTER = 4.000;
 float DBG_EVT_UNSTICK_EXIT = 5.000;
 float DBG_EVT_APPLY_COUNT = 6.000;
+float DBG_EVT_ANGLES_OVERRIDE = 7.000;
 
 // Reason codes (keep small, shared taxonomy)
 float R_NONE = 0.000;
@@ -97,11 +107,18 @@ void (entity bot, float mode, float style, float pri, float commit_secs, entity 
 void (float mode, float dist) Bot_RequestMoveMode;
 float (float yaw, float dist) Bot_WalkMove;
 void () Bot_MoveControllerApply;
+float (entity bot) Bot_EffectiveIntent;
+float (float intent) Bot_IntentMinCommit;
+void () Bot_UpdateIntentDecision;
+
+// Goal commit arbitration helpers (botgoal.qc)
+float (entity bot, float reason_code) Bot_GoalMinCommit;
 
 // Frame structure (botthink.qc)
 void () Bot_FrameBegin;
 void () Bot_Arbitrate;
 void () Bot_FrameApply;
+void () Bot_DecideGoal;
 
 // Debug telemetry (botdebug.qc)
 void (entity bot) Bot_DbgTraceTick;
@@ -124,6 +141,7 @@ void () Influence_ShowMap;
 // Dynamic Breadcrumbing System (botmove.qc)
 void () Breadcrumb_Update;
 vector () Breadcrumb_GetRecoverySpot;
+vector () Breadcrumb_GetRecoverySpotFar;
 
 // Terrain Trap Resolver (botmove.qc)
 float (entity bot) Bot_IsTerrainTrap;

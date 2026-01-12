@@ -3,7 +3,7 @@
 
 float BOT_DBG_TRACE_LEN = 256.000;
 float BOT_DBG_EVENT_LEN = 64.000;
-float BOT_DBG_MAX_CLIENTS = 32.000;
+float BOT_DBG_MAX_CLIENTS = 1.000;
 float BOT_DBG_SPIN_YAW = 25.000;
 float BOT_DBG_SPIN_TICKS = 10.000;
 float BOT_DBG_AIM_FLIP_LIMIT = 6.000;
@@ -25,66 +25,87 @@ float DBG_INTENT_EXPLORE = 4.000;
 float DBG_INTENT_UNSTICK = 5.000;
 float DBG_INTENT_HOLD = 6.000;
 
-float dbg_trace_time[8192];
-float dbg_trace_tick[8192];
-float dbg_trace_intent[8192];
-float dbg_trace_intent_pri[8192];
-float dbg_trace_intent_until[8192];
-vector dbg_trace_goal_org[8192];
-entity dbg_trace_goal_ent[8192];
-float dbg_trace_aim_owner[8192];
-float dbg_trace_aim_mode[8192];
-float dbg_trace_yaw[8192];
-float dbg_trace_pitch[8192];
-float dbg_trace_ideal_yaw[8192];
-float dbg_trace_ideal_pitch[8192];
-float dbg_trace_yaw_error[8192];
-float dbg_trace_yaw_delta[8192];
-float dbg_trace_move_mode[8192];
-float dbg_trace_move_style[8192];
-float dbg_trace_move_speed[8192];
-float dbg_trace_flags[8192];
+string bot_dbg_build = "mre-loopfix-2026-01-11d";
 
-float dbg_event_time[2048];
-float dbg_event_tick[2048];
-float dbg_event_type[2048];
-float dbg_event_a[2048];
-float dbg_event_b[2048];
-float dbg_event_reason_code[2048];
-string dbg_event_reason[2048];
-entity dbg_event_ent_a[2048];
-entity dbg_event_ent_b[2048];
+entity bot_dbg_focus;
+float bot_dbg_focus_id;
+
+float dbg_trace_time[256];
+float dbg_trace_tick[256];
+float dbg_trace_intent[256];
+float dbg_trace_intent_pri[256];
+float dbg_trace_intent_until[256];
+vector dbg_trace_goal_org[256];
+entity dbg_trace_goal_ent[256];
+float dbg_trace_aim_owner[256];
+float dbg_trace_aim_mode[256];
+float dbg_trace_yaw[256];
+float dbg_trace_pitch[256];
+float dbg_trace_ideal_yaw[256];
+float dbg_trace_ideal_pitch[256];
+float dbg_trace_yaw_error[256];
+float dbg_trace_yaw_delta[256];
+float dbg_trace_move_mode[256];
+float dbg_trace_move_style[256];
+float dbg_trace_move_speed[256];
+float dbg_trace_flags[256];
+
+float dbg_event_time[64];
+float dbg_event_tick[64];
+float dbg_event_type[64];
+float dbg_event_a[64];
+float dbg_event_b[64];
+float dbg_event_reason_code[64];
+string dbg_event_reason[64];
+entity dbg_event_ent_a[64];
+entity dbg_event_ent_b[64];
 
 float (entity bot) Bot_DbgTraceBase =
 {
-   local float slot;
-
    if (!bot)
    {
       return (-1.000);
    } //end if
-   slot = bot.fClientNo;
-   if ((slot < 1.000) || (slot > BOT_DBG_MAX_CLIENTS))
+   if (!bot_dbg_focus)
+   {
+      bot_dbg_focus = bot;
+      bot_dbg_focus_id = bot.fClientNo;
+      bot.dbg_trace_head = 0.000;
+      bot.dbg_event_head = 0.000;
+   } //end if
+   if (!bot_dbg_focus)
    {
       return (-1.000);
    } //end if
-   return ((slot - 1.000) * BOT_DBG_TRACE_LEN);
+   if ((bot != bot_dbg_focus))
+   {
+      return (-1.000);
+   } //end if
+   return (0.000);
 }; //end of the function Bot_DbgTraceBase
 
 float (entity bot) Bot_DbgEventBase =
 {
-   local float slot;
-
    if (!bot)
    {
       return (-1.000);
    } //end if
-   slot = bot.fClientNo;
-   if ((slot < 1.000) || (slot > BOT_DBG_MAX_CLIENTS))
+   if (!bot_dbg_focus)
+   {
+      bot_dbg_focus = bot;
+      bot_dbg_focus_id = bot.fClientNo;
+      bot.dbg_trace_head = 0.000;
+      bot.dbg_event_head = 0.000;
+   } //end if
+   if (!bot_dbg_focus)
    {
       return (-1.000);
    } //end if
-   return ((slot - 1.000) * BOT_DBG_EVENT_LEN);
+   if ((bot != bot_dbg_focus))
+   {
+      return (-1.000);
+   } //end if
+   return (0.000);
 }; //end of the function Bot_DbgEventBase
 
 entity (float id) Bot_DbgFindBotById =
@@ -148,6 +169,23 @@ entity () Bot_DbgResolveTarget =
    } //end if
    return (findbot (world));
 }; //end of the function Bot_DbgResolveTarget
+
+void () Bot_DbgSetFocus =
+{
+   local entity bot;
+
+   bot = Bot_DbgResolveTarget ();
+   if (!bot)
+   {
+      bot_dbg_focus = world;
+      bot_dbg_focus_id = 0.000;
+      return;
+   } //end if
+   bot_dbg_focus = bot;
+   bot_dbg_focus_id = bot.fClientNo;
+   bot.dbg_trace_head = 0.000;
+   bot.dbg_event_head = 0.000;
+}; //end of the function Bot_DbgSetFocus
 
 void (float intent) Bot_DbgPrintIntent =
 {
@@ -565,6 +603,13 @@ void (entity bot, float count) Bot_DbgDumpEvents =
          bprint ("APPLY_COUNT ");
          bprint (ftos (dbg_event_a[idx]));
       } //end if
+      else if ((etype == DBG_EVT_ANGLES_OVERRIDE))
+      {
+         bprint ("ANGLES_OVERRIDE dy=");
+         bprint (ftos (dbg_event_a[idx]));
+         bprint (" dp=");
+         bprint (ftos (dbg_event_b[idx]));
+      } //end if
       else
       {
          bprint ("EVENT ");
@@ -592,7 +637,21 @@ void () Bot_DbgDumpTraceCmd =
    local entity bot;
    local float count;
 
-   bot = Bot_DbgResolveTarget ();
+   bot = bot_dbg_focus;
+   if (!bot)
+   {
+      Bot_DbgSetFocus ();
+      bot = bot_dbg_focus;
+   } //end if
+   if (!bot)
+   {
+      bot = Bot_DbgResolveTarget ();
+   } //end if
+   if (!bot)
+   {
+      bprint ("No bot found for telemetry trace.\n");
+      return;
+   } //end if
    count = cvar ("bot_dbg_n");
    Bot_DbgDumpTrace (bot,count);
 }; //end of the function Bot_DbgDumpTraceCmd
@@ -602,7 +661,21 @@ void () Bot_DbgDumpEventsCmd =
    local entity bot;
    local float count;
 
-   bot = Bot_DbgResolveTarget ();
+   bot = bot_dbg_focus;
+   if (!bot)
+   {
+      Bot_DbgSetFocus ();
+      bot = bot_dbg_focus;
+   } //end if
+   if (!bot)
+   {
+      bot = Bot_DbgResolveTarget ();
+   } //end if
+   if (!bot)
+   {
+      bprint ("No bot found for telemetry events.\n");
+      return;
+   } //end if
    count = cvar ("bot_dbg_event_n");
    if ((count <= 0.000))
    {
@@ -617,9 +690,21 @@ void () Bot_DbgToggle =
    bprint ("\n");
    if (bot_dbg_trace_enabled)
    {
+      Bot_DbgSetFocus ();
       bprint ("===========================================\n");
       bprint ("  BOT TELEMETRY ENABLED\n");
       bprint ("===========================================\n");
+      bprint ("Build: ");
+      bprint (bot_dbg_build);
+      bprint ("\n");
+      if (bot_dbg_focus)
+      {
+         bprint ("Focus bot: ");
+         bprint (ftos (bot_dbg_focus_id));
+         bprint (" ");
+         bprint (bot_dbg_focus.netname);
+         bprint ("\n");
+      } //end if
       bprint ("Use impulse 122 to dump trace, 123 for events.\n");
       bprint ("Set cvars: bot_dbg_id, bot_dbg_n, bot_dbg_event_n\n");
    } //end if
@@ -629,6 +714,161 @@ void () Bot_DbgToggle =
    } //end else
    bprint ("\n");
 }; //end of the function Bot_DbgToggle
+
+float (float reason_code) Bot_DbgGoalOwner =
+{
+   if (((reason_code == R_COMBAT_SEEN_ENEMY) || (reason_code == R_COMBAT_TAKING_DAMAGE)))
+   {
+      return (1.000);
+   } //end if
+   if (((reason_code == R_COMBAT_HUNT_TARGET) || (reason_code == R_COMBAT_ENEMY_TOUCHED)))
+   {
+      return (1.000);
+   } //end if
+   if (((reason_code == R_TRIGGER_BUTTON) || (reason_code == R_TRIGGERED)))
+   {
+      return (2.000);
+   } //end if
+   if (((reason_code == R_NAV_ITEM_PICKUP) || (reason_code == R_NAV_ROAM)))
+   {
+      return (3.000);
+   } //end if
+   if (((reason_code == R_NAV_GLOBAL) || (reason_code == R_GOAL_CHOOSE)))
+   {
+      return (3.000);
+   } //end if
+   if (((reason_code == R_GOAL_CHOOSE_PATH) || (reason_code == R_GOAL_AIR_SEEK)))
+   {
+      return (3.000);
+   } //end if
+   if (((reason_code == R_GOAL_GOODY_PICK) || (reason_code == R_GOAL_GOODY_FALLBACK)))
+   {
+      return (3.000);
+   } //end if
+   if (((reason_code == R_GOAL_GOODY_END) || (reason_code == R_GOAL_GOODY_RESET)))
+   {
+      return (3.000);
+   } //end if
+   if ((reason_code == R_GOAL_STACK))
+   {
+      return (4.000);
+   } //end if
+   if (((reason_code == R_GOAL_FIXATE_RESET) || (reason_code == R_GOAL_FIXATE_AVOID)))
+   {
+      return (5.000);
+   } //end if
+   if ((reason_code == R_SPAWN_IDLE))
+   {
+      return (6.000);
+   } //end if
+   if (((reason_code == R_UNSTICK_NO_PROGRESS) || (reason_code == R_UNSTICK_TERRAIN)))
+   {
+      return (7.000);
+   } //end if
+   if ((reason_code == R_UNSTICK_LOOP))
+   {
+      return (7.000);
+   } //end if
+   return (0.000);
+}; //end of the function Bot_DbgGoalOwner
+
+void (float owner) Bot_DbgPrintMoveOwner =
+{
+   if ((owner == FG_DRV_TERRAIN)) { bprint ("TERRAIN"); return ; }
+   if ((owner == FG_DRV_LOOP)) { bprint ("LOOP"); return ; }
+   if ((owner == FG_DRV_VERTICAL)) { bprint ("VERTICAL"); return ; }
+   if ((owner == FG_DRV_INTENT)) { bprint ("INTENT"); return ; }
+   if ((owner == FG_DRV_ROUTE)) { bprint ("ROUTE"); return ; }
+   if ((owner == FG_DRV_ROAM)) { bprint ("ROAM"); return ; }
+   if ((owner == FG_DRV_NONE))
+   {
+      bprint ("NAV");
+      return ;
+   } //end if
+   bprint ("MOVE");
+}; //end of the function Bot_DbgPrintMoveOwner
+
+void (float owner) Bot_DbgPrintGoalOwner =
+{
+   if ((owner == 1.000)) { bprint ("COMBAT"); return ; }
+   if ((owner == 2.000)) { bprint ("TRIGGER"); return ; }
+   if ((owner == 3.000)) { bprint ("NAV"); return ; }
+   if ((owner == 4.000)) { bprint ("STACK"); return ; }
+   if ((owner == 5.000)) { bprint ("FIXATE"); return ; }
+   if ((owner == 6.000)) { bprint ("SPAWN"); return ; }
+   if ((owner == 7.000)) { bprint ("UNSTICK"); return ; }
+   bprint ("GOAL");
+}; //end of the function Bot_DbgPrintGoalOwner
+
+void (entity bot) Bot_DbgOwnerLog =
+{
+   local float move_owner;
+   local float goal_owner;
+   local float state_owner;
+   local float do_log;
+
+   if (!bot_debug_enabled)
+   {
+      return ;
+   } //end if
+   if (!bot || !bot.isbot)
+   {
+      return ;
+   } //end if
+
+   move_owner = bot.fg_driver;
+   goal_owner = Bot_DbgGoalOwner (bot.goal_reason_code);
+   state_owner = Bot_EffectiveIntent (bot);
+
+   do_log = FALSE;
+   if ((move_owner != bot.dbg_owner_move))
+   {
+      do_log = TRUE;
+   } //end if
+   else if ((bot.aim_owner != bot.dbg_owner_aim))
+   {
+      do_log = TRUE;
+   } //end if
+   else if ((goal_owner != bot.dbg_owner_goal))
+   {
+      do_log = TRUE;
+   } //end if
+   else if ((state_owner != bot.dbg_owner_state))
+   {
+      do_log = TRUE;
+   } //end if
+   else if (((time - bot.dbg_owner_last_log_time) >= 1.000))
+   {
+      do_log = TRUE;
+   } //end if
+
+   if (!do_log)
+   {
+      return ;
+   } //end if
+
+   bprint ("[");
+   bprint (bot.netname);
+   bprint ("] OWN tick=");
+   bprint (ftos (bot.dbg_tick));
+   bprint (" move=");
+   Bot_DbgPrintMoveOwner (move_owner);
+   bprint (" aim=");
+   Bot_DbgPrintAimOwner (bot.aim_owner);
+   bprint (" goal=");
+   Bot_DbgPrintGoalOwner (goal_owner);
+   bprint (" state=");
+   Bot_DbgPrintIntent (state_owner);
+   bprint (" reason=");
+   bprint (ftos (bot.goal_reason_code));
+   bprint ("\n");
+
+   bot.dbg_owner_move = move_owner;
+   bot.dbg_owner_aim = bot.aim_owner;
+   bot.dbg_owner_goal = goal_owner;
+   bot.dbg_owner_state = state_owner;
+   bot.dbg_owner_last_log_time = time;
+}; //end of the function Bot_DbgOwnerLog
 
 void (entity bot) Bot_DbgTraceTick =
 {
@@ -776,6 +1016,8 @@ void (entity bot) Bot_DbgTraceTick =
    {
       bot.dbg_trace_head = 0.000;
    } //end if
+
+   Bot_DbgOwnerLog (bot);
 
    if (fabs (yaw_delta) > BOT_DBG_SPIN_YAW)
    {

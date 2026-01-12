@@ -127,6 +127,7 @@ entity lastspawn;
 
 void () worldspawn =
 {
+   bprint ("MRE build: mre-loopfix-2026-01-11d\n");
    clientInitMaxClients ();
    lastspawn = world;
    InitBodyQue ();

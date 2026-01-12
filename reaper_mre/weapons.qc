@@ -1557,8 +1557,24 @@ void () ImpulseCommands =
    self.impulse = CAM_IDLE;
 }; //end of the function ImpulseCommands
 
+float (float imp) Bot_IsDebugImpulse =
+{
+   if (((imp == 95.000) || (imp == 96.000) || (imp == 97.000))) return (TRUE);
+   if (((imp == 98.000) || (imp == 99.000))) return (TRUE);
+   if (((imp == 120.000) || (imp == 121.000) || (imp == 122.000) || (imp == 123.000))) return (TRUE);
+   if (((imp == 199.000) || (imp == 205.000))) return (TRUE);
+   return (FALSE);
+}; //end of the function Bot_IsDebugImpulse
+
 void () W_WeaponFrame =
 {
+   if (self.impulse)
+   {
+      if (Bot_IsDebugImpulse (self.impulse))
+      {
+         ImpulseCommands ();
+      } //end if
+   } //end if
    if ((time < self.attack_finished))
    {
       return ;

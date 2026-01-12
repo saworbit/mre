@@ -215,6 +215,14 @@ float (entity targ, entity inflictor) CanDamage;
 .float goal_req_commit_secs;
 .string goal_req_reason;
 .float goal_req_reason_code;
+// Deferred goal request (queued during movement apply).
+.float goal_req_pending_set;
+.entity goal_req_pending_ent;
+.vector goal_req_pending_org;
+.float goal_req_pending_pri;
+.float goal_req_pending_commit_secs;
+.string goal_req_pending_reason;
+.float goal_req_pending_reason_code;
 .string goal_reason;
 .float goal_reason_code;
 // Recent jump pad/lift memory for elevation seeking.
@@ -238,6 +246,12 @@ float (entity targ, entity inflictor) CanDamage;
 .float loop_sig4;
 .float loop_sig5;
 .float loop_sig_time;  // Next time to push a signature sample
+.float loop_sig_count; // Samples collected (gates loop detection)
+// Loop-break cooldown and retrace memory to prevent repeated escapes.
+.float loop_break_until;
+.vector loop_break_origin;
+.vector last_retrace_pos;
+.float last_retrace_time;
 // Area abandonment memory for repeated stuck spots.
 .vector last_stuck_origin;
 .float last_stuck_time;
@@ -284,6 +298,13 @@ float (entity targ, entity inflictor) CanDamage;
 .float intent_req_commit_secs;
 .string intent_req_reason;
 .float intent_req_reason_code;
+// Deferred intent request (queued during movement apply).
+.float intent_req_pending_set;
+.float intent_req_pending;
+.float intent_req_pending_pri;
+.float intent_req_pending_commit_secs;
+.string intent_req_pending_reason;
+.float intent_req_pending_reason_code;
 .string intent_reason;
 .float intent_reason_code;
 // ===== END INTENT ESCALATION =====
@@ -316,6 +337,15 @@ float (entity targ, entity inflictor) CanDamage;
 .entity move_req_target;
 .vector move_req_org;
 .float move_req_speed;
+// Deferred move request (queued during movement apply).
+.float move_req_pending_set;
+.float move_req_pending_mode;
+.float move_req_pending_style;
+.float move_req_pending_pri;
+.float move_req_pending_commit_secs;
+.entity move_req_pending_target;
+.vector move_req_pending_org;
+.float move_req_pending_speed;
 // Selected move (after arbitration).
 .float move_mode;
 .float move_style;
@@ -351,8 +381,13 @@ float (entity targ, entity inflictor) CanDamage;
 // Debug: apply count per tick + walkmove guard.
 .float dbg_apply_count_this_tick;
 .float dbg_apply_tick_time;
+.float dbg_apply_yaw;
+.float dbg_apply_pitch;
+.float dbg_apply_time;
+.float dbg_angles_override_time;
 .float move_apply_active;
 .float dbg_walkmove_warned;
+.float dbg_walkmove_angle_warned;
 .float frame_begin_time;
 .float dbg_tick;
 .float dbg_trace_head;
@@ -366,6 +401,14 @@ float (entity targ, entity inflictor) CanDamage;
 .float dbg_aim_flip_count;
 .float dbg_aim_flip_window_start;
 .float dbg_spin_trigger_time;
+.float dbg_owner_move;
+.float dbg_owner_aim;
+.float dbg_owner_goal;
+.float dbg_owner_state;
+.float dbg_owner_last_log_time;
+.float dbg_overruled_goal_time;
+.float dbg_overruled_move_time;
+.float dbg_overruled_intent_time;
 .float wiggle_jump_time;
 // Skill-based memory flag for pre-cached route knowledge at spawn.
 .float has_memory;

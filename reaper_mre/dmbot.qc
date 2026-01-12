@@ -740,7 +740,9 @@ void () BotDie =
       return ;
    } //end if
    DeathSound ();
-   self.angles_x = FALSE;
+   self.ideal_pitch = 0.000;
+   self.aim_hold_pitch = 0.000;
+   self.aim_hold_set_pitch = TRUE;
    self.angles_z = FALSE;
    if ((self.weapon == IT_AXE))
    {

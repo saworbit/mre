@@ -428,27 +428,71 @@ void () checkyaw =
    // 5. Apply Final Aim Request (PID updates actual angles)
    Bot_RequestAim (desired_yaw,current_pitch,TRUE,TRUE,AIM_OWNER_COMBAT,R_COMBAT_SEEN_ENEMY,"combat");
 
-   // NOTE: We do NOT call ChangePitch(); the PID controller applies pitch updates.
-   // The engine's ChangeYaw() still runs automatically for yaw (left/right) smoothing.
+   // NOTE: We do not call ChangeYaw/ChangePitch; PID applies view angles.
 }; //end of the function checkyaw
 // ===== END ENHANCED AIM =====
 
 void () Bot_FrameBegin =
 {
+   local float yaw_delta;
+   local float pitch_delta;
+
    self.frame_begin_time = time;
    self.dbg_tick = (self.dbg_tick + 1.000);
+   if (bot_dbg_trace_enabled)
+   {
+      if (((self.dbg_apply_time > 0.000) && (time > self.dbg_apply_time)))
+      {
+         yaw_delta = Math_AngleDiff ((self.angles_y - self.dbg_apply_yaw));
+         pitch_delta = (self.angles_x - self.dbg_apply_pitch);
+         if (((fabs (yaw_delta) > 2.000) || (fabs (pitch_delta) > 2.000)))
+         {
+            Bot_DbgEvent (self,DBG_EVT_ANGLES_OVERRIDE,yaw_delta,pitch_delta,R_NONE,"post-apply");
+            if ((bot_debug_enabled && (time >= self.dbg_angles_override_time)))
+            {
+               bprint ("[");
+               bprint (self.netname);
+               bprint ("] angles overridden dy=");
+               bprint (ftos (yaw_delta));
+               bprint (" dp=");
+               bprint (ftos (pitch_delta));
+               bprint ("\n");
+               self.dbg_angles_override_time = (time + 1.000);
+            } //end if
+         } //end if
+      } //end if
+   } //end if
    self.goal_req_ent = world;
    self.goal_req_org = '0.000 0.000 0.000';
    self.goal_req_pri = -1.000;
    self.goal_req_commit_secs = 0.000;
    self.goal_req_reason = string_null;
    self.goal_req_reason_code = R_NONE;
+   if (self.goal_req_pending_set)
+   {
+      self.goal_req_ent = self.goal_req_pending_ent;
+      self.goal_req_org = self.goal_req_pending_org;
+      self.goal_req_pri = self.goal_req_pending_pri;
+      self.goal_req_commit_secs = self.goal_req_pending_commit_secs;
+      self.goal_req_reason = self.goal_req_pending_reason;
+      self.goal_req_reason_code = self.goal_req_pending_reason_code;
+      self.goal_req_pending_set = FALSE;
+   } //end if
 
    self.intent_req = 0.000;
    self.intent_req_pri = 0.000;
    self.intent_req_commit_secs = 0.000;
    self.intent_req_reason = string_null;
    self.intent_req_reason_code = R_NONE;
+   if (self.intent_req_pending_set)
+   {
+      self.intent_req = self.intent_req_pending;
+      self.intent_req_pri = self.intent_req_pending_pri;
+      self.intent_req_commit_secs = self.intent_req_pending_commit_secs;
+      self.intent_req_reason = self.intent_req_pending_reason;
+      self.intent_req_reason_code = self.intent_req_pending_reason_code;
+      self.intent_req_pending_set = FALSE;
+   } //end if
 
    self.aim_req_set_yaw = FALSE;
    self.aim_req_set_pitch = FALSE;
@@ -464,6 +508,17 @@ void () Bot_FrameBegin =
    self.move_req_target = world;
    self.move_req_org = '0.000 0.000 0.000';
    self.move_req_speed = 0.000;
+   if (self.move_req_pending_set)
+   {
+      self.move_req_mode = self.move_req_pending_mode;
+      self.move_req_style = self.move_req_pending_style;
+      self.move_req_pri = self.move_req_pending_pri;
+      self.move_req_commit_secs = self.move_req_pending_commit_secs;
+      self.move_req_target = self.move_req_pending_target;
+      self.move_req_org = self.move_req_pending_org;
+      self.move_req_speed = self.move_req_pending_speed;
+      self.move_req_pending_set = FALSE;
+   } //end if
 
    self.dbg_apply_count_this_tick = 0.000;
    self.dbg_apply_tick_time = time;
@@ -473,6 +528,7 @@ void () Bot_Arbitrate =
 {
    local float same_goal;
    local float style;
+   local float min_commit;
 
    if ((self.goal_req_pri >= 0.000))
    {
@@ -501,8 +557,31 @@ void () Bot_Arbitrate =
          } //end if
       } //end if
 
+      if ((same_goal == -1.000))
+      {
+         if (bot_debug_enabled)
+         {
+            if ((time >= self.dbg_overruled_goal_time))
+            {
+               bprint ("[");
+               bprint (self.netname);
+               bprint ("] OVERRULED goal pri=");
+               bprint (ftos (self.goal_req_pri));
+               bprint (" reason=");
+               bprint (self.goal_req_reason);
+               bprint ("\n");
+               self.dbg_overruled_goal_time = (time + 1.000);
+            } //end if
+         } //end if
+      } //end if
+
       if ((same_goal != -1.000))
       {
+         min_commit = Bot_GoalMinCommit (self,self.goal_req_reason_code);
+         if ((self.goal_req_commit_secs < min_commit))
+         {
+            self.goal_req_commit_secs = min_commit;
+         } //end if
          self.goal_priority = self.goal_req_pri;
          self.goal_commit_until = (time + self.goal_req_commit_secs);
          self.goal_reason = self.goal_req_reason;
@@ -540,8 +619,31 @@ void () Bot_Arbitrate =
          } //end if
       } //end if
 
+      if (!self.intent_req)
+      {
+         if (bot_debug_enabled)
+         {
+            if ((time >= self.dbg_overruled_intent_time))
+            {
+               bprint ("[");
+               bprint (self.netname);
+               bprint ("] OVERRULED intent pri=");
+               bprint (ftos (self.intent_req_pri));
+               bprint (" reason=");
+               bprint (self.intent_req_reason);
+               bprint ("\n");
+               self.dbg_overruled_intent_time = (time + 1.000);
+            } //end if
+         } //end if
+      } //end if
+
       if (self.intent_req)
       {
+         min_commit = Bot_IntentMinCommit (self.intent_req);
+         if ((self.intent_req_commit_secs < min_commit))
+         {
+            self.intent_req_commit_secs = min_commit;
+         } //end if
          self.intent_request = self.intent_req;
          self.intent_request_pri = self.intent_req_pri;
          self.intent_request_until = (time + self.intent_req_commit_secs);
@@ -563,6 +665,22 @@ void () Bot_Arbitrate =
             if ((self.move_req_mode != self.move_mode))
             {
                self.move_req_mode = BOT_MOVE_NONE;
+            } //end if
+         } //end if
+      } //end if
+
+      if (!self.move_req_mode)
+      {
+         if (bot_debug_enabled)
+         {
+            if ((time >= self.dbg_overruled_move_time))
+            {
+               bprint ("[");
+               bprint (self.netname);
+               bprint ("] OVERRULED move pri=");
+               bprint (ftos (self.move_req_pri));
+               bprint ("\n");
+               self.dbg_overruled_move_time = (time + 1.000);
             } //end if
          } //end if
       } //end if
@@ -605,9 +723,6 @@ void () Bot_Arbitrate =
 
 void () Bot_FrameApply =
 {
-   local float saved_angles_x;
-   local float saved_angles_y;
-   local float saved_angles_z;
    local float saved_ideal_yaw;
    local float saved_ideal_pitch;
    local float aim_yaw;
@@ -625,15 +740,7 @@ void () Bot_FrameApply =
       Bot_DbgEvent (self,DBG_EVT_APPLY_COUNT,self.dbg_apply_count_this_tick,0.000,R_NONE,"apply count");
    } //end if
 
-   saved_angles_x = self.angles_x;
-   saved_angles_y = self.angles_y;
-   saved_angles_z = self.angles_z;
-
    Bot_MoveControllerApply ();
-
-   self.angles_x = saved_angles_x;
-   self.angles_y = saved_angles_y;
-   self.angles_z = saved_angles_z;
 
    if (!self.aim_hold_set_yaw)
    {
@@ -675,6 +782,10 @@ void () Bot_FrameApply =
    self.ideal_pitch = aim_pitch;
 
    Bot_UpdateAimPID ();
+
+   self.dbg_apply_yaw = self.angles_y;
+   self.dbg_apply_pitch = self.angles_x;
+   self.dbg_apply_time = time;
 
    self.ideal_yaw = saved_ideal_yaw;
    self.ideal_pitch = saved_ideal_pitch;
@@ -782,6 +893,8 @@ void () BotPostThink =
    } //end if
    // ===== END CUNNING AI: Ambush =====
 
+   Bot_UpdateIntentDecision ();
+   Bot_DecideGoal ();
    checkyaw ();
 
    Bot_Arbitrate ();

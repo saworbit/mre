@@ -300,9 +300,12 @@ void () execute_changelevel =
    while ((other != world))
    {
       other.view_ofs = VEC_ORIGIN;
-      other.v_angle = pos.mangle;
-      other.angles = pos.mangle;
-      other.fixangle = TRUE;
+      if (!other.isbot)
+      {
+         other.v_angle = pos.mangle;
+         other.angles = pos.mangle;
+         other.fixangle = TRUE;
+      } //end if
       other.nextthink = (time + 0.500);
       other.takedamage = DAMAGE_NO;
       other.solid = SOLID_NOT;
@@ -508,8 +511,11 @@ void () PutClientInServer =
    spot = SelectSpawnPoint ();
    self.oldorigin = (spot.origin + '0.000 0.000 1.000');
    self.origin = (spot.origin + '0.000 0.000 1.000');
-   self.angles = spot.angles;
-   self.fixangle = TRUE;
+   if (!self.isbot)
+   {
+      self.angles = spot.angles;
+      self.fixangle = TRUE;
+   } //end if
    setmodel (self,"progs/eyes.mdl");
    modelindex_eyes = self.modelindex;
    setmodel (self,"progs/player.mdl");
@@ -1001,6 +1007,14 @@ void () PlayerPreThink =
    if ((self.view_ofs == VEC_ORIGIN))
    {
       return ;
+   } //end if
+   if (self.isbot)
+   {
+      // Keep bot view angles stable against engine/usercmd updates.
+      self.v_angle_x = self.angles_x;
+      self.v_angle_y = self.angles_y;
+      self.v_angle_z = 0.000;
+      self.fixangle = TRUE;
    } //end if
    makevectors (self.v_angle);
    CheckRules ();

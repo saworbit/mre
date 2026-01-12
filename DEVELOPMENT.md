@@ -651,6 +651,26 @@ impulse 97      # Feeler debug (exploration + breadcrumbs)
 ```
 Note: FEELER/BREADCRUMB output only appears when bots enter exploration mode (no nearby waypoints).
 
+### Structured Telemetry (per-tick traces)
+
+Telemetry is a separate, low-overhead ring buffer for per-tick decisions and change events.
+
+```bash
+impulse 121     # Toggle telemetry on/off
+impulse 122     # Dump trace ring buffer (per-tick snapshots)
+impulse 123     # Dump event ring buffer (changes only)
+```
+
+Optional focus and dump sizing:
+```
+set bot_dbg_id 2        # Focus bot by client id (0 = crosshair or first bot)
+set bot_dbg_n 120       # Trace entries to dump
+set bot_dbg_event_n 20  # Event entries to dump
+```
+
+**ANGLES_OVERRIDE** events indicate something overwrote bot view angles after the apply phase.
+Bots now sync `v_angle` and `fixangle` in `PlayerPreThink()` to keep PID aim authoritative; if overrides persist, another code path is still writing angles.
+
 #### Verbosity Levels (impulse 96)
 
 **LOG_OFF (0)** - No logging

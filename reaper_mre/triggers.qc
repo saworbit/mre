@@ -364,6 +364,7 @@ void (vector org, entity death_owner) spawn_tdeath =
 void () teleport_touch =
 {
    local entity t;
+   local entity oldself;
    local vector org;
 
    if (self.targetname)
@@ -409,7 +410,17 @@ void () teleport_touch =
       return ;
    } //end if
    setorigin (other,t.origin);
-   other.angles = t.mangle;
+   if (other.isbot)
+   {
+      oldself = self;
+      self = other;
+      Bot_RequestAim (t.mangle_y,t.mangle_x,TRUE,TRUE,AIM_OWNER_NAV,R_TRIGGERED,"teleport");
+      self = oldself;
+   } //end if
+   else
+   {
+      other.angles = t.mangle;
+   } //end else
    if (other.movetarget.movetarget)
    {
       addTarget (other.movetarget.movetarget,self);
@@ -419,7 +430,7 @@ void () teleport_touch =
    {
       bot_touched ();
    } //end if
-   if ((other.classname == "player"))
+   if (((other.classname == "player") && !other.isbot))
    {
       other.fixangle = TRUE;
       other.teleport_time = (time + 0.700);

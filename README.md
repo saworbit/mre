@@ -33,6 +33,7 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 **Solution: Frame arbiter pipeline**
 
 1. **Collect requests** (`Bot_FrameBegin()` clears per-tick request fields)
+2. **Decide intent + goal** (`Bot_UpdateIntentDecision()` and `Bot_DecideGoal()` run before arbitration)
 2. **Arbitrate** (`Bot_Arbitrate()` selects final goal/aim/move winners with commit windows)
 3. **Apply once** (`Bot_FrameApply()` runs the movement controller and aim controller once)
 
@@ -41,12 +42,27 @@ Modern Reaper Enhancements is a heavily upgraded version of the classic **Reaper
 - `Bot_MoveControllerApply()` is the only place that outputs movement for the tick.
 - `Bot_WalkMove()` logs if `walkmove()` is called outside the controller.
 - Movement helpers now request modes/targets instead of pushing movement directly.
+- Aim writes are centralized: bots request aim (spawn/teleport/death), and only `Bot_UpdateAimPID()` updates `angles_x/angles_y`.
+- Bot view angles are enforced in `PlayerPreThink()` for bots (sync `v_angle` + `fixangle`) so engine/usercmd updates cannot overwrite PID output.
+- Goal selection is intent-gated and deterministic; ties resolve by distance then stable hash (no random churn).
+
+**Debug visibility:**
+
+- Ownership log (once/sec or on change): move/aim/goal/state owners + goal reason code.
+- Overruled log: prints when a request loses to a committed higher-priority owner.
+- Structured telemetry (impulse `121/122/123`) captures per-tick decisions and emits `ANGLES_OVERRIDE` events if anything overwrites the applied view angles.
 
 **Why it matters:**
 
 - Prevents double-decisions within one frame
 - Reduces aim and movement jitter
 - Makes ownership and debugging much clearer (apply count should always be 1)
+
+**Stuck recovery stability (2026-01-11 update):**
+
+- Loop breaker now has a cooldown + retrace guard to avoid rapid re-entry at the same spot.
+- Loop-break unstick prefers the furthest reachable breadcrumb to break oscillations.
+- Terrain-trap handler respects cooldown/retrace so it doesn't fight the unstick flow.
 
 ### Flow Governor: Priority-Based Arbitration (2026-01-11)
 
@@ -2543,6 +2559,9 @@ impulse 211        # Remove all bots (back to player-only)
 | `impulse 95` | **Debug Toggle** | Enable/disable ALL bot debug logging |
 | `impulse 96` | **Verbosity Cycle** | Cycle through debug verbosity levels (OFF → CRITICAL → NORMAL → TACTICAL → VERBOSE → DEBUG) |
 | `impulse 97` | **Feeler Debug Toggle** | Enable/disable feeler steering exploration logging (only prints when exploration mode is active) |
+| `impulse 121` | **Telemetry Toggle** | Enable/disable structured per-tick telemetry |
+| `impulse 122` | **Telemetry Trace Dump** | Dump per-tick trace ring buffer |
+| `impulse 123` | **Telemetry Event Dump** | Dump event ring buffer (changes only) |
 
 **Debug Verbosity Levels:**
 - **OFF (0)**: No logging
@@ -2558,6 +2577,10 @@ impulse 95         # Enable debug logging (starts at OFF → goes to CRITICAL)
 impulse 96         # Cycle to NORMAL (target/goal changes)
 impulse 96         # Cycle to TACTICAL (weapon/combos/profiling)
 impulse 97         # Enable feeler exploration logging
+# Optional telemetry (per-tick trace + events):
+impulse 121        # Enable structured telemetry
+impulse 122        # Dump trace ring buffer (focus bot or bot_dbg_id)
+impulse 123        # Dump event ring buffer (changes only)
 # Play for a while...
 impulse 95         # Disable debug logging
 ```
@@ -3451,13 +3474,15 @@ This project builds upon the classic **Reaper Bot** (1998) with modern enhanceme
   - Player model (`progs/player.mdl`) may not have proper color ranges defined
   - Engine may require additional network message for in-world color updates beyond `MSG_UPDATECOLORS`
 
-- **Bots can jitter/spin after the arbiter + PID aim refactor** (under investigation).
+- **Bots can jitter/spin in tight geometry** (mitigations added, still monitoring).
 
-  **Suspected cause:**
-  - **Competing yaw writers**: movement logic still calls `ChangeYaw()`/`Bot_SmoothTurn()` while the PID aim controller updates `angles_y`. This means movement and aim fight over the same view yaw each tick.
+  **Mitigations added:**
+  - Loop-break cooldown + retrace guard to prevent immediate re-entry at the same spot.
+  - Loop-break uses the furthest reachable breadcrumb to break oscillations.
+  - Terrain-trap handler respects unstick cooldown/retrace so it does not fight recovery.
 
-  **Next step:**
-  - Decouple **movement yaw** from **view yaw** so only `Bot_UpdateAimPID()` writes `angles_y` while movement uses its own yaw signal for `walkmove()` and steering.
+  **Remaining suspicion:**
+  - Aim-owner contention or noisy escape yaw changes while stuck; add telemetry if issues persist.
 
 ---
 ## 🙏 Credits

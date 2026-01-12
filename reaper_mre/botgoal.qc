@@ -146,13 +146,43 @@ void (entity target, float ttl) Bot_AddAvoidTarget =
 
 void (entity owner, float pri, float commit_secs, entity ent, vector org, float reason_code, string reason) Bot_RequestGoal =
 {
+   local entity oldself;
+
    if (!owner)
    {
       return ;
    } //end if
    if ((owner.frame_begin_time != time))
    {
+      oldself = self;
+      self = owner;
       Bot_FrameBegin ();
+      self = oldself;
+   } //end if
+   if (owner.move_apply_active)
+   {
+      if (owner.goal_req_pending_set)
+      {
+         if ((pri < owner.goal_req_pending_pri))
+         {
+            return ;
+         } //end if
+         if ((pri == owner.goal_req_pending_pri))
+         {
+            if ((ent != owner.goal_req_pending_ent))
+            {
+               return ;
+            } //end if
+         } //end if
+      } //end if
+      owner.goal_req_pending_set = TRUE;
+      owner.goal_req_pending_pri = pri;
+      owner.goal_req_pending_commit_secs = commit_secs;
+      owner.goal_req_pending_ent = ent;
+      owner.goal_req_pending_org = org;
+      owner.goal_req_pending_reason = reason;
+      owner.goal_req_pending_reason_code = reason_code;
+      return ;
    } //end if
 
    if ((owner.goal_req_pri >= 0.000))
@@ -177,6 +207,48 @@ void (entity owner, float pri, float commit_secs, entity ent, vector org, float 
    owner.goal_req_reason = reason;
    owner.goal_req_reason_code = reason_code;
 }; //end of the function Bot_RequestGoal
+
+float (entity bot, float reason_code) Bot_GoalMinCommit =
+{
+   if (((reason_code == R_TRIGGER_BUTTON) || (reason_code == R_TRIGGERED)))
+   {
+      return (0.800);
+   } //end if
+   if (((reason_code == R_COMBAT_SEEN_ENEMY) || (reason_code == R_COMBAT_TAKING_DAMAGE)))
+   {
+      return (0.600);
+   } //end if
+   if (((reason_code == R_COMBAT_HUNT_TARGET) || (reason_code == R_COMBAT_ENEMY_TOUCHED)))
+   {
+      return (0.600);
+   } //end if
+   if ((reason_code == R_GOAL_STACK))
+   {
+      return (0.400);
+   } //end if
+   if (((reason_code == R_GOAL_FIXATE_RESET) || (reason_code == R_GOAL_FIXATE_AVOID)))
+   {
+      return (0.500);
+   } //end if
+   if (bot)
+   {
+      return (Bot_IntentMinCommit (Bot_EffectiveIntent (bot)));
+   } //end if
+   return (0.750);
+}; //end of the function Bot_GoalMinCommit
+
+float (vector org) Bot_GoalNoise =
+{
+   local float n;
+
+   n = ((org_x * 0.013) + (org_y * 0.017) + (org_z * 0.019));
+   if ((n < 0.000))
+   {
+      n = (n * -1.000);
+   } //end if
+   n = (n - floor (n));
+   return (n);
+}; //end of the function Bot_GoalNoise
 
 void () Bot_CheckGoalFixation =
 {
@@ -272,12 +344,10 @@ void () shoottarget =
    } //end if
 }; //end of the function shoottarget
 
-void (float dist) ai_botseek =
+void () Bot_DecideGoal =
 {
    local entity botTarget;
    local vector dir;
-   local float rng;
-   local float oldrng;
 
    if (self.enemy)
    {
@@ -288,6 +358,34 @@ void (float dist) ai_botseek =
       self.lefty = (self.lefty | FAR_SEEK);
       return ;
    } //end if
+   botTarget = self.goalentity;
+   if (!botTarget)
+   {
+      return ;
+   } //end if
+   Bot_CheckGoalFixation ();
+   if ((time < self.nav_search_time))
+   {
+      if ((botTarget.goalentity.classname == "train"))
+      {
+         dir = ((botTarget.goalentity.absmin + botTarget.goalentity.absmax) * 0.500);
+         dir_z = (botTarget.goalentity.absmax_z + TRUE);
+         setorigin (botTarget,dir);
+      } //end if
+      if ((botTarget.goalentity.solid != SOLID_NOT))
+      {
+         return ;
+      } //end if
+   } //end if
+   aibot_chooseGoal ();
+}; //end of the function Bot_DecideGoal
+
+void (float dist) ai_botseek =
+{
+   local entity botTarget;
+   local vector dir;
+   local float rng;
+   local float oldrng;
    botTarget = self.goalentity;
    Bot_CheckGoalFixation ();
    if ((time < self.nav_search_time))
@@ -314,8 +412,7 @@ void (float dist) ai_botseek =
          return ;
       } //end if
    } //end if
-   aibot_chooseGoal ();
-
+   
    // ===== TWEAK #3a: Button shoot + wait (shoot once → loop+open check) =====
    // Auto-shoots buttons and shootable triggers, then waits 2s for doors to open—enables
    // fluid secret navigation. Replaces blind ignore with "human button-use" behavior.
@@ -1652,6 +1749,10 @@ void () aibot_chooseGoal =
    local float avg_speed;
    local vector pred_dir;
    local vector pred_pos;
+   local float intent;
+   local float best_noise;
+   local float cand_noise;
+   local float select;
 
    botTarget = self.goalentity;
    // Score-based denial: when leading by 5+, favor denial/safer routing.
@@ -1700,10 +1801,16 @@ void () aibot_chooseGoal =
    current = botTarget.goalentity;
    self.nav_search_time = (time + MOVETYPE_STEP);
    best = DONT_WANT;
+   best_noise = -1.000;
    OK_NOTVIS = FALSE;
    if ((self.air_finished < (time + MOVETYPE_FLYMISSILE)))
    {
       goForAir ();
+      return ;
+   } //end if
+   intent = Bot_EffectiveIntent (self);
+   if (((intent != BOT_INTENT_RESUPPLY) && (intent != BOT_INTENT_EXPLORE)))
+   {
       return ;
    } //end if
    if (((self.lefty & LOCAL_TIME) < MOVETYPE_FLY))
@@ -1834,28 +1941,38 @@ void () aibot_chooseGoal =
             {
                org_z = (e.absmax_z + TRUE);
             } //end if
-            if ((weight == best))
+            select = FALSE;
+            if ((weight > best))
+            {
+               select = TRUE;
+            } //end if
+            else if ((weight == best))
             {
                d1 = vlen ((self.origin - bestorg));
                d2 = vlen ((self.origin - org));
-               weight = ((weight + (random () * MOVETYPE_FLY)) - FL_SWIM);
-               if ((d1 < d2))
+               if ((d2 < (d1 - 1.000)))
                {
-                  weight = (weight - TRUE);
+                  select = TRUE;
                } //end if
-               if ((weight > best))
+               else if ((d1 < (d2 - 1.000)))
                {
-                  weight = best;
-                  best = (best - TRUE);
+                  select = FALSE;
                } //end if
-            } //end if
-            if ((weight > best))
+               else
+               {
+                  cand_noise = Bot_GoalNoise (org);
+                  if ((cand_noise > best_noise))
+                  {
+                     select = TRUE;
+                  } //end if
+               } //end else
+            } //end else
+            if (select)
             {
-               // Small diversity bias: occasionally favor less-frequent items.
-               weight = (weight + (random () * 5.000));
                Bot_RequestGoal (self,60.000,0.000,e,botTarget.origin,R_GOAL_CHOOSE,"choose goal");
                best = weight;
                bestorg = org;
+               best_noise = Bot_GoalNoise (org);
                // Predictive intercept: bias the goal toward a fast enemy's path.
                if (self.intercept_flag)
                {
@@ -1897,6 +2014,7 @@ void () aibot_chooseGoal =
       } //end if
       e = findradius (self.origin,SEARCH_RADIUS);
       best = DONT_WANT;
+      best_noise = -1.000;
       while (e)
       {
          if (Bot_IsAvoidedTarget (e))
@@ -1915,7 +2033,33 @@ void () aibot_chooseGoal =
             {
                weight = pathweight (e);
             } //end if
+            select = FALSE;
             if ((weight > best))
+            {
+               select = TRUE;
+            } //end if
+            else if (((weight > DONT_WANT) && (weight == best)))
+            {
+               d1 = vlen ((self.origin - bestorg));
+               d2 = vlen ((self.origin - e.origin));
+               if ((d2 < (d1 - 1.000)))
+               {
+                  select = TRUE;
+               } //end if
+               else if ((d1 < (d2 - 1.000)))
+               {
+                  select = FALSE;
+               } //end if
+               else
+               {
+                  cand_noise = Bot_GoalNoise (e.origin);
+                  if ((cand_noise > best_noise))
+                  {
+                     select = TRUE;
+                  } //end if
+               } //end else
+            } //end else
+            if (select)
             {
                best = weight;
                Bot_RequestGoal (self,60.000,0.000,e,botTarget.origin,R_GOAL_CHOOSE_PATH,"choose path");
@@ -1927,6 +2071,7 @@ void () aibot_chooseGoal =
                   bestorg = ((e.absmin + e.absmax) * 0.500);
                   bestorg_z = (e.absmin_z + TRUE);
                } //end if
+               best_noise = Bot_GoalNoise (bestorg);
                self.lefty = (self.lefty | FAR_SEEK);
             } //end if
          } //end if

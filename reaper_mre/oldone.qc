@@ -322,9 +322,12 @@ void () finale_1 =
    while ((pl != world))
    {
       pl.view_ofs = VEC_ORIGIN;
-      other.v_angle = pos.mangle;
-      pl.angles = pos.mangle;
-      pl.fixangle = TRUE;
+      if (!pl.isbot)
+      {
+         other.v_angle = pos.mangle;
+         pl.angles = pos.mangle;
+         pl.fixangle = TRUE;
+      } //end if
       pl.map = self.map;
       pl.nextthink = (time + 0.500);
       pl.takedamage = DAMAGE_NO;

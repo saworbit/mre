@@ -406,8 +406,15 @@ void () PutBotInServer =
    spot = (spwn.origin + '0.000 0.000 1.000');
    self.origin = spot;
    setorigin (self,spot);
-   self.angles = spwn.angles;
-   self.fixangle = SPAWNFLAG_SUPERSPIKE;
+   // Initialize spawn aim via PID so only the aim controller writes angles.
+   self.ideal_yaw = spwn.angles_y;
+   self.ideal_pitch = spwn.angles_x;
+   self.aim_hold_yaw = self.ideal_yaw;
+   self.aim_hold_pitch = self.ideal_pitch;
+   self.aim_hold_set_yaw = TRUE;
+   self.aim_hold_set_pitch = TRUE;
+   self.pid_last_update = 0.000;
+   Bot_UpdateAimPID ();
    setmodel (self,"progs/eyes.mdl");
    modelindex_eyes = self.modelindex;
    setmodel (self,"progs/player.mdl");

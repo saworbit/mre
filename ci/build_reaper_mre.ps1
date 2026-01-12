@@ -19,9 +19,13 @@ if (!(Test-Path -Path $outputDir)) {
 }
 
 # Compile from the source directory so relative includes and progs.src resolve correctly.
+$startTime = Get-Date
 Push-Location $srcDir
 try {
     & $compiler -O3 progs.src
+    if ($LASTEXITCODE -ne 0) {
+        throw "Compiler failed with exit code $LASTEXITCODE"
+    }
 } finally {
     Pop-Location
 }
@@ -33,7 +37,11 @@ if (!(Test-Path -Path $built)) {
 
 # Basic sanity check to catch partial or empty outputs in CI.
 $minBytes = 200000
-$size = (Get-Item -Path $built).Length
+$builtItem = Get-Item -Path $built
+$size = $builtItem.Length
+if ($builtItem.LastWriteTime -lt $startTime) {
+    throw "Build failed: progs.dat not updated (last write $($builtItem.LastWriteTime))"
+}
 if ($size -lt $minBytes) {
     throw "Build failed: progs.dat too small ($size bytes)"
 }

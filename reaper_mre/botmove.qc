@@ -33,15 +33,6 @@ float BOT_INTENT_UNSTICK = 5.000;    // Escape stuck state or reposition
 float BOT_INTENT_HOLD = 6.000;       // Hold position (ambush/wait)
 float BOT_INTENT_UPDATE_HZ = 4.000;  // Intent evaluation frequency (4Hz)
 
-// Flow Governor: Driver IDs for arbitration
-float FG_DRV_NONE = 0.000;           // No active driver
-float FG_DRV_TERRAIN = 1.000;        // Terrain trap resolver (pri 100)
-float FG_DRV_LOOP = 2.000;           // Loop breaker (pri 90)
-float FG_DRV_VERTICAL = 3.000;       // Vertical reposition (pri 80)
-float FG_DRV_INTENT = 4.000;         // Intent director (pri 60)
-float FG_DRV_ROUTE = 5.000;          // Route memory (pri 40)
-float FG_DRV_ROAM = 6.000;           // Default roam (pri 20)
-
 float STUCK_PROGRESS_INTERVAL = 0.200;
 float STUCK_PROGRESS_DIST = 12.000;  // Horizontal progress threshold
 float STUCK_PROGRESS_VERT = 8.000;   // Vertical progress threshold (stairs)
@@ -52,6 +43,11 @@ float STUCK_PUSH_DIST = 40.000;
 
 float (float yaw, float dist) Bot_WalkMove =
 {
+   local float prev_yaw;
+   local float prev_pitch;
+   local float prev_roll;
+   local float moved;
+
    if (!self.move_apply_active)
    {
       if ((bot_debug_enabled && !self.dbg_walkmove_warned))
@@ -62,7 +58,21 @@ float (float yaw, float dist) Bot_WalkMove =
          self.dbg_walkmove_warned = TRUE;
       } //end if
    } //end if
-   return (walkmove (yaw,dist));
+   prev_yaw = self.angles_y;
+   prev_pitch = self.angles_x;
+   prev_roll = self.angles_z;
+   moved = walkmove (yaw,dist);
+   if ((bot_debug_enabled && !self.dbg_walkmove_angle_warned))
+   {
+      if (((self.angles_y != prev_yaw) || (self.angles_x != prev_pitch) || (self.angles_z != prev_roll)))
+      {
+         bprint ("[");
+         bprint (self.netname);
+         bprint ("] walkmove changed angles\n");
+         self.dbg_walkmove_angle_warned = TRUE;
+      } //end if
+   } //end if
+   return (moved);
 }; //end of the function Bot_WalkMove
 
 // PHASE 4 REFACTOR: CanRocketJumpHeight, CanCrossGap moved to botmath.qc
@@ -88,6 +98,16 @@ float (float s_yaw, float s_dist) botwalkmove =
    else
    {
       halfdist = (0.550 * s_dist);
+   } //end if
+   if (self.move_apply_active)
+   {
+      if (!Bot_WalkMove (s_yaw,halfdist))
+      {
+         return (FALSE);
+      } //end if
+      // Apply the second half immediately so movement stays inside the controller tick.
+      Bot_WalkMove (s_yaw,halfdist);
+      return (TRUE);
    } //end if
    if (!Bot_WalkMove (s_yaw,halfdist))
    {
@@ -538,6 +558,7 @@ float /* ERROR: Could not determine return type */ (float vz, float dist, float 
    local vector front;
    local vector dir;
    local vector start;
+   local vector move_angles;
    local string tmp;
    local entity botTarget;
 
@@ -579,19 +600,11 @@ float /* ERROR: Could not determine return type */ (float vz, float dist, float 
          } //end if
       } //end if
    } //end if
-   if (!FacingIdeal ())
-   {
-      ChangeYaw ();
-      if (!FacingIdeal ())
-      {
-         ChangeYaw ();
-         if (!FacingIdeal ())
-         {
-            ChangeYaw ();
-         } //end if
-      } //end if
-   } //end if
-   makevectors (self.angles);
+   move_angles = self.angles;
+   move_angles_x = 0.000;
+   move_angles_y = self.ideal_yaw;
+   move_angles_z = 0.000;
+   makevectors (move_angles);
    start = (self.origin + (SECRET_YES_SHOOT * v_forward));
    botTarget = self.goalentity;
    velz = vz;
@@ -1216,7 +1229,7 @@ void() CheckWaterSurvival =
             } //end if
 
             // Look up slightly to assist physics engine
-            self.v_angle_x = -45;
+            Bot_RequestAim (self.angles_y,-45.000,FALSE,TRUE,AIM_OWNER_NAV,R_NONE,"water surface");
 
             // Optional: Clear any combat/movement commands while surfacing
             // (comment out if we want bots to shoot while drowning - less realistic)
@@ -1301,6 +1314,7 @@ void (float dist) strafemove =
    local vector org_start;
    local float abs_pat_var;
    local float do_jump; // NEW: Jump decision flag
+   local vector move_angles;
 
    if ((self.flags & FL_SWIM))
    {
@@ -1504,8 +1518,11 @@ void (float dist) strafemove =
    angle_rad = ((self.ideal_yaw + ofs) * (3.14159 / 180.000)); // Convert to radians
 
    // Manual vector construction (QuakeC doesn't have cos/sin, use makevectors workaround)
-   self.angles_y = (self.ideal_yaw + ofs);
-   makevectors(self.angles);
+   move_angles = self.angles;
+   move_angles_x = 0.000;
+   move_angles_y = (self.ideal_yaw + ofs);
+   move_angles_z = 0.000;
+   makevectors (move_angles);
    dir = v_forward;
    dir_z = 0.000;
    dir = normalize(dir);
@@ -1516,23 +1533,23 @@ void (float dist) strafemove =
    // Trace forward at knee height
    traceline((self.origin + '0.000 0.000 30.000'), step_trace_dest, TRUE, self);
 
-   if ((trace_fraction == 1.000))
-   {
-      // Knee-height is clear! The blockage is below our knees (a step).
-      // Give a proper hop to clear stairs smoothly.
-      // Allow consecutive hops for multi-step stairs.
-      self.velocity_z = 270.000; // Full hop velocity (matches standard jump)
-      if ((self.flags & FL_ONGROUND))
-      {
-         self.flags = (self.flags - FL_ONGROUND);
-      } //end if
-      return ;
-   } //end if
+     if ((trace_fraction == 1.000))
+     {
+        // Knee-height is clear! The blockage is below our knees (a step).
+        // Give a proper hop to clear stairs smoothly.
+        // Allow consecutive hops for multi-step stairs.
+        if ((self.flags & FL_ONGROUND))
+        {
+           self.velocity_z = 270.000; // Full hop velocity (matches standard jump)
+           self.flags = (self.flags - FL_ONGROUND);
+           return ;
+        } //end if
+     } //end if
    // =======================================
 
    // --- SLIDE LOGIC #1 (from Step 4) ---
-   self.angles_y = self.ideal_yaw + ofs;
-   makevectors(self.angles);
+   move_angles_y = (self.ideal_yaw + ofs);
+   makevectors (move_angles);
    org_start = self.origin;
    traceline(org_start, org_start + (v_forward * 16), TRUE, self);
 
@@ -1568,7 +1585,7 @@ void (float dist) strafemove =
           {
              // Found a nearby teleporter - aim for its center
              self.ideal_yaw = vectoyaw ((nearby_tele.origin - self.origin));
-             ChangeYaw ();
+             Bot_RequestAim (self.ideal_yaw,0.000,TRUE,FALSE,AIM_OWNER_NAV,R_NAV_ROAM,"teleport pad");
              // Give a small jump to help navigate onto the trigger volume
              if ((self.flags & FL_ONGROUND))
              {
@@ -1594,8 +1611,8 @@ void (float dist) strafemove =
    } //end if
 
    // --- SLIDE LOGIC #2 (from Step 4) ---
-   self.angles_y = self.ideal_yaw + ofs;
-   makevectors(self.angles);
+   move_angles_y = (self.ideal_yaw + ofs);
+   makevectors (move_angles);
    traceline(org_start, org_start + (v_forward * 16), TRUE, self);
 
    if (trace_fraction < 1.0)
@@ -1624,37 +1641,10 @@ void (float dist) strafemove =
 // ============================================================
 void() Bot_SmoothTurn =
 {
-    local float delta;
-
-    // Calculate difference between current angle and ideal angle
-    delta = anglemod (self.ideal_yaw - self.angles_y);
-    if ((delta > 180.000))
+    if ((!self.enemy && !self.aim_req_set_yaw))
     {
-        delta = (delta - 360.000);
+        Bot_RequestAim (self.ideal_yaw,0.000,TRUE,FALSE,AIM_OWNER_NAV,R_NAV_ROAM,"nav turn");
     } //end if
-
-    // DYNAMIC SPEED
-    // If delta is small (< 10 degrees), turn SLOWLY (smooth tracking)
-    if ((fabs (delta) < 10.000))
-    {
-        self.yaw_speed = 5.000; // Very smooth, mouse-like micro-adjustments
-    } //end if
-    // If delta is medium (cornering), use normal speed
-    else
-    {
-        if ((fabs (delta) < 45.000))
-        {
-            self.yaw_speed = 20.000;
-        } //end if
-        // If delta is huge (180 flick), turn FAST
-        else
-        {
-            self.yaw_speed = 45.000; // Snap turn
-        } //end if
-    } //end if
-
-    ChangeYaw ();
-    self.yaw_speed = 20.000; // Reset to default for other calculations
 }; //end of the function Bot_SmoothTurn
 // ============================================================
 
@@ -1688,6 +1678,7 @@ float (float dist) trysidestep =
 {
    local vector dir;
    local vector start;
+   local vector move_angles;
 
    dir = (self.goalentity.origin - self.origin);
    dir_z = FALSE;
@@ -1700,7 +1691,11 @@ float (float dist) trysidestep =
       strafemove ((dist * 0.600));
       return (TRUE);
    } //end if
-   makevectors (self.angles);
+   move_angles = self.angles;
+   move_angles_x = 0.000;
+   move_angles_y = self.ideal_yaw;
+   move_angles_z = 0.000;
+   makevectors (move_angles);
    start = (start + (v_right * 15.000));
    traceline (start,(start + (BOTSPEED * dir)),FALSE,self);
    if ((trace_fraction != SPAWNFLAG_SUPERSPIKE))
@@ -1957,6 +1952,7 @@ float (float dist, float base_yaw) Bot_TraversalStrafe =
    local vector start;
    local vector end;
    local vector dir;
+   local vector trace_angles;
    local float clear_dist;
    local float dist_to_goal;
    local float side;
@@ -1990,10 +1986,10 @@ float (float dist, float base_yaw) Bot_TraversalStrafe =
       return (FALSE);
    } //end if
 
-   self.v_angle_x = 0.000;
-   self.v_angle_y = base_yaw;
-   self.v_angle_z = 0.000;
-   makevectors (self.v_angle);
+   trace_angles_x = 0.000;
+   trace_angles_y = base_yaw;
+   trace_angles_z = 0.000;
+   makevectors (trace_angles);
    dir = v_forward;
    start = (self.origin + '0.000 0.000 24.000');
    end = (start + (dir * 320.000));
@@ -2029,10 +2025,10 @@ float (float dist, float base_yaw) Bot_TraversalStrafe =
    {
       if ((time > self.travel_bhop_jump_time))
       {
-         self.v_angle_x = 0.000;
-         self.v_angle_y = travel_yaw;
-         self.v_angle_z = 0.000;
-         makevectors (self.v_angle);
+         trace_angles_x = 0.000;
+         trace_angles_y = travel_yaw;
+         trace_angles_z = 0.000;
+         makevectors (trace_angles);
          jumpv = (v_forward * BOTSPEED);
          jumpv_z = 270.000;
          Botjump (jumpv);
@@ -2109,6 +2105,7 @@ float (entity bot, float base_yaw, float dt) Bot_SampleFeelers =
    local float diag_len;
    local float diag_side;
    local float side_len;
+   local vector trace_angles;
 
    yaw_bias = 0.000;
    feeler_speed_scale = 1.000;
@@ -2122,10 +2119,10 @@ float (entity bot, float base_yaw, float dt) Bot_SampleFeelers =
    side_len = (range * 0.300);
 
    // Use base_yaw as reference direction (goal heading), not current yaw
-   bot.v_angle_x = 0.000;
-   bot.v_angle_y = base_yaw;
-   bot.v_angle_z = 0.000;
-   makevectors (bot.v_angle);
+   trace_angles_x = 0.000;
+   trace_angles_y = base_yaw;
+   trace_angles_z = 0.000;
+   makevectors (trace_angles);
 
    fwd = v_forward;
    right = v_right;
@@ -2600,6 +2597,7 @@ vector (entity bot) PickWaterEscapeDir =
    local float mem_penalty;
    local vector start;
    local vector end;
+   local vector trace_angles;
 
    // 7-ray pattern: center + symmetric spread
    angles[0] = 0.000;
@@ -2614,19 +2612,20 @@ vector (entity bot) PickWaterEscapeDir =
    best_score = -99999.000;
 
    // Default to forward if all else fails
-   bot.v_angle_x = 0.000;
-   bot.v_angle_z = 0.000;
-   makevectors (bot.v_angle);
+   trace_angles_x = 0.000;
+   trace_angles_y = bot.ideal_yaw;
+   trace_angles_z = 0.000;
+   makevectors (trace_angles);
    best_dir = v_forward;
 
    i = 0.000;
    while ((i < 7.000))
    {
       // Calculate direction vector
-      bot.v_angle_y = (bot.ideal_yaw + angles[i]);
-      bot.v_angle_x = 0.000;
-      bot.v_angle_z = 0.000;
-      makevectors (bot.v_angle);
+      trace_angles_x = 0.000;
+      trace_angles_y = (bot.ideal_yaw + angles[i]);
+      trace_angles_z = 0.000;
+      makevectors (trace_angles);
       dir = v_forward;
 
       // Check clearance in this direction
@@ -2877,6 +2876,7 @@ vector (entity bot) Bot_PickTerrainEscape =
    local vector start;
    local vector end;
    local float range;
+   local vector trace_angles;
 
    // 7-ray pattern: center + symmetric spread
    angles[0] = 0.000;
@@ -2891,19 +2891,20 @@ vector (entity bot) Bot_PickTerrainEscape =
    best_score = -99999.000;
 
    // Default to forward if all else fails
-   bot.v_angle_x = 0.000;
-   bot.v_angle_z = 0.000;
-   makevectors (bot.v_angle);
+   trace_angles_x = 0.000;
+   trace_angles_y = bot.ideal_yaw;
+   trace_angles_z = 0.000;
+   makevectors (trace_angles);
    best_dir = v_forward;
 
    i = 0.000;
    while ((i < 7.000))
    {
       // Calculate direction vector
-      bot.v_angle_y = (bot.ideal_yaw + angles[i]);
-      bot.v_angle_x = 0.000;
-      bot.v_angle_z = 0.000;
-      makevectors (bot.v_angle);
+      trace_angles_x = 0.000;
+      trace_angles_y = (bot.ideal_yaw + angles[i]);
+      trace_angles_z = 0.000;
+      makevectors (trace_angles);
       dir = v_forward;
 
       // Check clearance in this direction (swept trace)
@@ -2966,7 +2967,23 @@ void (entity bot) Bot_HandleTerrainTrap =
    {
       return ;
    } //end if
+   if (bot.is_retracing)
+   {
+      return ;
+   } //end if
    if (((bot.stuck_mode == BOT_MODE_UNSTICK) && (time < bot.escape_until_time)))
+   {
+      return ;
+   } //end if
+   if ((bot.stuck_mode == BOT_MODE_COOLDOWN))
+   {
+      return ;
+   } //end if
+   if ((time < bot.escape_cooldown_time))
+   {
+      return ;
+   } //end if
+   if (((bot.fg_driver == FG_DRV_TERRAIN) && (time < bot.fg_until)))
    {
       return ;
    } //end if
@@ -3041,13 +3058,44 @@ void (entity bot) Bot_HandleTerrainTrap =
 
 void (entity bot, float mode, float style, float pri, float commit_secs, entity target, vector org, float speed) Bot_RequestMove =
 {
+   local entity oldself;
+
    if (!bot)
    {
       return ;
    } //end if
-   if ((self.frame_begin_time != time))
+   if ((bot.frame_begin_time != time))
    {
+      oldself = self;
+      self = bot;
       Bot_FrameBegin ();
+      self = oldself;
+   } //end if
+   if (bot.move_apply_active)
+   {
+      if (bot.move_req_pending_set)
+      {
+         if ((pri < bot.move_req_pending_pri))
+         {
+            return ;
+         } //end if
+         if ((pri == bot.move_req_pending_pri))
+         {
+            if ((mode != bot.move_req_pending_mode))
+            {
+               return ;
+            } //end if
+         } //end if
+      } //end if
+      bot.move_req_pending_set = TRUE;
+      bot.move_req_pending_mode = mode;
+      bot.move_req_pending_style = style;
+      bot.move_req_pending_pri = pri;
+      bot.move_req_pending_commit_secs = commit_secs;
+      bot.move_req_pending_target = target;
+      bot.move_req_pending_org = org;
+      bot.move_req_pending_speed = speed;
+      return ;
    } //end if
 
    if ((pri < bot.move_req_pri))
@@ -3119,13 +3167,42 @@ void (float mode, float dist) Bot_RequestMoveMode =
 
 void (entity bot, float intent, float pri, float commit_secs, float reason_code, string reason) Bot_RequestIntent =
 {
+   local entity oldself;
+
    if (!bot)
    {
       return ;
    } //end if
-   if ((self.frame_begin_time != time))
+   if ((bot.frame_begin_time != time))
    {
+      oldself = self;
+      self = bot;
       Bot_FrameBegin ();
+      self = oldself;
+   } //end if
+   if (bot.move_apply_active)
+   {
+      if (bot.intent_req_pending_set)
+      {
+         if ((pri < bot.intent_req_pending_pri))
+         {
+            return ;
+         } //end if
+         if ((pri == bot.intent_req_pending_pri))
+         {
+            if ((intent != bot.intent_req_pending))
+            {
+               return ;
+            } //end if
+         } //end if
+      } //end if
+      bot.intent_req_pending_set = TRUE;
+      bot.intent_req_pending = intent;
+      bot.intent_req_pending_pri = pri;
+      bot.intent_req_pending_commit_secs = commit_secs;
+      bot.intent_req_pending_reason = reason;
+      bot.intent_req_pending_reason_code = reason_code;
+      return ;
    } //end if
 
    if ((pri < bot.intent_req_pri))
@@ -3146,6 +3223,143 @@ void (entity bot, float intent, float pri, float commit_secs, float reason_code,
    bot.intent_req_reason = reason;
    bot.intent_req_reason_code = reason_code;
 }; //end of the function Bot_RequestIntent
+
+float (entity bot) Bot_EffectiveIntent =
+{
+   local float intent;
+   local float req_intent;
+
+   if (!bot)
+   {
+      return (BOT_INTENT_EXPLORE);
+   } //end if
+
+   intent = bot.bot_intent;
+   req_intent = bot.intent_req;
+   if (req_intent)
+   {
+      if ((time < bot.intent_request_until))
+      {
+         if ((bot.intent_req_pri < bot.intent_request_pri))
+         {
+            req_intent = 0.000;
+         } //end if
+         else if ((bot.intent_req_pri == bot.intent_request_pri))
+         {
+            if ((bot.intent_req != bot.intent_request))
+            {
+               req_intent = 0.000;
+            } //end if
+         } //end if
+      } //end if
+   } //end if
+
+   if (req_intent)
+   {
+      intent = req_intent;
+   } //end if
+   else if ((time < bot.intent_request_until))
+   {
+      intent = bot.intent_request;
+   } //end if
+
+   return (intent);
+}; //end of the function Bot_EffectiveIntent
+
+float (float intent) Bot_IntentMinCommit =
+{
+   if ((intent == BOT_INTENT_FIGHT))
+   {
+      return (0.750);
+   } //end if
+   if ((intent == BOT_INTENT_CHASE))
+   {
+      return (0.750);
+   } //end if
+   if ((intent == BOT_INTENT_RESUPPLY))
+   {
+      return (1.000);
+   } //end if
+   if ((intent == BOT_INTENT_EXPLORE))
+   {
+      return (1.250);
+   } //end if
+   if ((intent == BOT_INTENT_UNSTICK))
+   {
+      return (0.500);
+   } //end if
+   if ((intent == BOT_INTENT_HOLD))
+   {
+      return (0.500);
+   } //end if
+   return (0.750);
+}; //end of the function Bot_IntentMinCommit
+
+void () Bot_UpdateIntentDecision =
+{
+   local float prev_intent;
+   local float candidate_intent;
+
+   if ((time < self.bot_intent_next_update))
+   {
+      return ;
+   } //end if
+   self.bot_intent_next_update = (time + (1.000 / BOT_INTENT_UPDATE_HZ));
+
+   if ((self.stuck_mode == BOT_MODE_UNSTICK))
+   {
+      self.bot_intent = BOT_INTENT_UNSTICK;
+      self.bot_intent_start = time;
+      self.bot_intent_fail = 0.000;
+      return ;
+   } //end if
+
+   prev_intent = self.bot_intent;
+   candidate_intent = Bot_EffectiveIntent (self);
+
+   if (candidate_intent)
+   {
+      self.bot_intent = candidate_intent;
+   } //end if
+   else if ((self.enemy && (self.enemy.health > 0.000)))
+   {
+      if (((time - self.bot_last_enemy_seen) < 1.500))
+      {
+         self.bot_intent = BOT_INTENT_FIGHT;
+      } //end if
+      else
+      {
+         self.bot_intent = BOT_INTENT_CHASE;
+      } //end else
+   } //end if
+   else
+   {
+      if (((self.health < 50.000) || (self.armorvalue < 25.000) || (self.currentammo < 5.000)))
+      {
+         self.bot_intent = BOT_INTENT_RESUPPLY;
+      } //end if
+      else
+      {
+         self.bot_intent = BOT_INTENT_EXPLORE;
+      } //end else
+   } //end else
+
+   if ((self.bot_intent != prev_intent))
+   {
+      self.bot_intent_start = time;
+      self.bot_intent_fail = 0.000;
+   } //end if
+
+   if ((self.intent_req || (time < self.intent_request_until)))
+   {
+      self.bot_intent_fail = 0.000;
+   } //end if
+   else
+   {
+      Bot_UpdateIntentFail (self);
+      Bot_EscalateIntent (self);
+   } //end else
+}; //end of the function Bot_UpdateIntentDecision
 
 // Check if current intent is succeeding (has valid success signal)
 float (entity bot) Bot_IntentSucceeded =
@@ -3260,6 +3474,7 @@ void (entity bot) Bot_UpdateIntentFail =
 void (entity bot) Bot_EscalateIntent =
 {
    local float timeout;
+   local vector trace_angles;
 
    if ((bot.bot_intent == BOT_INTENT_HOLD))
    {
@@ -3353,9 +3568,10 @@ void (entity bot) Bot_EscalateIntent =
    if ((bot.bot_intent == BOT_INTENT_UNSTICK))
    {
       // Record current direction as failed approach
-      bot.v_angle_x = 0.000;
-      bot.v_angle_z = 0.000;
-      makevectors (bot.v_angle);
+      trace_angles_x = 0.000;
+      trace_angles_y = bot.ideal_yaw;
+      trace_angles_z = 0.000;
+      makevectors (trace_angles);
       RecordDirectionalFail (bot,v_forward);
       // Try exploring
       bot.bot_intent = BOT_INTENT_EXPLORE;
@@ -3396,6 +3612,7 @@ void (entity bot) Intent_Driver =
 {
    local vector goal;
    local vector fwd;
+   local vector trace_angles;
 
    goal = '0.000 0.000 0.000';
 
@@ -3440,9 +3657,10 @@ void (entity bot) Intent_Driver =
             else
             {
                // Fallback to forward
-               bot.v_angle_x = 0.000;
-               bot.v_angle_z = 0.000;
-               makevectors (bot.v_angle);
+               trace_angles_x = 0.000;
+               trace_angles_y = bot.ideal_yaw;
+               trace_angles_z = 0.000;
+               makevectors (trace_angles);
                goal = v_forward;
             } //end else
          } //end if
@@ -3456,9 +3674,10 @@ void (entity bot) Intent_Driver =
             else
             {
                // Fallback to forward
-               bot.v_angle_x = 0.000;
-               bot.v_angle_z = 0.000;
-               makevectors (bot.v_angle);
+               trace_angles_x = 0.000;
+               trace_angles_y = bot.ideal_yaw;
+               trace_angles_z = 0.000;
+               makevectors (trace_angles);
                goal = v_forward;
             } //end else
          } //end else
@@ -3586,6 +3805,7 @@ vector (entity bot, entity e) VT_PickRepositionDir =
    local float clearR;
    local vector start;
    local vector end;
+   local vector trace_angles;
 
    toE = (e.origin - bot.origin);
    toE_z = 0.000;
@@ -3593,9 +3813,10 @@ vector (entity bot, entity e) VT_PickRepositionDir =
    // Fallback if enemy is exactly on top (rare)
    if ((vlen (toE) < 0.010))
    {
-      bot.v_angle_x = 0.000;
-      bot.v_angle_z = 0.000;
-      makevectors (bot.v_angle);
+      trace_angles_x = 0.000;
+      trace_angles_y = bot.ideal_yaw;
+      trace_angles_z = 0.000;
+      makevectors (trace_angles);
       tangR_x = -v_forward_y;
       tangR_y = v_forward_x;
       tangR_z = 0.000;
@@ -3745,6 +3966,18 @@ void (entity bot) Loop_PushSig =
 {
    local float s;
 
+   if (bot.is_retracing)
+   {
+      return ;
+   } //end if
+   if ((bot.stuck_mode != BOT_MODE_NORMAL))
+   {
+      return ;
+   } //end if
+   if ((bot.hazard_escape_until > time))
+   {
+      return ;
+   } //end if
    if ((time < bot.loop_sig_time))
    {
       return ;
@@ -3761,13 +3994,34 @@ void (entity bot) Loop_PushSig =
    bot.loop_sig2 = bot.loop_sig1;
    bot.loop_sig1 = bot.loop_sig0;
    bot.loop_sig0 = s;
+   if ((bot.loop_sig_count < 6.000))
+   {
+      bot.loop_sig_count = (bot.loop_sig_count + 1.000);
+   } //end if
 }; //end of the function Loop_PushSig
+
+void (entity bot) Loop_ResetSig =
+{
+   bot.loop_sig0 = 0.000;
+   bot.loop_sig1 = 0.000;
+   bot.loop_sig2 = 0.000;
+   bot.loop_sig3 = 0.000;
+   bot.loop_sig4 = 0.000;
+   bot.loop_sig5 = 0.000;
+   bot.loop_sig_count = 0.000;
+   bot.loop_sig_time = (time + 0.750);
+}; //end of the function Loop_ResetSig
 
 // Detect if bot is in behavioral loop (4/6 signatures same)
 float (entity bot) Loop_InLoop =
 {
    local float s;
    local float count;
+
+   if ((bot.loop_sig_count < 4.000))
+   {
+      return (FALSE);
+   } //end if
 
    s = bot.loop_sig0;
    count = 0.000;
@@ -3792,12 +4046,33 @@ float (entity bot) Loop_InLoop =
 void (entity bot) Loop_BreakLoop =
 {
    local vector fwd_dir;
+   local vector trace_angles;
 
-   if (((bot.stuck_mode == BOT_MODE_UNSTICK) && (time < bot.escape_until_time)))
+   if (bot.is_retracing)
+   {
+      return ;
+   } //end if
+   if ((bot.stuck_mode == BOT_MODE_UNSTICK))
+   {
+      return ;
+   } //end if
+   if ((bot.stuck_mode == BOT_MODE_COOLDOWN))
+   {
+      return ;
+   } //end if
+   if ((time < bot.escape_cooldown_time))
    {
       return ;
    } //end if
    if ((bot.hazard_escape_until > time))
+   {
+      return ;
+   } //end if
+   if ((time < bot.loop_break_until))
+   {
+      return ;
+   } //end if
+   if (((bot.fg_driver == FG_DRV_TERRAIN) && (time < bot.fg_until)))
    {
       return ;
    } //end if
@@ -3816,10 +4091,15 @@ void (entity bot) Loop_BreakLoop =
       bprint (", forcing reposition\n");
    } //end if
 
+   bot.loop_break_until = (time + 8.000);
+   bot.loop_break_origin = bot.origin;
+   Loop_ResetSig (bot);
+
    // Record current forward as a fail
-   bot.v_angle_x = 0.000;
-   bot.v_angle_z = 0.000;
-   makevectors (bot.v_angle);
+   trace_angles_x = 0.000;
+   trace_angles_y = bot.ideal_yaw;
+   trace_angles_z = 0.000;
+   makevectors (trace_angles);
    fwd_dir = v_forward;
    RecordDirectionalFail (bot,fwd_dir);
 
@@ -3933,6 +4213,7 @@ float (entity bot, vector dir, float dist) Bot_JumpFeasible =
 {
    local float yaw;
    local vector testdir;
+   local vector trace_angles;
 
    if (!Bot_JumpFeasibleSimple (bot,dir,dist))
    {
@@ -3947,15 +4228,15 @@ float (entity bot, vector dir, float dist) Bot_JumpFeasible =
    // Allow slight air-control variants
    yaw = vectoyaw (dir);
 
-   bot.v_angle_x = 0.000;
-   bot.v_angle_y = (yaw + 20.000);
-   bot.v_angle_z = 0.000;
-   makevectors (bot.v_angle);
+   trace_angles_x = 0.000;
+   trace_angles_y = (yaw + 20.000);
+   trace_angles_z = 0.000;
+   makevectors (trace_angles);
    testdir = v_forward;
    if (Bot_JumpFeasibleArc (bot,testdir,dist)) return (TRUE);
 
-   bot.v_angle_y = (yaw - 20.000);
-   makevectors (bot.v_angle);
+   trace_angles_y = (yaw - 20.000);
+   makevectors (trace_angles);
    testdir = v_forward;
    if (Bot_JumpFeasibleArc (bot,testdir,dist)) return (TRUE);
 
@@ -4161,6 +4442,7 @@ void (entity bot, float mode, float wall_side, float base_yaw) Bot_Feelers_Evalu
    local float center_frac;
    local float left_frac;
    local float right_frac;
+   local vector trace_angles;
 
    bot.best_score = -99999.000;
    bot.best_dir = '1.000 0.000 0.000';
@@ -4177,10 +4459,10 @@ void (entity bot, float mode, float wall_side, float base_yaw) Bot_Feelers_Evalu
    second_dir = '0.000 0.000 0.000';
    second_score = -99999.000;
 
-   bot.v_angle_x = 0.000;
-   bot.v_angle_y = base_yaw;
-   bot.v_angle_z = 0.000;
-   makevectors (bot.v_angle);
+   trace_angles_x = 0.000;
+   trace_angles_y = base_yaw;
+   trace_angles_z = 0.000;
+   makevectors (trace_angles);
    base_fwd = v_forward;
    base_right = v_right;
    base_floor_z = Bot_FloorHeight (bot,bot.origin);
@@ -4203,10 +4485,10 @@ void (entity bot, float mode, float wall_side, float base_yaw) Bot_Feelers_Evalu
    {
       scan_yaw = Bot_CandidateYaw (base_yaw,i,wall_side);
 
-      bot.v_angle_x = 0.000;
-      bot.v_angle_y = scan_yaw;
-      bot.v_angle_z = 0.000;
-      makevectors (bot.v_angle);
+      trace_angles_x = 0.000;
+      trace_angles_y = scan_yaw;
+      trace_angles_z = 0.000;
+      makevectors (trace_angles);
       dir = v_forward;
       side = v_right;
 
@@ -4671,7 +4953,6 @@ void (float dist, float mode) Bot_ApplyFeelerMove =
    } //end if
 
    self.ideal_yaw = self.best_ideal_yaw;
-   ChangeYaw ();
 
    if ((self.best_wants_jump && (self.flags & FL_ONGROUND)))
    {
@@ -4707,6 +4988,8 @@ void (float reason_code, string reason) Bot_EnterUnstick =
 {
    local float base_yaw;
    local float age;
+   local float is_loop_break;
+   local vector trace_angles;
 
    if ((self.stuck_mode == BOT_MODE_UNSTICK))
    {
@@ -4758,24 +5041,61 @@ void (float reason_code, string reason) Bot_EnterUnstick =
       } //end if
    } //end else
 
+   is_loop_break = FALSE;
+   if (((reason_code == R_UNSTICK_LOOP) || (time < self.loop_break_until)))
+   {
+      is_loop_break = TRUE;
+   } //end if
+
    // Record directional failure: this approach got us stuck
-   self.v_angle_x = 0.000;
-   self.v_angle_y = base_yaw;
-   self.v_angle_z = 0.000;
-   makevectors (self.v_angle);
+   trace_angles_x = 0.000;
+   trace_angles_y = base_yaw;
+   trace_angles_z = 0.000;
+   makevectors (trace_angles);
    RecordDirectionalFail (self,v_forward);
 
    // === BREADCRUMB BACKTRACKING: Try to recover by retracing steps ===
    // Attempt to find a recent valid position to backtrack to before
    // using feeler-based forward escape plan.
    local vector rescue_spot;
+   local vector repeat_spot;
    rescue_spot = Breadcrumb_GetRecoverySpot ();
+   if (is_loop_break)
+   {
+      rescue_spot = self.origin;
+   } //end if
+
+   if (self.last_retrace_time)
+   {
+      if (((time - self.last_retrace_time) < 6.000))
+      {
+         if ((vlen ((rescue_spot - self.last_retrace_pos)) < 128.000))
+         {
+            repeat_spot = rescue_spot;
+            rescue_spot = self.origin;
+            if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+            {
+               bprint ("[");
+               bprint (self.netname);
+               bprint ("] UNSTICK: Skip repeated breadcrumb\n");
+            } //end if
+            if ((repeat_spot != '0.000 0.000 0.000'))
+            {
+               self.bad_spot_origin = repeat_spot;
+               self.bad_spot_radius = 192.000;
+               self.bad_spot_expire_time = (time + 8.000);
+            } //end if
+         } //end if
+      } //end if
+   } //end if
 
    // If we found a valid breadcrumb (not the current origin), enter retrace mode
    if (((rescue_spot != self.origin) && (rescue_spot != '0.000 0.000 0.000')))
    {
       self.is_retracing = TRUE;
       self.old_goal_pos = self.origin;  // Save where we're stuck
+      self.last_retrace_pos = rescue_spot;
+      self.last_retrace_time = time;
 
       if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
       {
@@ -4799,6 +5119,16 @@ void (float reason_code, string reason) Bot_EnterUnstick =
    // === END BREADCRUMB BACKTRACKING ===
 
    // If no valid breadcrumb found, use traditional feeler-based escape
+   if (is_loop_break)
+   {
+      base_yaw = (base_yaw + 180.000);
+      if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+      {
+         bprint ("[");
+         bprint (self.netname);
+         bprint ("] UNSTICK: Loop escape (feeler)\n");
+      } //end if
+   } //end if
    Bot_PickEscapePlan (base_yaw);
 
    if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
@@ -4945,8 +5275,28 @@ vector () Breadcrumb_GetRecoverySpot =
       } //end if
 
       // Ignore empty/zero vectors (buffer not full yet)
-      if ((cand != '0.000 0.000 0.000'))
+   if ((cand != '0.000 0.000 0.000'))
+   {
+      if ((self.bad_spot_expire_time > time))
       {
+         if ((vlen (cand - self.bad_spot_origin) < self.bad_spot_radius))
+         {
+               i = (i + 1.000);
+               continue;
+            } //end if
+         } //end if
+      if (self.last_retrace_time)
+      {
+         if (((time - self.last_retrace_time) < 6.000))
+         {
+            if ((vlen ((cand - self.last_retrace_pos)) < 128.000))
+            {
+               i = (i + 1.000);
+               continue;
+            } //end if
+         } //end if
+         } //end if
+
          // Check if we can see it (don't path through the wall that stuck us)
          traceline ((self.origin + '0.000 0.000 24.000'),(cand + '0.000 0.000 24.000'),TRUE,self);
 
@@ -4968,6 +5318,92 @@ vector () Breadcrumb_GetRecoverySpot =
 
    return (best_pos);
 }; //end of the function Breadcrumb_GetRecoverySpot
+
+// Find the furthest reachable breadcrumb for loop recovery.
+// Prefers a larger rewind to break oscillations (loop-break mode).
+vector () Breadcrumb_GetRecoverySpotFar =
+{
+   local float i;
+   local vector cand;
+   local float best_dist;
+   local vector best_pos;
+   local float d;
+
+   best_dist = 0.000;
+   best_pos = self.origin;  // Fallback if no valid crumbs
+
+   i = 0.000;
+   while ((i < 5.000))
+   {
+      if ((i == 0.000))
+      {
+         cand = self.crumb_pos_0;
+      } //end if
+      else
+      {
+         if ((i == 1.000))
+         {
+            cand = self.crumb_pos_1;
+         } //end if
+         else
+         {
+            if ((i == 2.000))
+            {
+               cand = self.crumb_pos_2;
+            } //end if
+            else
+            {
+               if ((i == 3.000))
+               {
+                  cand = self.crumb_pos_3;
+               } //end if
+               else
+               {
+                  cand = self.crumb_pos_4;
+               } //end if
+            } //end if
+         } //end if
+      } //end else
+
+      if ((cand != '0.000 0.000 0.000'))
+      {
+         if ((self.bad_spot_expire_time > time))
+         {
+            if ((vlen (cand - self.bad_spot_origin) < self.bad_spot_radius))
+            {
+               i = (i + 1.000);
+               continue;
+            } //end if
+         } //end if
+      if (self.last_retrace_time)
+      {
+         if (((time - self.last_retrace_time) < 6.000))
+         {
+            if ((vlen ((cand - self.last_retrace_pos)) < 128.000))
+            {
+               i = (i + 1.000);
+               continue;
+            } //end if
+         } //end if
+      } //end if
+
+         traceline ((self.origin + '0.000 0.000 24.000'),(cand + '0.000 0.000 24.000'),TRUE,self);
+         if ((trace_fraction == 1.000))
+         {
+            d = vlen ((cand - self.origin));
+            if (((d > 96.000) && (d > best_dist)))
+            {
+               best_dist = d;
+               best_pos = cand;
+            } //end if
+         } //end if
+      } //end if
+
+      i = (i + 1.000);
+   } //end while
+
+   return (best_pos);
+}; //end of the function Breadcrumb_GetRecoverySpotFar
 // ===== END BREADCRUMBING =====
 
 void (float dist) Bot_UnstickThink =
@@ -4975,28 +5411,77 @@ void (float dist) Bot_UnstickThink =
    // === BREADCRUMB RETRACE MODE: Exit conditions ===
    if (self.is_retracing)
    {
-      // Exit retrace mode if timer expires OR we're moving fast again
-      if (((time > self.escape_until_time) || (vlen (self.velocity) > 200.000)))
+      if ((self.unstick_reason_code == R_UNSTICK_LOOP))
       {
-         self.is_retracing = FALSE;
-         self.stuck_mode = BOT_MODE_COOLDOWN;
-         self.escape_cooldown_time = (time + 0.600);
-         self.stuck_score = 0.000;
-         self.last_progress_time = time;
-         self.last_origin = self.origin;
-         self.progress_check_time = (time + STUCK_PROGRESS_INTERVAL);
-
-         if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+         // Loop break: keep retracing until timeout or we actually reach the target.
+         if ((time > self.escape_until_time))
          {
-            bprint ("[");
-            bprint (self.netname);
-            bprint ("] UNSTICK: Breadcrumb retrace complete (vel=");
-            bprint (ftos (vlen (self.velocity)));
-            bprint (")\n");
-         } //end if
+            self.is_retracing = FALSE;
+            self.stuck_mode = BOT_MODE_COOLDOWN;
+            self.escape_cooldown_time = (time + 0.600);
+            self.stuck_score = 0.000;
+            self.last_progress_time = time;
+            self.last_origin = self.origin;
+            self.progress_check_time = (time + STUCK_PROGRESS_INTERVAL);
 
-         return ;
+            if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+            {
+               bprint ("[");
+               bprint (self.netname);
+               bprint ("] UNSTICK: Breadcrumb retrace complete (vel=");
+               bprint (ftos (vlen (self.velocity)));
+               bprint (")\n");
+            } //end if
+
+            return ;
+         } //end if
+         if ((vlen ((self.origin - self.last_retrace_pos)) < 48.000))
+         {
+            self.is_retracing = FALSE;
+            self.stuck_mode = BOT_MODE_COOLDOWN;
+            self.escape_cooldown_time = (time + 0.600);
+            self.stuck_score = 0.000;
+            self.last_progress_time = time;
+            self.last_origin = self.origin;
+            self.progress_check_time = (time + STUCK_PROGRESS_INTERVAL);
+
+            if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+            {
+               bprint ("[");
+               bprint (self.netname);
+               bprint ("] UNSTICK: Breadcrumb retrace complete (vel=");
+               bprint (ftos (vlen (self.velocity)));
+               bprint (")\n");
+            } //end if
+
+            return ;
+         } //end if
       } //end if
+      else
+      {
+         // Exit retrace mode if timer expires OR we're moving fast again
+         if (((time > self.escape_until_time) || (vlen (self.velocity) > 200.000)))
+         {
+            self.is_retracing = FALSE;
+            self.stuck_mode = BOT_MODE_COOLDOWN;
+            self.escape_cooldown_time = (time + 0.600);
+            self.stuck_score = 0.000;
+            self.last_progress_time = time;
+            self.last_origin = self.origin;
+            self.progress_check_time = (time + STUCK_PROGRESS_INTERVAL);
+
+            if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+            {
+               bprint ("[");
+               bprint (self.netname);
+               bprint ("] UNSTICK: Breadcrumb retrace complete (vel=");
+               bprint (ftos (vlen (self.velocity)));
+               bprint (")\n");
+            } //end if
+
+            return ;
+         } //end if
+      } //end else
 
       // Continue retracing - maintain direction toward rescue spot
       // (ideal_yaw was set in Bot_EnterUnstick)
@@ -5219,79 +5704,6 @@ void (float dist) Botmovetogoal =
 
    // Detect and break repetitive behavioral loops
    Loop_BreakLoop (self);
-   // =============================================================
-
-   // ===== INTENT ESCALATION: Classify and escalate stuck intents =====
-   // Runs at 4Hz to prevent intent churn. Classifies current high-level intent
-   // (Fight, Chase, Resupply, Explore, Unstick), updates fail metrics, and
-   // escalates to next-best intent if current intent fails for too long.
-   if ((time >= self.bot_intent_next_update))
-   {
-      self.bot_intent_next_update = (time + (1.000 / BOT_INTENT_UPDATE_HZ));
-
-      if ((self.stuck_mode == BOT_MODE_UNSTICK))
-      {
-         self.bot_intent = BOT_INTENT_UNSTICK;
-         self.bot_intent_start = time;
-         self.bot_intent_fail = 0.000;
-      } //end if
-      else
-      {
-         // Classify current intent based on bot state
-         local float prev_intent;
-         prev_intent = self.bot_intent;
-
-         if ((time < self.intent_request_until))
-         {
-            self.bot_intent = self.intent_request;
-         } //end if
-         else if ((self.enemy && (self.enemy.health > 0.000)))
-         {
-            // Has enemy: FIGHT if visible recently, else CHASE
-            if (((time - self.bot_last_enemy_seen) < 1.500))
-            {
-               self.bot_intent = BOT_INTENT_FIGHT;
-            } //end if
-            else
-            {
-               self.bot_intent = BOT_INTENT_CHASE;
-            } //end else
-         } //end if
-         else
-         {
-            // No enemy: check resources
-            if (((self.health < 50.000) || (self.armorvalue < 25.000) || (self.currentammo < 5.000)))
-            {
-               self.bot_intent = BOT_INTENT_RESUPPLY;
-            } //end if
-            else
-            {
-               // Good resources, no enemy: explore for pickups/contact
-               self.bot_intent = BOT_INTENT_EXPLORE;
-            } //end else
-         } //end else
-
-         // If intent changed, reset start time
-         if ((self.bot_intent != prev_intent))
-         {
-            self.bot_intent_start = time;
-            self.bot_intent_fail = 0.000;  // Reset fail score on natural intent change
-         } //end if
-
-         if ((time < self.intent_request_until))
-         {
-            self.bot_intent_fail = 0.000;
-         } //end if
-         else
-         {
-            // Update fail metrics (accumulate when failing, decay when succeeding)
-            Bot_UpdateIntentFail (self);
-
-            // Escalate if current intent has failed for too long
-            Bot_EscalateIntent (self);
-         } //end else
-      } //end else
-   } //end if
    // =============================================================
 
    // ===== FLOW GOVERNOR: Driver Requests (Priority Order) =====
@@ -5527,7 +5939,7 @@ void (float dist) Botmovetogoal =
                self.ideal_yaw = vectoyaw ((trig_ent.origin - self.origin));
                // Note: pitch aiming would use vectoangles for full 3D aim
                // For now, yaw is enough for most buttons
-               ChangeYaw ();
+               Bot_RequestAim (self.ideal_yaw,0.000,TRUE,FALSE,AIM_OWNER_NAV,R_TRIGGER_BUTTON,"button aim");
 
                // SHOOT! (If attack is ready)
                if ((time > self.attack_finished))
@@ -5581,8 +5993,7 @@ void (float dist) Botmovetogoal =
 
          // Wait behavior
          self.velocity = '0.000 0.000 0.000';  // Stop movement
-         self.ideal_pitch = -45.000;           // Look up at shaft (human-like)
-         ChangePitch ();
+         Bot_RequestAim (0.000,-45.000,FALSE,TRUE,AIM_OWNER_NAV,R_NAV_ROAM,"elevator wait");
 
          // Reset stuck timers (this is an intentional wait, not stuck)
          self.stuck_count = 0.000;
@@ -5655,8 +6066,7 @@ void (float dist) Botmovetogoal =
             self.velocity = '0.000 0.000 0.000';
 
             // Look UP at the lift (human behavior)
-            self.ideal_pitch = -45.000;
-            ChangePitch ();
+            Bot_RequestAim (0.000,-45.000,FALSE,TRUE,AIM_OWNER_NAV,R_NAV_ROAM,"lift wait");
 
             // Reset stuck timers so we don't panic-teleport
             self.stuck_time = 0.000;
@@ -5693,22 +6103,35 @@ void (float dist) Botmovetogoal =
                if ((self.health > 50.000))
                {
                   // Check cooldown
-                  if ((time > self.rj_cooldown))
-                  {
-                     // Execute rocket jump!
-                     // Look straight DOWN (NEGATIVE pitch = down, positive = up!)
-                     self.angles_x = -80.000;
-                     makevectors (self.angles);
-                     // Fire!
-                     W_FireRocket ();
-                     // Jump!
-                     self.velocity_z = 300.000;
-                     // Reset cooldown
-                     self.rj_cooldown = (time + 2.000);
-                     return ;
-                  } //end if
-               } //end if
-            } //end if
+                   if ((time > self.rj_cooldown))
+                   {
+                      if ((self.flags & FL_ONGROUND))
+                      {
+                         // Execute rocket jump!
+                         // Look straight DOWN (NEGATIVE pitch = down, positive = up!)
+                         local vector aim_angles;
+                         local vector aim_dir;
+                         aim_angles = self.angles;
+                         aim_angles_x = -80.000;
+                         aim_angles_z = 0.000;
+                         makevectors (aim_angles);
+                         aim_dir = v_forward;
+                         Bot_RequestAim (0.000,-80.000,FALSE,TRUE,AIM_OWNER_NAV,R_NONE,"vertical solve");
+                         self.botaim_override = aim_dir;
+                         self.botaim_override_active = TRUE;
+                         // Fire!
+                         W_FireRocket ();
+                         self.botaim_override_active = FALSE;
+                         self.botaim_override = '0.000 0.000 0.000';
+                         // Jump!
+                         self.velocity_z = 300.000;
+                         // Reset cooldown
+                         self.rj_cooldown = (time + 2.000);
+                         return ;
+                      } //end if
+                   } //end if
+                } //end if
+             } //end if
          } //end if
       } //end if
    } //end if
@@ -5754,7 +6177,7 @@ void (float dist) Botmovetogoal =
 
       // Re-aim at predicted position instead of current static origin—creates timing magic
       self.ideal_yaw = vectoyaw ((pred_pos - self.origin));
-      ChangeYaw ();
+      Bot_RequestAim (self.ideal_yaw,0.000,TRUE,FALSE,AIM_OWNER_NAV,R_NAV_ROAM,"platform predict");
    } //end if
    // ===== END TWEAK #2 =====
 
@@ -5804,7 +6227,7 @@ void (float dist) Botmovetogoal =
       // Rotate ideal_yaw by 45° × (attempts - 3) to explore new directions
       // Example: attempt 4 = +45°, attempt 5 = +90°, attempt 6 = +135°, attempt 7 = +180°
       self.ideal_yaw = (self.ideal_yaw + (45.000 * (self.stuck_count - 3)));
-      ChangeYaw ();
+      Bot_RequestAim (self.ideal_yaw,0.000,TRUE,FALSE,AIM_OWNER_NAV,R_UNSTICK_NO_PROGRESS,"stuck rotate");
 
       if ((self.stuck_count == 7))
       {

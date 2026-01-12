@@ -1009,7 +1009,7 @@ float () CheckReboundAttack =
    REBOUNDSPOT = spot2;
    REBOUND = TRUE;
    self.ideal_yaw = vectoyaw ((spot2 - self.origin));
-   ChangeYaw ();
+   Bot_RequestAim (self.ideal_yaw,0.000,TRUE,FALSE,AIM_OWNER_COMBAT,R_COMBAT_SEEN_ENEMY,"rebound");
    bot_rebound1 ();
    if ((self.items & IT_ROCKET_LAUNCHER))
    {

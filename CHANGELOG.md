@@ -1,3 +1,19 @@
+## 2026-01-12
+
+- **Bot view-angle enforcement** to keep PID aim authoritative:
+  - **PlayerPreThink sync** in `reaper_mre/client.qc`: bots mirror `angles` into `v_angle` and set `fixangle` before `makevectors`, preventing engine/usercmd writes from overriding PID output.
+  - **PID fixangle** in `reaper_mre/botmath.qc`: `Bot_UpdateAimPID()` now sets `fixangle` on first snap and normal updates to force clean view updates.
+  - **Result:** Eliminates residual aim jitter from engine-side angle overrides.
+- **Structured telemetry + override detection** for spin/jitter diagnosis:
+  - **Ring buffers** in `reaper_mre/botdebug.qc`: per-tick trace (256) and event log (64) with spin auto-dump.
+  - **Impulse controls** in `reaper_mre/weapons.qc`: `impulse 121/122/123` toggle telemetry and dump trace/events; cvars `bot_dbg_id`, `bot_dbg_n`, `bot_dbg_event_n` control focus and dump size.
+  - **Override event** in `reaper_mre/botthink.qc`: `Bot_FrameApply()` snapshots yaw/pitch/time; `Bot_FrameBegin()` emits `ANGLES_OVERRIDE` when angles changed between apply and next frame.
+  - **Result:** Fast, structured visibility into who owns aim/move/goal and whether applied angles are being overwritten.
+- **Movement apply consistency + jump guards**:
+  - **Controller atomicity** in `reaper_mre/botmove.qc`: `botwalkmove` now completes both halves during the apply phase to keep movement writes within the controller tick.
+  - **Grounded jump guards** in `reaper_mre/botmove.qc`: step-hop and rocket-jump execution now require `FL_ONGROUND` to avoid mid-air jump spam.
+  - **Result:** More consistent movement output and fewer mid-air jump artifacts.
+
 ## 2026-01-11
 
 - **Single-writer aim** for bot view control:
@@ -33,10 +49,41 @@
   - **Aim requests** in `reaper_mre/botmath.qc`: `Bot_RequestAim()` ignores late overwrites if an aim request already exists during apply.
   - **Hazard scheduling** in `reaper_mre/botmove.qc`: hazard checks now run after movement heading is computed; loop-break is suppressed during hazard escape.
   - **Result:** Keeps arbitration stable within a tick and aligns hazard steering with actual movement intent.
+- **Stuck recovery stabilization** to prevent loop-break + breadcrumb ping-pong:
+  - **Cooldown + retrace guards** in `reaper_mre/botmove.qc`: `Loop_BreakLoop()` now respects unstick cooldown/retrace state and adds a local cooldown window (`loop_break_until`) per spot.
+  - **Terrain-trap gating** in `reaper_mre/botmove.qc`: `Bot_HandleTerrainTrap()` skips during cooldown/retrace to avoid fighting active recovery.
+  - **Far breadcrumb retrace** in `reaper_mre/botmove.qc`: `Breadcrumb_GetRecoverySpotFar()` selects the furthest reachable crumb for loop-break recoveries.
+  - **Loop signature reset** in `reaper_mre/botmove.qc`: loop detection pauses and clears signature history after a break to prevent immediate retriggering.
+  - **Loop sample gating + retrace persistence** in `reaper_mre/botmove.qc`: loop detection only activates after enough samples, and loop-break retrace ignores velocity spikes until timeout/arrival.
+  - **Loop-break cooldown hard gate** in `reaper_mre/botmove.qc`: global cooldown now blocks repeat loop-break triggers regardless of position.
+  - **Loop-break escape plan** in `reaper_mre/botmove.qc`: loop-break no longer uses breadcrumb retrace; it inverts base yaw and uses feeler escape to break oscillations.
+  - **Loop-break guard in unstick** in `reaper_mre/botmove.qc`: if a loop-break just fired, unstick skips breadcrumbs even if the reason code differs.
+  - **Entity fields** in `reaper_mre/botit_th.qc`: added `.loop_break_until`, `.loop_break_origin`, `.last_retrace_pos`, `.last_retrace_time` for anti-ping-pong state.
+  - **Result:** Reduces repeated unstick/loop-break re-entry, minimizing spin/jitter in tight geometry.
 - **Removed remaining movement yaw writers** that bypassed the aim arbiter:
   - **Rocket jump** in `reaper_mre/botmove.qc`: replaces direct `angles_x/angles_y` writes and `ChangeYaw()` with `Bot_RequestAim()` plus a temporary `botaim_override` vector for the fired rocket.
   - **Action jump nodes** in `reaper_mre/botmove.qc`: replaces `ChangeYaw()` with a `Bot_RequestAim()` yaw request.
   - **Result:** Movement no longer writes view yaw directly during these sequences, avoiding PID aim contention.
+- **Aim single-writer cleanup** to remove the last non-PID angle writers for bots:
+  - **PID first-tick snap** in `reaper_mre/botmath.qc`: `Bot_UpdateAimPID()` snaps to `ideal_yaw/ideal_pitch` on first update so initialization does not require external angle writes.
+  - **Spawn/death/teleport** in `reaper_mre/botspawn.qc`, `reaper_mre/dmbot.qc`, `reaper_mre/triggers.qc`: bots request aim/hold instead of writing `angles`/`fixangle` directly (teleports now call `Bot_RequestAim()` for bots).
+  - **Apply cleanup** in `reaper_mre/botthink.qc`: `Bot_FrameApply()` no longer saves/restores angles, keeping PID as the sole angle writer.
+  - **Bot-safe fixangle guards** in `reaper_mre/client.qc` and `reaper_mre/oldone.qc`: avoid fixangle writes for bots during intermission/finale.
+  - **Result:** Only `Bot_UpdateAimPID()` writes bot view angles, eliminating residual aim contention.
+- **Request arbitration safety** for cross-entity callers:
+  - **Owner-aware frame begin** in `reaper_mre/botgoal.qc` and `reaper_mre/botmove.qc`: `Bot_RequestGoal/Move/Intent()` now call `Bot_FrameBegin()` on the target bot entity, preventing stale request fields when invoked from triggers or non-bot contexts.
+  - **Result:** Goal/move/intent requests always arbitrate within the correct per-tick window regardless of caller.
+- **Intent-first decision pass + deterministic goal selection:**
+  - **Pre-arbiter intent update** in `reaper_mre/botthink.qc`: `Bot_UpdateIntentDecision()` now runs before arbitration so intent-driven decisions are current for the frame.
+  - **Goal decision layer** in `reaper_mre/botgoal.qc`: new `Bot_DecideGoal()` runs before arbitration; `ai_botseek()` no longer picks goals during apply.
+  - **Intent-gated goal selection** in `reaper_mre/botgoal.qc`: `aibot_chooseGoal()` now only runs for RESUPPLY/EXPLORE intents (combat/unstick/hold do not re-roll items).
+  - **Deterministic tie-breaks** in `reaper_mre/botgoal.qc`: removes random tie-breaking/bias; ties use distance then a stable position hash.
+  - **Deferred request queue** in `reaper_mre/botthink.qc`, `reaper_mre/botgoal.qc`, `reaper_mre/botmove.qc`: goal/move/intent requests made during apply are queued and consumed at the next frame begin.
+  - **Result:** Single decision chain (intent → goal → controller), stable goal selection, and arbitration sees all requests.
+- **Ownership + override telemetry** for arbitration visibility:
+  - **Owner log** in `reaper_mre/botdebug.qc`: once per second or on change, prints move/aim/goal/state owners with current reason code.
+  - **Overruled logging** in `reaper_mre/botthink.qc`: logs when goal/move/intent requests lose to a committed higher-priority owner (throttled to 1s).
+  - **Result:** Clear "who is in charge" visibility without spam.
 
 - **Flow Governor (Priority-Based Arbitration)** to prevent competing control loops from fighting each other:
   - **Problem:** Multiple failsafe systems (terrain trap, loop breaker, vertical reposition, intent escalation) were directly overriding bot movement, causing oscillation between "escape" and "chase" modes, re-entering loops immediately after breaking them, and vertical reposition being overridden by chase then retriggering.
