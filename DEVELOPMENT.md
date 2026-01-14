@@ -550,6 +550,7 @@ NOISEQUEUE = noisetarget();
 ## 🛠️ Build & Deploy Workflow
 
 ### Compilation
+Prerequisite: `tools\fteqcc_win64\fteqcc64.exe` must exist (place the FTEQCC binary there).
 ```bash
 # Option 1: Direct compile (manual)
 cd c:\reaperai\reaper_mre
