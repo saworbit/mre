@@ -2,13 +2,13 @@
 *.dat
 *.lno
 *.exe
-!tools/fteqcc_win64/fteqcc64.exe
 *.dll
 *.pak
 *.PAK
 *.log
 *.zip
 *.exe.db
+tools/_downloads/
 
 # Quake engine generated files
 launch/quake-spasm/history.txt
@@ -19,6 +19,7 @@ id1/
 # Temp / cache
 *.tmp
 *.bak
+*.bak_*
 *.swp
 *.swo
 .DS_Store
