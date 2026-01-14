@@ -796,6 +796,8 @@ void () BotPostThink =
    local float fraglimit;
    local float enemy_dist;
    local float think_delay;
+   local entity sound_maker;
+   local float d;
 
    if ((self.frame_begin_time != time))
    {
@@ -835,9 +837,6 @@ void () BotPostThink =
    {
       if ((self.noise_expires > time) && (self.noise_target != world))
       {
-         local entity sound_maker;
-         local float d;
-
          sound_maker = self.noise_target;
          if ((sound_maker != self) && (sound_maker.health > 0.000))
          {
@@ -865,9 +864,6 @@ void () BotPostThink =
       } //end if
       else if ((self.search_time < time))
       {
-         local entity sound_maker;
-         local float d;
-
          sound_maker = find (world,classname,"player");
          while (sound_maker)
          {
