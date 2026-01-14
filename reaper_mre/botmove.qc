@@ -13,6 +13,14 @@ float(entity bot, vector pos, vector dir) Bot_LedgeRisk;
 float(entity bot) Loop_InLoop;
 // Forward declaration for unstick entry (defined later in this file)
 void (float reason_code, string reason) Bot_EnterUnstick;
+// Forward declaration for hazard escape (defined later in this file)
+void (float dist) Bot_HazardEscapeThink;
+// Forward declaration for terrain escape picker (defined later in this file)
+vector (entity bot) Bot_PickTerrainEscape;
+// Forward declaration for directional fail memory (defined later in this file)
+void (entity bot, vector dir) RecordDirectionalFail;
+// Forward declaration for ground height sampling (defined later in this file)
+float (entity bot, vector p) SampleGroundHeight;
 
 // Progress-based stuck detection + unstick mode tuning
 float BOT_MODE_NORMAL = 0.000;
@@ -987,9 +995,15 @@ void () CheckForHazards =
    local vector land_spot;
    local float land_content;
    local float escape_yaw;
+   local vector escape_dir;
+   local vector escape_probe;
+   local float escape_height;
+   local float escape_drop;
    local float base_yaw;
    local vector look_angles;
    local vector goal_dir;
+   local vector vel_dir;
+   local float vel_len;
 
    // Only check if we are on the ground
    if (!(self.flags & FL_ONGROUND))
@@ -1000,12 +1014,48 @@ void () CheckForHazards =
    {
       return ;
    } //end if
+   if ((self.stuck_mode == BOT_MODE_UNSTICK))
+   {
+      return ;
+   } //end if
+   if ((self.fg_driver == FG_DRV_TERRAIN))
+   {
+      return ;
+   } //end if
+
+   vel_dir = self.velocity;
+   vel_dir_z = 0.000;
+   vel_len = vlen (vel_dir);
+   if ((((self.move_mode == BOT_MOVE_NONE) || (self.move_mode == BOT_MOVE_STAND)) && (vel_len < 20.000)))
+   {
+      return ;
+   } //end if
 
    base_yaw = self.ideal_yaw;
    if ((self.fg_driver != FG_DRV_NONE) && (vlen (self.fg_goalDir) > 0.000))
    {
       base_yaw = vectoyaw (self.fg_goalDir);
    } //end if
+   else if ((vel_len > 20.000))
+   {
+      base_yaw = vectoyaw (vel_dir);
+   } //end if
+   else if (self.move_target)
+   {
+      goal_dir = (self.move_target.origin - self.origin);
+      if ((vlen (goal_dir) > 1.000))
+      {
+         base_yaw = vectoyaw (goal_dir);
+      } //end if
+   } //end else if
+   else if ((vlen (self.move_target_org) > 1.000))
+   {
+      goal_dir = (self.move_target_org - self.origin);
+      if ((vlen (goal_dir) > 1.000))
+      {
+         base_yaw = vectoyaw (goal_dir);
+      } //end if
+   } //end else if
    else if (self.goalentity)
    {
       goal_dir = (self.goalentity.origin - self.origin);
@@ -1070,16 +1120,43 @@ void () CheckForHazards =
          // 3. Force immediate rotation away from the hazard
          if ((self.hazard_escape_until <= time))
          {
-            escape_yaw = (base_yaw + 135.000);
-            if ((random () < 0.500))
+            if (((self.stuck_mode == BOT_MODE_UNSTICK) || (self.stuck_score > 1.000)))
             {
-               escape_yaw = (base_yaw - 135.000);
+               self.ideal_yaw = base_yaw;
+               escape_dir = Bot_PickTerrainEscape (self);
             } //end if
+            else
+            {
+               escape_yaw = (base_yaw + 135.000);
+               if ((random () < 0.500))
+               {
+                  escape_yaw = (base_yaw - 135.000);
+               } //end if
+               look_angles_y = escape_yaw;
+               makevectors (look_angles);
+               escape_dir = v_forward;
+            } //end else
+            escape_probe = (self.origin + (escape_dir * 96.000));
+            escape_height = SampleGroundHeight (self,escape_probe);
+            escape_drop = (self.origin_z - escape_height);
+            if (((escape_height < -90000.000) || (escape_drop > 64.000)))
+            {
+               escape_dir = -v_forward;
+            } //end if
+            escape_yaw = vectoyaw (escape_dir);
+            RecordDirectionalFail (self,escape_dir);
             self.hazard_escape_yaw = escape_yaw;
             self.hazard_escape_until = (time + 1.200);
             self.bad_spot_origin = self.origin;
             self.bad_spot_radius = 220.000;
             self.bad_spot_expire_time = (time + 10.000);
+            FG_Request (self,95.000,FG_DRV_TERRAIN,escape_dir,1.200);
+            if (((self.stuck_mode != BOT_MODE_UNSTICK) && ((self.stuck_score > 1.000) || ((time - self.last_progress_time) > 0.600))))
+            {
+               Bot_EnterUnstick (R_UNSTICK_TERRAIN,"edge hazard");
+               self.escape_until_time = self.hazard_escape_until;
+               self.is_retracing = FALSE;
+            } //end if
          } //end if
          if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
          {
@@ -1119,16 +1196,43 @@ void () CheckForHazards =
 
             if ((self.hazard_escape_until <= time))
             {
-               escape_yaw = (base_yaw + 135.000);
-               if ((random () < 0.500))
+               if (((self.stuck_mode == BOT_MODE_UNSTICK) || (self.stuck_score > 1.000)))
                {
-                  escape_yaw = (base_yaw - 135.000);
+                  self.ideal_yaw = base_yaw;
+                  escape_dir = Bot_PickTerrainEscape (self);
                } //end if
+               else
+               {
+                  escape_yaw = (base_yaw + 135.000);
+                  if ((random () < 0.500))
+                  {
+                     escape_yaw = (base_yaw - 135.000);
+                  } //end if
+                  look_angles_y = escape_yaw;
+                  makevectors (look_angles);
+                  escape_dir = v_forward;
+               } //end else
+               escape_probe = (self.origin + (escape_dir * 96.000));
+               escape_height = SampleGroundHeight (self,escape_probe);
+               escape_drop = (self.origin_z - escape_height);
+               if (((escape_height < -90000.000) || (escape_drop > 64.000)))
+               {
+                  escape_dir = -v_forward;
+               } //end if
+               escape_yaw = vectoyaw (escape_dir);
+               RecordDirectionalFail (self,escape_dir);
                self.hazard_escape_yaw = escape_yaw;
                self.hazard_escape_until = (time + 1.200);
                self.bad_spot_origin = self.origin;
                self.bad_spot_radius = 220.000;
                self.bad_spot_expire_time = (time + 10.000);
+               FG_Request (self,95.000,FG_DRV_TERRAIN,escape_dir,1.200);
+               if (((self.stuck_mode != BOT_MODE_UNSTICK) && ((self.stuck_score > 1.000) || ((time - self.last_progress_time) > 0.600))))
+               {
+                  Bot_EnterUnstick (R_UNSTICK_TERRAIN,"edge hazard");
+                  self.escape_until_time = self.hazard_escape_until;
+                  self.is_retracing = FALSE;
+               } //end if
             } //end if
             if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
             {
@@ -1150,16 +1254,43 @@ void () CheckForHazards =
             self.velocity = (self.velocity + (v_forward * -50.000));
             if ((self.hazard_escape_until <= time))
             {
-               escape_yaw = (base_yaw + 135.000);
-               if ((random () < 0.500))
+               if (((self.stuck_mode == BOT_MODE_UNSTICK) || (self.stuck_score > 1.000)))
                {
-                  escape_yaw = (base_yaw - 135.000);
+                  self.ideal_yaw = base_yaw;
+                  escape_dir = Bot_PickTerrainEscape (self);
                } //end if
+               else
+               {
+                  escape_yaw = (base_yaw + 135.000);
+                  if ((random () < 0.500))
+                  {
+                     escape_yaw = (base_yaw - 135.000);
+                  } //end if
+                  look_angles_y = escape_yaw;
+                  makevectors (look_angles);
+                  escape_dir = v_forward;
+               } //end else
+               escape_probe = (self.origin + (escape_dir * 96.000));
+               escape_height = SampleGroundHeight (self,escape_probe);
+               escape_drop = (self.origin_z - escape_height);
+               if (((escape_height < -90000.000) || (escape_drop > 64.000)))
+               {
+                  escape_dir = -v_forward;
+               } //end if
+               escape_yaw = vectoyaw (escape_dir);
+               RecordDirectionalFail (self,escape_dir);
                self.hazard_escape_yaw = escape_yaw;
                self.hazard_escape_until = (time + 1.200);
                self.bad_spot_origin = self.origin;
                self.bad_spot_radius = 220.000;
                self.bad_spot_expire_time = (time + 10.000);
+               FG_Request (self,95.000,FG_DRV_TERRAIN,escape_dir,1.200);
+               if (((self.stuck_mode != BOT_MODE_UNSTICK) && ((self.stuck_score > 1.000) || ((time - self.last_progress_time) > 0.600))))
+               {
+                  Bot_EnterUnstick (R_UNSTICK_TERRAIN,"edge hazard");
+                  self.escape_until_time = self.hazard_escape_until;
+                  self.is_retracing = FALSE;
+               } //end if
             } //end if
             if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
             {
@@ -2876,6 +3007,7 @@ vector (entity bot) Bot_PickTerrainEscape =
    local vector start;
    local vector end;
    local float range;
+   local float drop;
    local vector trace_angles;
 
    // 7-ray pattern: center + symmetric spread
@@ -2934,6 +3066,21 @@ vector (entity bot) Bot_PickTerrainEscape =
       //   height * 0.01 = prefer higher ground (scaled down)
       //   mem * -1.2    = avoid previously failed directions
       score = (clear + (height * 0.010) - (mem_penalty * 1.200));
+      if ((height < -90000.000))
+      {
+         i = (i + 1.000);
+         continue;
+      } //end if
+      drop = (bot.origin_z - height);
+      if ((drop > 64.000))
+      {
+         i = (i + 1.000);
+         continue;
+      } //end if
+      if ((drop > 24.000))
+      {
+         score = (score - ((drop - 24.000) * 0.030));
+      } //end if
 
       if ((score > best_score))
       {
@@ -5040,6 +5187,10 @@ void (float reason_code, string reason) Bot_EnterUnstick =
          base_yaw = vectoyaw (goal_dir);
       } //end if
    } //end else
+   if ((self.hazard_escape_until > time))
+   {
+      base_yaw = self.hazard_escape_yaw;
+   } //end if
 
    is_loop_break = FALSE;
    if (((reason_code == R_UNSTICK_LOOP) || (time < self.loop_break_until)))
@@ -5483,11 +5634,37 @@ void (float dist) Bot_UnstickThink =
          } //end if
       } //end else
 
-      // Continue retracing - maintain direction toward rescue spot
-      // (ideal_yaw was set in Bot_EnterUnstick)
+      // Continue retracing - move toward rescue spot using feelers so we
+      // keep steering around obstacles instead of standing still.
+      local vector retrace_dir;
+      local float retrace_yaw;
+      retrace_dir = (self.last_retrace_pos - self.origin);
+      retrace_dir_z = 0.000;
+      retrace_yaw = self.ideal_yaw;
+      if ((vlen (retrace_dir) > 1.000))
+      {
+         retrace_yaw = vectoyaw (retrace_dir);
+      } //end if
+      self.ideal_yaw = retrace_yaw;
+      CheckForHazards ();
+      if ((self.hazard_escape_until > time))
+      {
+         Bot_HazardEscapeThink (dist);
+         return ;
+      } //end if
+      Bot_Feelers_Evaluate (self,BOT_MODE_UNSTICK,self.wall_side_pref,retrace_yaw);
+      Bot_ApplyFeelerMove (dist,BOT_MODE_UNSTICK);
       return ;
    } //end if
    // === END BREADCRUMB RETRACE MODE ===
+
+   self.ideal_yaw = self.best_ideal_yaw;
+   CheckForHazards ();
+   if ((self.hazard_escape_until > time))
+   {
+      Bot_HazardEscapeThink (dist);
+      return ;
+   } //end if
 
    // Standard unstick timeout
    if ((time > self.escape_until_time))
@@ -5512,13 +5689,20 @@ void (float dist) Bot_UnstickThink =
 
 void (float dist) Bot_HazardEscapeThink =
 {
+   local float mode;
+
    if ((time > self.hazard_escape_until))
    {
       self.hazard_escape_until = 0.000;
       return ;
    } //end if
-   Bot_Feelers_Evaluate (self,BOT_MODE_NORMAL,0.000,self.hazard_escape_yaw);
-   Bot_ApplyFeelerMove (dist,BOT_MODE_NORMAL);
+   mode = BOT_MODE_NORMAL;
+   if ((self.stuck_mode == BOT_MODE_UNSTICK))
+   {
+      mode = BOT_MODE_UNSTICK;
+   } //end if
+   Bot_Feelers_Evaluate (self,mode,self.wall_side_pref,self.hazard_escape_yaw);
+   Bot_ApplyFeelerMove (dist,mode);
    return ;
 }; //end of the function Bot_HazardEscapeThink
 
