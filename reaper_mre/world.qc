@@ -163,6 +163,13 @@ void () worldspawn =
    // setBotGravity() will read whatever the server has configured
    W_Precache ();
    precache_sound ("demon/dland2.wav");
+   // Sight sounds used by ai.qc.
+   precache_sound ("ogre/ogdrag.wav");
+   precache_sound ("ogre/ogwake.wav");
+   precache_sound ("wizard/wsight.wav");
+   precache_sound ("zombie/z_idle.wav");
+   precache_sound ("blob/sight1.wav");
+   precache_sound ("vomitus/v_sight1.wav");
    precache_sound ("misc/h2ohit1.wav");
    precache_sound ("items/itembk2.wav");
    precache_sound ("player/plyrjmp8.wav");
