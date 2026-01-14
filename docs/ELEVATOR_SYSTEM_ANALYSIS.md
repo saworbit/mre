@@ -431,7 +431,10 @@ if (Botgoal.node_type == NODE_WAIT) {
 // If waiting too long (30+ seconds), replan route
 if (self.elevator_wait_state) {
     if (time - self.elevator_wait_start > 30) {
-        // Timeout - find alternate route
+        // Timeout - find alternate route and avoid immediate reselect
+        self.bad_spot_origin = Botgoal.origin;
+        self.bad_spot_radius = 256;
+        self.bad_spot_expire_time = time + 15;
         self.elevator_wait_state = FALSE;
         FindAPath();  // Force re-pathfind (will skip this elevator)
     }

@@ -85,6 +85,7 @@ A*: Elevator blocked at '...' (platform at top)
 3. After **30 seconds**:
    - Console: `[Bot] ELEVATOR: Timeout (30.1s), replanning`
    - Bot abandons elevator
+   - Wait node is treated as a temporary bad spot (~15s) to avoid immediate reselect
    - A* finds alternate route
    - Bot takes stairs/ramps instead
 

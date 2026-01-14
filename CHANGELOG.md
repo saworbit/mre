@@ -293,6 +293,12 @@
   - **Noise state** in `reaper_mre/botit_th.qc`/`reaper_mre/botspawn.qc`: bots track `noise_target` with `noise_expires` and initialize it on spawn.
   - **Noise dispatch/consumption** in `reaper_mre/botnoise.qc`/`reaper_mre/botthink.qc`: prefer nearer fresh sounds, consume per-bot noise before fallback scans.
   - **Result:** Fewer trace races in routing and more deterministic hearing reactions.
+- **Flow Governor baseline arbitration + elevator timeout avoidance:**
+  - **Driver refresh** in `reaper_mre/botmove.qc`: same driver can refresh equal-priority commits without churn.
+  - **Route/roam requests** in `reaper_mre/botmove.qc`: waypoint navigation now participates in FG (pri 40/20), with FG driving `ideal_yaw`.
+  - **Elevator timeout bad spot** in `reaper_mre/botmove.qc`: long waits mark the node as a temporary bad spot before replanning.
+  - **Depth step fix** in `reaper_mre/botroute.qc`: recursion depth now increments by 1.0 instead of spawn flags.
+  - **Result:** Cleaner arbitration, fewer reselect loops, and predictable routing depth.
 - **Lefty bitmask safety** for reliable flag clearing:
   - **Masked clears** in `reaper_mre/bot_ai.qc`: `GETGOODY`, `MULTIENEMY`, `STRAFE_DIR`, and `ONTRAIN` now clear via `self.lefty - (self.lefty & FLAG)` to avoid corrupting unrelated bits.
   - **Result:** No accidental state flips when clearing flags that were not set.

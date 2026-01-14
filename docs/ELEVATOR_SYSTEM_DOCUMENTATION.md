@@ -162,7 +162,7 @@ if (neighbor) {
    - Look up: `ideal_pitch = -45°` (human-like behavior)
    - Reset stuck timers: `stuck_count = 0` (intentional wait, not stuck)
    - Monitor platform: Check every frame if platform arrived
-   - Timeout: 30 seconds → Replan route (find alternate path)
+   - Timeout: 30 seconds -> replan route (find alternate path) and mark the wait node as a temporary bad spot (15s) to avoid immediate reselect
 
 **Platform arrives**:
 - Reset wait state: `elevator_wait_state = FALSE`
