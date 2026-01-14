@@ -38,7 +38,9 @@ void (entity noisemaker, entity noiseobject) signalnoise =
 {
    local entity bot;
    local vector diff;
+   local vector existing_diff;
    local float dist_sq;
+   local float existing_dist_sq;
    local float range_sq;
 
    if ((noisemaker.classname != "player"))
@@ -55,8 +57,22 @@ void (entity noisemaker, entity noiseobject) signalnoise =
       dist_sq = (dist_sq + (diff_z * diff_z));
       if ((dist_sq < range_sq))
       {
-         bot.search_time = (time + 5.000);
-         bot.noise_target = noisemaker;
+         if ((bot.noise_expires > time))
+         {
+            existing_diff = (bot.origin - bot.noise_target.origin);
+            existing_dist_sq = ((existing_diff_x * existing_diff_x) + (existing_diff_y * existing_diff_y));
+            existing_dist_sq = (existing_dist_sq + (existing_diff_z * existing_diff_z));
+            if ((dist_sq < existing_dist_sq))
+            {
+               bot.noise_target = noisemaker;
+               bot.noise_expires = (time + 2.000);
+            } //end if
+         } //end if
+         else
+         {
+            bot.noise_target = noisemaker;
+            bot.noise_expires = (time + 2.000);
+         } //end else
       } //end if
       bot = findbot (bot);
    } //end while

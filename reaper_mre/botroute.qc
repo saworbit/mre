@@ -272,6 +272,16 @@ float () FindAPath_AStar =
    local float best_start_dist;
    local float best_goal_dist;
    local float dist;
+   local float start_visible;
+   local float saved_trace_allsolid;
+   local float saved_trace_startsolid;
+   local float saved_trace_fraction;
+   local vector saved_trace_endpos;
+   local vector saved_trace_plane_normal;
+   local float saved_trace_plane_dist;
+   local entity saved_trace_ent;
+   local float saved_trace_inopen;
+   local float saved_trace_inwater;
    local entity carriedPath;
    local entity goal_entity;
 
@@ -293,8 +303,27 @@ float () FindAPath_AStar =
       if ((vlen ((self.current_node.origin - self.origin)) < 250.000))
       {
          // Verify visibility to ensure we haven't walked through a wall
+         saved_trace_allsolid = trace_allsolid;
+         saved_trace_startsolid = trace_startsolid;
+         saved_trace_fraction = trace_fraction;
+         saved_trace_endpos = trace_endpos;
+         saved_trace_plane_normal = trace_plane_normal;
+         saved_trace_plane_dist = trace_plane_dist;
+         saved_trace_ent = trace_ent;
+         saved_trace_inopen = trace_inopen;
+         saved_trace_inwater = trace_inwater;
          traceline (self.origin,self.current_node.origin,TRUE,self);
-         if ((trace_fraction == TRUE))
+         start_visible = trace_fraction;
+         trace_allsolid = saved_trace_allsolid;
+         trace_startsolid = saved_trace_startsolid;
+         trace_fraction = saved_trace_fraction;
+         trace_endpos = saved_trace_endpos;
+         trace_plane_normal = saved_trace_plane_normal;
+         trace_plane_dist = saved_trace_plane_dist;
+         trace_ent = saved_trace_ent;
+         trace_inopen = saved_trace_inopen;
+         trace_inwater = saved_trace_inwater;
+         if ((start_visible == TRUE))
          {
             start_node = self.current_node;
          } //end if
@@ -445,6 +474,16 @@ float () CheckDropPath =
    local float lnd;
    local float OK_HIGH;
    local string tmp;
+   local float lastnode_visible;
+   local float saved_trace_allsolid;
+   local float saved_trace_startsolid;
+   local float saved_trace_fraction;
+   local vector saved_trace_endpos;
+   local vector saved_trace_plane_normal;
+   local float saved_trace_plane_dist;
+   local entity saved_trace_ent;
+   local float saved_trace_inopen;
+   local float saved_trace_inwater;
 
    if ((NUMPATHS > 180.000))
    {
@@ -463,8 +502,27 @@ float () CheckDropPath =
          if ((vlen ((self.origin - self.last_dropped_node.origin)) < 250.000))
          {
             // Line of Sight check
+            saved_trace_allsolid = trace_allsolid;
+            saved_trace_startsolid = trace_startsolid;
+            saved_trace_fraction = trace_fraction;
+            saved_trace_endpos = trace_endpos;
+            saved_trace_plane_normal = trace_plane_normal;
+            saved_trace_plane_dist = trace_plane_dist;
+            saved_trace_ent = trace_ent;
+            saved_trace_inopen = trace_inopen;
+            saved_trace_inwater = trace_inwater;
             traceline (self.origin,self.last_dropped_node.origin,TRUE,self);
-            if ((trace_fraction == 1.000))
+            lastnode_visible = trace_fraction;
+            trace_allsolid = saved_trace_allsolid;
+            trace_startsolid = saved_trace_startsolid;
+            trace_fraction = saved_trace_fraction;
+            trace_endpos = saved_trace_endpos;
+            trace_plane_normal = saved_trace_plane_normal;
+            trace_plane_dist = saved_trace_plane_dist;
+            trace_ent = saved_trace_ent;
+            trace_inopen = saved_trace_inopen;
+            trace_inwater = saved_trace_inwater;
+            if ((lastnode_visible == 1.000))
             {
                // We are close and can see the last node. No need for another.
                // Extend the "carried" timer so we don't give up too soon.
@@ -559,7 +617,17 @@ void () DropBotPath =
 {
    local string tmp;
    local entity oldpath;
+   local entity platform_ent;
    local float drop;
+   local float saved_trace_allsolid;
+   local float saved_trace_startsolid;
+   local float saved_trace_fraction;
+   local vector saved_trace_endpos;
+   local vector saved_trace_plane_normal;
+   local float saved_trace_plane_dist;
+   local entity saved_trace_ent;
+   local float saved_trace_inopen;
+   local float saved_trace_inwater;
 
    oldpath = self.movetarget;
    if (oldpath.movetarget)
@@ -599,14 +667,33 @@ void () DropBotPath =
 
    // ===== ELEVATOR SYSTEM: Auto Node Creation =====
    // Check what we are standing on. If it's a lift/train, create elevator node pairs.
+   saved_trace_allsolid = trace_allsolid;
+   saved_trace_startsolid = trace_startsolid;
+   saved_trace_fraction = trace_fraction;
+   saved_trace_endpos = trace_endpos;
+   saved_trace_plane_normal = trace_plane_normal;
+   saved_trace_plane_dist = trace_plane_dist;
+   saved_trace_ent = trace_ent;
+   saved_trace_inopen = trace_inopen;
+   saved_trace_inwater = trace_inwater;
    traceline (self.origin,(self.origin - '0.000 0.000 64.000'),TRUE,self);
-   if ((((trace_ent.classname == "func_plat") || (trace_ent.classname == "func_train")) || (trace_ent.classname == "func_door")))
+   platform_ent = trace_ent;
+   trace_allsolid = saved_trace_allsolid;
+   trace_startsolid = saved_trace_startsolid;
+   trace_fraction = saved_trace_fraction;
+   trace_endpos = saved_trace_endpos;
+   trace_plane_normal = saved_trace_plane_normal;
+   trace_plane_dist = saved_trace_plane_dist;
+   trace_ent = saved_trace_ent;
+   trace_inopen = saved_trace_inopen;
+   trace_inwater = saved_trace_inwater;
+   if ((((platform_ent.classname == "func_plat") || (platform_ent.classname == "func_train")) || (platform_ent.classname == "func_door")))
    {
       // Legacy compatibility: Mark as platform node
       oldpath.is_platform_node = TRUE;
 
       // ===== NEW: Auto-create elevator node pairs =====
-      if ((trace_ent.classname == "func_plat"))
+      if ((platform_ent.classname == "func_plat"))
       {
          local entity plat;
          local entity wait_node;
@@ -614,7 +701,7 @@ void () DropBotPath =
          local float at_bottom;
          local float at_top;
 
-         plat = trace_ent;
+         plat = platform_ent;
 
          // Determine if we're at bottom or top position
          at_bottom = IsPlatformAt (plat,plat.pos1);
@@ -773,6 +860,17 @@ void (entity node, entity targ, float len, entity item, float depth) cacheRouteT
    local float enemy_dist;
    local float dist;
    local float has_weak_enemy;  // Flag: bot's enemy is weak (<40 HP)
+   local float path_fraction;
+   local entity path_ent;
+   local float saved_trace_allsolid;
+   local float saved_trace_startsolid;
+   local float saved_trace_fraction;
+   local vector saved_trace_endpos;
+   local vector saved_trace_plane_normal;
+   local float saved_trace_plane_dist;
+   local entity saved_trace_ent;
+   local float saved_trace_inopen;
+   local float saved_trace_inwater;
 
    // Check bot's enemy status via helper (avoids .enemy field shadowing by local var)
    has_weak_enemy = BotHasWeakEnemy ();
@@ -810,14 +908,34 @@ void (entity node, entity targ, float len, entity item, float depth) cacheRouteT
    {
       if ((time > self.reroute_time))
       {
+         saved_trace_allsolid = trace_allsolid;
+         saved_trace_startsolid = trace_startsolid;
+         saved_trace_fraction = trace_fraction;
+         saved_trace_endpos = trace_endpos;
+         saved_trace_plane_normal = trace_plane_normal;
+         saved_trace_plane_dist = trace_plane_dist;
+         saved_trace_ent = trace_ent;
+         saved_trace_inopen = trace_inopen;
+         saved_trace_inwater = trace_inwater;
          traceline (node.origin,targ.origin,TRUE,self);
-         if ((trace_fraction < TRUE))
+         path_fraction = trace_fraction;
+         path_ent = trace_ent;
+         trace_allsolid = saved_trace_allsolid;
+         trace_startsolid = saved_trace_startsolid;
+         trace_fraction = saved_trace_fraction;
+         trace_endpos = saved_trace_endpos;
+         trace_plane_normal = saved_trace_plane_normal;
+         trace_plane_dist = saved_trace_plane_dist;
+         trace_ent = saved_trace_ent;
+         trace_inopen = saved_trace_inopen;
+         trace_inwater = saved_trace_inwater;
+         if ((path_fraction < TRUE))
          {
-            if ((trace_ent.classname != "BotPath"))
+            if ((path_ent.classname != "BotPath"))
             {
                // ===== BROKEN PATH PRUNING: Obstacle Discrimination =====
                // Different penalties for different obstacles instead of flat 1.5x
-               if ((trace_ent == world))
+               if ((path_ent == world))
                {
                   // Hit a WALL (static level geometry) - path is broken!
                   // Make it effectively infinite cost to prune this bad link
@@ -825,7 +943,7 @@ void (entity node, entity targ, float len, entity item, float depth) cacheRouteT
                } //end if
                else
                {
-                  if (((trace_ent.classname == "func_door") || (trace_ent.classname == "func_door_rotating")))
+                  if (((path_ent.classname == "func_door") || (path_ent.classname == "func_door_rotating")))
                   {
                      // It's just a door - add wait penalty (+300 units)
                      rng = (rng + 300.000);

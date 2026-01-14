@@ -288,6 +288,11 @@
   - **Saved/restored trace globals** in `reaper_mre/bot_ai.qc`: `PredictEnemyPositionForNav` and `CallForHelp` now preserve `trace_*` state and use local copies for their logic.
   - **Saved/restored trace globals** in `reaper_mre/botgoal.qc`: `chooseRoamTarget` and `goForAir` no longer leak trace results into movement/combat callers.
   - **Result:** Movement/collision logic no longer reads stale trace data after prediction and goal helper traces.
+- **Routing trace isolation + per-bot noise wiring:**
+  - **Trace preservation** in `reaper_mre/botroute.qc`: routing visibility, breadcrumb spacing, elevator detection, and blockage checks now snapshot and restore `trace_*` globals.
+  - **Noise state** in `reaper_mre/botit_th.qc`/`reaper_mre/botspawn.qc`: bots track `noise_target` with `noise_expires` and initialize it on spawn.
+  - **Noise dispatch/consumption** in `reaper_mre/botnoise.qc`/`reaper_mre/botthink.qc`: prefer nearer fresh sounds, consume per-bot noise before fallback scans.
+  - **Result:** Fewer trace races in routing and more deterministic hearing reactions.
 - **Lefty bitmask safety** for reliable flag clearing:
   - **Masked clears** in `reaper_mre/bot_ai.qc`: `GETGOODY`, `MULTIENEMY`, `STRAFE_DIR`, and `ONTRAIN` now clear via `self.lefty - (self.lefty & FLAG)` to avoid corrupting unrelated bits.
   - **Result:** No accidental state flips when clearing flags that were not set.

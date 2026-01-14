@@ -502,6 +502,8 @@ float (entity targ, entity inflictor) CanDamage;
 .float reaction_finished;
 // Last heard noise target for immediate sound-based reactions.
 .entity noise_target;
+// Timestamp until which a noise target is considered fresh.
+.float noise_expires;
 // PHASE 3 FIX: Bully mode commitment timer (prevents instant decision flipping)
 .float bully_commit_time;
 // Nemesis System: tracks who killed this bot for revenge seeking.

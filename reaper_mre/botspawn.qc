@@ -387,6 +387,8 @@ void () PutBotInServer =
    W_SetCurrentAmmo ();
    self.nav_search_time = time;
    self.combat_search_time = (time - TRUE);
+   self.noise_target = world;
+   self.noise_expires = time;
    self.attack_finished = time;
    self.th_pain = bot_pain;
    self.th_die = BotDie;

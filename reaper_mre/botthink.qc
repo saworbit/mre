@@ -833,7 +833,37 @@ void () BotPostThink =
    // If idle (roaming) and hear combat/pickup noise, investigate the sound source
    if (!self.enemy)
    {
-      if ((self.search_time < time))
+      if ((self.noise_expires > time) && (self.noise_target != world))
+      {
+         local entity sound_maker;
+         local float d;
+
+         sound_maker = self.noise_target;
+         if ((sound_maker != self) && (sound_maker.health > 0.000))
+         {
+            d = vlen ((sound_maker.origin - self.origin));
+            if ((d < 1000.000))
+            {
+               if (((self.health > 80.000) && (self.items & ((IT_ROCKET_LAUNCHER + IT_SUPER_NAILGUN) + IT_LIGHTNING))))
+               {
+                  Bot_RequestIntent (self,6.000,70.000,1.500,R_AMBUSH,"ambush");
+                  Bot_RequestAim (vectoyaw ((sound_maker.origin - self.origin)),0.000,TRUE,FALSE,AIM_OWNER_SOUND,R_SOUND_HEARD,"sound");
+                  self.search_time = (time + 1.500);
+               } //end if
+               else
+               {
+                  if ((self.goalentity.classname == "BotTarget"))
+                  {
+                     setorigin (self.goalentity,sound_maker.origin);
+                  } //end if
+                  self.search_time = (time + 2.000);
+               } //end else
+            } //end if
+         } //end if
+         self.noise_target = world;
+         self.noise_expires = time;
+      } //end if
+      else if ((self.search_time < time))
       {
          local entity sound_maker;
          local float d;
