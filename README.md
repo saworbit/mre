@@ -92,6 +92,7 @@ Priority-based arbitration layer where each system "requests control" instead of
 
 1. **Each driver evaluates its condition** (e.g., terrain trap checks waterlevel, loop breaker checks signature buffer)
 2. **Driver "requests control"** via `FG_Request(bot, priority, driver_id, goal_direction, commit_seconds)`
+   - Waypoint routing and fallback roam now request control at pri 40/20 so baseline navigation doesn't bypass higher-priority drivers.
 3. **Governor arbitrates:**
    - If no driver active OR requesting driver has higher priority → grant control
    - If current driver has higher/equal priority and still committed → deny request (prevents churn)

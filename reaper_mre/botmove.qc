@@ -5916,6 +5916,49 @@ void (float dist) Botmovetogoal =
 
    Botgoal = self.goalentity;
 
+   // ===== FLOW GOVERNOR: Route + Roam requests =====
+   // Ensure routing/roam intent participates in arbitration.
+   if ((Botgoal && (Botgoal != world)))
+   {
+      local vector aim_point;
+      local vector nav_dir;
+
+      // ===== SMOOTHING: The "Racing Line" (Corner Smoothing) =====
+      // Pro players don't hit waypoints then turn 90°. They "cut the corner,"
+      // starting the turn before reaching the waypoint by blending aim toward next node.
+      aim_point = Botgoal.origin;
+      if ((vlen (self.origin - Botgoal.origin) < 120.000))
+      {
+         if (Botgoal.target)
+         {
+            local entity next_node;
+            next_node = find (world,targetname,Botgoal.target);
+            if (next_node)
+            {
+               // Blend our aim: 70% current node, 30% next node.
+               // This causes the bot to curve into the turn early.
+               aim_point = ((Botgoal.origin * 0.700) + (next_node.origin * 0.300));
+            } //end if
+         } //end if
+      } //end if
+      // =======================================
+
+      nav_dir = (aim_point - self.origin);
+      FG_Request (self,40.000,FG_DRV_ROUTE,nav_dir,0.200);
+   } //end if
+   else
+   {
+      local vector roam_dir;
+
+      roam_dir = self.velocity;
+      if ((vlen (roam_dir) < 1.000))
+      {
+         makevectors (self.angles);
+         roam_dir = v_forward;
+      } //end if
+      FG_Request (self,20.000,FG_DRV_ROAM,roam_dir,0.200);
+   } //end else
+
    // ===== FLOW GOVERNOR: Use driver goal if active =====
    // If a driver has control, use its goal direction instead of waypoint nav
    if ((self.fg_driver != FG_DRV_NONE))
@@ -5923,36 +5966,6 @@ void (float dist) Botmovetogoal =
       // Driver is active: use Flow Governor goal direction
       self.ideal_yaw = vectoyaw (self.fg_goalDir);
    } //end if
-   else
-   {
-      // No driver: use normal waypoint navigation
-      // ===== SMOOTHING: The "Racing Line" (Corner Smoothing) =====
-      // Pro players don't hit waypoints then turn 90°. They "cut the corner,"
-      // starting the turn before reaching the waypoint by blending aim toward next node.
-      local vector aim_point;
-      aim_point = Botgoal.origin;
-
-      // If we are getting close to the current node (within 120 units),
-      // and that node has a target (the next node in the chain)...
-      if ((vlen (self.origin - Botgoal.origin) < 120.000))
-      {
-          if (Botgoal.target)
-          {
-              local entity next_node;
-              next_node = find (world,targetname,Botgoal.target);
-
-              if (next_node)
-              {
-                  // Blend our aim: 70% current node, 30% next node.
-                  // This causes the bot to curve into the turn early.
-                  aim_point = ((Botgoal.origin * 0.700) + (next_node.origin * 0.300));
-              } //end if
-          } //end if
-      } //end if
-      // =======================================
-
-      self.ideal_yaw = vectoyaw ((aim_point - self.origin));
-   } //end else
    // ============================================================
 
    // ===== FEELER STEERING: Movement Polish and Exploration =====
