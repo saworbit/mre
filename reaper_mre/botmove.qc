@@ -2918,7 +2918,8 @@ void (entity bot, float pri, float drv, vector goalDir, float secs) FG_Request =
    } //end if
 
    // If equal priority and still committed, deny (prevents churn)
-   if (((time < bot.fg_until) && (bot.fg_pri == pri)))
+   // Allow the same driver to refresh its request without losing control.
+   if (((time < bot.fg_until) && (bot.fg_pri == pri) && (bot.fg_driver != drv)))
    {
       return ;
    } //end if
@@ -6193,6 +6194,11 @@ void (float dist) Botmovetogoal =
                bprint ("s), replanning\n");
             } //end if
 
+            // Avoid immediately re-selecting this wait node.
+            self.bad_spot_origin = Botgoal.origin;
+            self.bad_spot_radius = 256.000;
+            self.bad_spot_expire_time = (time + 15.000);
+
             self.elevator_wait_state = FALSE;
             FindAPath ();  // Force re-pathfind (A* will skip this elevator now)
          } //end if
@@ -6485,4 +6491,3 @@ void () Bot_MoveControllerApply =
 
    self.move_apply_active = FALSE;
 }; //end of the function Bot_MoveControllerApply
-

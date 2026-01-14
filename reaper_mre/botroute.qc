@@ -1013,7 +1013,7 @@ void (entity node, entity targ, float len, entity item, float depth) cacheRouteT
    // PHASE 2 FIX: Use depth parameter instead of global RECURSEDEPTH
    if ((depth < 24.000))
    {
-      cacheRouteMsg (targ,rng,item,(depth + SPAWNFLAG_LASER));
+      cacheRouteMsg (targ,rng,item,(depth + 1.000));
 
    } //end if
    else
@@ -1025,7 +1025,7 @@ void (entity node, entity targ, float len, entity item, float depth) cacheRouteT
 void (entity node, entity targ, float len, entity item) cacheRoute =
 {
    // PHASE 2 FIX: Pass depth = 1 to start recursion
-   cacheRouteTarget (node,targ,len,item,SPAWNFLAG_SUPERSPIKE);
+   cacheRouteTarget (node,targ,len,item,1.000);
    if ((other.isbot))
    {
       if ((other.rocketcache == item))

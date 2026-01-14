@@ -95,6 +95,7 @@ Priority-based arbitration layer where each system "requests control" instead of
 3. **Governor arbitrates:**
    - If no driver active OR requesting driver has higher priority → grant control
    - If current driver has higher/equal priority and still committed → deny request (prevents churn)
+   - Same driver can refresh its own commit window at equal priority
 4. **Steering executes driver's goal:** TraceFlow always runs, but steers toward `fg_goalDir` when driver active, else uses waypoint navigation
 
 **Key Benefits:**
@@ -1349,6 +1350,7 @@ The Elevator Navigation System implements Obot's proven two-node architecture to
 - Resets stuck timers (prevents panic teleport during wait)
 - Boards when platform arrives, times out after 30 seconds
 - Timeout triggers replanning to find alternate routes (stairs/ramps)
+- Timeout marks the wait node as a bad spot briefly to avoid immediate reselect
 
 **Auto-Discovery:**
 - Bot drops breadcrumb on func_plat → detects position (top/bottom)
