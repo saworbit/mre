@@ -3151,6 +3151,15 @@ void (entity bot) Bot_HandleTerrainTrap =
    // Record this attempt in directional fail memory
    RecordDirectionalFail (bot,escape);
 
+   // Mark this spot as hazardous and reset progress so we don't thrash here.
+   bot.bad_spot_origin = bot.origin;
+   bot.bad_spot_radius = 256.000;
+   bot.bad_spot_expire_time = (time + 15.000);
+   bot.stuck_score = 0.000;
+   bot.last_progress_time = time;
+   bot.last_origin = bot.origin;
+   bot.progress_check_time = (time + STUCK_PROGRESS_INTERVAL);
+
    // Request control from Flow Governor (priority 100 - highest)
    // Governor handles commit window and breaks conflicting commits
    FG_Request (bot,100.000,FG_DRV_TERRAIN,escape,1.200);

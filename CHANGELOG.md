@@ -299,6 +299,9 @@
   - **Elevator timeout bad spot** in `reaper_mre/botmove.qc`: long waits mark the node as a temporary bad spot before replanning.
   - **Depth step fix** in `reaper_mre/botroute.qc`: recursion depth now increments by 1.0 instead of spawn flags.
   - **Result:** Cleaner arbitration, fewer reselect loops, and predictable routing depth.
+- **Terrain-trap thrash guard** in `reaper_mre/botmove.qc`:
+  - **Bad-spot marking + progress reset** during terrain trap escape commits to avoid repeated edge/hazard loops.
+  - **Result:** Fewer repeated terrain-trap triggers in the same location.
 - **Lefty bitmask safety** for reliable flag clearing:
   - **Masked clears** in `reaper_mre/bot_ai.qc`: `GETGOODY`, `MULTIENEMY`, `STRAFE_DIR`, and `ONTRAIN` now clear via `self.lefty - (self.lefty & FLAG)` to avoid corrupting unrelated bits.
   - **Result:** No accidental state flips when clearing flags that were not set.
