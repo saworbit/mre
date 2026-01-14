@@ -996,6 +996,7 @@ if (bot_debug_enabled && (important_decision_made))
 - Bot model colors appear identical in-world even though the scoreboard shows distinct colors.
 - Tried: restored `colormap = fClientNo + 1`, removed shirt/pants colormap packing, enforced `FL_CLIENT` on bot spawn, and verified colors are sent via `msgUpdateColorsToAll`.
 - Suspect: engine setting that disables model colors (`r_nocolors` / `r_noskins`) or a player model that lacks color ranges.
+- Bots can still get stuck during navigation (observed in live test); needs investigation and reproduction steps.
 
 ---
 ## 📖 Additional Resources
