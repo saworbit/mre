@@ -162,6 +162,7 @@ entity () FindIntermission =
       return (spot);
    } //end if
    objerror ("FindIntermission: no spot");
+   return (world);
 }; //end of the function FindIntermission
 string nextmap /* = "" */;
 

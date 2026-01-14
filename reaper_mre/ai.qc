@@ -8,7 +8,6 @@ void () knight_walk1;
 void () knight_bow6;
 
 void () knight_bow1;
-float current_yaw /* = 0.000 */;
 entity sight_entity;
 float sight_entity_time /* = 0.000 */;
 float (float v) anglemod =
@@ -330,17 +329,19 @@ float () FindTarget =
       } //end if
    } //end if
    self.enemy = client;
-   if (((self.enemy.classname != "player") && (self.enemy.classname != "dmbot")))
-   {
-      self.enemy = self.enemy.enemy;
-      if (((self.enemy.classname != "player") && (self.enemy.classname != "dmbot")))
-      {
-         self.enemy = world;
-         return (FALSE);
-      } //end if
-      FoundTarget ();
-      return (TRUE);
-   } //end if
+    if (((self.enemy.classname != "player") && (self.enemy.classname != "dmbot")))
+    {
+       self.enemy = self.enemy.enemy;
+       if (((self.enemy.classname != "player") && (self.enemy.classname != "dmbot")))
+       {
+          self.enemy = world;
+          return (FALSE);
+       } //end if
+       FoundTarget ();
+       return (TRUE);
+    } //end if
+    FoundTarget ();
+    return (TRUE);
 }; //end of the function FindTarget
 
 void (float dist) ai_forward =

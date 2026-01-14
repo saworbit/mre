@@ -1027,6 +1027,7 @@ float () CheckReboundAttack =
       self.attack_finished = (time + 1.500);
    } //end if
    REBOUND = FALSE;
+   return (TRUE);
 }; //end of the function CheckReboundAttack
 
 void () ChangePitch =

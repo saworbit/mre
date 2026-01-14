@@ -270,7 +270,7 @@ void () checkyaw =
    local vector spotty_squid;
    local float desired_pitch;
    local float desired_yaw;
-   local float current_pitch;
+   local float aim_pitch;
    local float diff;
    local float time_delta;
    local float turn_dps;
@@ -374,14 +374,14 @@ void () checkyaw =
    } //end if
 
    // Normalize current pitch to same range for comparison
-   current_pitch = self.angles_x;
-   if ((current_pitch > 180.000))
+   aim_pitch = self.angles_x;
+   if ((aim_pitch > 180.000))
    {
-      current_pitch = (current_pitch - 360.000);
+      aim_pitch = (aim_pitch - 360.000);
    } //end if
 
    // Calculate difference
-   diff = (desired_pitch - current_pitch);
+   diff = (desired_pitch - aim_pitch);
 
    // Slew Rate: How many degrees can we turn this tick?
    // Skill 0 (Easy): 150 deg/s (Lazy tracking)
@@ -412,21 +412,21 @@ void () checkyaw =
       // If difference is too big, move only by turn_speed
       if ((diff > 0.000))
       {
-         current_pitch = (current_pitch + turn_speed);
+         aim_pitch = (aim_pitch + turn_speed);
       } //end if
       else
       {
-         current_pitch = (current_pitch - turn_speed);
+         aim_pitch = (aim_pitch - turn_speed);
       } //end if
    } //end if
    else
    {
       // Close enough—snap to desired to prevent jitter
-      current_pitch = desired_pitch;
+      aim_pitch = desired_pitch;
    } //end if
 
    // 5. Apply Final Aim Request (PID updates actual angles)
-   Bot_RequestAim (desired_yaw,current_pitch,TRUE,TRUE,AIM_OWNER_COMBAT,R_COMBAT_SEEN_ENEMY,"combat");
+   Bot_RequestAim (desired_yaw,aim_pitch,TRUE,TRUE,AIM_OWNER_COMBAT,R_COMBAT_SEEN_ENEMY,"combat");
 
    // NOTE: We do not call ChangeYaw/ChangePitch; PID applies view angles.
 }; //end of the function checkyaw

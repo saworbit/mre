@@ -548,26 +548,18 @@ float /* ERROR: Could not determine return type */ (float vz, float dist, float 
    local float diffxy;
    local float NOTLAND;
    local float lnd;
-   local float len;
-   local float depth;
    local float wlevel;
    local float velz;
    local float ht;
-   local float frac;
    local vector botxy;
    local vector goalxy;
    local vector xydir;
    local vector top;
    local vector bottom;
    local vector jumpv;
-   local vector newtop;
    local vector newbottom;
-   local vector back;
-   local vector front;
-   local vector dir;
    local vector start;
    local vector move_angles;
-   local string tmp;
    local entity botTarget;
 
    // ===== PHASE 3 FIX: ROCKET JUMP FAILURE RECOVERY =====

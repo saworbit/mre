@@ -162,30 +162,18 @@ void (entity player, float clientno, string clientname) msgUpdateNameToPlayer =
 {
    msgUpdateNameToAll (clientno,clientname);
    return ;
-   msg_entity = player;
-   WriteByte (MSG_ONE,MSG_UPDATENAME);
-   WriteByte (MSG_ONE,clientno);
-   WriteString (MSG_ONE,clientname);
 }; //end of the function msgUpdateNameToPlayer
 
 void (entity player, float clientno, float clientshirt, float clientpants) msgUpdateColorsToPlayer =
 {
    msgUpdateColorsToAll (clientno,clientshirt,clientpants);
    return ;
-   msg_entity = player;
-   WriteByte (MSG_ONE,MSG_UPDATECOLORS);
-   WriteByte (MSG_ONE,clientno);
-   WriteByte (MSG_ONE,((clientshirt * STRAFE_DIR) + clientpants));
 }; //end of the function msgUpdateColorsToPlayer
 
 void (entity player, float clientno, float clientfrags) msgUpdateFragsToPlayer =
 {
    msgUpdateFragsToAll (clientno,clientfrags);
    return ;
-   msg_entity = player;
-   WriteByte (MSG_ONE,MSG_UPDATEFRAGS);
-   WriteByte (MSG_ONE,clientno);
-   WriteShort (MSG_ONE,clientfrags);
 }; //end of the function msgUpdateFragsToPlayer
 
 void (float clientno, string clientname) msgUpdateNameToAll =

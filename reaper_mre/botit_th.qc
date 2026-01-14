@@ -599,7 +599,6 @@ float NUMPATHS;
 float NUMGIBS;
 float NUMPATHERS;
 float SKINSMODE;
-float RECURSEDEPTH;
 vector REBOUNDSPOT;
 float REBOUND;
 float TELEFRAGFLAG;

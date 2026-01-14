@@ -1,7 +1,4 @@
-entity stemp;
-entity otemp;
 entity s;
-entity old;
 
 void () trigger_reactivate =
 {
@@ -503,7 +500,6 @@ void () trigger_teleport =
 void () trigger_skill_touch =
 {
    return ;
-   cvar_set ("skill",self.message);
 }; //end of the function trigger_skill_touch
 
 void () trigger_setskill =

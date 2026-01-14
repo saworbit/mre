@@ -1192,7 +1192,6 @@ void (entity bot, float index) Bot_AssignIdentity =
 void () AddAnotherBot =
 {
    local entity newbot;
-   local entity tmp;
    local float n;
    local string st;
    local float cno;
@@ -1325,7 +1324,6 @@ void () AddAnotherBot =
 void (entity ply, float n) addTeamBots =
 {
    local entity newbot;
-   local entity tmp;
    local float i;
    local float cno;
 

@@ -1743,7 +1743,6 @@ void () aibot_chooseGoal =
    local entity e;
    local entity current;
    local entity botTarget;
-   local string tmp;
    local float my_score;
    local float enemy_score;
    local float avg_speed;

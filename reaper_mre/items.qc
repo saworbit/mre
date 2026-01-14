@@ -391,7 +391,6 @@ void () weapon_touch =
    local float best;
    local entity stemp;
    local float leave;
-   local float donttake;
 
    if (((other.classname != "player") && (other.classname != "dmbot")))
    {

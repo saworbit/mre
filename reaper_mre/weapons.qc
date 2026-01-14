@@ -76,7 +76,6 @@ vector () wall_velocity =
 void (vector org, vector vel) SpawnMeatSpray =
 {
    local entity missile;
-   local entity mpuff;
 
    missile = spawn ();
    missile.owner = self;
@@ -304,7 +303,6 @@ void () T_MissileTouch =
 void () W_FireRocket =
 {
    local entity missile;
-   local entity mpuff;
    local vector bfwd;
 
    self.ammo_rockets = (self.ammo_rockets - WEAPON_SHOTGUN);
@@ -485,7 +483,6 @@ void () GrenadeTouch =
 void () W_FireGrenade =
 {
    local entity missile;
-   local entity mpuff;
 
    self.ammo_rockets = (self.ammo_rockets - WEAPON_SHOTGUN);
    self.currentammo = (self.ammo_rockets - WEAPON_SHOTGUN);
@@ -576,7 +573,6 @@ void () W_FireSuperSpikes =
 void (float ox) W_FireSpikes =
 {
    local vector dir;
-   local entity old;
 
    makevectors (self.v_angle);
    if (((self.ammo_nails >= WEAPON_ROCKET) && (self.weapon == IT_SUPER_NAILGUN)))

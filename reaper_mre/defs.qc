@@ -290,7 +290,6 @@ float MSG_INIT    = 3.000;
 float movedist /* = 0.000 */;
 float gameover /* = 0.000 */;
 string string_null /* = "" */;
-float empty_float /* = 0.000 */;
 entity newmis;
 entity activator;
 entity damage_attacker;
