@@ -443,7 +443,7 @@ void () player_axpain6 = [34.000, player_run]
 {
 }; //end of the function player_axpain6
 
-void () player_pain =
+void (entity attacker, float damage) player_pain =
 {
    if (self.weaponframe)
    {

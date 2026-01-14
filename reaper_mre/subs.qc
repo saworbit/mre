@@ -3,6 +3,10 @@ void () SUB_Null =
 {
 }; //end of the function SUB_Null
 
+void (entity attacker, float damage) SUB_NullPain =
+{
+}; //end of the function SUB_NullPain
+
 void () SUB_Remove =
 {
    remove (self);

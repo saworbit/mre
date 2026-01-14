@@ -1,5 +1,5 @@
 
-void () shalrath_pain;
+void (entity attacker, float damage) shalrath_pain;
 
 void () ShalMissile;
 
@@ -239,7 +239,7 @@ void () shal_death7 = [22.000, shal_death7]
 {
 }; //end of the function shal_death7
 
-void () shalrath_pain =
+void (entity attacker, float damage) shalrath_pain =
 {
    if ((self.pain_finished > time))
    {

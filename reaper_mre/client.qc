@@ -1,5 +1,5 @@
 
-void () player_pain;
+void (entity attacker, float damage) player_pain;
 
 void () player_stand1;
 

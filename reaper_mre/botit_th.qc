@@ -91,6 +91,8 @@ void () SUB_CalcAngleMoveDone;
 
 void () SUB_Null;
 
+void (entity attacker, float damage) SUB_NullPain;
+
 void () SUB_UseTargets;
 
 void () SUB_Remove;

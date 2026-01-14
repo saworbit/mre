@@ -328,7 +328,7 @@ void () respawnBot =
    PutBotInServer ();
 }; //end of the function respawnBot
 
-void () bot_pain;
+void (entity attacker, float damage) bot_pain;
 
 void () BotDie;
 

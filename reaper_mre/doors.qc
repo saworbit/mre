@@ -551,7 +551,7 @@ void () fd_secret_use =
    SUB_UseTargets ();
    if (!(self.spawnflags & SECRET_NO_SHOOT))
    {
-      self.th_pain = SUB_Null;
+      self.th_pain = SUB_NullPain;
       self.takedamage = DAMAGE_NO;
    } //end if
    self.velocity = VEC_ORIGIN;
@@ -588,6 +588,11 @@ void () fd_secret_use =
    SUB_CalcMove (self.dest1,self.speed,fd_secret_move1);
    sound (self,CHAN_VOICE,self.noise2,TRUE,ATTN_NORM);
 }; //end of the function fd_secret_use
+
+void (entity attacker, float damage) fd_secret_pain =
+{
+   fd_secret_use ();
+}; //end of the function fd_secret_pain
 
 void () fd_secret_move1 =
 {
@@ -641,7 +646,7 @@ void () fd_secret_done =
    {
       self.health = 10000.000;
       self.takedamage = DAMAGE_YES;
-      self.th_pain = fd_secret_use;
+      self.th_pain = fd_secret_pain;
    } //end if
    sound (self,CHAN_VOICE,self.noise3,TRUE,ATTN_NORM);
 }; //end of the function fd_secret_done
@@ -731,7 +736,7 @@ void () func_door_secret =
    {
       self.health = 10000.000;
       self.takedamage = DAMAGE_YES;
-      self.th_pain = fd_secret_use;
+      self.th_pain = fd_secret_pain;
    } //end if
    self.oldorigin = self.origin;
    if (!self.wait)

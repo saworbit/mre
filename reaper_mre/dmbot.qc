@@ -645,7 +645,7 @@ void () bot_axpain6 = [34.000, bot_run]
    BotPostThink ();
 }; //end of the function bot_axpain6
 
-void () bot_pain =
+void (entity attacker, float damage) bot_pain =
 {
    if (self.weaponframe)
    {

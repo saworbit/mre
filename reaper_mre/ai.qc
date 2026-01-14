@@ -438,12 +438,13 @@ float () FacingIdeal =
    return (TRUE);
 }; //end of the function FacingIdeal
 
-void () CheckAnyAttack =
+float () CheckAnyAttack =
 {
    if (!enemy_vis)
    {
-      return ;
+      return (FALSE);
    } //end if
+   return (FALSE);
 }; //end of the function CheckAnyAttack
 
 void () ai_run_melee =

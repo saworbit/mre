@@ -391,7 +391,7 @@ void () dog_painb16 = [47.000, dog_run1]
 {
 }; //end of the function dog_painb16
 
-void () dog_pain =
+void (entity attacker, float damage) dog_pain =
 {
    sound (self,CHAN_VOICE,"dog/dpain1.wav",TRUE,ATTN_NORM);
    if ((random () > 0.500))
