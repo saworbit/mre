@@ -6,11 +6,82 @@
 float (float s_yaw, float s_dist) botwalkmove = {
 
    local vector move_dir;
+   local vector check_pos;
+   local float contents;
 
    self.oldorigin = self.origin;
 
+   // FIX: Smarter Lift Logic - wait on platforms instead of walking off
+   // If we are ON a plat, wait for it to move us
+   if ( (self.flags & FL_ONGROUND) ) {
+
+      if ( (self.groundentity.classname == "func_plat") || (self.groundentity.classname == "plat") ) {
+
+         // If the plat is moving UP or at TOP, wait for it
+         if ( (self.groundentity.state == STATE_UP) || (self.groundentity.state == STATE_TOP) ) {
+
+            self.velocity = '0 0 0';
+            return ( TRUE );
+
+         }
+
+         // If plat is at BOTTOM, wait for it to trigger and rise
+         if ( (self.groundentity.state == STATE_BOTTOM) ) {
+
+            self.velocity = '0 0 0';
+            return ( TRUE );
+
+         }
+
+      }
+
+   }
+
+   // FIX: Hazard Avoidance - check for lava/slime before moving
+   // Project where we are going
+   makevectors ('0 1 0' * s_yaw);
+   check_pos = (self.origin + (v_forward * (s_dist + 16.000)));
+
+   // Check floor at target position (drop down 24 units to check ground)
+   check_pos_z = (check_pos_z - 24.000);
+   contents = pointcontents (check_pos);
+
+   // If the target is lethal, REFUSE TO MOVE
+   // CONTENT_LAVA = -3, CONTENT_SLIME = -4
+   if ( (contents == CONTENT_LAVA) || (contents == CONTENT_SLIME) ) {
+
+      // Allow movement only if we have Pentagram (invulnerability) or Suit (slime only)
+      if ( !(self.items & IT_INVULNERABILITY) ) {
+
+         if ( !((self.items & IT_SUIT) && (contents == CONTENT_SLIME)) ) {
+
+            return ( FALSE );
+
+         }
+
+      }
+
+   }
+
    // Standard walkmove for actual position change
    if ( !walkmove (s_yaw, s_dist) ) {
+
+      // FIX: Door Interaction - if we hit a door, trigger it and back up
+      traceline (self.origin, (self.origin + (v_forward * 32.000)), FALSE, self);
+
+      if ( (trace_ent.classname == "func_door") || (trace_ent.classname == "func_door_rotating") ) {
+
+         // Trigger the door if it has a use function
+         if ( trace_ent.use ) {
+
+            trace_ent.use ();
+
+         }
+
+         // Back up slightly to let it open
+         self.velocity = (v_forward * -200.000);
+
+      }
 
       return ( FALSE );
 

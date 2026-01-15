@@ -14,6 +14,9 @@
 - Fixed: Suicidal explosive firing (switch weapons when enemy <150 units).
 - Fixed: Thunderbolt water discharge (switch weapons when in water).
 - Improved: Predictive aiming (capped lead time to 0.5s to prevent over-leading).
+- Fixed: Bots walking into lava/slime (hazard avoidance with powerup awareness).
+- Fixed: Bots walking off lifts mid-ride (platform state detection).
+- Fixed: Bots stuck at closed doors (trigger door and back up to let it open).
 - Updated development and launch docs for the `mre/` layout.
 - CI now builds from `mre/` via `ci/build_mre.ps1`.
 - Archived legacy docs/tools/launch assets and old logs under `archive/legacy/clean_slate/`.

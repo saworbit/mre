@@ -37,6 +37,17 @@
 - Improved: Predictive aiming (`botfight.qc`). Added 0.5 second cap on lead time
   in `leadtarget` to prevent excessive over-leading at long range while keeping
   accurate prediction at mid-range.
+- Fixed: Bots walking into lava/slime (`botmove.qc`). Added hazard avoidance in
+  `botwalkmove` that checks floor contents ahead of movement. Bots now refuse to
+  walk into CONTENT_LAVA or CONTENT_SLIME unless protected by Pentagram (any) or
+  Biosuit (slime only).
+- Fixed: Bots walking off lifts mid-ride (`botmove.qc`). Added platform state
+  detection in `botwalkmove` that checks if bot is standing on a func_plat. Bot
+  now waits when platform is STATE_UP, STATE_TOP, or STATE_BOTTOM instead of
+  walking off.
+- Fixed: Bots stuck at closed doors (`botmove.qc`). When walkmove fails, traces
+  forward to detect func_door entities. If found, triggers the door's use function
+  and backs up to let it open.
 - Legacy changelog archived at `archive/legacy/v1/CHANGELOG_MRE.md`.
 - Development guide refreshed for the reboot.
 - Legacy docs/tools/launch artifacts archived at `archive/legacy/clean_slate/`.
