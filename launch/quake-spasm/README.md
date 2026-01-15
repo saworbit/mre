@@ -15,7 +15,7 @@ quakespasm.exe -basedir C:\reaperai\launch\quake-spasm -game mre -listen 8 +maxp
 
 ## Files
 - `mre\progs.dat` - current build output to test.
-- `RPBOT\` - original Reaper Bot archive (legacy).
+- Legacy RPBOT assets are archived at `archive/legacy_clean_slate/launch/quake-spasm/RPBOT`.
 
 ## Legacy
 The previous MRE-focused launch notes are archived at

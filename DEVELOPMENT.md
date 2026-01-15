@@ -8,6 +8,7 @@ under `mre/`, and we fix community-reported issues first.
 - `launch/quake-spasm/mre/` - Local runtime folder (progs.dat deploy target).
 - `ci/` - CI build scripts and artifacts.
 - `archive/` - Legacy materials and historical docs.
+  - Legacy docs/tools/launch assets were moved to `archive/legacy_clean_slate/`.
 
 ## Build
 Prerequisite: `tools\fteqcc_win64\fteqcc64.exe`
