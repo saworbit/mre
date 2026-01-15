@@ -450,6 +450,14 @@ void (entity node, entity targ, float len, entity item) cacheRouteTarget = {
 
    local float rng;
 
+   // Cycle detection: skip if already visited in this search
+   if ( (targ.visited_id == route_search_id) ) {
+
+      return ;
+
+   }
+   targ.visited_id = route_search_id;
+
    rng = vlen ((node.origin - targ.origin));
    if ( (targ.pathtype == TELEPORT) ) {
 
@@ -473,6 +481,7 @@ void (entity node, entity targ, float len, entity item) cacheRouteTarget = {
 
 void (entity node, entity targ, float len, entity item) cacheRoute = {
 
+   route_search_id = (route_search_id + TRUE);  // new search ID for cycle detection
    RECURSEDEPTH = TRUE;
    cacheRouteTarget (node,targ,len,item);
    if ( (other.classname == "dmbot") ) {

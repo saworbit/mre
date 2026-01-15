@@ -175,10 +175,19 @@ returns the next available free client number (-1 = none available)
 float() clientNextAvailable =
 {
    local float clientno;
+   local float limit;
 
    clientno = 0;
 
-   while( clientno < fMaxClients )
+   // Cap at 16 (MAX_SCOREBOARD) - Quake protocol doesn't support more
+   limit = fMaxClients;
+   if ( (limit > 16.000) ) {
+
+      limit = 16.000;
+
+   }
+
+   while( clientno < limit )
    {
       if( ! clientIsActive( clientno ) )
          return clientno;

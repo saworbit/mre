@@ -4,75 +4,73 @@
 
 
 
+// Returns 0-indexed client slot (0-15), or -1 if full
+// Changed from 1-indexed to 0-indexed to match Quake protocol expectations
 float () FindGood =
 {
- 
-
  if (!(fActiveClients & 1))
-    { fActiveClients = fActiveClients | 1; return 1; }
+    { fActiveClients = fActiveClients | 1; return 0; }
 
  else if (!(fActiveClients & 2))
-    { fActiveClients = fActiveClients | 2; return 2; }
+    { fActiveClients = fActiveClients | 2; return 1; }
 
  else if (!(fActiveClients & 4))
-    { fActiveClients = fActiveClients | 4; return 3; }
+    { fActiveClients = fActiveClients | 4; return 2; }
 
  else if (!(fActiveClients & 8))
-    { fActiveClients = fActiveClients | 8; return 4; }
+    { fActiveClients = fActiveClients | 8; return 3; }
 
  else if (!(fActiveClients & 16))
-    { fActiveClients = fActiveClients | 16; return 5; }
+    { fActiveClients = fActiveClients | 16; return 4; }
 
  else if (!(fActiveClients & 32))
-    { fActiveClients = fActiveClients | 32; return 6; }
+    { fActiveClients = fActiveClients | 32; return 5; }
 
  else if (!(fActiveClients & 64))
-    { fActiveClients = fActiveClients | 64; return 7; }
+    { fActiveClients = fActiveClients | 64; return 6; }
 
  else if (!(fActiveClients & 128))
-    { fActiveClients = fActiveClients | 128; return 8; }
+    { fActiveClients = fActiveClients | 128; return 7; }
 
  else if (!(fActiveClients & 256))
-    { fActiveClients = fActiveClients | 256; return 9; }
+    { fActiveClients = fActiveClients | 256; return 8; }
 
  else if (!(fActiveClients & 512))
-    { fActiveClients = fActiveClients | 512; return 10; }
+    { fActiveClients = fActiveClients | 512; return 9; }
 
  else if (!(fActiveClients & 1024))
-    { fActiveClients = fActiveClients | 1024; return 11; }
+    { fActiveClients = fActiveClients | 1024; return 10; }
 
  else if (!(fActiveClients & 2048))
-    { fActiveClients = fActiveClients | 2048; return 12; }
+    { fActiveClients = fActiveClients | 2048; return 11; }
 
  else if (!(fActiveClients & 4096))
-    { fActiveClients = fActiveClients | 4096; return 13; }
+    { fActiveClients = fActiveClients | 4096; return 12; }
 
  else if (!(fActiveClients & 8192))
-    { fActiveClients = fActiveClients | 8192; return 14; }
+    { fActiveClients = fActiveClients | 8192; return 13; }
 
  else if (!(fActiveClients & 16384))
-    { fActiveClients = fActiveClients | 16384; return 15; }
+    { fActiveClients = fActiveClients | 16384; return 14; }
 
  else if (!(fActiveClients & 32768))
-    { fActiveClients = fActiveClients | 32768; return 16; }
+    { fActiveClients = fActiveClients | 32768; return 15; }
 
  else return -1;
 };   
 
+// Clears a 0-indexed client slot (was 1-indexed, now 0-indexed to match FindGood)
 void(float abba) MakeGood =
 {
   local float ackbar;
 
   ackbar = 1;
-  abba = abba - 1;
+  // abba is now 0-indexed, so don't subtract 1
   while (abba > 0)
-        {         
+        {
          ackbar = ackbar * 2;
          abba = abba - 1;
         }
-
-
-
 
  fActiveClients = fActiveClients - (fActiveClients & ackbar);
 };

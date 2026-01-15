@@ -7,7 +7,11 @@ Items are grouped by theme and phrased as fixable targets.
 - ~~Crashes to DOS after a few minutes in single player.~~ **Fixed:** Edict overflow
   from uncapped waypoint spawns. SP maps have 400-500 entities, leaving little
   headroom for the bot's 140-waypoint limit. Reduced to 50 in SP. (b23_reaper.md)
-- Multiplayer lockups after short sessions. (b23_reaper.md)
+- ~~Multiplayer lockups after short sessions.~~ **Fixed:** Three issues: (1) exponential
+  recursion in route caching (6^12 worst case) solved with cycle detection,
+  (2) infinite loop in jump simulation when falling into void solved with safety
+  counter, and (3) scoreboard overflow crash when adding bots beyond maxplayers
+  (FindGood changed to 0-indexed + guard added). (b23_reaper.md)
 
 ## Movement and combat feel
 - Jumpy/teleport-like strafing makes aiming difficult. (b23_reaper.md)

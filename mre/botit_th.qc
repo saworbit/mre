@@ -87,6 +87,7 @@ float (entity targ, entity inflictor) CanDamage;
 .float lasttime;
 .float pather;
 .float pathtype;
+.float visited_id;  // cycle detection for route caching
 .float skil;
 .float rocketlen;
 .entity rocketcache;
@@ -151,6 +152,7 @@ float NUMGIBS;
 float NUMPATHERS;
 float SKINSMODE;
 float RECURSEDEPTH;
+float route_search_id;  // unique ID per route cache search (cycle detection)
 vector REBOUNDSPOT;
 float REBOUND;
 float TELEFRAGFLAG;

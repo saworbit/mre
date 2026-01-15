@@ -478,6 +478,25 @@ void () AddAnotherBot = {
 
    newbot = AddBot ();
 newbot.id = FindGood();
+   // Guard: if no scoreboard slots available, remove bot and abort
+   if ( (newbot.id == -1.000) ) {
+
+      bprint ("Server full - cannot add bot\n");
+      remove (newbot);
+      NUMBOTS = (NUMBOTS - TRUE);
+      return ;
+
+   }
+   // Guard: slot must be < fMaxClients (maxplayers) for network protocol
+   if ( (newbot.id >= fMaxClients) ) {
+
+      bprint ("Server full - max players reached\n");
+      MakeGood (newbot.id);
+      remove (newbot);
+      NUMBOTS = (NUMBOTS - TRUE);
+      return ;
+
+   }
 newbot.colormap = newbot.id + 1;
    newbot.colormap = FALSE;
    if ( teamplay ) {

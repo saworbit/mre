@@ -373,6 +373,7 @@ float /* Warning: Could not determine return type */ (float vz, float dist, floa
    local float velz;
    local float ht;
    local float frac;
+   local float safety;
    local vector botxy;
    local vector goalxy;
    local vector xydir;
@@ -567,8 +568,16 @@ float /* Warning: Could not determine return type */ (float vz, float dist, floa
    bottom_z = (bottom_z + self.mins_z);
    ht = (self.view_ofs_z - self.mins_z);
    NOTLAND = TRUE;
+   safety = FALSE;  // safety counter for void falls
    while ( NOTLAND ) {
 
+      // Prevent infinite loop if bot jumps into void
+      safety = (safety + TRUE);
+      if ( (safety > 100.000) ) {
+
+         return ( FALSE );
+
+      }
       tvel = (tvel - GRAVITY);
       newbottom = (bottom + (jumpv * 0.100));
       newbottom_z = (newbottom_z + (tvel * 0.100));
