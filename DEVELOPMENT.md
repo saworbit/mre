@@ -11,7 +11,7 @@ under `mre/`, and we fix community-reported issues first.
   - Legacy docs/tools/launch assets were moved to `archive/legacy/clean_slate/`.
 
 ## Build
-Preferred (auto-downloads fteqcc if missing):
+Preferred (auto-downloads fteqcc if missing, deploys to QuakeSpasm):
 ```
 cd c:\reaperai
 powershell -ExecutionPolicy Bypass -File ci\build_mre.ps1
@@ -25,10 +25,8 @@ cd c:\reaperai\mre
 Manual builds write `c:\reaperai\progs.dat` (the parent folder).
 
 ## Deploy
-From the build script output:
-```
-copy c:\reaperai\ci\mre\progs.dat c:\reaperai\launch\quake-spasm\mre\progs.dat /Y
-```
+The build script copies to:
+`c:\reaperai\launch\quake-spasm\mre\progs.dat`
 
 ## Run
 ```

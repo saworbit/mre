@@ -6,6 +6,8 @@ $defaultCompiler = Join-Path $repoRoot "tools\\fteqcc_win64\\fteqcc64.exe"
 $outputDir = Join-Path $repoRoot "ci\\mre"
 $outputFile = Join-Path $outputDir "progs.dat"
 $built = Join-Path $repoRoot "progs.dat"
+$launchDir = Join-Path $repoRoot "launch\\quake-spasm\\mre"
+$launchFile = Join-Path $launchDir "progs.dat"
 
 function Resolve-CompilerPath {
     param(
@@ -62,6 +64,9 @@ if (!(Test-Path -Path $srcDir)) {
 if (!(Test-Path -Path $outputDir)) {
     New-Item -ItemType Directory -Path $outputDir | Out-Null
 }
+if (!(Test-Path -Path $launchDir)) {
+    New-Item -ItemType Directory -Path $launchDir | Out-Null
+}
 
 $startTime = Get-Date
 Push-Location $srcDir
@@ -91,3 +96,5 @@ if ($size -lt $minBytes) {
 
 Copy-Item -Path $built -Destination $outputFile -Force
 Write-Host "Built $outputFile ($size bytes)"
+Copy-Item -Path $built -Destination $launchFile -Force
+Write-Host "Deployed $launchFile"
