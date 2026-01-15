@@ -11,17 +11,23 @@ under `mre/`, and we fix community-reported issues first.
   - Legacy docs/tools/launch assets were moved to `archive/legacy/clean_slate/`.
 
 ## Build
-Prerequisite: `tools\fteqcc_win64\fteqcc64.exe`
+Preferred (auto-downloads fteqcc if missing):
+```
+cd c:\reaperai
+powershell -ExecutionPolicy Bypass -File ci\build_mre.ps1
+```
+
+Manual compile (if you already have fteqcc):
 ```
 cd c:\reaperai\mre
 ..\tools\fteqcc_win64\fteqcc64.exe -O3 progs.src
 ```
-
-Note: `mre/progs.src` outputs to `c:\reaperai\progs.dat` (the parent folder).
+Manual builds write `c:\reaperai\progs.dat` (the parent folder).
 
 ## Deploy
+From the build script output:
 ```
-copy c:\reaperai\progs.dat c:\reaperai\launch\quake-spasm\mre\progs.dat /Y
+copy c:\reaperai\ci\mre\progs.dat c:\reaperai\launch\quake-spasm\mre\progs.dat /Y
 ```
 
 ## Run
@@ -31,7 +37,7 @@ c:\reaperai\launch\quake-spasm\launch_reapbot_v2.bat 8 dm4
 
 ## CI
 ```
-powershell -File c:\reaperai\ci\build_mre.ps1
+powershell -ExecutionPolicy Bypass -File c:\reaperai\ci\build_mre.ps1
 ```
 CI publishes: `c:\reaperai\ci\mre\progs.dat`
 
