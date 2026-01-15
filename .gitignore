@@ -45,6 +45,7 @@ release.html
 # Config files
 *.cfg
 !/reaper/Autoexec.cfg
+!/mre/Autoexec.cfg
 !/launch/quake-spasm/RPBOT/Autoexec.cfg
 !/launch/quake-spasm/reaper_mre/config.cfg
 

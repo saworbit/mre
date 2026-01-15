@@ -1,0 +1,735 @@
+
+            Reaperbot Improvement Protocol v0.11 (RIP v0.11)
+                 by legion, the ubiquitous llama-killer
+                                PART I
+
+PREFACE
+
+This tutorial is broken up into several parts.  Each week a new part of the
+lesson will be posted.  Visit Inside3D or Scrap Heap for your weekly
+reaperbot fix.  If you want the entire lesson, you can ask Mr? of Inside3D
+for a copy of the text file called rip010.txt.  It is an earlier version of
+the tutorial.  It is not jammed packed with information like this new version
+but it contains most of the steps involved in the lesson.  Rip010 is not for
+the novice.  In addition, it doesn't contain any instructions on merging the
+reaperbot with v1.06 of QuakeC.  Older versions of QuakeC contain the 
+infamous disappearing weapons bug.
+
+If you are a newbie, then the only information and help you will get is the
+weekly reaperbot lesson.  No additional help will be provided with rip010.txt
+or with anything else.
+
+The urls for Inside3D and Scrap Heap are the following:
+
+   1) http://www.planetquake.com/iqc (Inside3D)
+   2) http://www.mindspring.com/~darkskye (Scrap Heap)
+
+Mirror site at Scrap Heap is in the works.  Decision is not finalized yet.
+Dark_Skye is on "vacation" trying to frag people and show that keyboarders
+can be good at Quake.
+
+The parts in the lesson are as follows:
+
+   1) rip011a.txt (this text, making a compilable reaperbot source code)
+   2) rip011b.txt (compiling the reaperbot with v1.06 of QuakeC)
+      -- this lesson is currently NOT complete and it is not part of
+      v0.10 of RIP.  In fact, I haven't started on it, yet.  It looks like
+      this will be a long one.  Hopefully, there are no delays.
+      -- this will increase the size of progs.dat substantially.
+      -- if you can complete this, then the rest of the lessons should
+      be very easy for you.
+   3) rip011c.txt (reducing the thud sounds)
+   4) rip011d.txt (modifying norse_movetogoal function)
+   5) rip011e.txt (adding norse_movetogoal function to the reaper)
+   6) rip011f.txt (reducing splash sounds and adding misc things)
+   7) rip011g.txt (adding bot to TAB scoring rankings)
+
+Remember, the full lesson is contained in rip010.txt.  Get a copy of this
+text from Mr? of Inside3D if you don't want to wait seven weeks to learn
+everything.  And remember, the only help you will get is from the weekly
+reaperbot lesson.  So don't bother wasting bandwidth by sending e-mail asking
+for help.  There's ONE exception, however.  If enough people have difficulty
+with the SAME problem, then I MAY give Dark_Skye some 'news' to post that may
+help people solve the problem.  Five or six people with the same problem is
+not alot and therefore, not enough.  Moreover, the problem, MUST have
+something to do with that week's or some previous week's lesson.  Any other
+problem will be ignored.  If enough people have the same problem, visit
+Scrap Heap for the solution.  I won't respond to e-mails individually.  Don't
+expect solutions overnight and if you don't see a solution, chances are not
+enough people had the same problem.
+
+The length of the texts is due to the fact that these are TUTORIALS as well
+as a how-to guide.  These are more than just texts that tell you to do this
+and then do that.  These contain explanations.  It is hoped that you will
+remember them.  You will need the information you learned from earlier parts
+for the later parts.
+
+RIP v0.12 will contain all the corrections, if any, that people e-mailed me.
+So e-mail me any mistakes that you find to legion@keg.zymurgy.org.  I will
+place these corrections on my webpage when I'm finished (hopefully).
+
+
+INTRODUCTION
+
+This is apparently the first attempt in improving the reaperbot since
+December 1996.  I have seen several people asking questions publically
+concerning the issue of making a compilable reaperbot source.  Other than
+people misleading others (I hope it wasn't deliberate), I have not seen one
+individual actually provide concrete information on HOW to do this.
+Additionally, publically available patches have been made that includes the
+reaperbot.  Besides Decker's merger of the reaperbot with the Scourge of
+Armagon and PainKeep partial conversions, there is another compilation patch
+that can be downloaded from CDROM.COM.  The full url is
+http://ftp.cdrom.com/pub/quake/quakec/compilations/qplus.zip.  Like PK, this
+compilation contains new weapons and other good stuff.  Apparently, Decker
+can get a lot of publicity for merging the Reaperbot with PainKeep (his work
+with SoA went virtually un-noticed for awhile until it was known that he had
+merged the reaperbot with PainKeep), maybe this compilation will finally get
+its due.  It has been available for downloading since June 19, 1997.
+
+On June 21, 1997, Ken Alverson posted his version of the reaperbot source
+code in the rec.games.computer.quake.quake-c newsgroup for 'educational
+purposes'.  Despite all this attention given to the reaperbot, no complaints
+have been made by either Steven Polge or the people at Unreal.  E-mails to
+Polge have been ignored.  I know that I received no response from my e-mail
+to him asking if I can merge my norse_movetogoal function with the reaperbot.
+
+It is hoped that this how-to guide, this tutorial will help you in making
+YOUR copy of the reaperbot a better one.  The emphasis here is on the word
+'YOUR'.
+
+For the record Steven Polge, who works for Unreal, is the author and creator
+of the Reaperbot.  Steven Polge owns the copyrights to the reaperbot.
+Neither Unreal nor Epic owns the copyrights to the reaperbot.  This is the
+reason for Epic/Unreal not complaining.  iD Software also owns the copyrights
+to the reaperbot patch for the very fact that part of the code used by the
+reaperbot came from iD (the makers of Quake).
+
+COPYRIGHTS AND PERMISSIONS
+
+Copyright laws forbid individuals and groups from releasing their modified
+reaperbot source code or progs.dat.  Additionally, you can not use a modified
+reaperbot on a public server.  However, I am unaware of any law(s) that
+forbids individuals from modifying their own personal copy of the reaperbot
+patch and using it for their own personal use.  As long as you don't release
+it or make it publically available, you are in the clear.  Moreover, I am
+unaware of any laws forbidding individuals or groups from providing
+information on how to modify existing copyrighted material to help those like
+you in making a better material (in this case, a better reaperbot).
+
+If you did not read the reaperbot copyrights, you should read it now.  Polge
+states that his modifications can NOT be used as a basis for other patches
+and/or modifications.  This is the reason for not releasing my modified
+reaperbot progs.dat.  Don't bother to ask, you won't get it.  You won't
+get the modified source code either.  Any and all e-mails on this issue will
+go unanswered.  You will have to do all the work yourself.
+
+I am assuming that you are NOT allowed to release an unmodified reaperbot
+source code, either.
+
+Reaperbot (c) 1996 by Steven Polge
+   -- individuals are not allowed to use his code in publically available
+   or commercially available mods
+Norse_movetogoal (c) 1997 by Roscoe A. Sincero
+   -- individuals are free to include this code to your patches provided
+   that Roscoe A. Sincero is credited for this code
+QCBot Ranking (c) 1997 by Alan Kivlin
+   -- individuals are free to include this code to your patches provided
+   that Alan Kivlin is credited for this code
+
+
+PREREQUISITES
+
+   1) Reaperbot v0.81
+      - http://ftp.cdrom.com/pub/quake/quakec/bots/reaper
+   2) btsk23.zip
+      - http://ftp.cdrom.com/pub/quake/quakec/bots
+      - contains norse_movetogoal as well as Alan Kivlin's QCBot ranking
+      code
+      - demos are included showing off the new movement code.  E-mail me
+      at legion@keg.zymurgy.org if you think the Zeusbot's movement is
+      better.  Provide an example (eg. a demo) proving your case.
+   3) ProQCC v1.52 or later
+      - http://ftp.cdrom.com/pub/quake/quakec/utils
+   4) v1.06 of QuakeC
+      - many compilers come with v1.06 of QuakeC.  find one.
+      - http://ftp.cdrom.com/pub/quake/quakec/utils
+   5) knowledge of directory structure and installation of QuakeC patches
+      - visit http://www.planetquake.com/qca for help in this area
+   6) knowledge of QuakeC (not for the novice)
+      - variable definitions are a must
+      - modifying and creating functions
+         - visit Inside3D, http://www.planetquake.com/iqc, for plenty of
+         examples on this.  The tutorials are packed with examples of
+         modifying functions.  Practically all the tutorials include at
+         least one example of modifying existing or creating functions.
+      - function prototypes are a must
+      - understanding of IF block and IF-ELSE block
+         - visit Inside 3D, http://www.planetquake.com/iqc, for examples
+         on this.  Many of the tutorials contain IF blocks or IF-ELSE
+         block statments for you to look at and understand.
+   7) a text editor equipped with a cut-n-paste feature
+   8) the ability to follow instructions
+
+MAJOR CHANGES TO THE REAPERBOT
+
+   1) bot will be able to walk on 'broken ground' and other good stuff.
+      Watch the demos included in btsk23.zip for more examples of the
+      added movement that the reaperbot now possess.
+   2) thud sounds and splasing sounds are reduced.
+   3) real players can be bounced around when hit by a rocket blast, now
+      the reaperbot will mimic this as well.
+   4) actual circle strafing is coded
+   5) bot will no longer run away since the code is incompatible with the
+      new movement code, norse_movetogoal.
+   6) bot shows up on rankings
+   7) monsters are active now, they can fight back.
+   8) disappearing weapons bug removed
+
+
+NOTE: If you thought that one original skill 3 reaperbot was easy to kill,
+      you may find a modified skill 3 reaperbot more difficult to beat on
+      some maps.  On other maps with certain terrains, the bot may be a
+      little easier.  In short, you will have to learn the new attack
+      patterns used by the reaperbot if you wish to win on a consistent
+      basis.
+
+REAPERBOT BUGS
+
+This section contains a short list of bugs that were part of the ORIGINAL
+reaperbot.  These bugs were not corrected.
+   1) the "rebound" or "refire" bug causes the reaperbot to occasionally
+   fire the weapon sooner than it should.  In other words, at times, the
+   reaperbot can fire the rocket launcher at the same rate as a single-
+   barrel shotgun.  THIS IS CHEATING.
+   2) the firing rate for lightning gun/nails guns are not continuous
+   sometimes.
+   3) bot can fire at nearly 90 degrees angle up or down.  Human
+   players can not do this but the reaperbot can.
+   4) needs to scream the right pain sounds when drowning and it needs to
+   blow bubbles, too.
+   5) its line of sight code for items and waypoints needs to be improved.
+   It still ignores items that is visible to it.  Therefore, it doesn't
+   take advantage of the new movement code.  A perfect example is the yellow
+   armor on E1M2.  With the new movement code, the reaperbot can now reach
+   the yellow armor.  I have seen it do it once.  However, it failed many
+   times.  It often quits after jumping two or three times.  The reaperbot
+   actually didn't see the yellow armor, it was simply following the
+   waypoints that were dynamically spawned.  If the waypoints were spawned
+   too close to the edge, for instance, then obviously this would increase
+   the failure rate.  And, of course, it quits too soon.
+
+GENERAL COMMENTS
+
+The reaperbot still uses much of its original programming.  Besides the AI,
+the bot still use the same code for selecting and firing weapons.  (See the
+list of bugs above).  The major changes that were introduced were in the
+area of movement.  It is in the movement where you will see the improvements.
+The reaperbot is actually an UNFINISHED product.  With this how-to guide,
+it is possible that the Quake community can FINALLY improve the reaperbot so
+that it is as human-like as possible.  So far, only its ability to "learn"
+the map mimics human-like behavior.  All other aspects need to be improved
+upon.
+
+                           BEGIN GUIDE: Part I
+
+MAKING A COMPILABLE REAPERBOT SOURCE
+
+   1) follow the instructions that came with the reaperbot patch.  That is,
+   create the reaperbot directory like you normally would when you want
+   to play the patch.  I will assume you will call this directory, rpbot.
+   You are free to use any other name that you like.
+
+   2) In the rpbot directory, make a sub-directory called "src".  So the
+   directory tree should look something like the following:
+   [quake]
+      - [id1]
+         - pak0.pak
+         - pak1.pak
+      - [some other patch1]
+         - some other patch1's progs.dat
+         - [maps]
+      - [some other patch2]
+         -pak0.pak
+      - [some other patch3]
+         - some other patch3's progs.dat
+         - [progs]
+            - player.mdl
+      - [rpbot]
+         - progs.dat
+         - [src]
+      - [some other patch4]
+         ...
+
+   The "[]" signifies a directory.  This is just an EXAMPLE.  You may have
+   only one patch, the reaperbot.  I included other patches in the directory
+   structure above.
+
+   Visit the QuakeC Archives (http://www.planetquake.com/qca) for additional
+   help in this area.
+
+   3) copy the progs.dat found in the rpbot directory into the src
+   sub-directory.  Copy proqcc.exe into the src sub-directory.  There should
+   be two files in the src sub-directory at this point: progs.dat and
+   proqcc.exe.  Then go to this sub-directory by typing "cd\quake\rpbot\src"
+   at the DOS prompt.
+
+   4) type "proqcc -dec" at the DOS prompt without the damn quotes, of
+   course.  Notice the use of CAPS.   "What caps?", you ask.  Well, I mention
+   this because many people like to type parameters like this "proqcc -DeC"
+   or "q95 -GaME rpBoT" or "q95 -GAMe rpbot" and the like.  Then they go to
+   the newsgroups and wonder why the reaperbot is not loaded.  The caps lock
+   key and the shift key obviously needs to be removed from these people's
+   keyboard, followed by a smack on the head with an aluminum bat (not a
+   wooden bat since wood breaks).
+      - after the decompilation process, you will find a large list of
+      files in the src sub-directory with an extension *.qc and one file
+      with an extension *.src.  Any other file (if any) should be ignored.
+
+   5) Open progs.src using your favorite text editor.  On the first line,
+   you should see "./progs.dat".  The single period tells the compiler that
+   the compiled progs.dat should be placed in the current directory.  A
+   double-period tells the compiler that the compiled progs.dat be placed in
+   the directory above it.  In this case, the directory one level above it is
+   the rpbot directory (see directory structure provided above).  When Quake
+   loads a patch, it is assumed that the progs.dat is in the rpbot directory
+   and NOT in one of its sub-directories.  So change "./progs.dat" to
+   "../progs.dat".
+      a) now save the changes by closing progs.src
+
+   6) now type "proqcc" at the DOS prompt to compile the source
+      a) you should see some errors
+      b) YOU will now correct these errors
+
+   7) Open botit_th.qc using your favorite text editor.  (I use edit.com).
+      a) you will see a bunch of lines that end with a semi-colon.  Most
+      statements MUST end with a semi-colon.
+      b) The following is an example of a function PROTOTYPE.
+
+void (entity targ, entity inflictor, entity attacker, float damage) T_Damage;
+
+      This function prototype tells the compiler that a function called
+      T_Damage is defined somewhere in the code.  Like everything else, the
+      name is CASE sensitive so the function called T_DAmaGE is not the same
+      as T_Damage.  
+
+      BEFORE you execute any function, you must do one of two things: either
+      declare the function by using a function prototype like above OR
+      you define the function.
+
+      Notice that you don't see any code telling you what the T_Damage
+      function does.  The actual code that DEFINES the function (the code that
+      tells you what the function does) can be found in combat.qc.  When
+      you look into the combat.qc file and search for the T_Damage function,
+      you will notice that the first line in a function definition is almost
+      the same as a function prototype.  The only difference is that the
+      semi-colon used in the function prototype has been replaced by an
+      equal sign ("=").
+
+      In other words, the function definition for T_Damage is the following:
+
+void (entity targ, entity inflictor, entity attacker, float damage) T_Damage = {
+
+   [ lots of code ]
+
+};
+
+      Every function definition has an opening left brace and a closing right
+      brace.  The right brace is followed by a semi-colon.  You can view the
+      braces as something that 'collects' statements that belong together or
+      view the braces and the code inside it as a BLOCK of code that belongs
+      together.
+
+      So the format of a function prototype is the following:
+
+      return_type (parameter list and types) function_name;
+
+      The format of a function definition is the following:
+
+      return_type (parameter list and types) function_name =
+      {
+         [ lots of code ]
+      };
+
+
+      NOTE: In C++, the equal sign is NOT used in making function
+      definitions.
+
+      So you must either DECLARE or DEFINE it first BEFORE you actually use
+      the function.  That is why there is a bunch of function prototypes
+      in botit_th.qc.  The file also contains a few function definitions
+      as well.  When you finish with this tutorial, botit_th.qc will have
+      more prototypes and more definitions than before.
+
+      You can declare the function as often as you want as long as each
+      declaration (each function prototype) is identical and that they match
+      with the function definition.  You can only define a function ONCE.
+      I was told that there is one exception to this rule, however.  You can
+      redefine builtin functions of Quake but you can only define QuakeC
+      functions ONCE.
+
+      You will ONLY need to specify one function prototype for each
+      function definition.  It is required BEFORE you actually execute the
+      function, remember.  There is no need to provide multiple function
+      prototypes for one function even though you can.
+    
+   8)  In decompiling, ProQCC has a problem decompiling certain types of
+   function prototypes and definitions.  In botit_th.qc, search for the lines
+   ".void() th_weight;" and ".void() th_cache;".  These are incorrect.
+   Notice that there are periods (".") in front of the function prototypes.
+   That is not the problem, the periods belong there.  To make a long story
+   short, the periods tell Quake that each entity has its own th_weight and
+   th_cache function.  That is, the th_weight function for one bot can be
+   different from the th_weight function of another bot.
+
+   The word "void" in the function prototype tells Quake that the function
+   does not return any value.  Functions can return values which can be a
+   number (ie. "float"), a vector, or an entity.  However, th_weight and
+   th_cache are not void functions, these functions are supposed to return
+   a value.
+
+   Additionally, the function prototypes state that the function does not
+   have any parameters.  Look at the T_Damage function above.  There are
+   a bunch of variables in between the parenthesis.  This means that the
+   T_Damage function takes in parameters.  The function prototypes for
+   th_weight and th_cache says they don't.  This is wrong, too.
+
+   Now the problem is what kind of values does these function return and
+   what type of parameters, if any, do these functions take?
+
+   9) Look into botgoal.qc.  Search for the line "weight = e.th_weight (e);".
+   This code is in the "thingweight" function definition.
+
+   Right off the bat, this should tell you that the th_weight function
+   returns a value and that it takes one parameter.  So look around in this
+   "thingweight" function for clues that tell you what type of variable is
+   "e" and what type of variable is "weight".  You will find that e is
+   a variable of type entity and that weight is a variable of type float.
+
+   (Hint: like functions, you have to DECLARE the variables before using
+   them.  So search for things like "local float weight" and the like.  In
+   QuakeC terminology, declaring a variable is called "defining" a variable.
+   The keyword 'local' is used WITHIN a function definition.  Outside the
+   function definition, the word 'local' is NOT used.)
+
+   From these two pieces of information, the correct function prototype for
+   th_weight should be:
+
+   .float(entity e) th_weight;
+
+   So replace the ".void() th_weight" line in botit_th.qc with the correct
+   function prototype above.
+
+   You can follow a similar method with th_cache by looking into botroute.qc
+   file and searching for th_cache.  Unfortunately, there's nothing in
+   botroute.qc that tells you what kind of values the function returns.  You
+   can determine what the parameters are, however, but that is not enough.
+   So you need to do more searching.  In botspawn.qc, you will find the line
+   "self.th_cache = cacheenemy;" in the PutBotInServer function definition.
+   This means that the th_cache function for the bot is the cacheenemy
+   function.  So search for this function.
+
+   You will find the cacheenemy function in botit_th.qc.  Since this function
+   is the SAME as the th_cache function, then this means that the th_cache
+   function returns the same type of value and takes in the same parameters.
+   Thus, the function prototype for th_cache should look like cacheenemy.
+   In short, the function prototype for th_cache is the following:
+
+   .float(entity node, float len, entity item) th_cache;
+
+   So replace the ".void() th_cache" line in botit_th.qc with the correct
+   function prototype above.
+
+   Now save the changes you made in botit_th.qc.
+
+   10) open misc.qc.  You should see the following at the bottom of the
+   misc_fireball function definition.
+
+/* Begin code */
+   if ( !self.speed ) {
+
+
+   }
+/* End code */
+
+   The above code is given the label, "the IF block", since it is a block
+   of code that should be executed whenever the conditions in the IF
+   line is true.  If there is only one statement in the IF block, then the
+   braces are not necessary.  The braces are only necessary if the block
+   contains more than one statement (and, of course, each statement
+   ends with a semi-colon).
+
+   Examples of correct if-blocks are the following:
+
+   if (!self.health) {
+
+      self.speed = 3;
+      self.health = 20;
+      self.button0 = FALSE;
+   }
+
+   if (self.search_time < time)
+      self.search_time = time + 3;
+
+   if (self.flags & FL_ONGROUND)
+   {
+      self.flags = self.flags - FL_ONGROUND;
+   }
+
+   Each statement inside the block ends with a semi-colon.  There is NO
+   semi-colon after the closing right brace.
+
+   The above code from misc.qc checks to see if self.speed (where self is the
+   fireball) has zero velocity.  If the fireball has zero velocity, then it
+   is supposed to execute any statements between the two braces.  As you can
+   see, there is nothing in between the two braces.  Hence, there is missing
+   code.
+
+   The compiler will see two braces with nothing in it.  The braces are the
+   one that confuses the compiler.  Braces are not only used in IF blocks,
+   but these are also used in function definitions.  If there is nothing in
+   the braces, you'll end up with a "not a name" error when compiling.  You
+   can either delete the braces (and leave the IF line alone), put back the
+   missing code or delete the whole IF block.  Putting back the missing code
+   is the better choice.
+
+   Now why do you have missing code in the decompiled source?
+
+   Well, the problems comes from iD's original QuakeC code.  Originally, the
+   code is this:
+
+/* Begin code */
+   if (!self.speed)
+      self.speed == 1000;
+/* End code */
+
+   When Polge compiled his code, the compiler correctly compiled the line
+   "if (!self.speed)" but the next line causes problems.  The line is
+   supposed to set the value of speed to 1000 but instead, it assigns a
+   value of 1000 by "checking" to see if self.speed is equal to 1000.  This
+   is meaningless.   You don't assign a variable a value by checking to see
+   if it is equal to it. The result is that the compiler "left it blank"
+   so to speak since it doesn't understand that line of code.  The progs.dat,
+   then, contains "missing code".  Additionally, the compiler/decompiler
+   always include the opening and closing braces for all IF statements even
+   if there is only one statement in the IF block itself.
+
+   When you decompiled the progs.dat, you will see that you have missing
+   code.  Your only recourse is to find a compiler/decompiler that attempts
+   to make sense of the mess or look at the original code.  I happen to know
+   what the missing code should be.  So in misc.qc, insert the line
+
+   self.speed = 1000;
+
+   between the two braces of the IF block.
+
+   Save your changes by closing misc.qc.
+
+   11) Open botgoal.qc.  Look for this following lines of code:
+
+/* Begin code */
+   self.search_time = (self.search_time - 0.400);
+   if ( (botTarget.goalentity == botTarget) ) {
+
+
+   }
+/* End code */
+
+   You should find the above snippet of code in the ai_botseek function.
+
+   Yes, this is the same problem found in misc.qc.  But this is different.
+   Why?  Because I don't have a copy of the original botgoal.qc file used
+   by Steven Polge.  So now, what do you do?  Well, I was lucky.  Decker
+   in rec.games.computer.quake.quake-c newsgroup said that a decompiler
+   provided this bit of code:
+
+      self.search_time = time;
+
+   So insert the above missing lines of code in between the braces.
+
+   Save the changes made to botgoal.qc.
+
+   12) now zip up all the *.qc files and progs.src.  You now have a
+   compilable reaperbot source code.  Compile it by typing "proqcc" at
+   the DOS prompt and enjoy.
+
+   13) In preparation for your next lesson, create a file called
+   func.qc.  This file will contain a list of function prototypes.
+
+   14) Open progs.src, and insert "func.qc" AFTER defs.qc.
+
+   15) Open buttons.qc.  Search the entire file for function prototypes of
+   functions used by the reaperbot.  You should find one prototype in this 
+   file.  It is "void(entity bot) bot_triggered;".
+
+   16) open func.qc.
+      a) add the following:
+/* Begin code */
+// found in buttons.qc
+void(entity bot) bot_triggered;
+/* End code */
+// b) save changes made to func.qc.
+//17) open client.qc.  Search entire file for function prototypes of
+//functions used by the reaperbot.  I found nine.  You are going to move
+//these function prototypes to func.qc just like you did with the prototype
+//found in buttons.qc.
+//18) open func.qc.
+//a) add the following:
+/* Begin code*/
+// found in client.qc
+void(entity killer, entity killed) countkill;
+void() initscore;
+void(entity ply, float n) removeTeamBots;
+void(entity ply, float n) addTeamBots;
+void(entity e, float newskin) skinChange;
+void() NewCarriedPath;
+void() initBotLevel;
+float() CheckDropPath;
+void() DropBotPath;
+/* End code */
+//      b) save changes made to func.qc.
+//   19) Continue the search for other function prototypes in EVERY file.
+//   20) open func.qc.
+//      a) add the following:
+/* Begin code */
+// found in combat.qc
+float() BotFoundTarget;
+void(entity en2) secondEnemy;
+void() endEnemy;
+
+// found in doors.qc
+void() bot_touched;
+void() enemy_touched;
+
+// found in items.qc
+void(entity node, entity targ, float len, entity item) cacheRoute;
+void() bot_toucheditem;
+
+// found in triggers.qc
+void(entity a, entity b) addTarget;
+
+// found in weapons.qc
+vector() botaim;
+void() botImpulseCommand;
+
+// found in world.qc
+void () setBotGravity;
+/* End code */
+      b) save changes made to func.qc.
+
+   21) Compile and enjoy.
+
+   22) I already outlined the problems that ProQCC had in decompiling certain
+   function prototypes but I haven't gone over any problems it may have for
+   function definitions.
+
+   open botmove.qc.  In the Bot_tryjump function definition, you have the
+   following:
+
+float /* Warning: Could not determine return type */ (float vz, float dist, float imagine) Bot_tryjump = {
+
+   Notice the warning in between the comments. (In QuakeC you can insert
+   any statements between the "/*" and "*/".  The compiler will ignore every
+   line between the "/*" and the "*/".)
+
+   The decompiler had problems trying to determine what type of value the
+   Bot_tryjump function returns.  It guessed that the function returns a
+   number (ie. a "float").  It guessed right.  In fact, ProQCC made several
+   such guesses throughout the source code.  All of them happened to be
+   correct.  That is why I didn't go over this.  So now I will.
+
+   Suppose you are decompiling the Zeusbot or some other patch.
+
+   Suppose the first line of the function definition look like this:
+
+float /* Warning: Could not determine return type */ (entity ent) ZEUS_StaticOrigin = {
+
+   When you compile the source, you get an error somewhere saying something
+   like "type mismatch for =" for a line code different from the line of
+   code that the above line was taken.  That is, the error didn't come from
+   the above quoted code, the function definition above.  The error was
+   someplace else.
+
+   The error came from something that look like this:
+   
+   entity_org = ZEUS_StaticOrigin (ent);
+
+   Now let us forget for the moment, that the name of the variable
+   "entity_org" makes it obvious that the function ZEUS_StaticOrigin returns
+   a value that is a vector, not a float.  How do you determine what value
+   the function returns?
+
+   You look into the ZEUS_StaticOrigin function itself and look for clues
+   that tell you what its return type is.  Well, in the return line of this
+   particular function it uses the variables .absmin and .absmax.  If you
+   look in the defs.qc file for these two variables, you will discover that
+   .absmin and .absmax are both VECTORS.  So the ZEUS_StaticOrigin function
+   returns a vector.  To correct the error, simply change the first line
+   of the function definition to this:
+
+   vector(entity ent) ZEUS_StaticOrigin = {
+
+   You will have to go through every "type mismatch" errors involving
+   functions and correct the problem.  Don't be surprised if more than one
+   function has this problem.
+
+   Alternatively, you can look through all the variable declarations and
+   search for the variable "entity_org".  In particular, you will be looking
+   for either "local xxx entity_org" or "xxx entity_org" where xxx stands
+   for float, vector, or entity.  The variable type for "entity_org" will
+   then be the return type for ZEUS_StaticOrigin.
+
+   23) In addition to the above decompiling problems, ProQCC also has
+   problems with strings.  In particular, those strings used in the sprint
+   builtin function sometimes give ProQCC problems.  In the decompiled code,
+   you might find lines looking like the following:
+
+/* Begin code */
+   /* Warning: No local name with offset 15762 */
+   /* Warning: No local name with offset 15763 */
+   /* Warning: No local name with offset 15764 */
+   local "Maximum of 15 bots allowed!\n";
+   /* Warning: No local name with offset 15766 */
+   /* Warning: No local name with offset 15767 */
+   /* Warning: No local name with offset 15768 */
+/* End code */
+
+   Simply delete all these lines.  In particular, notice above that there
+   is the line "local..."  This line will cause problems in compiling.  This
+   has to be deleted before compiling.  All the other lines are simply
+   comments and will be ignored anyway.
+
+   24) This completes the lesson for decompiling the reaperbot patch.  The
+   lessons learned here can be applied to other patches as well.  This
+   assumes that the progs.dat for the patches were not scrambled.  You
+   will need to find an unscrambler before you decompile the progs.dat.  I
+   don't have an unscrambler.
+
+   You ae now finished with Part I, stay tuned for Part II.
+
+   Each part builds on the knowledge gained from the previous part.  So don't
+   assume that other parts would be as detailed as this.  See you next week.
+
+
+SUMMARY OF STEPS
+   1) create the rpbot directory
+   2) create the src subdirectory under the rpbot directory
+   3) copy the reaperbot progs.dat and proqcc.exe into the src subdirectory
+   4) decompile the progs.dat by typing "proqcc -dec"
+   5) open up progs.src and change the line that says "./progs.dat" to
+      "../progs.dat".
+   6) open up botit_th.qc.
+      a) replace ".void() th_weight;" with ".float(entity e) th_weight;"
+      b) replace ".void() th_cache;" with
+         ".float(entity node, float len, entity item) th_cache;"
+   7) open up misc.qc
+      a) insert "self.speed = 1000;" inside the IF block in the misc_fireball
+      function definition
+   8) open up botgoal.qc
+      a) search for the IF block that checks for goalentity being equal to
+         botTarget in the ai_botseek function definition.
+      b) insert "self.search_time = time;" inside this IF block
+   9) compile the code by typing "proqcc".
+
+
+
