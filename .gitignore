@@ -31,7 +31,9 @@ Thumbs.db
 
 # Build artifacts
 ci/reaper_mre/
+ci/mre/
 launch/quake-spasm/reaper_mre/
+launch/quake-spasm/mre/
 
 # Legacy decompiled source (use src/ for reference only)
 reaper/

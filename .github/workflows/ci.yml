@@ -11,9 +11,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build progs.dat
         shell: pwsh
-        run: .\ci\build_reaper_mre.ps1
+        run: .\ci\build_mre.ps1
       - name: Upload progs.dat
         uses: actions/upload-artifact@v4
         with:
-          name: reaper_mre-progs.dat
-          path: ci/reaper_mre/progs.dat
+          name: mre-progs.dat
+          path: ci/mre/progs.dat
