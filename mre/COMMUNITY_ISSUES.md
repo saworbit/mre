@@ -4,7 +4,9 @@ This list is pulled from the community reports linked in `mre/SOURCES.md`.
 Items are grouped by theme and phrased as fixable targets.
 
 ## Stability and reliability
-- Crashes to DOS after a few minutes in single player. (b23_reaper.md)
+- ~~Crashes to DOS after a few minutes in single player.~~ **Fixed:** Edict overflow
+  from uncapped waypoint spawns. SP maps have 400-500 entities, leaving little
+  headroom for the bot's 140-waypoint limit. Reduced to 50 in SP. (b23_reaper.md)
 - Multiplayer lockups after short sessions. (b23_reaper.md)
 
 ## Movement and combat feel

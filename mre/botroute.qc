@@ -313,6 +313,13 @@ float () CheckDropPath = {
    local float OK_HIGH;
    local string tmp;
 
+   // Cap waypoints strictly in Single Player to prevent edict overflow
+   // SP maps have many more entities (monsters, triggers) leaving fewer slots
+   if ( !deathmatch && (NUMPATHS > 50.000) ) {
+
+      return ( FALSE );
+
+   }
    if ( (NUMPATHS > 140.000) ) {
 
       return ( FALSE );
