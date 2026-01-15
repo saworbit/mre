@@ -5,7 +5,7 @@
 - https://github.com/Jason2Brownlee/QuakeBotArchive/blob/main/bin/pkbot.txt
 - https://mrelusive.com/oldprojects/obots/Comments/Acumen/Reapers.htm
 - https://quake.fandom.com/wiki/The_Reaper_Bot (user-provided text)
-- Archived readme and docs from `archive/legacy_v1/reaper/` (Reaprb80, B08chg, Dedserv, Skinspec, Autoexec, rip011a)
+- Archived readme and docs from `archive/legacy/v1/reaper/` (Reaprb80, B08chg, Dedserv, Skinspec, Autoexec, rip011a)
 
 ## Blocked by client challenge
 - https://quake.fandom.com/wiki/The_Reaper_Bot (direct fetch blocked; text supplied by user)
