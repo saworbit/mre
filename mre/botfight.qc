@@ -3,8 +3,22 @@ vector (vector src, vector trg, float invMvel) leadtarget = {
 
    local vector tg;
    local vector lead;
+   local float lead_time;
+   local float dist;
 
-   lead = ((self.enemy.velocity * invMvel) * vlen ((trg - src)));
+   // FIX: Improved predictive aiming with time cap
+   // Calculate time to impact = distance * inverse_velocity
+   dist = vlen ((trg - src));
+   lead_time = (dist * invMvel);
+
+   // Cap prediction to 0.5 seconds to prevent excessive leading at long range
+   if ( (lead_time > 0.500) ) {
+
+      lead_time = 0.500;
+
+   }
+
+   lead = (self.enemy.velocity * lead_time);
    tg = (trg + lead);
    if ( (self.weapon == IT_ROCKET_LAUNCHER) ) {
 
@@ -365,6 +379,36 @@ void () W_BotAttack = {
       return ;
 
    }
+
+   // FIX: Splash Damage Safety - don't fire explosives at close range
+   // Rockets/grenades at <150 units will likely kill or heavily damage self
+   if ( (self.weapon == IT_ROCKET_LAUNCHER) || (self.weapon == IT_GRENADE_LAUNCHER) ) {
+
+      if ( (vlen ((self.enemy.origin - self.origin)) < 150.000) ) {
+
+         // Switch to a safer weapon instead of suiciding
+         self.weapon = W_BestHeldWeapon ();
+         W_SetCurrentAmmo ();
+         return ;
+
+      }
+
+   }
+
+   // FIX: Thunderbolt Water Safety - discharging in water is instant death
+   if ( (self.weapon == IT_LIGHTNING) ) {
+
+      if ( (self.waterlevel >= FL_SWIM) ) {
+
+         // Switch weapon - don't suicide by discharge
+         self.weapon = W_BestHeldWeapon ();
+         W_SetCurrentAmmo ();
+         return ;
+
+      }
+
+   }
+
    addt = FALSE;
    if ( (self.skil < MOVETYPE_WALK) ) {
 

@@ -11,6 +11,9 @@
 - Fixed: "Flashing" bots near water (stricter teleptest checks).
 - Fixed: Bots getting stuck running in place (position delta detection + jump attempts).
 - Fixed: Camper behavior near best weapons (ignore owned weapons when ammo sufficient).
+- Fixed: Suicidal explosive firing (switch weapons when enemy <150 units).
+- Fixed: Thunderbolt water discharge (switch weapons when in water).
+- Improved: Predictive aiming (capped lead time to 0.5s to prevent over-leading).
 - Updated development and launch docs for the `mre/` layout.
 - CI now builds from `mre/` via `ci/build_mre.ps1`.
 - Archived legacy docs/tools/launch assets and old logs under `archive/legacy/clean_slate/`.

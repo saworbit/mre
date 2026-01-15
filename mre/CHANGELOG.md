@@ -28,6 +28,15 @@
 - Fixed: Camper behavior near best weapons (`botgoal.qc`). Modified `itemweight` to
   ignore weapons the bot already owns when ammo is sufficient (>50 nails/cells,
   >10 rockets).
+- Fixed: Suicidal rocket/grenade firing (`botfight.qc`). Added safety check in
+  `W_BotAttack` to switch weapons when enemy is within 150 units instead of
+  firing explosives at point-blank range.
+- Fixed: Thunderbolt water discharge suicide (`botfight.qc`). Added safety check
+  to switch weapons when in water (waterlevel >= 2) instead of instant-death
+  discharge.
+- Improved: Predictive aiming (`botfight.qc`). Added 0.5 second cap on lead time
+  in `leadtarget` to prevent excessive over-leading at long range while keeping
+  accurate prediction at mid-range.
 - Legacy changelog archived at `archive/legacy/v1/CHANGELOG_MRE.md`.
 - Development guide refreshed for the reboot.
 - Legacy docs/tools/launch artifacts archived at `archive/legacy/clean_slate/`.
