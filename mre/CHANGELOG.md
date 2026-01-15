@@ -17,6 +17,17 @@
 - Fixed: Scoreboard overflow crash (`client.qc`, `botspawn.qc`). The `FindGood()`
   function returned 1-indexed slots (1-16) but protocol expects 0-indexed (0-15).
   Changed to 0-indexed and added guard to check slot < fMaxClients (maxplayers).
+- Fixed: Jumpy/teleport-like strafing (`botmove.qc`). Removed `halfwalkmove` which
+  caused 0.05s sub-frame updates that confused client interpolation. Added velocity
+  setting after `walkmove` calls so clients can predict motion smoothly.
+- Fixed: "Flashing" bots near water (`botmove.qc`). Added stricter checks to
+  `teleptest` for headroom and floor footing before allowing water teleportation.
+- Fixed: Bots getting stuck running in place (`botgoal.qc`). Added position delta
+  check in `ai_botseek` that forces faster goal timeout when bot hasn't moved, with
+  occasional jump attempts to dislodge.
+- Fixed: Camper behavior near best weapons (`botgoal.qc`). Modified `itemweight` to
+  ignore weapons the bot already owns when ammo is sufficient (>50 nails/cells,
+  >10 rockets).
 - Legacy changelog archived at `archive/legacy/v1/CHANGELOG_MRE.md`.
 - Development guide refreshed for the reboot.
 - Legacy docs/tools/launch artifacts archived at `archive/legacy/clean_slate/`.

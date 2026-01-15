@@ -14,10 +14,18 @@ Items are grouped by theme and phrased as fixable targets.
   (FindGood changed to 0-indexed + guard added). (b23_reaper.md)
 
 ## Movement and combat feel
-- Jumpy/teleport-like strafing makes aiming difficult. (b23_reaper.md)
-- Bots appear to "flash" in and out of existence during fights. (b23_reaper.md)
-- Bots can become stuck running in a small area while still dealing damage. (b23_reaper.md)
-- Camper-like behavior when bots stay near best weapons due to incentive/memory bias. (fandom)
+- ~~Jumpy/teleport-like strafing makes aiming difficult.~~ **Fixed:** Removed
+  `halfwalkmove` sub-frame timing (0.05s) and added velocity setting after
+  `walkmove` calls for smooth client-side interpolation. (b23_reaper.md)
+- ~~Bots appear to "flash" in and out of existence during fights.~~ **Fixed:**
+  Added stricter checks in `teleptest` for headroom and floor footing before
+  allowing water teleportation via `setorigin`. (b23_reaper.md)
+- ~~Bots can become stuck running in a small area while still dealing damage.~~
+  **Fixed:** Added position delta check in `ai_botseek` to detect when bot hasn't
+  moved; forces faster goal timeout and occasional jump attempts. (b23_reaper.md)
+- ~~Camper-like behavior when bots stay near best weapons due to incentive/memory bias.~~
+  **Fixed:** Modified `itemweight` to return DONT_WANT for weapons the bot already
+  owns when ammo is sufficient. (fandom)
 
 ## Fairness and cheating perception
 - Community perception that bots "cheat" or act unnaturally at low skill. (b23_reaper.md)
@@ -36,17 +44,10 @@ Items are grouped by theme and phrased as fixable targets.
 
 ## Physics and interaction
 - Bots not affected by explosion knockback ("bounce the Reaper"). (mrelusive)
-- Bots not affected by beartraps in Painkeep. (pkbot.txt)
 - Odd teleporting and items found in odd locations reported in 0.8/0.81 history. (fandom)
 
 ## Skins and visuals
-- No multiskins and no damage skins (Painkeep integration report). (pkbot.txt)
 - MultiSkin support reported as unreliable in earlier versions. (fandom)
 
 ## Compatibility gaps
-- Only default Quake weapons used in Painkeep merge. (pkbot.txt)
 - Complaints that bots spam sv_aim warnings when non-default. (fandom)
-
-## Pending
-- Quake Fandom page content is blocked by a client challenge in this environment.
-  Text callouts were provided by the user and summarized above.

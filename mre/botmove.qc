@@ -1,35 +1,27 @@
 
-void () halfwalkmove = {
+// FIX: Removed halfwalkmove - the 0.05s sub-frame timing caused network
+// interpolation issues ("jumpy" strafing). Movement now happens in single
+// frames with velocity set for smooth client-side prediction.
 
-   walkmove (self.strafeyaw,self.strafedist);
-   self.think = self.strafethink;
-   self.nextthink = (time + 0.050);
-
-};
 float (float s_yaw, float s_dist) botwalkmove = {
 
-   local float halfdist;
+   local vector move_dir;
 
    self.oldorigin = self.origin;
-   if ( (self.skil > FL_SWIM) ) {
 
-      halfdist = (0.550 * s_dist);
-
-   } else {
-
-      halfdist = (0.500 * s_dist);
-
-   }
-   if ( !walkmove (s_yaw,halfdist) ) {
+   // Standard walkmove for actual position change
+   if ( !walkmove (s_yaw, s_dist) ) {
 
       return ( FALSE );
 
    }
-   self.strafethink = self.think;
-   self.strafeyaw = s_yaw;
-   self.strafedist = halfdist;
-   self.think = halfwalkmove;
-   self.nextthink = (time + 0.050);
+
+   // FIX: Set velocity to help client-side interpolation
+   // Without this, walkmove updates position instantly causing "teleport" feel
+   makevectors ('0 1 0' * s_yaw);
+   self.velocity_x = (v_forward_x * s_dist * 10.000);
+   self.velocity_y = (v_forward_y * s_dist * 10.000);
+
    return ( TRUE );
 
 };
@@ -37,6 +29,7 @@ float (float dist) teleptest = {
 
    local vector start;
    local vector up;
+   local vector target;
 
    up = self.origin;
    start = self.origin;
@@ -111,6 +104,31 @@ float (float dist) teleptest = {
       return ( FALSE );
 
    }
+
+   // FIX: Additional checks to prevent "flashing" from teleporting into bad positions
+   // Check headroom at target position (player height is ~56 units)
+   target = self.origin;
+   target_z = (target_z + dist);
+   up = target;
+   up_z = (up_z + 32.000);
+   traceline (target, up, TRUE, self);
+   if ( (trace_fraction < TRUE) ) {
+
+      return ( FALSE );
+
+   }
+
+   // Check floor footing at target - must hit something (not void)
+   up = target;
+   up_z = (up_z - 24.000);
+   traceline (target, up, TRUE, self);
+   if ( (trace_fraction == TRUE) ) {
+
+      // Falling into void - don't teleport
+      return ( FALSE );
+
+   }
+
    return ( TRUE );
 
 };
@@ -747,6 +765,7 @@ void (float dist) strafemove = {
 
    local float ofs;
    local float rnd;
+   local float move_yaw;
 
    if ( (self.flags & FL_SWIM) ) {
 
@@ -777,8 +796,13 @@ void (float dist) strafemove = {
       }
 
    }
-   if ( walkmove ((self.ideal_yaw + ofs),dist) ) {
+   move_yaw = (self.ideal_yaw + ofs);
+   if ( walkmove (move_yaw, dist) ) {
 
+      // FIX: Set velocity for smooth client interpolation
+      makevectors ('0 1 0' * move_yaw);
+      self.velocity_x = (v_forward_x * dist * 10.000);
+      self.velocity_y = (v_forward_y * dist * 10.000);
       return ;
 
    }
@@ -788,8 +812,13 @@ void (float dist) strafemove = {
 
    }
    ofs = (CONTENT_EMPTY * ofs);
-   if ( walkmove ((self.ideal_yaw + ofs),dist) ) {
+   move_yaw = (self.ideal_yaw + ofs);
+   if ( walkmove (move_yaw, dist) ) {
 
+      // FIX: Set velocity for smooth client interpolation
+      makevectors ('0 1 0' * move_yaw);
+      self.velocity_x = (v_forward_x * dist * 10.000);
+      self.velocity_y = (v_forward_y * dist * 10.000);
       return ;
 
    }

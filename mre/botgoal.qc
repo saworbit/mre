@@ -35,6 +35,7 @@ void (float dist) ai_botseek = {
    local vector dir;
    local float rng;
    local float oldrng;
+   local float stuck_dist;
 
    if ( self.enemy ) {
 
@@ -47,6 +48,23 @@ void (float dist) ai_botseek = {
       return ;
 
    }
+
+   // FIX: Detect if bot is stuck running in place
+   stuck_dist = vlen (self.origin - self.oldorigin);
+   if ( (stuck_dist < 1.000) ) {
+
+      // Haven't moved much - force faster goal timeout
+      self.search_time = (self.search_time - 0.100);
+
+      // Occasionally try to jump to dislodge
+      if ( (random () < 0.100) ) {
+
+         Bot_tryjump (270.000, dist, FALSE);
+
+      }
+
+   }
+
    botTarget = self.goalentity;
    if ( (time < self.search_time) ) {
 
@@ -197,6 +215,62 @@ float (entity e) itemweight = {
       e.pathtype = NEVERTARGET;
 
    }
+
+   // FIX: Anti-camping - ignore weapons we already have unless low on ammo
+   // This prevents bots from staying near best weapons
+   if ( (e.classname == "weapon_supernailgun") ) {
+
+      if ( (self.items & IT_SUPER_NAILGUN) ) {
+
+         if ( (self.ammo_nails > 50.000) ) {
+
+            return ( DONT_WANT );
+
+         }
+
+      }
+
+   }
+   if ( (e.classname == "weapon_grenadelauncher") ) {
+
+      if ( (self.items & IT_GRENADE_LAUNCHER) ) {
+
+         if ( (self.ammo_rockets > 10.000) ) {
+
+            return ( DONT_WANT );
+
+         }
+
+      }
+
+   }
+   if ( (e.classname == "weapon_rocketlauncher") ) {
+
+      if ( (self.items & IT_ROCKET_LAUNCHER) ) {
+
+         if ( (self.ammo_rockets > 10.000) ) {
+
+            return ( DONT_WANT );
+
+         }
+
+      }
+
+   }
+   if ( (e.classname == "weapon_lightning") ) {
+
+      if ( (self.items & IT_LIGHTNING) ) {
+
+         if ( (self.ammo_cells > 50.000) ) {
+
+            return ( DONT_WANT );
+
+         }
+
+      }
+
+   }
+
    if ( (weight > DONT_WANT) ) {
 
       if ( !OK_HIGH ) {
