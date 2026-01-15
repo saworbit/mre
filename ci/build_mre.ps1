@@ -2,14 +2,58 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $srcDir = Join-Path $repoRoot "mre"
-$compiler = Join-Path $repoRoot "tools\\fteqcc_win64\\fteqcc64.exe"
+$defaultCompiler = Join-Path $repoRoot "tools\\fteqcc_win64\\fteqcc64.exe"
 $outputDir = Join-Path $repoRoot "ci\\mre"
 $outputFile = Join-Path $outputDir "progs.dat"
 $built = Join-Path $repoRoot "progs.dat"
 
-if (!(Test-Path -Path $compiler)) {
-    throw "Missing compiler: $compiler"
+function Resolve-CompilerPath {
+    param(
+        [string]$Preferred
+    )
+
+    if (![string]::IsNullOrWhiteSpace($Preferred)) {
+        if (!(Test-Path -Path $Preferred)) {
+            throw "Missing compiler at FTEQCC path: $Preferred"
+        }
+        return (Resolve-Path $Preferred).Path
+    }
+
+    if (Test-Path -Path $defaultCompiler) {
+        return (Resolve-Path $defaultCompiler).Path
+    }
+
+    $toolsDir = Join-Path $repoRoot "tools"
+    $fteDir = Join-Path $toolsDir "fteqcc_win64"
+    $downloadZip = Join-Path $fteDir "fteqw-win64.zip"
+
+    Write-Host "Compiler not found; downloading fteqcc from fte-team/fteqw releases..."
+    New-Item -ItemType Directory -Path $fteDir -Force | Out-Null
+
+    try {
+        $headers = @{ "User-Agent" = "reapbot-ci" }
+        $release = Invoke-WebRequest -Uri "https://api.github.com/repos/fte-team/fteqw/releases/latest" -Headers $headers -UseBasicParsing | ConvertFrom-Json
+        $asset = $release.assets | Where-Object { $_.name -like "fteqw-win64-*.zip" } | Select-Object -First 1
+        if (-not $asset) {
+            throw "Unable to locate fteqw-win64 zip asset in latest release."
+        }
+
+        Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $downloadZip
+        Expand-Archive -Path $downloadZip -DestinationPath $fteDir -Force
+        Remove-Item -Path $downloadZip -Force
+    } catch {
+        throw "Failed to download fteqcc. Set FTEQCC to a local fteqcc64.exe path. Details: $($_.Exception.Message)"
+    }
+
+    $foundCompiler = Get-ChildItem -Path $fteDir -Filter "fteqcc64.exe" -Recurse -File | Select-Object -First 1
+    if (-not $foundCompiler) {
+        throw "Download completed but fteqcc64.exe was not found under $fteDir"
+    }
+
+    return $foundCompiler.FullName
 }
+
+$compiler = Resolve-CompilerPath -Preferred $env:FTEQCC
 
 if (!(Test-Path -Path $srcDir)) {
     throw "Missing source directory: $srcDir"
