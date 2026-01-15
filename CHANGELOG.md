@@ -1,5 +1,13 @@
 ## 2026-01-12
 
+- **Unstick escape rerolls** to avoid dead-direction loops:
+  - **Reroll timer** in `reaper_mre/botmove.qc`: when no progress during unstick, rotate base yaw (+90/-90/+180) and re-pick the escape plan, extending the escape window.
+  - **Reroll fallback retrace** in `reaper_mre/botmove.qc`: after repeated rerolls, bots backtrack to a far breadcrumb and mark a larger bad-spot radius.
+  - **Progress-gated exit** in `reaper_mre/botmove.qc`: unstick only cools down after real movement; repeated timeouts force a replan and hard avoid.
+  - **Edge hazard loop breaker** in `reaper_mre/botmove.qc`: repeated edge catches at the same spot trigger a larger avoid radius and force unstick.
+  - **Goal-level avoid** in `reaper_mre/botgoal.qc`: items/path nodes inside the current bad-spot radius are skipped during selection.
+  - **New fields** in `reaper_mre/botit_th.qc`: `unstick_rethink_time`, `unstick_rethink_count` track reroll cadence and phase.
+  - **Result:** Bots pivot to alternate escape directions instead of repeating the same stuck yaw.
 - **Bot view-angle enforcement** to keep PID aim authoritative:
   - **PlayerPreThink sync** in `reaper_mre/client.qc`: bots mirror `angles` into `v_angle` and set `fixangle` before `makevectors`, preventing engine/usercmd writes from overriding PID output.
   - **PID fixangle** in `reaper_mre/botmath.qc`: `Bot_UpdateAimPID()` now sets `fixangle` on first snap and normal updates to force clean view updates.

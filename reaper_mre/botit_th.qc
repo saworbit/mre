@@ -156,9 +156,19 @@ float (entity targ, entity inflictor) CanDamage;
 .string unstick_reason;
 .float escape_until_time;
 .float escape_cooldown_time;
+// Unstick reroll timing to avoid committing to a dead escape.
+.float unstick_rethink_time;
+.float unstick_rethink_count;
+.vector unstick_start_origin;
+.float unstick_start_time;
+.float unstick_fail_count;
 .vector escape_dir;
 .float escape_style;
 .vector last_escape_dir;
+// Edge hazard loop tracking.
+.vector hazard_edge_origin;
+.float hazard_edge_time;
+.float hazard_edge_count;
 // Feeler best-candidate outputs (scored probes + action hints).
 .vector best_dir;
 .float best_score;

@@ -1143,18 +1143,48 @@ void () CheckForHazards =
             self.bad_spot_radius = 220.000;
             self.bad_spot_expire_time = (time + 10.000);
             FG_Request (self,95.000,FG_DRV_TERRAIN,escape_dir,1.200);
-            if (((self.stuck_mode != BOT_MODE_UNSTICK) && ((self.stuck_score > 1.000) || ((time - self.last_progress_time) > 0.600))))
-            {
-               Bot_EnterUnstick (R_UNSTICK_TERRAIN,"edge hazard");
-               self.escape_until_time = self.hazard_escape_until;
-               self.is_retracing = FALSE;
-            } //end if
-         } //end if
-         if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+         if (((self.stuck_mode != BOT_MODE_UNSTICK) && ((self.stuck_score > 1.000) || ((time - self.last_progress_time) > 0.600))))
          {
-            if ((self.hazard_log_time <= time))
-            {
-               bprint ("[");
+            Bot_EnterUnstick (R_UNSTICK_TERRAIN,"edge hazard");
+            self.escape_until_time = self.hazard_escape_until;
+            self.is_retracing = FALSE;
+         } //end if
+      } //end if
+      if (((time - self.hazard_edge_time) < 3.000))
+      {
+         if ((vlen (self.origin - self.hazard_edge_origin) < 96.000))
+         {
+            self.hazard_edge_count = (self.hazard_edge_count + 1.000);
+         } //end if
+         else
+         {
+            self.hazard_edge_count = 1.000;
+            self.hazard_edge_origin = self.origin;
+         } //end else
+      } //end if
+      else
+      {
+         self.hazard_edge_count = 1.000;
+         self.hazard_edge_origin = self.origin;
+      } //end else
+      self.hazard_edge_time = time;
+      if ((self.hazard_edge_count >= 3.000))
+      {
+         self.bad_spot_origin = self.origin;
+         self.bad_spot_radius = 320.000;
+         self.bad_spot_expire_time = (time + 20.000);
+         self.stuck_score = (STUCK_SCORE_THRESH + 1.000);
+         if ((self.stuck_mode != BOT_MODE_UNSTICK))
+         {
+            Bot_EnterUnstick (R_UNSTICK_TERRAIN,"edge hazard loop");
+         } //end if
+         self.hazard_edge_count = 0.000;
+      } //end if
+      if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+      {
+         if ((self.hazard_log_time <= time))
+         {
+            bprint ("[");
                bprint (self.netname);
                bprint ("] HAZARD: Edge Catch (soft stop)\n");
                self.hazard_log_time = (time + 0.500);
@@ -5169,6 +5199,11 @@ void (float reason_code, string reason) Bot_EnterUnstick =
    self.escape_until_time = (time + (0.600 + (random () * 0.600)));
    self.stuck_time = time;
    self.stuck_count = 0;
+   self.unstick_start_origin = self.origin;
+   self.unstick_start_time = time;
+   self.unstick_fail_count = 0.000;
+   self.unstick_rethink_time = (time + 0.200);
+   self.unstick_rethink_count = 0.000;
    self.wall_side_pref = -1.000;
    if ((random () < 0.500))
    {
@@ -5561,6 +5596,8 @@ vector () Breadcrumb_GetRecoverySpotFar =
 
 void (float dist) Bot_UnstickThink =
 {
+   local float escape_progress;
+
    // === BREADCRUMB RETRACE MODE: Exit conditions ===
    if (self.is_retracing)
    {
@@ -5668,9 +5705,118 @@ void (float dist) Bot_UnstickThink =
       return ;
    } //end if
 
+   if (((time >= self.unstick_rethink_time) && ((time - self.last_progress_time) > 0.400)))
+   {
+      local float base_yaw;
+      local vector rescue_spot;
+
+      if ((vlen (self.escape_dir) > 0.010))
+      {
+         RecordDirectionalFail (self,self.escape_dir);
+      } //end if
+
+      self.unstick_rethink_count = (self.unstick_rethink_count + 1.000);
+      if ((self.unstick_rethink_count > 3.000))
+      {
+         self.unstick_rethink_count = 0.000;
+      } //end if
+
+      if ((self.unstick_rethink_count == 3.000))
+      {
+         rescue_spot = Breadcrumb_GetRecoverySpotFar ();
+         if (((rescue_spot != self.origin) && (rescue_spot != '0.000 0.000 0.000')))
+         {
+            self.is_retracing = TRUE;
+            self.old_goal_pos = self.origin;
+            self.last_retrace_pos = rescue_spot;
+            self.last_retrace_time = time;
+            self.escape_until_time = (time + 1.200);
+            self.bad_spot_origin = self.origin;
+            self.bad_spot_radius = 320.000;
+            self.bad_spot_expire_time = (time + 20.000);
+
+            if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+            {
+               bprint ("[");
+               bprint (self.netname);
+               bprint ("] UNSTICK: Reroll fallback retrace to ");
+               bprint (vtos (rescue_spot));
+               bprint ("\n");
+            } //end if
+            return ;
+         } //end if
+      } //end if
+
+      base_yaw = self.best_ideal_yaw;
+      if ((self.unstick_rethink_count == 1.000))
+      {
+         base_yaw = (base_yaw + 90.000);
+      } //end if
+      else
+      {
+         if ((self.unstick_rethink_count == 2.000))
+         {
+            base_yaw = (base_yaw - 90.000);
+         } //end if
+         else
+         {
+            if ((self.unstick_rethink_count == 3.000))
+            {
+               base_yaw = (base_yaw + 180.000);
+            } //end if
+         } //end else
+      } //end else
+
+      Bot_PickEscapePlan (base_yaw);
+      self.ideal_yaw = self.best_ideal_yaw;
+      self.escape_until_time = (time + 0.600);
+      self.feeler_commit_dir = self.best_dir;
+      self.feeler_commit_until = self.escape_until_time;
+      self.unstick_rethink_time = (time + 0.250);
+
+      if ((bot_debug_enabled && (bot_debug_level >= LOG_VERBOSE)))
+      {
+         bprint ("[");
+         bprint (self.netname);
+         bprint ("] UNSTICK: Reroll escape yaw=");
+         bprint (ftos (self.best_ideal_yaw));
+         bprint ("\n");
+      } //end if
+   } //end if
+
    // Standard unstick timeout
    if ((time > self.escape_until_time))
    {
+      escape_progress = vlen ((self.origin - self.unstick_start_origin));
+      if ((escape_progress < 24.000))
+      {
+         self.unstick_fail_count = (self.unstick_fail_count + 1.000);
+         self.unstick_rethink_time = time;
+         self.escape_until_time = (time + 0.600);
+
+         if ((self.unstick_fail_count >= 2.000))
+         {
+            self.bad_spot_origin = self.origin;
+            self.bad_spot_radius = 320.000;
+            self.bad_spot_expire_time = (time + 20.000);
+            clearCache (self);
+            FindAPath ();
+            self.stuck_mode = BOT_MODE_COOLDOWN;
+            self.escape_cooldown_time = (time + 0.600);
+            self.stuck_score = 0.000;
+            self.last_progress_time = time;
+            self.last_origin = self.origin;
+            self.progress_check_time = (time + STUCK_PROGRESS_INTERVAL);
+            if ((bot_debug_enabled && (bot_debug_level >= LOG_CRITICAL)))
+            {
+               bprint ("[");
+               bprint (self.netname);
+               bprint ("] UNSTICK: Timeout without progress, forcing replan\n");
+            } //end if
+         } //end if
+         return ;
+      } //end if
+      self.unstick_fail_count = 0.000;
       self.stuck_mode = BOT_MODE_COOLDOWN;
       self.escape_cooldown_time = (time + 0.600);
       self.stuck_score = 0.000;

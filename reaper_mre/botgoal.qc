@@ -1940,6 +1940,14 @@ void () aibot_chooseGoal =
             {
                org_z = (e.absmax_z + TRUE);
             } //end if
+            if ((self.bad_spot_expire_time > time))
+            {
+               if ((vlen (org - self.bad_spot_origin) < self.bad_spot_radius))
+               {
+                  e = e.chain;
+                  continue;
+               } //end if
+            } //end if
             select = FALSE;
             if ((weight > best))
             {
@@ -2023,6 +2031,14 @@ void () aibot_chooseGoal =
          } //end if
          if (((e.pathtype == DROPPED) || (e.pathtype == TELEPORT)))
          {
+            if ((self.bad_spot_expire_time > time))
+            {
+               if ((vlen (e.origin - self.bad_spot_origin) < self.bad_spot_radius))
+               {
+                  e = e.chain;
+                  continue;
+               } //end if
+            } //end if
             if ((e == current))
             {
                weight = DONT_WANT;
