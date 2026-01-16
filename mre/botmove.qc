@@ -861,6 +861,13 @@ void (float dist) strafemove = {
    local float rnd;
    local float move_yaw;
 
+   // FIX: Respect knockback physics
+   if ( (time < (self.knockback_time + 0.300)) ) {
+
+      return ;
+
+   }
+
    if ( (self.flags & FL_SWIM) ) {
 
       if ( waterupdown (dist) ) {
