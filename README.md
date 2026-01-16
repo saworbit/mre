@@ -44,7 +44,19 @@ cd launch\quake-spasm
 launch_reapbot_v2.bat 8 dm4
 ```
 
+## Test
+```powershell
+# Full stability regression tests (~4 minutes)
+.\ci\test_stability.bat
+
+# Quick tests (~2 minutes)
+.\ci\test_stability.bat --quick
+```
+
+Automated tests check for: edict overflow, runaway loops, route recursion, scoreboard overflow.
+
 ## Docs
+- [ARCHITECTURE_CURRENT.md](ARCHITECTURE_CURRENT.md) - Control flow and call graph
 - [mre/README.md](mre/README.md) - Quick start and testing checklist
 - [mre/COMMUNITY_ISSUES.md](mre/COMMUNITY_ISSUES.md) - Issue tracker
 - [mre/CHANGELOG.md](mre/CHANGELOG.md) - Detailed changes

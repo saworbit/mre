@@ -9,7 +9,7 @@ echo ========================================
 echo.
 
 REM Check if Python is available
-python --version >nul 2>&1
+where python >NUL 2>NUL
 if errorlevel 1 (
     echo ERROR: Python not found in PATH
     echo Please install Python 3.7+ from python.org

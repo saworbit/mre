@@ -293,6 +293,14 @@ float AS_MISSILE    = 4.000;
 .float walkframe;
 .float attack_finished;
 .float pain_finished;
+
+// Reaction time simulation
+.entity pending_enemy;     // Enemy spotted, awaiting reaction
+.float reaction_time;      // When pending_enemy was first seen
+float () Bot_CheckReaction; // Forward declaration
+
+// Knockback physics
+.float knockback_time;     // When entity last received knockback
 .float invincible_finished;
 .float invisible_finished;
 .float super_damage_finished;

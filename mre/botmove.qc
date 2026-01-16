@@ -25,6 +25,15 @@ float (float s_yaw, float s_dist) botwalkmove = {
 
    }
 
+   // FIX: Respect knockback physics
+   // If bot recently received knockback, don't override velocity for 0.3s
+   // This allows rockets/explosions to push bots properly
+   if ( (time < (self.knockback_time + 0.300)) ) {
+
+      return ( FALSE );
+
+   }
+
    // FIX: Smarter Lift Logic - wait on platforms instead of walking off
    // If we are ON a plat, wait for it to move us
    if ( (self.flags & FL_ONGROUND) ) {

@@ -2,6 +2,14 @@
 
 ## Unreleased
 - Clean baseline restored in `mre/`.
+- Added: Reaction time simulation (`bot_ai.qc`, `botgoal.qc`). Bots now have a
+  skill-based delay before engaging newly-spotted enemies. Skill 0 = 200ms delay,
+  Skill 3 = 50ms, Skill 4+ = instant. Makes low-skill bots feel more human-like
+  when surprised.
+- Fixed: Bots not pushed by rockets/explosions (`botmove.qc`, `combat.qc`). The
+  bot movement code was overwriting knockback velocity every frame. Added
+  `knockback_time` tracking so bots respect knockback physics for 0.3s after
+  being hit.
 - Community issue list in `mre/COMMUNITY_ISSUES.md`.
 - Fixed: Edict overflow crash in single player (`botroute.qc`). The bot's dynamic
   waypoint system (NUMPATHS) was capped at 140, which works in deathmatch but

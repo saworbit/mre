@@ -24,11 +24,29 @@ Arguments: `[maxplayers] [map]` (defaults: 8, dm4)
 - `impulse 102` - Remove a bot
 - `skill 0-10` - Set bot difficulty (0=easy, 3=nightmare, 4+=god mode)
 
-## Testing Checklist
+## Testing
 
-Run through these scenarios to verify fixes:
+### Automated Stability Tests (Recommended)
 
-### Stability (Critical)
+Run before every release to catch regressions:
+
+```powershell
+# From repo root
+.\ci\test_stability.bat          # Full tests (~4 min)
+.\ci\test_stability.bat --quick  # Quick tests (~2 min)
+```
+
+Tests automatically check for:
+- Edict overflow (SP crash)
+- Runaway loops (MP lockup)
+- Route recursion hangs
+- Scoreboard overflow crash
+
+### Manual Testing Checklist
+
+For visual/behavioral verification:
+
+#### Stability (Automated above, but verify visually if needed)
 - [ ] **SP Crash**: Load `e1m1` in singleplayer, add 2 bots, play 5+ minutes
 - [ ] **MP Lockup**: Host 8-bot DM on `dm4`, play 10+ minutes
 - [ ] **Scoreboard Overflow**: Try adding bots beyond maxplayers limit
@@ -43,6 +61,8 @@ Run through these scenarios to verify fixes:
 
 ### Combat Fairness
 - [ ] **Aim Jitter**: Skill 0 bots miss noticeably (~25° error)
+- [ ] **Reaction Time**: Skill 0 bots have ~200ms delay before engaging (surprise attacks work)
+- [ ] **Knockback**: Bots get pushed by rockets/explosions (not rooted in place)
 - [ ] **No Vacuum Pickup**: Items don't vanish until bot reaches them
 - [ ] **Target Selection**: Bots fight each other, not just humans
 - [ ] **Safe Explosives**: Bots switch weapons at close range (<150 units)

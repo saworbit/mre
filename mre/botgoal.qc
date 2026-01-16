@@ -38,6 +38,14 @@ void (float dist) ai_botseek = {
    local float oldrng;
    local float stuck_dist;
 
+   // Check if pending enemy reaction time has elapsed
+   if ( Bot_CheckReaction () ) {
+
+      aibot_setupchase ();
+      return ;
+
+   }
+
    if ( self.enemy ) {
 
       aibot_setupchase ();

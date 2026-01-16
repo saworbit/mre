@@ -133,6 +133,7 @@ void (entity targ, entity inflictor, entity attacker, float damage) T_Damage = {
       dir = (targ.origin - ((inflictor.absmin + inflictor.absmax) * 0.500));
       dir = normalize (dir);
       targ.velocity = (targ.velocity + ((dir * damage) * FL_CLIENT));
+      targ.knockback_time = time;  // Track when knockback was applied
 
    }
    if ( (targ.flags & FL_GODMODE) ) {

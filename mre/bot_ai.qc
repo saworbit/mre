@@ -209,6 +209,50 @@ void () BotHuntTarget = {
    }
 
 };
+
+// Check if pending enemy reaction time has elapsed
+// Returns TRUE if bot should now engage, FALSE otherwise
+float () Bot_CheckReaction = {
+
+   local float delay;
+
+   if ( !self.pending_enemy ) {
+
+      return ( FALSE );
+
+   }
+
+   // Clear if target died or disappeared
+   if ( (self.pending_enemy.health <= FALSE) ) {
+
+      self.pending_enemy = world;
+      return ( FALSE );
+
+   }
+
+   // Calculate skill-based delay (200ms at skill 0, 0ms at skill 4+)
+   delay = (0.200 - (self.skil * 0.050));
+   if ( (delay < FALSE) ) {
+
+      delay = FALSE;
+
+   }
+
+   // Check if reaction time has passed
+   if ( (time >= (self.reaction_time + delay)) ) {
+
+      // Promote pending to active enemy
+      self.enemy = self.pending_enemy;
+      self.pending_enemy = world;
+      BotHuntTarget ();
+      return ( TRUE );
+
+   }
+
+   return ( FALSE );
+
+};
+
 float () BotFoundTarget = {
 
    if ( (self.enemy == world) ) {
@@ -250,8 +294,21 @@ float () BotFoundTarget = {
       return ( FALSE );
 
    }
-   BotHuntTarget ();
-   return ( TRUE );
+
+   // High-skill bots (4+) react instantly
+   if ( (self.skil >= 4.000) ) {
+
+      BotHuntTarget ();
+      return ( TRUE );
+
+   }
+
+   // Lower skill bots: delay reaction time
+   // Store enemy as pending, will promote after delay elapses
+   self.pending_enemy = self.enemy;
+   self.reaction_time = time;
+   self.enemy = world;
+   return ( FALSE );
 
 };
 
