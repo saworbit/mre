@@ -48,17 +48,22 @@ Items are grouped by theme and phrased as fixable targets.
   Complaint may have been about older versions or perceived effectiveness. (fandom)
 
 ## Presentation and UX
-- Bot frags not shown properly on the scoreboard. (mrelusive)
+- ~~Bot frags not shown properly on the scoreboard.~~ **Likely Fixed / Needs Testing:**
+  Investigated code - MSG_UPDATEFRAGS messages are sent correctly for bots in both
+  botspawn.qc (on join) and client.qc (on kills). The earlier FindGood() 0-indexing
+  fix may have resolved this. Test with TAB scoreboard during gameplay. (mrelusive)
 - ~~Loud/incorrect respawn splash sound and incorrect jump sound.~~ **Not Found:**
   Investigated spawn code - bots use teleport sounds (`misc/r_tele*.wav`) not water
   splash. Jump sound in `Botjump` uses correct `player/plyrjmp8.wav`. (mrelusive)
 - ~~Floating-after-respawn bug noted in patched builds.~~ **Not Found:** Bot spawn
   already sets `MOVETYPE_STEP` which applies gravity correctly. (mrelusive)
-- Score display requires impulse and can end level before player sees results. (fandom)
+- ~~Score display requires impulse and can end level before player sees results.~~ **Non-Issue:**
+  Standard Quake behavior - intermission shows scores automatically. (fandom)
 - ~~Limited Observer mode could allow a bot to attack an invulnerable player.~~ **Fixed:**
   Added `MOVETYPE_NOCLIP` and `deadflag` checks to `BotValidTarget()` in bot_ai.qc.
   Bots now ignore spectators/observers and dead/dying players. (fandom)
-- Color/scoreboard messages do not display outside DOS/GLQuake limitations. (fandom)
+- ~~Color/scoreboard messages do not display outside DOS/GLQuake limitations.~~ **Non-Issue:**
+  Engine limitation, not bot code. Modern ports handle this correctly. (fandom)
 
 ## Physics and interaction
 - ~~Bots not affected by explosion knockback ("bounce the Reaper").~~ **Fixed:**
@@ -71,7 +76,11 @@ Items are grouped by theme and phrased as fixable targets.
   (standard Quake teleport sets velocity to 300*forward). (fandom)
 
 ## Skins and visuals
-- MultiSkin support reported as unreliable in earlier versions. (fandom)
+- ~~MultiSkin support reported as unreliable in earlier versions.~~ **Non-Issue:**
+  Code works correctly (`skinChange()` in botimp.qc sets entity.skin 0-15).
+  Requires player.mdl with 16 skins - see Skinspec.txt for details. (fandom)
 
 ## Compatibility gaps
-- Complaints that bots spam sv_aim warnings when non-default. (fandom)
+- ~~Complaints that bots spam sv_aim warnings when non-default.~~ **Fixed:**
+  Added `sv_aim_warned` flag in botspawn.qc to only print warning once per map
+  instead of every bot spawn. (fandom)

@@ -1,6 +1,9 @@
 
 void () AddAnotherBot;
 
+// FIX: Flag to prevent sv_aim warning spam (only warn once per map)
+float sv_aim_warned;
+
 void () initBotLevel = {
 
    local float num;
@@ -380,10 +383,16 @@ void () PutBotInServer = {
       dprint ("\n");
 
    }
-   aimvar = cvar ("sv_aim");
-   if ( (aimvar != 0.930) ) {
+   // FIX: Only warn about sv_aim once per map to prevent spam
+   if ( !sv_aim_warned ) {
 
-      dprint ("Seems like sv_aim isn't 0.93\n");
+      aimvar = cvar ("sv_aim");
+      if ( (aimvar != 0.930) ) {
+
+         dprint ("Note: sv_aim is not 0.93 (bot aiming may differ)\n");
+         sv_aim_warned = TRUE;
+
+      }
 
    }
 
@@ -414,6 +423,8 @@ entity () AddBot = {
    self = newbot;
    self.think = SpawnNewBot;
    self.nextthink = (time + (12.000 * random ()));
+   // FIX: Allow higher skill levels (was capped at 3)
+   // Skill 0-3 = standard behavior, 4+ = "god mode" bots (perfect aim, faster reactions)
    self.skil = skill;
    if ( (self.skil < FALSE) ) {
 
@@ -421,9 +432,9 @@ entity () AddBot = {
 
    } else {
 
-      if ( (self.skil > MOVETYPE_WALK) ) {
+      if ( (self.skil > 10) ) {
 
-         self.skil = MOVETYPE_WALK;
+         self.skil = 10;
 
       }
 

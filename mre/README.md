@@ -19,9 +19,10 @@ launch_reapbot_v2.bat 8 dm4
 Arguments: `[maxplayers] [map]` (defaults: 8, dm4)
 
 ### In-Game Commands
-- `impulse 100` - Add a bot
+- `impulse 100` - Add a bot (standard convention)
+- `impulse 205` - Add a bot (original Reaper command)
 - `impulse 102` - Remove a bot
-- `skill 0-3` - Set bot difficulty (0=easy, 3=nightmare)
+- `skill 0-10` - Set bot difficulty (0=easy, 3=nightmare, 4+=god mode)
 
 ## Testing Checklist
 

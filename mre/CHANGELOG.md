@@ -80,6 +80,16 @@
 - Fixed: Backpacks spawning in unreachable locations (`items.qc`). Added
   `CONTENT_SOLID`/`CONTENT_SKY` check in `DropBackpack()`. If spawn position is
   inside a wall or void, tries player origin; if that fails, skips backpack entirely.
+- Fixed: sv_aim warning spam (`botspawn.qc`). Added `sv_aim_warned` flag to only
+  print the non-default sv_aim warning once per map instead of every bot spawn.
+- Feature: Unlocked high skill levels (`botspawn.qc`, `botscore.qc`). Skill cap
+  increased from 3 to 10. Skill 4+ = "god mode" bots with perfect aim and faster
+  reactions. Use `skill 4` to `skill 10` for increasingly deadly opponents.
+- Feature: Added impulse 100 quick-add bot (`botimp.qc`). Standard convention from
+  Frogbot and other popular mods. Type `impulse 100` in console to add one bot.
+- Non-Issue: Score display requires impulse - standard Quake intermission behavior.
+- Non-Issue: Scoreboard colors outside DOS/GLQuake - engine limitation, not bot code.
+- Non-Issue: MultiSkin unreliable - code works, requires player.mdl with 16 skins.
 - Investigated: "Respawn splash sound" complaint. Spawn uses teleport sounds
   (`misc/r_tele*.wav`) not water splash. Jump sound is correct (`player/plyrjmp8.wav`).
   Marked as "Not Found" in COMMUNITY_ISSUES.md.

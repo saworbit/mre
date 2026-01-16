@@ -25,6 +25,9 @@
 - Fixed: Bots attacking observers/spectators (added MOVETYPE_NOCLIP and deadflag checks).
 - Fixed: Bots not affected by explosion knockback (velocity preservation when airborne).
 - Fixed: Backpacks spawning in unreachable locations (CONTENT_SOLID/SKY check).
+- Fixed: sv_aim warning spam (one-time flag per map).
+- Feature: Unlocked high skill levels (skill 0-10, was 0-3).
+- Feature: Added impulse 100 quick-add bot (standard convention).
 - Investigated: "Respawn splash sound" (not found - spawn uses correct teleport sounds).
 - Investigated: "Floating after respawn" (not found - spawn already uses MOVETYPE_STEP).
 - Updated development and launch docs for the `mre/` layout.

@@ -271,7 +271,12 @@ void () botRestrictedCommand = {
 
 void () botImpulseCommand = {
 
-   if ( (self.impulse == 200.000) ) {
+   // FIX: impulse 100 = quick add bot (standard convention from Frogbot, etc.)
+   if ( (self.impulse == 100) ) {
+
+      AddAnotherBot ();
+
+   } else if ( (self.impulse == 200.000) ) {
 
       skinChange (self,(self.skin + TRUE));
 

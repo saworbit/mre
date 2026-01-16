@@ -42,9 +42,10 @@ void (entity killer, entity killed) countkill = {
          if ( (killed.classname == "dmbot") ) {
 
             killed.skil = (killed.skil + (adj * random ()));
-            if ( (killed.skil > MOVETYPE_WALK) ) {
+            // FIX: Allow skill to increase beyond 3 (was capped at MOVETYPE_WALK)
+            if ( (killed.skil > 10) ) {
 
-               killed.skil = MOVETYPE_WALK;
+               killed.skil = 10;
 
             }
 
