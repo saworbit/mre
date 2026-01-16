@@ -66,6 +66,16 @@ void () t_botmovetarget = {
       }
       if ( (self.goalentity.classname != "func_button") ) {
 
+         // FIX: Vacuum prevention - only complete goal if bot is actually close to item
+         // Without this check, bot could "reach" goal while still far from the item
+         // due to BotTarget trigger size, causing "vacuum pickup" appearance
+         if ( (vlen (other.origin - self.goalentity.origin) > 48.000) ) {
+
+            // Not close enough yet - keep moving toward item
+            return ;
+
+         }
+
          if ( (other.lefty & GETGOODY) ) {
 
             other.goody_time = time;

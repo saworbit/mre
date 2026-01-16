@@ -337,83 +337,154 @@ float () BotfindBot = {
    return ( FALSE );
 
 };
-float /* Warning: Could not determine return type */ () BotFindTarget = {
 
-   local entity client;
-   local float len;
-   local float bw;
+// FIX: Helper function to validate if a target is attackable
+// Encapsulates all the checks from original BotFindTarget
+float (entity targ) BotValidTarget = {
 
-   client = checkclient ();
-   if ( !client ) {
-
-      return ( BotfindBot () );
-
-   }
-   if ( (client.classname == "peeper") ) {
-
-      return ( BotfindBot () );
-
-   }
-   if ( (client == self.enemy) ) {
+   // Can't target self
+   if ( targ == self ) {
 
       return ( FALSE );
 
    }
+
+   // Can't target already-targeted enemy (prevents switching)
+   if ( targ == self.enemy ) {
+
+      return ( FALSE );
+
+   }
+
+   // Skip observer/peeper entities
+   if ( targ.classname == "peeper" ) {
+
+      return ( FALSE );
+
+   }
+
+   // Skip dead targets
+   if ( targ.health <= FALSE ) {
+
+      return ( FALSE );
+
+   }
+
+   // Teamplay - skip teammates
    if ( teamplay ) {
 
-      if ( (self.team == client.team) ) {
-
-         return ( BotfindBot () );
-
-      }
-
-   }
-   if ( (client.flags & FL_NOTARGET) ) {
-
-      return ( BotfindBot () );
-
-   }
-   if ( !enemyvisible (client) ) {
-
-      return ( BotfindBot () );
-
-   }
-   if ( !infrontofbot (client) ) {
-
-      if ( !hearnoise (client) ) {
-
-         return ( BotfindBot () );
-
-      }
-
-   }
-   if ( ((self.origin_z > (client.origin_z + 120.000)) || ((self.origin_z + 120.000) < client.origin_z)) ) {
-
-      self.enemy = client;
-      if ( RunAway () ) {
-
-         self.enemy = world;
-         return ( BotfindBot () );
-
-      }
-
-   }
-   if ( (client.items & IT_INVISIBILITY) ) {
-
-      return ( BotfindBot () );
-
-   }
-   if ( (self.skil < TRUE) ) {
-
-      len = (random () * MUST_HAVE);
-      if ( (len > 25.000) ) {
+      if ( self.team == targ.team ) {
 
          return ( FALSE );
 
       }
 
    }
-   self.enemy = client;
+
+   // Skip notarget flagged entities
+   if ( targ.flags & FL_NOTARGET ) {
+
+      return ( FALSE );
+
+   }
+
+   // Must be visible
+   if ( !enemyvisible (targ) ) {
+
+      return ( FALSE );
+
+   }
+
+   // Must be in front OR audible
+   if ( !infrontofbot (targ) ) {
+
+      if ( !hearnoise (targ) ) {
+
+         return ( FALSE );
+
+      }
+
+   }
+
+   // Skip invisible enemies (Ring of Shadows)
+   if ( targ.items & IT_INVISIBILITY ) {
+
+      return ( FALSE );
+
+   }
+
+   // Low skill bots sometimes fail to notice targets
+   if ( self.skil < TRUE ) {
+
+      if ( (random () * MUST_HAVE) > 25.000 ) {
+
+         return ( FALSE );
+
+      }
+
+   }
+
+   return ( TRUE );
+
+};
+
+// FIX: Rewritten to iterate ALL targets and pick closest, preventing "gang up on player" bias
+// Previously used checkclient() which always returns human players first due to entity slot order
+float /* Warning: Could not determine return type */ () BotFindTarget = {
+
+   local entity head;
+   local entity best;
+   local float dist;
+   local float best_dist;
+
+   best = world;
+   best_dist = 100000;
+
+   // Search through human players first
+   head = find (world, classname, "player");
+   while ( head ) {
+
+      if ( BotValidTarget (head) ) {
+
+         dist = vlen (head.origin - self.origin);
+         if ( dist < best_dist ) {
+
+            best_dist = dist;
+            best = head;
+
+         }
+
+      }
+      head = find (head, classname, "player");
+
+   }
+
+   // Search through other bots (dmbot)
+   head = find (world, classname, "dmbot");
+   while ( head ) {
+
+      if ( BotValidTarget (head) ) {
+
+         dist = vlen (head.origin - self.origin);
+         if ( dist < best_dist ) {
+
+            best_dist = dist;
+            best = head;
+
+         }
+
+      }
+      head = find (head, classname, "dmbot");
+
+   }
+
+   if ( best == world ) {
+
+      return ( FALSE );
+
+   }
+
+   self.enemy = best;
    return ( BotFoundTarget () );
 
 };

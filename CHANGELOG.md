@@ -17,6 +17,11 @@
 - Fixed: Bots walking into lava/slime (hazard avoidance with powerup awareness).
 - Fixed: Bots walking off lifts mid-ride (platform state detection).
 - Fixed: Bots stuck at closed doors (trigger door and back up to let it open).
+- Fixed: Bots ganging up on players (rewrote target selection to pick closest enemy).
+- Fixed: "Vacuum pickup" where items vanished before bot reached them (added distance check).
+- Investigated: "Extra SNG ammo" complaint (not found in baseline - bots use same ammo as players).
+- Investigated: "Firing faster" complaint (not found - bots use identical attack timings as players).
+- Fixed: Low-skill bots felt like cheaters (increased aim jitter from ~10° to ~25° max at skill 0).
 - Updated development and launch docs for the `mre/` layout.
 - CI now builds from `mre/` via `ci/build_mre.ps1`.
 - Archived legacy docs/tools/launch assets and old logs under `archive/legacy/clean_slate/`.

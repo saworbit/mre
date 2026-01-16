@@ -48,6 +48,28 @@
 - Fixed: Bots stuck at closed doors (`botmove.qc`). When walkmove fails, traces
   forward to detect func_door entities. If found, triggers the door's use function
   and backs up to let it open.
+- Fixed: Bots ganging up on human players (`bot_ai.qc`). Rewrote `BotFindTarget`
+  to iterate through ALL potential targets (both "player" and "dmbot" entities)
+  and pick the closest visible one. Previously used `checkclient()` which always
+  returned human players first due to entity slot ordering (humans occupy slots
+  1-16 before bots). Added `BotValidTarget` helper function for target validation.
+- Fixed: "Vacuum pickup" appearance (`botsignl.qc`). Added 48-unit distance check
+  in `t_botmovetarget` before completing item goals. Previously the BotTarget
+  trigger could fire when bot was still far from the actual item, making items
+  appear to vanish before the bot reached them.
+- Investigated: "Extra SNG ammo" complaint. Searched all weapon pickup, spawn, and
+  firing code - no bot-specific ammo bonus exists in this baseline. Bots use
+  `SetNewParms()` like players and consume 2 nails/shot via `W_FireSuperSpikes`.
+  Marked as "Not Found in Baseline" in COMMUNITY_ISSUES.md.
+- Investigated: "Firing faster than humanly possible" complaint. Compared all
+  attack_finished timings between W_BotAttack (`botfight.qc`) and W_Attack
+  (`weapons.qc`). Bots use identical delays (0.5s SG, 0.7s SSG, 0.6s GL, 0.8s RL,
+  0.1s loop for nails/LG). Low-skill bots add `addt` delay making them SLOWER.
+  Marked as "Not Found" in COMMUNITY_ISSUES.md.
+- Fixed: Low-skill bots felt like cheaters with near-perfect aim (`botfight.qc`).
+  Increased skill-based aim jitter in `botaim()` from 0.06 to 0.15 per skill level
+  below 3 (max ~25° error at skill 0 vs ~10° before). Added Z-axis (vertical) aim
+  error at 0.10 per skill level. Skill 0 bots now miss noticeably more often.
 - Legacy changelog archived at `archive/legacy/v1/CHANGELOG_MRE.md`.
 - Development guide refreshed for the reboot.
 - Legacy docs/tools/launch artifacts archived at `archive/legacy/clean_slate/`.

@@ -168,10 +168,15 @@ vector () botaim = {
 
    }
    dir = normalize ((tg - self.origin));
+
+   // FIX: Skill-based Aim Jitter - low-skill bots should miss more
+   // Skill 3+ = perfect aim, Skill 0 = ~25 degree max error
+   // Previous code used 0.06 multiplier (~10 deg max) which was barely noticeable
    if ( (sk < MOVETYPE_WALK) ) {
 
-      dir = (dir + (((MOVETYPE_WALK - sk) * crandom ()) * '0.060 0.000 0.000'));
-      dir = (dir + (((MOVETYPE_WALK - sk) * crandom ()) * '0.000 0.060 0.000'));
+      dir = (dir + (((MOVETYPE_WALK - sk) * crandom ()) * '0.150 0.000 0.000'));
+      dir = (dir + (((MOVETYPE_WALK - sk) * crandom ()) * '0.000 0.150 0.000'));
+      dir = (dir + (((MOVETYPE_WALK - sk) * crandom ()) * '0.000 0.000 0.100'));
 
    }
    dir = normalize (dir);

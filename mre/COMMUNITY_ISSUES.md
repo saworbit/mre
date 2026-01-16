@@ -28,11 +28,24 @@ Items are grouped by theme and phrased as fixable targets.
   owns when ammo is sufficient. (fandom)
 
 ## Fairness and cheating perception
-- Community perception that bots "cheat" or act unnaturally at low skill. (b23_reaper.md)
-- "Disappearing/vanishing weapons" bug suggests pickups from too far away. (mrelusive)
-- Reports that bots grab weapons from far away and fire faster than a player. (fandom)
-- Reports that bots gang up on players instead of fighting each other. (fandom)
-- Extra SNG ammo to compensate for aiming is viewed as unfair. (fandom)
+- ~~Community perception that bots "cheat" or act unnaturally at low skill.~~ **Fixed:**
+  Increased skill-based aim jitter in `botaim()` from 0.06 to 0.15 per skill level
+  (max ~25° error at skill 0 vs ~10° before). Added vertical aim error. Low-skill bots
+  now miss noticeably more often. (b23_reaper.md)
+- ~~"Disappearing/vanishing weapons" bug suggests pickups from too far away.~~ **Fixed:**
+  Added 48-unit distance check in `t_botmovetarget` so bots must be close to items
+  before goal completion triggers. (mrelusive)
+- ~~Reports that bots grab weapons from far away and fire faster than a player.~~ **Fixed/Not Found:**
+  Grab-from-far fixed by 48-unit distance check. Fire rate investigated: bots use
+  identical attack_finished timings as players (0.5s shotgun, 0.7s SSG, 0.8s RL,
+  etc.) and low-skill bots add extra delay via `addt`. No faster firing found. (fandom)
+- ~~Reports that bots gang up on players instead of fighting each other.~~ **Fixed:**
+  Rewrote `BotFindTarget` to iterate all targets and pick closest, instead of using
+  `checkclient()` which returned humans first due to entity slot order. (fandom)
+- ~~Extra SNG ammo to compensate for aiming is viewed as unfair.~~ **Not Found:**
+  Searched all weapon pickup, spawn, and firing code - no bot-specific ammo bonus
+  exists in this baseline. Bots consume identical ammo as players (2 nails/shot SNG).
+  Complaint may have been about older versions or perceived effectiveness. (fandom)
 
 ## Presentation and UX
 - Bot frags not shown properly on the scoreboard. (mrelusive)

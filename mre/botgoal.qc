@@ -6,6 +6,7 @@ void () bot_chase;
 void () bot_trigger1;
 
 void () aibot_chooseGoal;
+float (entity targ) BotValidTarget;
 float /* Warning: Could not determine return type */ () BotFindTarget;
 
 void () shoottarget = {
