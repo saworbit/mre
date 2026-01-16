@@ -26,10 +26,13 @@ float (float s_yaw, float s_dist) botwalkmove = {
    }
 
    // FIX: Respect knockback physics
-   // If bot recently received knockback, don't override velocity for 0.3s
-   // This allows rockets/explosions to push bots properly
-   if ( (time < (self.knockback_time + 0.300)) ) {
+   // MOVETYPE_STEP ignores velocity for movement, so we must explicitly
+   // apply knockback displacement during the knockback window
+   if ( (time < (self.knockback_time + 0.400)) ) {
 
+      // Apply velocity-based movement manually (frametime ~= 0.1)
+      // Scale down to prevent excessive distance
+      setorigin (self, (self.origin + (self.velocity * 0.050)));
       return ( FALSE );
 
    }
@@ -862,8 +865,10 @@ void (float dist) strafemove = {
    local float move_yaw;
 
    // FIX: Respect knockback physics
-   if ( (time < (self.knockback_time + 0.300)) ) {
+   // MOVETYPE_STEP ignores velocity, so apply displacement manually
+   if ( (time < (self.knockback_time + 0.400)) ) {
 
+      setorigin (self, (self.origin + (self.velocity * 0.050)));
       return ;
 
    }
