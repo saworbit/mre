@@ -94,7 +94,28 @@ vector () botaim = {
          src = (src + '0.000 0.000 16.000');
 
       }
-      tg = self.enemy.origin;
+      // Object Permanence: aim at last seen position when not visible
+      if ( !enemyvisible (self.enemy) ) {
+
+         local float mem_dur;
+         mem_dur = (0.500 + (self.skil * 0.250));
+         if ( (mem_dur > 1.500) )
+            mem_dur = 1.500;
+         if ( (time < (self.last_seen_time + mem_dur)) ) {
+
+            tg = self.lastseenpos;
+
+         } else {
+
+            tg = self.enemy.origin;
+
+         }
+
+      } else {
+
+         tg = self.enemy.origin;
+
+      }
       traceline (src,tg,TRUE,self);
       if ( (trace_fraction != TRUE) ) {
 

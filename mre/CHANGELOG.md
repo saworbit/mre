@@ -6,6 +6,10 @@
   skill-based delay before engaging newly-spotted enemies. Skill 0 = 200ms delay,
   Skill 3 = 50ms, Skill 4+ = instant. Makes low-skill bots feel more human-like
   when surprised.
+- Added: Object permanence (`bot_ai.qc`, `botfight.qc`). When line of sight breaks,
+  bots continue firing at the last known position for a skill-based duration
+  (Skill 0 = 0.5s, Skill 4 = 1.5s). Prevents robotic instant-stop behavior when
+  target crosses a doorframe.
 - Fixed: Bots not pushed by rockets/explosions (`botmove.qc`, `combat.qc`). The
   bot movement code was overwriting knockback velocity every frame. Added
   `knockback_time` tracking so bots respect knockback physics for 0.3s after

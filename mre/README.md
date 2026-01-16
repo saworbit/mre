@@ -62,6 +62,7 @@ For visual/behavioral verification:
 ### Combat Fairness
 - [ ] **Aim Jitter**: Skill 0 bots miss noticeably (~25° error)
 - [ ] **Reaction Time**: Skill 0 bots have ~200ms delay before engaging (surprise attacks work)
+- [ ] **Object Permanence**: Bots continue firing at doorways briefly after you break LOS
 - [ ] **Knockback**: Bots get pushed by rockets/explosions (not rooted in place)
 - [ ] **No Vacuum Pickup**: Items don't vanish until bot reaches them
 - [ ] **Target Selection**: Bots fight each other, not just humans

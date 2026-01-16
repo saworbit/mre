@@ -301,6 +301,10 @@ float () Bot_CheckReaction; // Forward declaration
 
 // Knockback physics
 .float knockback_time;     // When entity last received knockback
+
+// Object permanence (target memory)
+.float last_seen_time;     // When enemy was last visible
+float (entity targ) enemyvisible; // Forward declaration
 .float invincible_finished;
 .float invisible_finished;
 .float super_damage_finished;

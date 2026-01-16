@@ -996,6 +996,9 @@ void (float dist) ai_botrun = {
       }
       setorigin (self.goalentity,self.enemy.origin);
       self.search_time = (time + MOVETYPE_PUSH);
+      // Object Permanence: track when enemy was last seen
+      self.last_seen_time = time;
+      self.lastseenpos = self.enemy.origin;
 
    }
    if ( (self.search_time < time) ) {
@@ -1034,6 +1037,21 @@ void (float dist) ai_botrun = {
    enemy_yaw = vectoyaw ((self.enemy.origin - self.origin));
    if ( !enemy_vis ) {
 
+      // Object Permanence: continue engaging last known position
+      local float memory_duration;
+      memory_duration = (0.500 + (self.skil * 0.250));
+      if ( (memory_duration > 1.500) )
+         memory_duration = 1.500;
+
+      if ( (time < (self.last_seen_time + memory_duration)) ) {
+
+         // Still in memory window - fire at last known position
+         CheckBotAttack ();
+         aibot_run_slide (dist,CANTURN);
+         return ;
+
+      }
+      // Memory expired - chase
       aibot_setupchase ();
       Botmovetogoal (dist);
       return ;
