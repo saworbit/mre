@@ -49,10 +49,15 @@ Items are grouped by theme and phrased as fixable targets.
 
 ## Presentation and UX
 - Bot frags not shown properly on the scoreboard. (mrelusive)
-- Loud/incorrect respawn splash sound and incorrect jump sound. (mrelusive)
-- Floating-after-respawn bug noted in patched builds. (mrelusive)
+- ~~Loud/incorrect respawn splash sound and incorrect jump sound.~~ **Not Found:**
+  Investigated spawn code - bots use teleport sounds (`misc/r_tele*.wav`) not water
+  splash. Jump sound in `Botjump` uses correct `player/plyrjmp8.wav`. (mrelusive)
+- ~~Floating-after-respawn bug noted in patched builds.~~ **Not Found:** Bot spawn
+  already sets `MOVETYPE_STEP` which applies gravity correctly. (mrelusive)
 - Score display requires impulse and can end level before player sees results. (fandom)
-- Limited Observer mode could allow a bot to attack an invulnerable player; fixed in later versions. (fandom)
+- ~~Limited Observer mode could allow a bot to attack an invulnerable player.~~ **Fixed:**
+  Added `MOVETYPE_NOCLIP` and `deadflag` checks to `BotValidTarget()` in bot_ai.qc.
+  Bots now ignore spectators/observers and dead/dying players. (fandom)
 - Color/scoreboard messages do not display outside DOS/GLQuake limitations. (fandom)
 
 ## Physics and interaction

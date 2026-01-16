@@ -47,6 +47,7 @@ Run through these scenarios to verify fixes:
 - [ ] **Safe Explosives**: Bots switch weapons at close range (<150 units)
 - [ ] **Water Safety**: Bots don't discharge lightning gun in water
 - [ ] **No Camping**: Bots don't linger at weapons they already own
+- [ ] **Observer Safety**: Bots ignore spectators (noclip players)
 
 ### Aiming
 - [ ] **Lead Capping**: Bots don't over-lead at long range

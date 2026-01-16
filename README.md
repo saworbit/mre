@@ -6,18 +6,20 @@ baseline that we can extend in small, testable steps.
 
 ## Status
 
-**18 community issues addressed** - see [CHANGELOG.md](CHANGELOG.md) for details.
+**21 community issues addressed** - see [CHANGELOG.md](CHANGELOG.md) for details.
 
 ### Fixed
 - Crashes: SP edict overflow, MP route recursion, scoreboard overflow
 - Movement: Jumpy strafing, water flashing, stuck in place, lift/door handling
 - Hazards: Lava/slime avoidance, explosive self-damage, LG water discharge
-- Fairness: Target selection, vacuum pickup, camping, skill-based aim jitter
+- Fairness: Target selection, vacuum pickup, camping, skill-based aim jitter, observer targeting
 - Aiming: Predictive lead capping
 
 ### Investigated (Not Found)
 - "Extra SNG ammo" - bots use same ammo as players
 - "Firing faster" - bots use identical attack timings
+- "Respawn splash sound" - spawn uses correct teleport sounds
+- "Floating after respawn" - spawn already uses MOVETYPE_STEP
 
 ## Build
 ```powershell

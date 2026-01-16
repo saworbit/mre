@@ -70,6 +70,15 @@
   Increased skill-based aim jitter in `botaim()` from 0.06 to 0.15 per skill level
   below 3 (max ~25° error at skill 0 vs ~10° before). Added Z-axis (vertical) aim
   error at 0.10 per skill level. Skill 0 bots now miss noticeably more often.
+- Fixed: Bots attacking observers/spectators (`bot_ai.qc`). Added `MOVETYPE_NOCLIP`
+  and `deadflag` checks to `BotValidTarget()`. Bots now ignore players in spectator
+  mode (noclip) and players who are dead/dying, preventing attacks on invulnerable
+  observers.
+- Investigated: "Respawn splash sound" complaint. Spawn uses teleport sounds
+  (`misc/r_tele*.wav`) not water splash. Jump sound is correct (`player/plyrjmp8.wav`).
+  Marked as "Not Found" in COMMUNITY_ISSUES.md.
+- Investigated: "Floating after respawn" complaint. Bot spawn already sets
+  `MOVETYPE_STEP` which applies gravity correctly. Marked as "Not Found".
 - Legacy changelog archived at `archive/legacy/v1/CHANGELOG_MRE.md`.
 - Development guide refreshed for the reboot.
 - Legacy docs/tools/launch artifacts archived at `archive/legacy/clean_slate/`.

@@ -22,6 +22,9 @@
 - Investigated: "Extra SNG ammo" complaint (not found in baseline - bots use same ammo as players).
 - Investigated: "Firing faster" complaint (not found - bots use identical attack timings as players).
 - Fixed: Low-skill bots felt like cheaters (increased aim jitter from ~10° to ~25° max at skill 0).
+- Fixed: Bots attacking observers/spectators (added MOVETYPE_NOCLIP and deadflag checks).
+- Investigated: "Respawn splash sound" (not found - spawn uses correct teleport sounds).
+- Investigated: "Floating after respawn" (not found - spawn already uses MOVETYPE_STEP).
 - Updated development and launch docs for the `mre/` layout.
 - CI now builds from `mre/` via `ci/build_mre.ps1`.
 - Archived legacy docs/tools/launch assets and old logs under `archive/legacy/clean_slate/`.

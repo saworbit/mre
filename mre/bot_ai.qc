@@ -363,6 +363,20 @@ float (entity targ) BotValidTarget = {
 
    }
 
+   // FIX: Skip observers in noclip mode (spectators)
+   if ( targ.movetype == MOVETYPE_NOCLIP ) {
+
+      return ( FALSE );
+
+   }
+
+   // FIX: Skip dead/dying players explicitly
+   if ( targ.deadflag != DEAD_NO ) {
+
+      return ( FALSE );
+
+   }
+
    // Skip dead targets
    if ( targ.health <= FALSE ) {
 
