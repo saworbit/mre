@@ -74,6 +74,12 @@
   and `deadflag` checks to `BotValidTarget()`. Bots now ignore players in spectator
   mode (noclip) and players who are dead/dying, preventing attacks on invulnerable
   observers.
+- Fixed: Bots not affected by explosion knockback (`botmove.qc`). Added check at
+  start of `botwalkmove()` to preserve velocity when bot is airborne with speed >350.
+  Bots can now be "bounced" by rockets and perform rocket jumps correctly.
+- Fixed: Backpacks spawning in unreachable locations (`items.qc`). Added
+  `CONTENT_SOLID`/`CONTENT_SKY` check in `DropBackpack()`. If spawn position is
+  inside a wall or void, tries player origin; if that fails, skips backpack entirely.
 - Investigated: "Respawn splash sound" complaint. Spawn uses teleport sounds
   (`misc/r_tele*.wav`) not water splash. Jump sound is correct (`player/plyrjmp8.wav`).
   Marked as "Not Found" in COMMUNITY_ISSUES.md.

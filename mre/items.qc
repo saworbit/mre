@@ -1464,14 +1464,30 @@ void () BackpackTouch = {
 void () DropBackpack = {
 
    local entity item;
+   local vector spawn_pos;
 
    if ( !(((self.ammo_shells + self.ammo_nails) + self.ammo_rockets) + self.ammo_cells) ) {
 
       return ;
 
    }
+
+   // FIX: Prevent backpacks spawning in unreachable locations (void/walls/sky)
+   spawn_pos = (self.origin - '0.000 0.000 24.000');
+   if ( (pointcontents(spawn_pos) == CONTENT_SOLID) || (pointcontents(spawn_pos) == CONTENT_SKY) ) {
+
+      // Try spawning at player origin instead
+      spawn_pos = self.origin;
+      if ( (pointcontents(spawn_pos) == CONTENT_SOLID) || (pointcontents(spawn_pos) == CONTENT_SKY) ) {
+
+         return;  // Player died in invalid location, skip backpack
+
+      }
+
+   }
+
    item = spawn ();
-   item.origin = (self.origin - '0.000 0.000 24.000');
+   item.origin = spawn_pos;
    item.classname = "Backpack";
    item.items = self.weapon;
    item.th_weight = backpackweight;

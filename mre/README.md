@@ -53,6 +53,10 @@ Run through these scenarios to verify fixes:
 - [ ] **Lead Capping**: Bots don't over-lead at long range
 - [ ] **Skill Scaling**: Higher skill = better aim (test skill 0 vs 3)
 
+### Physics
+- [ ] **Knockback**: Bots get pushed by rocket explosions ("bounce the Reaper")
+- [ ] **Backpacks**: Dropped backpacks don't appear inside walls/void
+
 ## Docs
 - `mre/COMMUNITY_ISSUES.md` - Issue tracker with fix status
 - `mre/SOURCES.md` - Research sources

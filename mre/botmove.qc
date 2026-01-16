@@ -11,6 +11,20 @@ float (float s_yaw, float s_dist) botwalkmove = {
 
    self.oldorigin = self.origin;
 
+   // FIX: Knockback / Rocket Jump Support
+   // If the bot is airborne with significant velocity (explosion knockback, rocket jump),
+   // do not override velocity with walking speed. Let physics take over.
+   // Threshold 350 is above normal run speed (~320) but catches rocket jumps (~600+)
+   if ( !(self.flags & FL_ONGROUND) ) {
+
+      if ( vlen(self.velocity) > 350 ) {
+
+         return ( FALSE );
+
+      }
+
+   }
+
    // FIX: Smarter Lift Logic - wait on platforms instead of walking off
    // If we are ON a plat, wait for it to move us
    if ( (self.flags & FL_ONGROUND) ) {

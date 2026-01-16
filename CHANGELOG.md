@@ -23,6 +23,8 @@
 - Investigated: "Firing faster" complaint (not found - bots use identical attack timings as players).
 - Fixed: Low-skill bots felt like cheaters (increased aim jitter from ~10° to ~25° max at skill 0).
 - Fixed: Bots attacking observers/spectators (added MOVETYPE_NOCLIP and deadflag checks).
+- Fixed: Bots not affected by explosion knockback (velocity preservation when airborne).
+- Fixed: Backpacks spawning in unreachable locations (CONTENT_SOLID/SKY check).
 - Investigated: "Respawn splash sound" (not found - spawn uses correct teleport sounds).
 - Investigated: "Floating after respawn" (not found - spawn already uses MOVETYPE_STEP).
 - Updated development and launch docs for the `mre/` layout.

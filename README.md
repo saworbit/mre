@@ -6,13 +6,14 @@ baseline that we can extend in small, testable steps.
 
 ## Status
 
-**21 community issues addressed** - see [CHANGELOG.md](CHANGELOG.md) for details.
+**23 community issues addressed** - see [CHANGELOG.md](CHANGELOG.md) for details.
 
 ### Fixed
 - Crashes: SP edict overflow, MP route recursion, scoreboard overflow
 - Movement: Jumpy strafing, water flashing, stuck in place, lift/door handling
 - Hazards: Lava/slime avoidance, explosive self-damage, LG water discharge
 - Fairness: Target selection, vacuum pickup, camping, skill-based aim jitter, observer targeting
+- Physics: Explosion knockback, backpack spawning
 - Aiming: Predictive lead capping
 
 ### Investigated (Not Found)

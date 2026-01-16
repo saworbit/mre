@@ -61,8 +61,14 @@ Items are grouped by theme and phrased as fixable targets.
 - Color/scoreboard messages do not display outside DOS/GLQuake limitations. (fandom)
 
 ## Physics and interaction
-- Bots not affected by explosion knockback ("bounce the Reaper"). (mrelusive)
-- Odd teleporting and items found in odd locations reported in 0.8/0.81 history. (fandom)
+- ~~Bots not affected by explosion knockback ("bounce the Reaper").~~ **Fixed:**
+  Added velocity preservation check in `botwalkmove()`. When bot is airborne with
+  speed >350 (knockback/rocket jump), movement code no longer overwrites velocity.
+  Bots can now be bounced by explosions. (mrelusive)
+- ~~Odd teleporting and items found in odd locations reported in 0.8/0.81 history.~~
+  **Partially Fixed:** Added `CONTENT_SOLID`/`CONTENT_SKY` check in `DropBackpack()`
+  to prevent backpacks spawning inside walls or void. Teleport behavior unchanged
+  (standard Quake teleport sets velocity to 300*forward). (fandom)
 
 ## Skins and visuals
 - MultiSkin support reported as unreliable in earlier versions. (fandom)
