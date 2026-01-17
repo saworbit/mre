@@ -142,10 +142,54 @@ BotFindTarget()               [bot_ai.qc]
 
 ## Call Graph: Movement (`botmove.qc`)
 
+### Sensor Fusion Steering System
+
+The bot uses vector-based steering instead of reactive collision handling.
+Three "whisker" rays detect walls and hazards, then force vectors are summed
+to produce smooth curves around obstacles.
+
+```
+BotSteer(ideal_yaw, speed_factor)      [botmove.qc:232]
+  │
+  ├─> makevectors(ideal_yaw)           [get forward/right vectors]
+  │
+  ├─> SENSOR 1: Center Whisker
+  │     ├─> traceline(forward * dist)
+  │     ├─> [if wall] += trace_plane_normal * 3.0
+  │     └─> [if hazard] += forward * -4.0 + jitter
+  │
+  ├─> SENSOR 2: Left Whisker (-45°)
+  │     ├─> traceline(forward-right * dist*0.8)
+  │     ├─> [if wall] += trace_plane_normal * 1.5
+  │     └─> [if hazard] += right * 2.0
+  │
+  ├─> SENSOR 3: Right Whisker (+45°)
+  │     ├─> traceline(forward+right * dist*0.8)
+  │     ├─> [if wall] += trace_plane_normal * 1.5
+  │     └─> [if hazard] += right * -2.0
+  │
+  └─> normalize(steer_dir) -> vectoyaw() -> return flow_yaw
+```
+
+```
+BotDetectHazard(spot)                  [botmove.qc:197]
+  │
+  ├─> traceline(spot, spot - '0 0 48') [look down 48 units]
+  │
+  ├─> [if trace_fraction == 1.0]       [cliff/void]
+  │     └─> return TRUE
+  │
+  ├─> [if CONTENT_LAVA or CONTENT_SLIME]
+  │     └─> return TRUE
+  │
+  └─> [if CONTENT_SKY]                 [falling out of map]
+        └─> return TRUE
+```
+
 ### Botmovetogoal (Primary Movement)
 
 ```
-Botmovetogoal(dist)                    [botmove.qc:1066]
+Botmovetogoal(dist)                    [botmove.qc:1304]
   │
   ├─> ChangeYaw()                      [turn toward goal]
   │
@@ -168,8 +212,25 @@ Botmovetogoal(dist)                    [botmove.qc:1066]
 ### Low-Level Movement
 
 ```
-botwalkmove(yaw, dist)                 [botmove.qc:6]
-  └─> walkmove(yaw, dist)              [engine builtin]
+botwalkmove(yaw, dist)                 [botmove.qc:304]
+  │
+  ├─> [pre-checks: bounce mode, airborne knockback, platform ride]
+  │
+  ├─> flow_yaw = BotSteer(yaw, 1.0)    [sensor fusion steering]
+  │
+  ├─> walkmove(flow_yaw, dist)         [engine builtin]
+  │
+  ├─> [if moved]
+  │     ├─> velocity matching          [client interpolation fix]
+  │     ├─> ground glue (velocity_z=-20) [anti-jitter on ramps]
+  │     └─> visual turn smoothing      [face into turns]
+  │
+  ├─> [if door hit]
+  │     ├─> BotSolveDoor()             [button puzzle solver]
+  │     └─> trace_ent.use()            [trigger door]
+  │
+  └─> [if stuck]
+        └─> Stuck Doctor: jump if clear above [velocity_z=270]
 
 Bot_tryjump()                          [botmove.qc]
   └─> Sets velocity.z for jump
@@ -277,4 +338,5 @@ While no redundant loops exist, these areas could be simplified:
 
 | Date | Change |
 |------|--------|
+| 2026-01-17 | Added sensor fusion steering system documentation |
 | 2026-01-16 | Initial architecture mapping for clean baseline |

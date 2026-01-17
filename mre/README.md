@@ -57,6 +57,8 @@ For visual/behavioral verification:
 - [ ] **Lift Riding**: Bots wait on platforms, don't walk off mid-ride
 - [ ] **Door Opening**: Bots trigger doors and wait for them to open
 - [ ] **Hazard Avoidance**: Bots refuse to walk into lava/slime
+- [ ] **Wall Flow**: Bots curve smoothly around corners (no stop-turn-go)
+- [ ] **Cliff Awareness**: Bots steer away from ledges before reaching them
 
 ### Combat Fairness
 - [ ] **Aim Jitter**: Skill 0 bots miss noticeably (~25° error)
@@ -86,6 +88,7 @@ For visual/behavioral verification:
 
 ## Test Maps
 - `dm4` - The Bad Place (standard DM, good for combat testing)
+- `dm3` - The Abandoned Base (tight corridors, good for wall-flow steering)
 - `dm6` - The Dark Zone (has water, good for water/flash tests)
 - `e1m1` - Slipgate Complex (SP map, good for edict limit testing)
 - `e1m5` - Gloom Keep (has lava, good for hazard avoidance)
