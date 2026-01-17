@@ -1007,7 +1007,49 @@ void (float dist) ai_botnailcharge = {
 };
 float (float minweight) aibot_checkforGoodies;
 
-void (float dist) ai_botrun = {
+void (float dist) ai_botretreat = {
+
+   local vector away_dir;
+   local float away_yaw;
+
+   if ( !self.enemy ) {
+
+      return ;
+
+   }
+   away_dir = (self.origin - self.enemy.origin);
+   away_yaw = vectoyaw (away_dir);
+   self.ideal_yaw = away_yaw;
+   ChangeYaw ();
+   if ( botwalkmove (self.ideal_yaw, dist) ) {
+
+      return ;
+
+   }
+   if ( botwalkmove ((away_yaw + 45.000), (dist * 0.700)) ) {
+
+      return ;
+
+   }
+   if ( botwalkmove ((away_yaw - 45.000), (dist * 0.700)) ) {
+
+      return ;
+
+   }
+   if ( botwalkmove ((away_yaw + 90.000), (dist * 0.500)) ) {
+
+      return ;
+
+   }
+   if ( botwalkmove ((away_yaw - 90.000), (dist * 0.500)) ) {
+
+      return ;
+
+   }
+
+};
+
+void (float dist) BotAI_Main = {
 
    local vector delta;
    local float axis;
@@ -1093,6 +1135,8 @@ void (float dist) ai_botrun = {
          return ;
 
       }
+      ai_botretreat (dist);
+      return ;
 
    }
    enemy_infront = infrontofbot (self.enemy);

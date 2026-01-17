@@ -72,7 +72,7 @@ void () bot_run = [ 6.000, bot_run ] {
 
    }
    self.walkframe = (self.walkframe + TRUE);
-   ai_botrun (BOTSPEED);
+   BotAI_Main (BOTSPEED);
    BotPostThink ();
 
 };
@@ -117,7 +117,7 @@ void () bot_shot2 = [ 114.000, bot_shot3 ] {
    self.weaponframe = FL_SWIM;
    if ( (self.skil > 0.900) ) {
 
-      ai_botcharge (BOTSPEED);
+      BotAI_Main (BOTSPEED);
 
    }
    BotPostThink ();
@@ -129,7 +129,7 @@ void () bot_shot3 = [ 115.000, bot_shot4 ] {
    self.weaponframe = MOVETYPE_WALK;
    if ( (self.skil > FALSE) ) {
 
-      ai_botcharge (BOTSPEED);
+      BotAI_Main (BOTSPEED);
 
    }
    BotPostThink ();
@@ -141,11 +141,11 @@ void () bot_shot4 = [ 116.000, bot_shot5 ] {
    self.weaponframe = MOVETYPE_STEP;
    if ( (self.skil > FALSE) ) {
 
-      ai_botcharge (BOTSPEED);
+      BotAI_Main (BOTSPEED);
 
    } else {
 
-      ai_botcharge ((BOTSPEED * 0.500));
+      BotAI_Main ((BOTSPEED * 0.500));
 
    }
    BotPostThink ();
@@ -155,7 +155,7 @@ void () bot_shot4 = [ 116.000, bot_shot5 ] {
 void () bot_shot5 = [ 117.000, bot_shot6 ] {
 
    self.weaponframe = MOVETYPE_FLY;
-   ai_botcharge (BOTSPEED);
+   BotAI_Main (BOTSPEED);
    BotPostThink ();
 
 };
@@ -163,7 +163,7 @@ void () bot_shot5 = [ 117.000, bot_shot6 ] {
 void () bot_shot6 = [ 118.000, bot_run ] {
 
    self.weaponframe = MOVETYPE_TOSS;
-   ai_botcharge (BOTSPEED);
+   BotAI_Main (BOTSPEED);
    BotPostThink ();
 
 };
@@ -224,7 +224,7 @@ void () bot_axe1 = [ 119.000, bot_axe2 ] {
 void () bot_axe2 = [ 120.000, bot_axe3 ] {
 
    self.weaponframe = FL_SWIM;
-   ai_botcharge (BOTSPEED);
+   BotAI_Main (BOTSPEED);
    BotPostThink ();
 
 };
@@ -240,7 +240,7 @@ void () bot_axe3 = [ 121.000, bot_axe4 ] {
 void () bot_axe4 = [ 122.000, bot_run ] {
 
    self.weaponframe = MOVETYPE_STEP;
-   ai_botcharge (BOTSPEED);
+   BotAI_Main (BOTSPEED);
    BotPostThink ();
 
 };
@@ -254,7 +254,7 @@ void () bot_axeb1 = [ 125.000, bot_axeb2 ] {
 void () bot_axeb2 = [ 126.000, bot_axeb3 ] {
 
    self.weaponframe = MOVETYPE_TOSS;
-   ai_botcharge (BOTSPEED);
+   BotAI_Main (BOTSPEED);
    BotPostThink ();
 
 };
@@ -263,7 +263,7 @@ void () bot_axeb3 = [ 127.000, bot_axeb4 ] {
 
    self.weaponframe = MOVETYPE_PUSH;
    W_FireAxe ();
-   ai_botcharge (BOTSPEED);
+   BotAI_Main (BOTSPEED);
    BotPostThink ();
 
 };
@@ -271,7 +271,7 @@ void () bot_axeb3 = [ 127.000, bot_axeb4 ] {
 void () bot_axeb4 = [ 128.000, bot_run ] {
 
    self.weaponframe = FL_CLIENT;
-   ai_botcharge (BOTSPEED);
+   BotAI_Main (BOTSPEED);
    BotPostThink ();
 
 };
@@ -285,7 +285,7 @@ void () bot_axec1 = [ 131.000, bot_axec2 ] {
 void () bot_axec2 = [ 132.000, bot_axec3 ] {
 
    self.weaponframe = FL_SWIM;
-   ai_botcharge (BOTSPEED);
+   BotAI_Main (BOTSPEED);
    BotPostThink ();
 
 };
@@ -294,7 +294,7 @@ void () bot_axec3 = [ 133.000, bot_axec4 ] {
 
    self.weaponframe = MOVETYPE_WALK;
    W_FireAxe ();
-   ai_botcharge (BOTSPEED);
+   BotAI_Main (BOTSPEED);
    BotPostThink ();
 
 };
@@ -302,7 +302,7 @@ void () bot_axec3 = [ 133.000, bot_axec4 ] {
 void () bot_axec4 = [ 134.000, bot_run ] {
 
    self.weaponframe = MOVETYPE_STEP;
-   ai_botcharge (BOTSPEED);
+   BotAI_Main (BOTSPEED);
    BotPostThink ();
 
 };
@@ -316,7 +316,7 @@ void () bot_axed1 = [ 137.000, bot_axed2 ] {
 void () bot_axed2 = [ 138.000, bot_axed3 ] {
 
    self.weaponframe = MOVETYPE_TOSS;
-   ai_botcharge (BOTSPEED);
+   BotAI_Main (BOTSPEED);
    BotPostThink ();
 
 };
@@ -325,7 +325,7 @@ void () bot_axed3 = [ 139.000, bot_axed4 ] {
 
    self.weaponframe = MOVETYPE_PUSH;
    W_FireAxe ();
-   ai_botcharge (BOTSPEED);
+   BotAI_Main (BOTSPEED);
    BotPostThink ();
 
 };
@@ -333,7 +333,7 @@ void () bot_axed3 = [ 139.000, bot_axed4 ] {
 void () bot_axed4 = [ 140.000, bot_run ] {
 
    self.weaponframe = FL_CLIENT;
-   ai_botcharge (BOTSPEED);
+   BotAI_Main (BOTSPEED);
    BotPostThink ();
 
 };
@@ -538,7 +538,7 @@ void () bot_pain2 = [ 36.000, bot_pain3 ] {
    r = ((MOVETYPE_STEP * random ()) + self.skil);
    if ( (r > FL_SWIM) ) {
 
-      ai_botrun (BOTSPEED);
+      BotAI_Main (BOTSPEED);
 
    } else {
 
@@ -553,7 +553,7 @@ void () bot_pain3 = [ 37.000, bot_pain4 ] {
 
    if ( (self.skil >= TRUE) ) {
 
-      ai_botrun (BOTSPEED);
+      BotAI_Main (BOTSPEED);
 
    } else {
 
@@ -568,7 +568,7 @@ void () bot_pain4 = [ 38.000, bot_pain5 ] {
 
    if ( (self.skil > FALSE) ) {
 
-      ai_botrun (BOTSPEED);
+      BotAI_Main (BOTSPEED);
 
    } else {
 
@@ -583,7 +583,7 @@ void () bot_pain5 = [ 39.000, bot_pain6 ] {
 
    if ( (self.skil > FL_SWIM) ) {
 
-      ai_botrun (BOTSPEED);
+      BotAI_Main (BOTSPEED);
 
    } else {
 
@@ -596,7 +596,7 @@ void () bot_pain5 = [ 39.000, bot_pain6 ] {
 
 void () bot_pain6 = [ 40.000, bot_run ] {
 
-   ai_botrun (BOTSPEED);
+   BotAI_Main (BOTSPEED);
    BotPostThink ();
 
 };
@@ -617,7 +617,7 @@ void () bot_axpain2 = [ 30.000, bot_axpain3 ] {
    r = ((MOVETYPE_STEP * random ()) + self.skil);
    if ( (r > FL_SWIM) ) {
 
-      ai_botrun (BOTSPEED);
+      BotAI_Main (BOTSPEED);
 
    } else {
 
@@ -632,7 +632,7 @@ void () bot_axpain3 = [ 31.000, bot_axpain4 ] {
 
    if ( (self.skil >= TRUE) ) {
 
-      ai_botrun (BOTSPEED);
+      BotAI_Main (BOTSPEED);
 
    }
    BotPostThink ();
@@ -648,14 +648,14 @@ void () bot_axpain4 = [ 32.000, bot_axpain5 ] {
 
 void () bot_axpain5 = [ 33.000, bot_axpain6 ] {
 
-   ai_botrun (BOTSPEED);
+   BotAI_Main (BOTSPEED);
    BotPostThink ();
 
 };
 
 void () bot_axpain6 = [ 34.000, bot_run ] {
 
-   ai_botrun (BOTSPEED);
+   BotAI_Main (BOTSPEED);
    BotPostThink ();
 
 };

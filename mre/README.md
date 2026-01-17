@@ -63,6 +63,7 @@ For visual/behavioral verification:
 - [ ] **Reaction Time**: Skill 0 bots have ~200ms delay before engaging (surprise attacks work)
 - [ ] **Object Permanence**: Bots continue firing at doorways briefly after you break LOS
 - [ ] **Knockback**: Bots get pushed by rockets/explosions (not rooted in place)
+- [ ] **Retreat**: Low-health bots without nearby goodies back off to break LOS
 - [ ] **No Vacuum Pickup**: Items don't vanish until bot reaches them
 - [ ] **Target Selection**: Bots fight each other, not just humans
 - [ ] **Safe Explosives**: Bots switch weapons at close range (<150 units)

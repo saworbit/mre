@@ -1,5 +1,5 @@
 
-void (float dist) ai_botrun;
+void (float dist) BotAI_Main;
 
 void () bot_chase;
 

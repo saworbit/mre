@@ -26,6 +26,8 @@
 - Fixed: Bots not affected by explosion knockback (velocity preservation when airborne).
 - Fixed: Bot knockback now uses bounce physics to avoid embedding; restores step mode when settled.
 - Improved: sv_aim warning now prints the current value and expected baseline.
+- Feature: Added tactical retreat fallback when running away and no goodies are found.
+- Refactor: Centralized run logic via `BotAI_Main` during shot/axe frames to reduce tunnel vision.
 - Fixed: Backpacks spawning in unreachable locations (CONTENT_SOLID/SKY check).
 - Fixed: sv_aim warning spam (one-time flag per map).
 - Feature: Unlocked high skill levels (skill 0-10, was 0-3).
