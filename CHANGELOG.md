@@ -3,6 +3,9 @@
 ## Unreleased
 - Rebooting Reaper Bot from a clean baseline.
 - Focusing first on community-reported issues.
+- Feature: Platform riding for func_train (DM2 lava fix - bots inherit platform velocity).
+- Feature: Platform wait logic (bots wait for approaching platforms over lava).
+- Feature: Intelligent button interaction (bots find and shoot/touch buttons to open doors).
 - Fixed: Single player crash to DOS caused by edict overflow (waypoint cap reduced to 50 in SP).
 - Fixed: Multiplayer lockups from exponential route cache recursion (added cycle detection).
 - Fixed: Potential hang from infinite jump simulation into void (added safety counter).

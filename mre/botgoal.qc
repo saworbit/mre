@@ -9,6 +9,9 @@ void () aibot_chooseGoal;
 float (entity targ) BotValidTarget;
 float /* Warning: Could not determine return type */ () BotFindTarget;
 
+// Forward declarations for button solving (defined in botmove.qc)
+void (float dist) BotHandleButton;
+
 void () shoottarget = {
 
    local vector dir;
@@ -56,6 +59,18 @@ void (float dist) ai_botseek = {
       self.lefty = (self.lefty | FAR_SEEK);
       return ;
 
+   }
+
+   // FIX: Handle button solving mode
+   if ( self.lefty & SOLVE_BUTTON ) {
+      BotHandleButton (dist);
+      return;
+   }
+
+   // FIX: Platform wait - if waiting for a platform, stay put
+   if ( self.platform_wait_time > time ) {
+      self.velocity = '0 0 0';
+      return;
    }
 
    // FIX: Detect if bot is stuck running in place

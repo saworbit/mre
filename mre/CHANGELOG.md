@@ -2,6 +2,21 @@
 
 ## Unreleased
 - Clean baseline restored in `mre/`.
+- Feature: Platform riding for func_train (`botmove.qc`). Bots now properly ride
+  horizontal moving platforms (like DM2 lava room) by inheriting platform velocity.
+  Added `BotCheckPlatformRide()` function that detects MOVETYPE_PUSH entities and
+  prevents sliding off while platforms are moving.
+- Feature: Platform wait logic (`botmove.qc`). When lava/slime is ahead, bots now
+  scan for approaching func_train entities and wait for them instead of refusing
+  to move. Uses `platform_wait_time` field for 3-second timeout.
+- Feature: Intelligent button interaction (`botmove.qc`, `botgoal.qc`). Bots can
+  now find and activate buttons that trigger blocked doors:
+  - `BotFindButton()` searches for func_button entities whose target matches the
+    door's targetname
+  - `BotSolveDoor()` sets up button as the new goal with SOLVE_BUTTON flag
+  - `BotHandleButton()` shoots buttons with health > 0 or walks to touch-triggered
+    buttons
+  - Integrates into door collision handling to detect doors needing external triggers
 - Added: Reaction time simulation (`bot_ai.qc`, `botgoal.qc`). Bots now have a
   skill-based delay before engaging newly-spotted enemies. Skill 0 = 200ms delay,
   Skill 3 = 50ms, Skill 4+ = instant. Makes low-skill bots feel more human-like

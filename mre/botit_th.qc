@@ -141,6 +141,7 @@ float RUNAWAY    = 256.000;
 float GETGOODY    = 512.000;
 float ONTRAIN    = 1024.000;
 float MULTIENEMY    = 2048.000;
+float SOLVE_BUTTON  = 4096.000;  // Button puzzle solving mode
 float AI_STATE_NONE    = 0.000;
 float AI_STATE_GOODY    = 1.000;
 float AI_STATE_RETREAT    = 2.000;

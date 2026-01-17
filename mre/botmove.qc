@@ -3,6 +3,192 @@
 // interpolation issues ("jumpy" strafing). Movement now happens in single
 // frames with velocity set for smooth client-side prediction.
 
+// Forward declarations for functions used before they're defined
+void (float dist) Botmovetogoal;
+void () ChangeYaw;
+float () FacingIdeal;
+void (float shotcount, vector dir, vector spread) FireBullets;
+
+// FIX: Platform riding - handles func_train (DM2 lava platforms) and func_plat
+// Returns TRUE if bot should wait/ride, FALSE to continue with normal movement
+float () BotCheckPlatformRide = {
+
+   local entity plat;
+
+   if ( !(self.flags & FL_ONGROUND) ) {
+      self.riding_platform = world;
+      return ( FALSE );
+   }
+
+   plat = self.groundentity;
+
+   // Check if standing on any moving platform (MOVETYPE_PUSH)
+   if ( plat.movetype != MOVETYPE_PUSH ) {
+      self.riding_platform = world;
+      return ( FALSE );
+   }
+
+   // func_train: horizontal moving platforms (DM2 lava room)
+   // Inherit platform velocity to prevent sliding off
+   if ( plat.classname == "train" ) {
+      self.velocity = plat.velocity;
+      self.riding_platform = plat;
+      // Stay on the platform - don't try to walk
+      return ( TRUE );
+   }
+
+   // func_plat: vertical lifts - wait for them to move us
+   if ( (plat.classname == "func_plat") || (plat.classname == "plat") ) {
+      // If the plat is moving UP or at TOP, wait for it
+      if ( (plat.state == STATE_UP) || (plat.state == STATE_TOP) ) {
+         self.velocity = '0 0 0';
+         return ( TRUE );
+      }
+      // If plat is at BOTTOM, wait for it to trigger and rise
+      if ( plat.state == STATE_BOTTOM ) {
+         self.velocity = '0 0 0';
+         return ( TRUE );
+      }
+   }
+
+   return ( FALSE );
+
+};
+
+// FIX: Find a button that triggers the given door
+// Returns button entity or world if none found
+entity (entity blocking_door) BotFindButton = {
+
+   local entity btn;
+   local entity best;
+   local float best_dist;
+   local float dist;
+
+   // Door must have a targetname to be triggered by a button
+   if ( !blocking_door.targetname ) {
+      return ( world );
+   }
+
+   best = world;
+   best_dist = 100000;
+
+   // Search for func_button entities whose target matches door's targetname
+   btn = find (world, classname, "func_button");
+   while ( btn ) {
+
+      if ( btn.target == blocking_door.targetname ) {
+
+         dist = vlen (btn.origin - self.origin);
+         if ( dist < best_dist ) {
+            best = btn;
+            best_dist = dist;
+         }
+
+      }
+      btn = find (btn, classname, "func_button");
+
+   }
+
+   return ( best );
+
+};
+
+// FIX: Attempt to solve a blocked door by finding and activating its button
+// Returns TRUE if bot is now handling the door, FALSE if no solution
+float (entity door) BotSolveDoor = {
+
+   local entity btn;
+   local vector btn_center;
+
+   // Only handle doors that need external triggers
+   if ( !door.targetname ) {
+      return ( FALSE );
+   }
+
+   // Find the button
+   btn = BotFindButton (door);
+
+   if ( !btn ) {
+      return ( FALSE );  // No button found
+   }
+
+   // Store state
+   self.blocking_door = door;
+   self.target_button = btn;
+
+   // Redirect goal to button location
+   if ( self.goalentity.classname == "BotTarget" ) {
+      btn_center = (btn.absmin + btn.absmax) * 0.5;
+      setorigin (self.goalentity, btn_center);
+      self.goalentity.goalentity = btn;
+   }
+
+   // Mark that we're solving a button puzzle
+   self.lefty = self.lefty | SOLVE_BUTTON;
+   self.search_time = time + 8;  // Give 8 seconds to solve
+
+   return ( TRUE );
+
+};
+
+// FIX: Handle button interaction each frame when in SOLVE_BUTTON mode
+// Called from ai_botseek when SOLVE_BUTTON flag is set
+void (float dist) BotHandleButton = {
+
+   local entity btn;
+   local float btn_dist;
+   local vector btn_center;
+
+   btn = self.target_button;
+
+   // Button gone or already pressed?
+   if ( !btn || btn.state != STATE_BOTTOM ) {
+      // Clear button solving mode
+      self.lefty = self.lefty - (self.lefty & SOLVE_BUTTON);
+      self.blocking_door = world;
+      self.target_button = world;
+      return;
+   }
+
+   btn_center = (btn.absmin + btn.absmax) * 0.5;
+   btn_dist = vlen (btn_center - self.origin);
+
+   // Shootable button (has health)
+   if ( btn.health > 0 ) {
+
+      if ( btn_dist < 500 ) {
+
+         // Close enough to shoot - face and fire
+         self.ideal_yaw = vectoyaw (btn_center - self.origin);
+         ChangeYaw ();
+
+         // Check if we're facing the button (within ~15 degrees)
+         if ( FacingIdeal () ) {
+            // Fire at the button using shotgun
+            local vector dir;
+            dir = normalize (btn_center - (self.origin + self.view_ofs));
+            FireBullets (4, dir, '0.04 0.04 0');
+            self.attack_finished = time + 0.5;
+         }
+
+      } else {
+
+         // Move closer to the button
+         Botmovetogoal (dist);
+
+      }
+      return;
+
+   }
+
+   // Touch-triggered button - walk to it
+   if ( btn_dist > 32 ) {
+      Botmovetogoal (dist);
+   }
+   // When close enough, the button's touch function will trigger it
+
+};
+
 float (float s_yaw, float s_dist) botwalkmove = {
 
    local vector move_dir;
@@ -31,30 +217,9 @@ float (float s_yaw, float s_dist) botwalkmove = {
 
    }
 
-   // FIX: Smarter Lift Logic - wait on platforms instead of walking off
-   // If we are ON a plat, wait for it to move us
-   if ( (self.flags & FL_ONGROUND) ) {
-
-      if ( (self.groundentity.classname == "func_plat") || (self.groundentity.classname == "plat") ) {
-
-         // If the plat is moving UP or at TOP, wait for it
-         if ( (self.groundentity.state == STATE_UP) || (self.groundentity.state == STATE_TOP) ) {
-
-            self.velocity = '0 0 0';
-            return ( TRUE );
-
-         }
-
-         // If plat is at BOTTOM, wait for it to trigger and rise
-         if ( (self.groundentity.state == STATE_BOTTOM) ) {
-
-            self.velocity = '0 0 0';
-            return ( TRUE );
-
-         }
-
-      }
-
+   // FIX: Platform riding - handles func_train (DM2) and func_plat
+   if ( BotCheckPlatformRide () ) {
+      return ( TRUE );
    }
 
    // FIX: Hazard Avoidance - check for lava/slime before moving
@@ -67,7 +232,7 @@ float (float s_yaw, float s_dist) botwalkmove = {
    contents = pointcontents (check_pos);
 
    // If the target is lethal, REFUSE TO MOVE
-   // CONTENT_LAVA = -3, CONTENT_SLIME = -4
+   // CONTENT_LAVA = -5, CONTENT_SLIME = -4
    if ( (contents == CONTENT_LAVA) || (contents == CONTENT_SLIME) ) {
 
       // Allow movement only if we have Pentagram (invulnerability) or Suit (slime only)
@@ -75,7 +240,39 @@ float (float s_yaw, float s_dist) botwalkmove = {
 
          if ( !((self.items & IT_SUIT) && (contents == CONTENT_SLIME)) ) {
 
-            return ( FALSE );
+            // FIX: Check for approaching platform before giving up
+            // Scan for func_train entities that might be on their way
+            local entity train;
+            local vector train_center;
+            local float train_dist;
+            local vector future_pos;
+
+            train = find (world, classname, "train");
+            while ( train ) {
+
+               train_center = (train.absmin + train.absmax) * 0.5;
+               train_dist = vlen (train_center - self.origin);
+
+               // Platform within 400 units and moving?
+               if ( (train_dist < 400) && (vlen (train.velocity) > 10) ) {
+
+                  // Project where platform will be in 2 seconds
+                  future_pos = train_center + (train.velocity * 2);
+
+                  // Is it coming toward us?
+                  if ( vlen (future_pos - self.origin) < train_dist ) {
+                     // Platform approaching - wait for it
+                     self.platform_wait_time = time + 3;
+                     self.velocity = '0 0 0';
+                     return ( TRUE );  // "Success" but don't actually move
+                  }
+
+               }
+               train = find (train, classname, "train");
+
+            }
+
+            return ( FALSE );  // No platform coming, refuse to move
 
          }
 
@@ -86,16 +283,31 @@ float (float s_yaw, float s_dist) botwalkmove = {
    // Standard walkmove for actual position change
    if ( !walkmove (s_yaw, s_dist) ) {
 
-      // FIX: Door Interaction - if we hit a door, trigger it and back up
+      // FIX: Door Interaction - if we hit a door, handle it appropriately
       traceline (self.origin, (self.origin + (v_forward * 32.000)), FALSE, self);
 
       if ( (trace_ent.classname == "func_door") || (trace_ent.classname == "func_door_rotating") ) {
 
-         // Trigger the door if it has a use function
+         // FIX: Check if door requires a button (has targetname on owner)
+         // Doors are often linked via owner field
+         local entity door_master;
+         door_master = trace_ent;
+         if ( trace_ent.owner ) {
+            door_master = trace_ent.owner;
+         }
+
+         if ( door_master.targetname ) {
+            // Door needs external trigger - try to find its button
+            if ( BotSolveDoor (door_master) ) {
+               // Successfully set up button goal - back up and go find button
+               self.velocity = (v_forward * -100.000);
+               return ( FALSE );
+            }
+         }
+
+         // Auto-open door - trigger it directly if it has a use function
          if ( trace_ent.use ) {
-
             trace_ent.use ();
-
          }
 
          // Back up slightly to let it open

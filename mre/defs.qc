@@ -306,6 +306,14 @@ float () Bot_CheckReaction; // Forward declaration
 .float knockback_time;     // When entity last received knockback
 .float knockback_log_time; // Debounce: when knockback was last logged (prevents spam)
 
+// Platform riding (DM2 lava fix)
+.entity riding_platform;     // Platform entity bot is riding (func_train)
+.float platform_wait_time;   // Time to wait for approaching platform
+
+// Button solving (door puzzles)
+.entity blocking_door;       // Door blocking our path
+.entity target_button;       // Button to press/shoot
+
 // Object permanence (target memory)
 .float last_seen_time;     // When enemy was last visible
 float (entity targ) enemyvisible; // Forward declaration
