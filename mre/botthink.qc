@@ -326,6 +326,11 @@ void () BotPostThink = {
 
    local float fraglimit;
 
+   // FIX: Early exit if dead - prevents any AI logic from overriding death animation
+   if ( self.deadflag != DEAD_NO ) {
+      return;
+   }
+
    if ( self.pather ) {
 
       if ( CheckDropPath () ) {
@@ -337,11 +342,6 @@ void () BotPostThink = {
    }
    self.movetarget.flags = self.flags;
    setorigin (self.movetarget,self.origin);
-   if ( (self.deadflag != DEAD_NO) ) {
-
-      return ;
-
-   }
    BotCheckPowerups ();
    BotWaterMove ();
    if ( (self.movetype == MOVETYPE_BOUNCE) ) {

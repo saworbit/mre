@@ -190,36 +190,25 @@ void (float dist) BotHandleButton = {
 };
 
 // =========================================================================
-// SENSOR FUSION STEERING SYSTEM
+// SENSOR FUSION STEERING (V2: With Step-Over & Liquid Handling)
 // =========================================================================
 
-// UTILITY: Detects "Death Drops" (Lava, Slime, or The Void)
-// Returns TRUE if the spot is dangerous.
-float (vector spot) BotDetectHazard = {
+// HELPER: Check if a "wall" is actually just a small step we can climb
+// Returns TRUE if the obstacle is low enough to step over (< 22 units)
+float (vector hit_pos, vector dir) BotIsStep = {
 
-   local vector down;
-   local float content;
+   local vector step_high;
 
-   // 1. Look down 48 units (simulates looking over a ledge)
-   down = spot;
-   down_z = down_z - 48;
+   // Look 22 units above the hit point (standard step is 18, we give clearance)
+   step_high = hit_pos;
+   step_high_z = hit_pos_z + 22;
 
-   traceline (spot, down, TRUE, self);
+   // Trace forward at knee height
+   traceline (step_high, step_high + (dir * 16), TRUE, self);
 
-   // 2. Check for Void (Sky/Empty space below)
-   // If trace_fraction is 1.0, we hit nothing. That's a cliff.
+   // If this upper trace is clear (1.0), it's a low obstacle (stairs/water lip).
+   // The walkmove function will naturally step up the ledge.
    if ( trace_fraction == 1.0 ) {
-      return TRUE;
-   }
-
-   // 3. Check for Liquid Hazards (Lava/Slime)
-   content = pointcontents (trace_endpos);
-   if ( (content == CONTENT_LAVA) || (content == CONTENT_SLIME) ) {
-      return TRUE;
-   }
-
-   // 4. Check for Sky brushes (falling out of map)
-   if ( content == CONTENT_SKY ) {
       return TRUE;
    }
 
@@ -227,80 +216,299 @@ float (vector spot) BotDetectHazard = {
 
 };
 
+// HAZARD CHECK: Returns TRUE if the spot is LETHAL (Lava/Slime/Void)
+// Explicitly ignores Water so bots can swim/wade through pools.
+float (vector spot) BotDetectHazard = {
+
+   local vector down;
+   local float content;
+
+   // 1. Check content at the spot itself first
+   content = pointcontents (spot);
+
+   // If we're looking at water, that's safe (bot can swim)
+   if ( content == CONTENT_WATER ) {
+      return FALSE;
+   }
+
+   // 2. Look down 256 units to find the floor (deeper than before for water pools)
+   down = spot;
+   down_z = down_z - 256;
+
+   traceline (spot, down, TRUE, self);
+
+   // 3. VOID CHECK: If we hit nothing in 256 units, it's a huge drop -> HAZARD
+   if ( trace_fraction == 1.0 ) {
+      return TRUE;
+   }
+
+   // 4. CONTENT CHECK at floor - LETHAL only
+   content = pointcontents (trace_endpos);
+
+   if ( content == CONTENT_LAVA ) {
+      return TRUE;
+   }
+   if ( content == CONTENT_SLIME ) {
+      return TRUE;
+   }
+   if ( content == CONTENT_SKY ) {
+      return TRUE;  // Don't fall out of the map
+   }
+
+   return FALSE;
+
+};
+
 // CORE: Vector-Based Steering (Sensor Fusion)
-// Instead of turning, we calculate forces:
-// Goal Force + Wall Repulsion + Hazard Repulsion = Final Flow Angle
+// Calculates forces: Goal Force + Wall Repulsion + Hazard Repulsion
+// Now ignores climbable steps so bots don't get stuck at water lips
 float (float ideal_yaw, float speed_factor) BotSteer = {
 
-   local vector steer_dir;  // The final accumulation vector
-   local vector feeler;     // Temp vector for whisker directions
+   local vector steer_dir;
+   local vector feeler;
    local vector start, end_pos;
    local vector fwd, rt;
    local float dist;
 
-   // Configuration
-   // Look further ahead when moving fast (Speed * 0.1s prediction)
+   // Look ahead based on speed
    dist = 50 + (speed_factor * 25);
    start = self.origin + '0 0 16';  // Waist height sensor origin
 
    // 1. PRIMARY FORCE: The Desire to reach the goal
-   // We start with the direction the AI *wants* to go.
    makevectors ('0 1 0' * ideal_yaw);
    fwd = v_forward;
    rt = v_right;
    steer_dir = fwd;
 
-   // 2. SENSOR 1: The "Center Whisker" (Head-on Collision)
+   // 2. SENSOR 1: Center Whisker (head-on collision)
    end_pos = start + (fwd * dist);
    traceline (start, end_pos, TRUE, self);
 
    if ( trace_fraction < 1.0 ) {
-      // HIT WALL: Add strong repulsion perpendicular to the wall
-      // trace_plane_normal is the vector pointing OUT of the wall.
-      // We multiply by 3.0 to overpower the "Desire" force.
-      steer_dir = steer_dir + (trace_plane_normal * 3.0);
+      // HIT OBJECT: Is it a wall or a step?
+      if ( !BotIsStep (trace_endpos, fwd) ) {
+         // Real wall -> Add strong repulsion perpendicular to wall
+         steer_dir = steer_dir + (trace_plane_normal * 3.0);
+      }
    } else if ( BotDetectHazard (end_pos) ) {
-      // HIT HAZARD: Cliff/Lava ahead!
-      // Apply "Braking Force" (Negative forward) + Random Jitter to break deadlock
+      // CLIFF/LAVA ahead -> Brake & Turn
       steer_dir = steer_dir + (fwd * -4.0);
       steer_dir_x = steer_dir_x + (random () * 2 - 1);  // Slight noise to help turn
    }
 
-   // 3. SENSOR 2: The "Left Whisker" (-45 degrees)
-   // Manually construct -45 deg vector relative to forward/right
+   // 3. SENSOR 2: Left Whisker (-45 degrees)
    feeler = (fwd * 0.7) - (rt * 0.7);
-   end_pos = start + (feeler * (dist * 0.8));  // Slightly shorter than center
+   end_pos = start + (feeler * (dist * 0.8));
 
    traceline (start, end_pos, TRUE, self);
    if ( trace_fraction < 1.0 ) {
-      // Hit Left Wall -> Push Right (along normal)
-      steer_dir = steer_dir + (trace_plane_normal * 1.5);
+      if ( !BotIsStep (trace_endpos, feeler) ) {
+         // Real wall -> Push right (along normal)
+         steer_dir = steer_dir + (trace_plane_normal * 1.5);
+      }
    } else if ( BotDetectHazard (end_pos) ) {
-      // Hazard Left -> Push Right hard
+      // Hazard left -> Push right hard
       steer_dir = steer_dir + (rt * 2.0);
    }
 
-   // 4. SENSOR 3: The "Right Whisker" (+45 degrees)
+   // 4. SENSOR 3: Right Whisker (+45 degrees)
    feeler = (fwd * 0.7) + (rt * 0.7);
    end_pos = start + (feeler * (dist * 0.8));
 
    traceline (start, end_pos, TRUE, self);
    if ( trace_fraction < 1.0 ) {
-      // Hit Right Wall -> Push Left (along normal)
-      steer_dir = steer_dir + (trace_plane_normal * 1.5);
+      if ( !BotIsStep (trace_endpos, feeler) ) {
+         // Real wall -> Push left (along normal)
+         steer_dir = steer_dir + (trace_plane_normal * 1.5);
+      }
    } else if ( BotDetectHazard (end_pos) ) {
-      // Hazard Right -> Push Left hard
+      // Hazard right -> Push left hard
       steer_dir = steer_dir + (rt * -2.0);
    }
 
    // 5. RESOLVE FORCES
-   // Normalize the result to get a clean direction
    steer_dir = normalize (steer_dir);
 
-   // Convert back to Yaw angle
    return vectoyaw (steer_dir);
 
 };
+
+// =========================================================================
+// HUMANIZED PHYSICS (Inspired by FrikBot & Frogbot)
+// =========================================================================
+
+// TURN SPEED LIMITING: Cap angular velocity at 180 deg/sec
+// Inspired by FrikBot's mouse velocity emulation
+// Makes bots feel more human - no instant 180° snaps
+float BOT_MAX_TURN_SPEED = 18;  // 180 deg/sec at 0.1s frame = 18 deg/frame
+
+float (float target_yaw) BotClampYaw = {
+
+   local float delta;
+   local float clamped_yaw;
+
+   // Calculate shortest angle difference
+   delta = target_yaw - self.last_yaw;
+
+   // Normalize to -180..180
+   while ( delta > 180 ) {
+      delta = delta - 360;
+   }
+   while ( delta < -180 ) {
+      delta = delta + 360;
+   }
+
+   // Clamp the delta to max turn speed
+   if ( delta > BOT_MAX_TURN_SPEED ) {
+      delta = BOT_MAX_TURN_SPEED;
+   } else if ( delta < (0 - BOT_MAX_TURN_SPEED) ) {
+      delta = 0 - BOT_MAX_TURN_SPEED;
+   }
+
+   // Calculate clamped yaw
+   clamped_yaw = self.last_yaw + delta;
+
+   // Normalize to 0..360
+   while ( clamped_yaw < 0 ) {
+      clamped_yaw = clamped_yaw + 360;
+   }
+   while ( clamped_yaw >= 360 ) {
+      clamped_yaw = clamped_yaw - 360;
+   }
+
+   // Store for next frame
+   self.last_yaw = clamped_yaw;
+
+   return clamped_yaw;
+
+};
+
+// EDGE FRICTION: Apply extra friction when approaching ledges
+// Inspired by FrikBot's dropoff friction doubling
+// Prevents bots from sliding off edges
+float BOT_EDGE_FRICTION = 0.7;  // Multiplier (1.0 = full speed, 0.5 = half)
+
+void () BotApplyEdgeFriction = {
+
+   local vector ahead;
+   local vector down;
+
+   // Only apply when on ground with horizontal velocity
+   if ( !(self.flags & FL_ONGROUND) ) {
+      return;
+   }
+
+   // Look 32 units ahead in movement direction
+   if ( vlen (self.velocity) < 50 ) {
+      return;  // Not moving fast enough to worry
+   }
+
+   ahead = self.origin + (normalize (self.velocity) * 32);
+   down = ahead;
+   down_z = down_z - 48;  // Look down for ground
+
+   traceline (ahead, down, TRUE, self);
+
+   // If no ground ahead, apply extra friction
+   if ( trace_fraction == 1.0 ) {
+      // Edge detected - slow down
+      self.velocity_x = self.velocity_x * BOT_EDGE_FRICTION;
+      self.velocity_y = self.velocity_y * BOT_EDGE_FRICTION;
+   }
+
+};
+
+// AIR STEERING: Limited air control during/after knockback
+// Inspired by Frogbot's AIR_ACCELERATION flag
+// Allows course corrections while airborne instead of being helpless
+float BOT_MAX_AIR_ACCEL = 30;  // Cap air acceleration at 30 units/frame (like Frogbot)
+
+void (float desired_yaw) BotAirSteer = {
+
+   local vector wish_dir;
+   local float current_speed;
+   local float accel;
+
+   // Only allow air steering during knockback recovery
+   if ( !BOT_AIR_CONTROL ) {
+      return;
+   }
+
+   // Must have active knockback
+   if ( self.knockback_time < time ) {
+      return;
+   }
+
+   // Must be airborne
+   if ( self.flags & FL_ONGROUND ) {
+      return;
+   }
+
+   // Calculate desired direction
+   makevectors ('0 1 0' * desired_yaw);
+   wish_dir = v_forward;
+
+   // Get current horizontal speed
+   current_speed = self.velocity_x * wish_dir_x + self.velocity_y * wish_dir_y;
+
+   // Calculate acceleration (capped)
+   accel = BOT_MAX_AIR_ACCEL;
+
+   // Don't exceed max air speed (~320 for Quake)
+   if ( (current_speed + accel) > 320 ) {
+      accel = 320 - current_speed;
+   }
+
+   if ( accel <= 0 ) {
+      return;
+   }
+
+   // Apply limited air acceleration
+   self.velocity_x = self.velocity_x + (wish_dir_x * accel);
+   self.velocity_y = self.velocity_y + (wish_dir_y * accel);
+
+};
+
+// VELOCITY DECOMPOSITION: Slide along walls when blocked
+// Inspired by Frogbot's obstruction handling
+// Separates velocity into normal (blocked) and tangent (preserved) components
+void () BotDecomposeVelocity = {
+
+   local vector hor_vel;
+   local vector hor_dir;
+   local vector parallel_vel;
+
+   // Need a known obstruction normal from previous collision
+   if ( self.obstruction_normal == '0 0 0' ) {
+      return;
+   }
+
+   // Get horizontal velocity
+   hor_vel = self.velocity;
+   hor_vel_z = 0;
+
+   if ( vlen (hor_vel) < 10 ) {
+      self.obstruction_normal = '0 0 0';
+      return;
+   }
+
+   // Project velocity onto wall plane (remove normal component)
+   // parallel = velocity - normal * (velocity dot normal)
+   hor_dir = normalize (hor_vel);
+   parallel_vel = hor_vel - (self.obstruction_normal * (hor_vel * self.obstruction_normal));
+
+   // Apply the sliding velocity
+   self.velocity_x = parallel_vel_x;
+   self.velocity_y = parallel_vel_y;
+
+   // Clear obstruction after processing
+   self.obstruction_normal = '0 0 0';
+
+};
+
+// =========================================================================
+// MAIN MOVEMENT FUNCTION
+// =========================================================================
 
 float (float s_yaw, float s_dist) botwalkmove = {
 
@@ -317,8 +525,11 @@ float (float s_yaw, float s_dist) botwalkmove = {
 
    // Knockback / Rocket Jump Support
    // If airborne with significant velocity, let physics take over
+   // BUT allow limited air steering during knockback recovery (Frogbot-style)
    if ( !(self.flags & FL_ONGROUND) ) {
       if ( vlen (self.velocity) > 350 ) {
+         // Allow air steering during knockback - bot can course correct
+         BotAirSteer (s_yaw);
          return FALSE;
       }
    }
@@ -333,11 +544,17 @@ float (float s_yaw, float s_dist) botwalkmove = {
    // This handles walls AND hazards (lava, slime, cliffs) in one unified system
    flow_yaw = BotSteer (s_yaw, 1.0);
 
+   // TURN SPEED LIMITING (FrikBot-inspired)
+   // Cap angular velocity so bots don't instantly snap to new directions
+   flow_yaw = BotClampYaw (flow_yaw);
+
    // Try to move using the calculated Flow Angle
    moved = walkmove (flow_yaw, s_dist);
 
    if ( moved ) {
       // MOVEMENT SUCCESS
+      // Clear any stored obstruction from previous frame
+      self.obstruction_normal = '0 0 0';
 
       // 1. Velocity Matching (Fixes teleport/jitter)
       makevectors ('0 1 0' * flow_yaw);
@@ -349,7 +566,11 @@ float (float s_yaw, float s_dist) botwalkmove = {
          self.velocity_z = -20;
       }
 
-      // 3. Visual Turn Smoothing
+      // 3. Edge Friction (FrikBot-inspired)
+      // Apply extra friction when approaching ledges to prevent sliding off
+      BotApplyEdgeFriction ();
+
+      // 4. Visual Turn Smoothing
       // If the Flow Angle differs significantly from intention,
       // update the bot's facing so it "looks into the turn"
       if ( fabs (flow_yaw - self.ideal_yaw) > 5 ) {
@@ -392,6 +613,28 @@ float (float s_yaw, float s_dist) botwalkmove = {
       self.velocity = v_forward * -200;
       return FALSE;
 
+   }
+
+   // VELOCITY DECOMPOSITION (Frogbot-inspired)
+   // Store wall normal for sliding - if we hit a wall, we can slide along it
+   if ( trace_fraction < 1.0 ) {
+      self.obstruction_normal = trace_plane_normal;
+      self.obstruction_normal_z = 0;  // Only horizontal component
+      if ( vlen (self.obstruction_normal) > 0.1 ) {
+         self.obstruction_normal = normalize (self.obstruction_normal);
+
+         // Try to slide along the wall instead of stopping dead
+         BotDecomposeVelocity ();
+
+         // Attempt sliding movement
+         if ( vlen (self.velocity) > 20 ) {
+            local float slide_yaw;
+            slide_yaw = vectoyaw (self.velocity);
+            if ( walkmove (slide_yaw, s_dist * 0.5) ) {
+               return TRUE;  // Successfully slid along wall
+            }
+         }
+      }
    }
 
    // The Stuck Doctor:

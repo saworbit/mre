@@ -31,15 +31,46 @@
 - Improved: Movement smoothing (`botmove.qc`). Added Z-axis "ground glue" to prevent
   floaty jitter on ramps/stairs. Zero velocity on collision prevents client-side
   prediction sliding into walls.
-- Feature: Sensor fusion steering (`botmove.qc`, `bot_ai.qc`). Bots now use vector-
+- Feature: Sensor fusion steering V2 (`botmove.qc`, `bot_ai.qc`). Bots now use vector-
   based steering instead of reactive if/else collision handling:
   - `BotDetectHazard()` looks ahead for cliffs, lava, slime, and sky brushes
+    (explicitly ignores water so bots can wade through shallow pools)
+  - `BotIsStep()` helper checks if obstacles are low enough to step over (<22 units),
+    preventing bots from treating water lips and stairs as walls
   - `BotSteer()` casts 3 whisker rays (center, left-45°, right-45°) and calculates
     force vectors: goal attraction + wall repulsion + hazard repulsion
   - Forces are summed and normalized for mathematically smooth curves around corners
   - Visual turn smoothing updates bot facing when steering differs from intention
   - "Stuck Doctor" routine attempts jump when blocked by low obstacles
   - `BotRoam()` now uses sensor fusion for fluid idle wandering
+- Feature: Humanized physics system (`botmove.qc`, `defs.qc`). Inspired by FrikBot
+  and Frogbot techniques, adds five improvements for more realistic bot movement:
+  - **Turn speed limiting**: `BotClampYaw()` caps angular velocity at 180 deg/sec
+    (18 deg/frame). Bots can no longer instantly snap to new directions - they
+    smoothly rotate like human players. Uses `last_yaw` field for delta tracking.
+  - **Mid-air steering**: `BotAirSteer()` allows limited course corrections while
+    airborne during knockback recovery. When `knockback_time` is active and bot is
+    flying, applies up to 30 units/frame of air acceleration toward desired direction.
+    Lets bots recover/redirect after being rocketed instead of being helpless.
+  - **Air acceleration limiting**: All air acceleration capped at 30 units/frame,
+    matching QuakeWorld client physics. Prevents unrealistic instant direction
+    changes while airborne.
+  - **Edge friction**: `BotApplyEdgeFriction()` applies 0.7x friction multiplier
+    when ground trace fails 32 units ahead, detecting ledges/dropoffs. Prevents
+    bots from sliding off edges at high speed - they slow down before the drop.
+  - **Velocity decomposition**: `BotDecomposeVelocity()` stores wall normal on
+    collision via `obstruction_normal` field, then projects velocity onto wall
+    plane to calculate sliding direction. Bots now slide along walls instead of
+    stopping dead, reducing stuck states.
+- Fixed: Bots getting stuck on shallow water pool edges (`botmove.qc`). The whisker
+  collision sensors were detecting small lips (8-16 units) as walls and steering bots
+  away, trapping them on "islands". Added `BotIsStep()` to check if obstacles are
+  climbable, allowing `walkmove()` to naturally step over them.
+- Fixed: Death animation ending with bot standing holding axe (`dmbot.qc`).
+  The `BotDead()` function was resetting `self.frame = 0` before `CopyToBodyQue()`
+  copied the corpse, causing dead bots to display standing frame instead of death
+  pose. Removed the frame reset - corpses now correctly retain their death animation
+  frame. Frame functions reverted to original `[ frame, next ]` syntax.
 - Improved: Consistent think timing (`botthink.qc`). `BotPostThink` enforces minimum
   0.1s think interval to match velocity calculations (dist * 10), eliminating
   network interpolation "judder" from variable frame rates.
@@ -152,10 +183,9 @@
 - Fixed: Stale knockback/AI state after respawn (`botspawn.qc`). Reset
   `knockback_time`, `last_ai_state`, and `last_ai_state_time` to zero in
   `PutBotInServer()` to prevent values from previous life affecting new spawn.
-- Fixed: Invalid frame errors on gibbed head (`dmbot.qc`, `botspawn.qc`). Reset
-  `frame` and `walkframe` in `BotDead()` to prevent stale animation frames being
-  rendered on `h_player.mdl` which only has ~2 frames. Also reset `walkframe` on
-  respawn. Eliminates 2000+ "R_AliasSetupFrame: no such frame" console warnings.
+- Reverted: Frame reset in `BotDead()` removed - it caused zombie axe corpses.
+  The `walkframe` reset in `PutBotInServer()` remains. Frame errors on `h_player.mdl`
+  (gibbed head model) are a cosmetic issue that doesn't affect gameplay.
 - Fixed: sv_aim warning spam (`botspawn.qc`). Added `sv_aim_warned` flag to only
   print the non-default sv_aim warning once per map instead of every bot spawn.
 - Feature: Unlocked high skill levels (`botspawn.qc`, `botscore.qc`). Skill cap

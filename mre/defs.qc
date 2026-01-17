@@ -316,6 +316,13 @@ float () Bot_CheckReaction; // Forward declaration
 
 // Stuck detection
 .float stuck_time;           // Time when bot became stuck (0 = not stuck)
+.vector obstruction_normal;  // Wall normal when stuck (for velocity decomposition)
+
+// Turn speed limiting (inspired by FrikBot mouse emulation)
+.float last_yaw;             // Previous frame's yaw for delta calculation
+
+// Air control (inspired by Frogbot AIR_ACCELERATION)
+float BOT_AIR_CONTROL = 1;   // Flag: allow limited air steering after knockback
 
 // Object permanence (target memory)
 .float last_seen_time;     // When enemy was last visible

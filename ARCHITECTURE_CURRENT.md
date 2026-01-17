@@ -212,22 +212,31 @@ Botmovetogoal(dist)                    [botmove.qc:1304]
 ### Low-Level Movement
 
 ```
-botwalkmove(yaw, dist)                 [botmove.qc:304]
+botwalkmove(yaw, dist)                 [botmove.qc:513]
   │
   ├─> [pre-checks: bounce mode, airborne knockback, platform ride]
+  │     └─> BotAirSteer(yaw)           [mid-air course correction]
   │
   ├─> flow_yaw = BotSteer(yaw, 1.0)    [sensor fusion steering]
+  │
+  ├─> flow_yaw = BotClampYaw(flow_yaw) [turn speed limiting: 180°/sec cap]
   │
   ├─> walkmove(flow_yaw, dist)         [engine builtin]
   │
   ├─> [if moved]
   │     ├─> velocity matching          [client interpolation fix]
   │     ├─> ground glue (velocity_z=-20) [anti-jitter on ramps]
+  │     ├─> BotApplyEdgeFriction()     [0.7x friction near ledges]
   │     └─> visual turn smoothing      [face into turns]
   │
   ├─> [if door hit]
   │     ├─> BotSolveDoor()             [button puzzle solver]
   │     └─> trace_ent.use()            [trigger door]
+  │
+  ├─> [if wall collision]
+  │     ├─> store obstruction_normal   [wall direction]
+  │     ├─> BotDecomposeVelocity()     [project to slide along wall]
+  │     └─> walkmove(slide_yaw)        [attempt wall slide]
   │
   └─> [if stuck]
         └─> Stuck Doctor: jump if clear above [velocity_z=270]
@@ -338,5 +347,6 @@ While no redundant loops exist, these areas could be simplified:
 
 | Date | Change |
 |------|--------|
+| 2026-01-18 | Added humanized physics system (turn limiting, air steering, edge friction, wall sliding) |
 | 2026-01-17 | Added sensor fusion steering system documentation |
 | 2026-01-16 | Initial architecture mapping for clean baseline |

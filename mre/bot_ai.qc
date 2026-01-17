@@ -1142,6 +1142,11 @@ void (float state, string label) BotLogAI = {
 
 void (float dist) BotAI_Main = {
 
+   // FIX: Stop AI if dead - prevents overriding death animation frames
+   if ( self.deadflag != DEAD_NO ) {
+      return;
+   }
+
    local vector delta;
    local float axis;
    local float rng;
