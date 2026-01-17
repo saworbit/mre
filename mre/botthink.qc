@@ -339,9 +339,6 @@ void () BotPostThink = {
    setorigin (self.movetarget,self.origin);
    if ( (self.deadflag != DEAD_NO) ) {
 
-      dprint ("Bot should be dead!\n");
-      GibPlayer ();
-      BotDead ();
       return ;
 
    }

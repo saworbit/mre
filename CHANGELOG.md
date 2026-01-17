@@ -29,6 +29,7 @@
 - Feature: Added tactical retreat fallback when running away and no goodies are found.
 - Refactor: Centralized run logic via `BotAI_Main` during shot/axe frames to reduce tunnel vision.
 - Optimization: BotFindTarget scans players via checkclient and bots via cached list to avoid full entity walks.
+- Fixed: Suppressed `Bot should be dead!` log spam by skipping BotPostThink on dead bots.
 - Fixed: Backpacks spawning in unreachable locations (CONTENT_SOLID/SKY check).
 - Fixed: sv_aim warning spam (one-time flag per map).
 - Feature: Unlocked high skill levels (skill 0-10, was 0-3).
