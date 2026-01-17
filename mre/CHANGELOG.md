@@ -31,6 +31,15 @@
 - Improved: Movement smoothing (`botmove.qc`). Added Z-axis "ground glue" to prevent
   floaty jitter on ramps/stairs. Zero velocity on collision prevents client-side
   prediction sliding into walls.
+- Feature: Sensor fusion steering (`botmove.qc`, `bot_ai.qc`). Bots now use vector-
+  based steering instead of reactive if/else collision handling:
+  - `BotDetectHazard()` looks ahead for cliffs, lava, slime, and sky brushes
+  - `BotSteer()` casts 3 whisker rays (center, left-45°, right-45°) and calculates
+    force vectors: goal attraction + wall repulsion + hazard repulsion
+  - Forces are summed and normalized for mathematically smooth curves around corners
+  - Visual turn smoothing updates bot facing when steering differs from intention
+  - "Stuck Doctor" routine attempts jump when blocked by low obstacles
+  - `BotRoam()` now uses sensor fusion for fluid idle wandering
 - Improved: Consistent think timing (`botthink.qc`). `BotPostThink` enforces minimum
   0.1s think interval to match velocity calculations (dist * 10), eliminating
   network interpolation "judder" from variable frame rates.

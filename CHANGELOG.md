@@ -12,6 +12,7 @@
 - Fixed: Crash when adding bots beyond maxplayers (scoreboard overflow guard).
 - Fixed: Jumpy/teleport-like strafing (removed sub-frame timing, added velocity for interpolation).
 - Improved: Movement smoothing (Z-axis ground glue, zero velocity on collision, consistent 0.1s think timing).
+- Feature: Sensor fusion steering (vector-based whisker system for fluid navigation around walls and hazards).
 - Feature: Humanized idle behavior (BotRoam makes bots wander and scavenge instead of freezing).
 - Fixed: "Flashing" bots near water (stricter teleptest checks).
 - Fixed: Bots getting stuck running in place (time-based tracking, 1.5s forced goal change, 20% jump chance).

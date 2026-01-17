@@ -189,157 +189,234 @@ void (float dist) BotHandleButton = {
 
 };
 
+// =========================================================================
+// SENSOR FUSION STEERING SYSTEM
+// =========================================================================
+
+// UTILITY: Detects "Death Drops" (Lava, Slime, or The Void)
+// Returns TRUE if the spot is dangerous.
+float (vector spot) BotDetectHazard = {
+
+   local vector down;
+   local float content;
+
+   // 1. Look down 48 units (simulates looking over a ledge)
+   down = spot;
+   down_z = down_z - 48;
+
+   traceline (spot, down, TRUE, self);
+
+   // 2. Check for Void (Sky/Empty space below)
+   // If trace_fraction is 1.0, we hit nothing. That's a cliff.
+   if ( trace_fraction == 1.0 ) {
+      return TRUE;
+   }
+
+   // 3. Check for Liquid Hazards (Lava/Slime)
+   content = pointcontents (trace_endpos);
+   if ( (content == CONTENT_LAVA) || (content == CONTENT_SLIME) ) {
+      return TRUE;
+   }
+
+   // 4. Check for Sky brushes (falling out of map)
+   if ( content == CONTENT_SKY ) {
+      return TRUE;
+   }
+
+   return FALSE;
+
+};
+
+// CORE: Vector-Based Steering (Sensor Fusion)
+// Instead of turning, we calculate forces:
+// Goal Force + Wall Repulsion + Hazard Repulsion = Final Flow Angle
+float (float ideal_yaw, float speed_factor) BotSteer = {
+
+   local vector steer_dir;  // The final accumulation vector
+   local vector feeler;     // Temp vector for whisker directions
+   local vector start, end_pos;
+   local vector fwd, rt;
+   local float dist;
+
+   // Configuration
+   // Look further ahead when moving fast (Speed * 0.1s prediction)
+   dist = 50 + (speed_factor * 25);
+   start = self.origin + '0 0 16';  // Waist height sensor origin
+
+   // 1. PRIMARY FORCE: The Desire to reach the goal
+   // We start with the direction the AI *wants* to go.
+   makevectors ('0 1 0' * ideal_yaw);
+   fwd = v_forward;
+   rt = v_right;
+   steer_dir = fwd;
+
+   // 2. SENSOR 1: The "Center Whisker" (Head-on Collision)
+   end_pos = start + (fwd * dist);
+   traceline (start, end_pos, TRUE, self);
+
+   if ( trace_fraction < 1.0 ) {
+      // HIT WALL: Add strong repulsion perpendicular to the wall
+      // trace_plane_normal is the vector pointing OUT of the wall.
+      // We multiply by 3.0 to overpower the "Desire" force.
+      steer_dir = steer_dir + (trace_plane_normal * 3.0);
+   } else if ( BotDetectHazard (end_pos) ) {
+      // HIT HAZARD: Cliff/Lava ahead!
+      // Apply "Braking Force" (Negative forward) + Random Jitter to break deadlock
+      steer_dir = steer_dir + (fwd * -4.0);
+      steer_dir_x = steer_dir_x + (random () * 2 - 1);  // Slight noise to help turn
+   }
+
+   // 3. SENSOR 2: The "Left Whisker" (-45 degrees)
+   // Manually construct -45 deg vector relative to forward/right
+   feeler = (fwd * 0.7) - (rt * 0.7);
+   end_pos = start + (feeler * (dist * 0.8));  // Slightly shorter than center
+
+   traceline (start, end_pos, TRUE, self);
+   if ( trace_fraction < 1.0 ) {
+      // Hit Left Wall -> Push Right (along normal)
+      steer_dir = steer_dir + (trace_plane_normal * 1.5);
+   } else if ( BotDetectHazard (end_pos) ) {
+      // Hazard Left -> Push Right hard
+      steer_dir = steer_dir + (rt * 2.0);
+   }
+
+   // 4. SENSOR 3: The "Right Whisker" (+45 degrees)
+   feeler = (fwd * 0.7) + (rt * 0.7);
+   end_pos = start + (feeler * (dist * 0.8));
+
+   traceline (start, end_pos, TRUE, self);
+   if ( trace_fraction < 1.0 ) {
+      // Hit Right Wall -> Push Left (along normal)
+      steer_dir = steer_dir + (trace_plane_normal * 1.5);
+   } else if ( BotDetectHazard (end_pos) ) {
+      // Hazard Right -> Push Left hard
+      steer_dir = steer_dir + (rt * -2.0);
+   }
+
+   // 5. RESOLVE FORCES
+   // Normalize the result to get a clean direction
+   steer_dir = normalize (steer_dir);
+
+   // Convert back to Yaw angle
+   return vectoyaw (steer_dir);
+
+};
+
 float (float s_yaw, float s_dist) botwalkmove = {
 
-   local vector move_dir;
-   local vector check_pos;
-   local float contents;
+   local float flow_yaw;
+   local float moved;
+   local vector jump_check;
 
    self.oldorigin = self.origin;
 
-   if ( (self.movetype == MOVETYPE_BOUNCE) ) {
-
-      return ( FALSE );
-
+   // Bounce mode (knockback) - don't interfere
+   if ( self.movetype == MOVETYPE_BOUNCE ) {
+      return FALSE;
    }
 
-   // FIX: Knockback / Rocket Jump Support
-   // If the bot is airborne with significant velocity (explosion knockback, rocket jump),
-   // do not override velocity with walking speed. Let physics take over.
-   // Threshold 350 is above normal run speed (~320) but catches rocket jumps (~600+)
+   // Knockback / Rocket Jump Support
+   // If airborne with significant velocity, let physics take over
    if ( !(self.flags & FL_ONGROUND) ) {
-
-      if ( vlen(self.velocity) > 350 ) {
-
-         return ( FALSE );
-
+      if ( vlen (self.velocity) > 350 ) {
+         return FALSE;
       }
-
    }
 
-   // FIX: Platform riding - handles func_train (DM2) and func_plat
+   // Platform riding - handles func_train (DM2) and func_plat
    if ( BotCheckPlatformRide () ) {
-      return ( TRUE );
+      return TRUE;
    }
 
-   // FIX: Hazard Avoidance - check for lava/slime before moving
-   // Project where we are going
-   makevectors ('0 1 0' * s_yaw);
-   check_pos = (self.origin + (v_forward * (s_dist + 16.000)));
+   // --- EXECUTE SENSOR FUSION ---
+   // Calculate the best path through the geometry using vector-based steering
+   // This handles walls AND hazards (lava, slime, cliffs) in one unified system
+   flow_yaw = BotSteer (s_yaw, 1.0);
 
-   // Check floor at target position (drop down 24 units to check ground)
-   check_pos_z = (check_pos_z - 24.000);
-   contents = pointcontents (check_pos);
+   // Try to move using the calculated Flow Angle
+   moved = walkmove (flow_yaw, s_dist);
 
-   // If the target is lethal, REFUSE TO MOVE
-   // CONTENT_LAVA = -5, CONTENT_SLIME = -4
-   if ( (contents == CONTENT_LAVA) || (contents == CONTENT_SLIME) ) {
+   if ( moved ) {
+      // MOVEMENT SUCCESS
 
-      // Allow movement only if we have Pentagram (invulnerability) or Suit (slime only)
-      if ( !(self.items & IT_INVULNERABILITY) ) {
+      // 1. Velocity Matching (Fixes teleport/jitter)
+      makevectors ('0 1 0' * flow_yaw);
+      self.velocity_x = v_forward_x * s_dist * 10.0;
+      self.velocity_y = v_forward_y * s_dist * 10.0;
 
-         if ( !((self.items & IT_SUIT) && (contents == CONTENT_SLIME)) ) {
+      // 2. Ground Glue (Fixes z-axis jitter on stairs/ramps)
+      if ( self.flags & FL_ONGROUND ) {
+         self.velocity_z = -20;
+      }
 
-            // FIX: Check for approaching platform before giving up
-            // Scan for func_train entities that might be on their way
-            local entity train;
-            local vector train_center;
-            local float train_dist;
-            local vector future_pos;
+      // 3. Visual Turn Smoothing
+      // If the Flow Angle differs significantly from intention,
+      // update the bot's facing so it "looks into the turn"
+      if ( fabs (flow_yaw - self.ideal_yaw) > 5 ) {
+         self.ideal_yaw = flow_yaw;
+         ChangeYaw ();
+      }
 
-            train = find (world, classname, "train");
-            while ( train ) {
+      return TRUE;
+   }
 
-               train_center = (train.absmin + train.absmax) * 0.5;
-               train_dist = vlen (train_center - self.origin);
+   // MOVEMENT FAILED (Stuck or blocked)
 
-               // Platform within 400 units and moving?
-               if ( (train_dist < 400) && (vlen (train.velocity) > 10) ) {
+   // Door Interaction - check if we hit a door
+   makevectors ('0 1 0' * flow_yaw);
+   traceline (self.origin, self.origin + (v_forward * 32), FALSE, self);
 
-                  // Project where platform will be in 2 seconds
-                  future_pos = train_center + (train.velocity * 2);
+   if ( (trace_ent.classname == "func_door") || (trace_ent.classname == "func_door_rotating") ) {
 
-                  // Is it coming toward us?
-                  if ( vlen (future_pos - self.origin) < train_dist ) {
-                     // Platform approaching - wait for it
-                     self.platform_wait_time = time + 3;
-                     self.velocity = '0 0 0';
-                     return ( TRUE );  // "Success" but don't actually move
-                  }
+      // Check if door requires a button (has targetname on owner)
+      local entity door_master;
+      door_master = trace_ent;
+      if ( trace_ent.owner ) {
+         door_master = trace_ent.owner;
+      }
 
-               }
-               train = find (train, classname, "train");
-
-            }
-
-            return ( FALSE );  // No platform coming, refuse to move
-
+      if ( door_master.targetname ) {
+         // Door needs external trigger - try to find its button
+         if ( BotSolveDoor (door_master) ) {
+            self.velocity = v_forward * -100;
+            return FALSE;
          }
+      }
 
+      // Auto-open door - trigger it directly if it has a use function
+      if ( trace_ent.use ) {
+         trace_ent.use ();
+      }
+
+      // Back up slightly to let it open
+      self.velocity = v_forward * -200;
+      return FALSE;
+
+   }
+
+   // The Stuck Doctor:
+   // If stuck against a low obstacle or weird geometry, try to JUMP over it
+   if ( self.flags & FL_ONGROUND ) {
+
+      // Check if the spot slightly above and ahead is clear
+      jump_check = self.origin + (v_forward * 32);
+      jump_check_z = jump_check_z + 18;  // Step height + margin
+
+      if ( pointcontents (jump_check) == CONTENT_EMPTY ) {
+         // Jump to clear the obstacle
+         self.velocity_z = 270;
+         self.flags = self.flags - FL_ONGROUND;
+         sound (self, CHAN_BODY, "player/plyrjmp8.wav", 1, ATTN_NORM);
+         return FALSE;
       }
 
    }
 
-   // Standard walkmove for actual position change
-   if ( !walkmove (s_yaw, s_dist) ) {
+   // Reset velocity so client prediction doesn't slide us into the wall
+   self.velocity_x = 0;
+   self.velocity_y = 0;
 
-      // FIX: Door Interaction - if we hit a door, handle it appropriately
-      traceline (self.origin, (self.origin + (v_forward * 32.000)), FALSE, self);
-
-      if ( (trace_ent.classname == "func_door") || (trace_ent.classname == "func_door_rotating") ) {
-
-         // FIX: Check if door requires a button (has targetname on owner)
-         // Doors are often linked via owner field
-         local entity door_master;
-         door_master = trace_ent;
-         if ( trace_ent.owner ) {
-            door_master = trace_ent.owner;
-         }
-
-         if ( door_master.targetname ) {
-            // Door needs external trigger - try to find its button
-            if ( BotSolveDoor (door_master) ) {
-               // Successfully set up button goal - back up and go find button
-               self.velocity = (v_forward * -100.000);
-               return ( FALSE );
-            }
-         }
-
-         // Auto-open door - trigger it directly if it has a use function
-         if ( trace_ent.use ) {
-            trace_ent.use ();
-         }
-
-         // Back up slightly to let it open
-         self.velocity = (v_forward * -200.000);
-
-      } else {
-
-         // FIX: Zero velocity on collision to prevent client-side "sliding" into walls
-         // This eliminates prediction errors where client thinks bot is moving
-         self.velocity_x = 0;
-         self.velocity_y = 0;
-
-      }
-
-      return ( FALSE );
-
-   }
-
-   // FIX: Set velocity to help client-side interpolation
-   // Without this, walkmove updates position instantly causing "teleport" feel
-   makevectors ('0 1 0' * s_yaw);
-   self.velocity_x = (v_forward_x * s_dist * 10.000);
-   self.velocity_y = (v_forward_y * s_dist * 10.000);
-
-   // FIX: Ground Glue (Anti-Jitter)
-   // If on ground, apply slight downward velocity to stick to ramps/stairs
-   // This prevents the "floaty" jitter when walking down inclines
-   if ( (self.flags & FL_ONGROUND) ) {
-      self.velocity_z = -20.000;
-   }
-
-   return ( TRUE );
+   return FALSE;
 
 };
 float (float dist) teleptest = {

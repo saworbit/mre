@@ -1,6 +1,7 @@
 
 // Forward declarations for functions used before they're defined
 float (float minweight) aibot_checkforGoodies;
+float (float ideal_yaw, float speed_factor) BotSteer;
 
 void () endEnemy = {
 
@@ -580,6 +581,7 @@ float BOT_IDLE_THINK = 0.100;
 void () BotRoam = {
 
    local float roam_dist;
+   local float flow_yaw;
 
    // 1. Scan for items to give them purpose (Greedy Roaming)
    // Low weight threshold so they lazily pick up nearby stuff
@@ -590,24 +592,35 @@ void () BotRoam = {
    // 2. If no items, pick a random direction occasionally
    // Change direction every 1-3 seconds or if hitting a wall
    if ( (self.search_time < time) || !walkmove (self.ideal_yaw, 0.000) ) {
-      self.ideal_yaw = (random () * 360.000);
-      self.search_time = (time + 1.000 + (random () * 2.000));
+      self.ideal_yaw = random () * 360;
+      self.search_time = time + 1 + (random () * 2);
       ChangeYaw ();
    }
 
    // 3. Smoothly rotate towards interest points (slight look wander)
-   if ( (random () < 0.100) ) {
-      self.ideal_yaw = (self.ideal_yaw + (random () * 30.000) - 15.000);
+   if ( random () < 0.100 ) {
+      self.ideal_yaw = self.ideal_yaw + (random () * 30) - 15;
       ChangeYaw ();
    }
 
-   // 4. Move forward at casual trot speed (~200 vs 350 run speed)
-   roam_dist = (200.000 * BOT_IDLE_THINK);
+   // 4. ROBUST FLOW MOVEMENT
+   // Use sensor fusion to steer around obstacles smoothly
+   roam_dist = 200 * BOT_IDLE_THINK;
 
-   // Call robust movement function
+   // Get the steering suggestion (0.6 = slower speed factor for roaming)
+   flow_yaw = BotSteer (self.ideal_yaw, 0.6);
+
+   // If whiskers suggest a new direction (obstacle avoidance), accept it
+   if ( flow_yaw != self.ideal_yaw ) {
+      self.ideal_yaw = flow_yaw;
+      ChangeYaw ();
+   }
+
+   // Call robust movement function with the steered angle
    if ( !botwalkmove (self.ideal_yaw, roam_dist) ) {
-      // If blocked, pick new direction for next frame
-      self.search_time = (time - 1.000);
+      // If we STILL hit something despite steering (dead end),
+      // force a full direction change immediately
+      self.search_time = time - 1;
    }
 
 };
