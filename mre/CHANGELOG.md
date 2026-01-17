@@ -46,6 +46,15 @@
 - Fixed: Thunderbolt water discharge suicide (`botfight.qc`). Added safety check
   to switch weapons when in water (waterlevel >= 2) instead of instant-death
   discharge.
+- Improved: Range-based weapon selection (`botfight.qc`). Rewrote `W_BestBotWeapon`
+  and `W_BestHeldWeapon` with comprehensive range-aware logic:
+  - Close quarters (< 150 units): Prioritizes SNG > SSG > LG > NG > SG to avoid
+    splash damage suicide. Explosives only allowed with Quad (4x damage is worth
+    the risk). Falls back to Axe if truly desperate.
+  - Standard range (>= 150 units): LG at close-mid range > RL (now safe) > SNG >
+    GL (mid-range only, < 600 units) > SSG > NG > SG.
+  - Long range (> 500 units): Prefers nails over shotguns due to spread falloff.
+  - Bots now actively switch TO better weapons instead of just refusing to fire.
 - Improved: Predictive aiming (`botfight.qc`). Added 0.5 second cap on lead time
   in `leadtarget` to prevent excessive over-leading at long range while keeping
   accurate prediction at mid-range.
@@ -92,6 +101,22 @@
 - Fixed: Backpacks spawning in unreachable locations (`items.qc`). Added
   `CONTENT_SOLID`/`CONTENT_SKY` check in `DropBackpack()`. If spawn position is
   inside a wall or void, tries player origin; if that fails, skips backpack entirely.
+- Fixed: Zero-velocity knockback causing stuck/jittery bots (`combat.qc`). Added
+  velocity threshold check (> 50 units/sec) before BOTH entering `MOVETYPE_BOUNCE`
+  AND resetting `knockback_time`. Previously, zero-velocity hits would reset the
+  recovery timer, preventing bots from exiting bounce mode. Bots could become
+  stuck in place with jittery/teleport-like movement when hit repeatedly.
+- Improved: KNOCKBACK log now filters low-velocity entries (`botthink.qc`). Only
+  logs when velocity > 50 units/sec to eliminate zero-velocity noise. Added 0.05s
+  debounce via `knockback_log_time` field to prevent duplicate entries from
+  multi-projectile hits in the same frame. Reset on spawn in `botspawn.qc`.
+- Fixed: GOODY/RETREAT AI oscillation (`bot_ai.qc`). Added 0.5s hysteresis to
+  prevent rapid state flipping. When bot is in GOODY or RETREAT state, it stays
+  there for minimum 0.5s before re-evaluating. Added `last_ai_state_time` field
+  to `defs.qc` to track state change timing.
+- Fixed: Stale knockback/AI state after respawn (`botspawn.qc`). Reset
+  `knockback_time`, `last_ai_state`, and `last_ai_state_time` to zero in
+  `PutBotInServer()` to prevent values from previous life affecting new spawn.
 - Fixed: sv_aim warning spam (`botspawn.qc`). Added `sv_aim_warned` flag to only
   print the non-default sv_aim warning once per map instead of every bot spawn.
 - Feature: Unlocked high skill levels (`botspawn.qc`, `botscore.qc`). Skill cap

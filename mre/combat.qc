@@ -133,10 +133,16 @@ void (entity targ, entity inflictor, entity attacker, float damage) T_Damage = {
       dir = (targ.origin - ((inflictor.absmin + inflictor.absmax) * 0.500));
       dir = normalize (dir);
       targ.velocity = (targ.velocity + ((dir * damage) * FL_CLIENT));
-      targ.knockback_time = time;  // Track when knockback was applied
       if ( (targ.classname == "dmbot") ) {
 
-         targ.movetype = MOVETYPE_BOUNCE;
+         // FIX: Only enter bounce mode AND reset knockback timer if velocity is significant
+         // Prevents stuck bots from zero-velocity knockback resetting recovery timer
+         if ( (vlen (targ.velocity) > 50.000) ) {
+
+            targ.movetype = MOVETYPE_BOUNCE;
+            targ.knockback_time = time;  // Only reset when actually bouncing
+
+         }
          if ( ((attacker.classname == "player") || (attacker.classname == "dmbot")) && (attacker != targ) && (targ.enemy != attacker) ) {
 
             oldself = self;

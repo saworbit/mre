@@ -392,6 +392,11 @@ void () PutBotInServer = {
    self.pathtype = NEVERTARGET;
    self.deadflag = DEAD_NO;
    self.pausetime = FALSE;
+   // FIX: Reset knockback and AI state on spawn to prevent stale values
+   self.knockback_time = FALSE;
+   self.knockback_log_time = FALSE;
+   self.last_ai_state = FALSE;
+   self.last_ai_state_time = FALSE;
    spwn = SelectSpawnPoint ();
    spot = (spwn.origin + '0.000 0.000 1.000');
    self.origin = spot;

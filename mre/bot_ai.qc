@@ -1061,12 +1061,16 @@ void (float dist) ai_botretreat = {
 
 void (float state, string label) BotLogAI = {
 
-   if ( (cvar ("developer") <= 0.000) ) {
+   if ( (self.last_ai_state == state) ) {
 
       return ;
 
    }
-   if ( (self.last_ai_state == state) ) {
+   // FIX: Track when state changes for hysteresis
+   self.last_ai_state_time = time;
+   self.last_ai_state = state;
+
+   if ( (cvar ("developer") <= 0.000) ) {
 
       return ;
 
@@ -1076,7 +1080,6 @@ void (float state, string label) BotLogAI = {
    dprint ("] AI: ");
    dprint (label);
    dprint ("\n");
-   self.last_ai_state = state;
 
 };
 
@@ -1165,6 +1168,24 @@ void (float dist) BotAI_Main = {
 
       self.lefty = (self.lefty - (self.lefty & LOCAL_TIME));
       self.lastseenpos = self.goalentity.origin;
+
+      // FIX: Hysteresis - stay in GOODY/RETREAT for minimum 0.5s to prevent oscillation
+      if ( ((self.last_ai_state == AI_STATE_GOODY) || (self.last_ai_state == AI_STATE_RETREAT)) && (time < (self.last_ai_state_time + 0.500)) ) {
+
+         // Continue current state without re-evaluating
+         if ( (self.last_ai_state == AI_STATE_GOODY) ) {
+
+            ai_botgetGoody (dist);
+
+         } else {
+
+            ai_botretreat (dist);
+
+         }
+         return ;
+
+      }
+
       if ( aibot_checkforGoodies (DONT_WANT) ) {
 
          BotLogAI (AI_STATE_GOODY, "GOODY");

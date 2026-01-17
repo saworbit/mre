@@ -359,8 +359,12 @@ void () BotPostThink = {
          }
 
       }
-      if ( (cvar ("developer") > 0.000) && (self.knockback_time > (time - 0.100)) ) {
+      // Log knockback state (developer mode only)
+      // Only log when: velocity is significant (> 50), recent knockback, and debounced (0.05s)
+      if ( (cvar ("developer") > 0.000) && (self.knockback_time > (time - 0.100))
+           && (vlen (self.velocity) > 50.000) && (time > (self.knockback_log_time + 0.050)) ) {
 
+         self.knockback_log_time = time;
          dprint ("[");
          dprint (self.netname);
          dprint ("] KNOCKBACK: vel=");

@@ -143,6 +143,7 @@ void end_sys_globals;
 void end_sys_fields;
 .entity bot_next;
 .float last_ai_state;
+.float last_ai_state_time;  // FIX: Time when AI state last changed (hysteresis)
 float FALSE    = 0.000;
 float TRUE    = 1.000;
 float FL_FLY    = 1.000;
@@ -303,6 +304,7 @@ float () Bot_CheckReaction; // Forward declaration
 
 // Knockback physics
 .float knockback_time;     // When entity last received knockback
+.float knockback_log_time; // Debounce: when knockback was last logged (prevents spam)
 
 // Object permanence (target memory)
 .float last_seen_time;     // When enemy was last visible

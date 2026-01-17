@@ -252,22 +252,70 @@ float () W_BestBotWeapon = {
 
       dist = vlen ((self.enemy.origin - self.origin));
 
+   } else {
+
+      dist = 500.000;  // Assume mid-range when roaming
+
    }
    rng = botrange (self.enemy);
-   if ( (rng != RANGE_MELEE) ) {
 
-      if ( ((self.ammo_rockets >= TRUE) && (it & IT_ROCKET_LAUNCHER)) ) {
+   // --- CLOSE QUARTERS COMBAT (< 150 units) ---
+   // Prioritize high DPS non-explosive weapons to avoid suicide
+   if ( (dist < 150.000) ) {
 
-         // Avoid rockets at point-blank when we are too fragile for splash.
-         if ( !((dist < 150.000) && (self.health < 50.000)) ) {
+      // Super Nailgun: best close-range DPS, no splash
+      if ( ((self.ammo_nails >= FL_SWIM) && (it & IT_SUPER_NAILGUN)) ) {
+
+         return ( IT_SUPER_NAILGUN );
+
+      }
+      // Super Shotgun: excellent close-range burst
+      if ( ((self.ammo_shells >= FL_SWIM) && (it & IT_SUPER_SHOTGUN)) ) {
+
+         return ( IT_SUPER_SHOTGUN );
+
+      }
+      // Thunderbolt: devastating if not in water
+      if ( ((self.ammo_cells >= TRUE) && (it & IT_LIGHTNING)) ) {
+
+         wlevel = CheckWaterLevel ();
+         if ( (wlevel < FL_SWIM) ) {
+
+            return ( IT_LIGHTNING );
+
+         }
+
+      }
+      // Nailgun: decent fallback
+      if ( ((self.ammo_nails >= TRUE) && (it & IT_NAILGUN)) ) {
+
+         return ( IT_NAILGUN );
+
+      }
+      // Shotgun: last ranged option before axe
+      if ( ((self.ammo_shells >= TRUE) && (it & IT_SHOTGUN)) ) {
+
+         return ( IT_SHOTGUN );
+
+      }
+      // Only use explosives at close range with Quad (risk is worth it)
+      if ( (self.items & IT_QUAD) ) {
+
+         if ( ((self.ammo_rockets >= TRUE) && (it & IT_ROCKET_LAUNCHER)) ) {
 
             return ( IT_ROCKET_LAUNCHER );
 
          }
 
       }
+      // Axe as last resort at close range
+      return ( IT_AXE );
 
    }
+
+   // --- STANDARD COMBAT (>= 150 units) ---
+
+   // Thunderbolt: best DPS at close-mid range, check water safety
    if ( ((self.ammo_cells >= TRUE) && (it & IT_LIGHTNING)) ) {
 
       if ( ((rng == RANGE_MELEE) || (rng == RANGE_NEAR)) ) {
@@ -287,14 +335,25 @@ float () W_BestBotWeapon = {
       }
 
    }
+
+   // Rocket Launcher: high burst damage, safe at this range
+   if ( ((self.ammo_rockets >= TRUE) && (it & IT_ROCKET_LAUNCHER)) ) {
+
+      return ( IT_ROCKET_LAUNCHER );
+
+   }
+
+   // Super Nailgun: reliable at all ranges
    if ( ((self.ammo_nails >= FL_SWIM) && (it & IT_SUPER_NAILGUN)) ) {
 
       return ( IT_SUPER_NAILGUN );
 
    }
-   if ( (rng == RANGE_NEAR) ) {
 
-      if ( ((self.ammo_rockets >= TRUE) && (it & IT_GRENADE_LAUNCHER)) ) {
+   // Grenade Launcher: good at mid-range (150-600 units), bad at long range
+   if ( ((self.ammo_rockets >= TRUE) && (it & IT_GRENADE_LAUNCHER)) ) {
+
+      if ( (dist < 600.000) ) {
 
          if ( (self.enemy.origin_z < (self.origin_z + 175.000)) ) {
 
@@ -305,14 +364,10 @@ float () W_BestBotWeapon = {
       }
 
    }
-   // Prefer nails over shotguns at long range.
+
+   // Prefer nails over shotguns at long range (> 500 units)
    if ( (dist > 500.000) ) {
 
-      if ( ((self.ammo_nails >= FL_SWIM) && (it & IT_SUPER_NAILGUN)) ) {
-
-         return ( IT_SUPER_NAILGUN );
-
-      }
       if ( ((self.ammo_nails >= TRUE) && (it & IT_NAILGUN)) ) {
 
          return ( IT_NAILGUN );
@@ -320,25 +375,28 @@ float () W_BestBotWeapon = {
       }
 
    }
-   if ( ((rng == RANGE_NEAR) || (rng == RANGE_MELEE)) ) {
 
-      if ( ((self.ammo_shells >= FL_SWIM) && (it & IT_SUPER_SHOTGUN)) ) {
+   // Super Shotgun: reliable mid-range fallback
+   if ( ((self.ammo_shells >= FL_SWIM) && (it & IT_SUPER_SHOTGUN)) ) {
 
-         return ( IT_SUPER_SHOTGUN );
-
-      }
+      return ( IT_SUPER_SHOTGUN );
 
    }
+
+   // Nailgun
    if ( ((self.ammo_nails >= TRUE) && (it & IT_NAILGUN)) ) {
 
       return ( IT_NAILGUN );
 
    }
+
+   // Shotgun
    if ( ((self.ammo_shells >= TRUE) && (it & IT_SHOTGUN)) ) {
 
       return ( IT_SHOTGUN );
 
    }
+
    return ( IT_AXE );
 
 };
@@ -354,17 +412,68 @@ float () W_BestHeldWeapon = {
 
       dist = vlen ((self.enemy.origin - self.origin));
 
+   } else {
+
+      dist = 500.000;  // Assume mid-range when roaming
+
    }
-   if ( ((self.ammo_rockets >= TRUE) && (it & IT_ROCKET_LAUNCHER)) ) {
 
-      // Avoid rockets at point-blank when we are too fragile for splash.
-      if ( !((dist < 150.000) && (self.health < 50.000)) ) {
+   // --- CLOSE QUARTERS (< 150 units) ---
+   // Called from W_BotAttack as safety fallback, prioritize non-explosives
+   if ( (dist < 150.000) ) {
 
-         return ( IT_ROCKET_LAUNCHER );
+      // Super Nailgun: best close-range DPS
+      if ( ((self.ammo_nails >= FL_SWIM) && (it & IT_SUPER_NAILGUN)) ) {
+
+         return ( IT_SUPER_NAILGUN );
 
       }
+      // Super Shotgun: excellent close-range burst
+      if ( ((self.ammo_shells >= FL_SWIM) && (it & IT_SUPER_SHOTGUN)) ) {
+
+         return ( IT_SUPER_SHOTGUN );
+
+      }
+      // Thunderbolt: devastating if not in water
+      if ( ((self.ammo_cells >= TRUE) && (it & IT_LIGHTNING)) ) {
+
+         wlevel = CheckWaterLevel ();
+         if ( (wlevel < FL_SWIM) ) {
+
+            return ( IT_LIGHTNING );
+
+         }
+
+      }
+      // Nailgun: decent fallback
+      if ( ((self.ammo_nails >= TRUE) && (it & IT_NAILGUN)) ) {
+
+         return ( IT_NAILGUN );
+
+      }
+      // Shotgun
+      if ( ((self.ammo_shells >= TRUE) && (it & IT_SHOTGUN)) ) {
+
+         return ( IT_SHOTGUN );
+
+      }
+      // Only explosives at close range with Quad
+      if ( (self.items & IT_QUAD) ) {
+
+         if ( ((self.ammo_rockets >= TRUE) && (it & IT_ROCKET_LAUNCHER)) ) {
+
+            return ( IT_ROCKET_LAUNCHER );
+
+         }
+
+      }
+      return ( IT_AXE );
 
    }
+
+   // --- STANDARD (>= 150 units) ---
+
+   // Thunderbolt: check water safety
    if ( ((self.ammo_cells >= TRUE) && (it & IT_LIGHTNING)) ) {
 
       wlevel = CheckWaterLevel ();
@@ -380,28 +489,39 @@ float () W_BestHeldWeapon = {
       }
 
    }
+
+   // Rocket Launcher: safe at this range
+   if ( ((self.ammo_rockets >= TRUE) && (it & IT_ROCKET_LAUNCHER)) ) {
+
+      return ( IT_ROCKET_LAUNCHER );
+
+   }
+
+   // Super Nailgun
    if ( ((self.ammo_nails >= FL_SWIM) && (it & IT_SUPER_NAILGUN)) ) {
 
       return ( IT_SUPER_NAILGUN );
 
    }
+
+   // Grenade Launcher: mid-range only (< 600 units)
    if ( ((self.ammo_rockets >= TRUE) && (it & IT_GRENADE_LAUNCHER)) ) {
 
-      if ( (self.enemy.origin_z < (self.origin_z + 175.000)) ) {
+      if ( (dist < 600.000) ) {
 
-         return ( IT_GRENADE_LAUNCHER );
+         if ( (self.enemy.origin_z < (self.origin_z + 175.000)) ) {
+
+            return ( IT_GRENADE_LAUNCHER );
+
+         }
 
       }
 
    }
-   // Prefer nails over shotguns at long range.
+
+   // Prefer nails at long range
    if ( (dist > 500.000) ) {
 
-      if ( ((self.ammo_nails >= FL_SWIM) && (it & IT_SUPER_NAILGUN)) ) {
-
-         return ( IT_SUPER_NAILGUN );
-
-      }
       if ( ((self.ammo_nails >= TRUE) && (it & IT_NAILGUN)) ) {
 
          return ( IT_NAILGUN );
@@ -409,21 +529,28 @@ float () W_BestHeldWeapon = {
       }
 
    }
+
+   // Super Shotgun
    if ( ((self.ammo_shells >= FL_SWIM) && (it & IT_SUPER_SHOTGUN)) ) {
 
       return ( IT_SUPER_SHOTGUN );
 
    }
+
+   // Nailgun
    if ( ((self.ammo_nails >= TRUE) && (it & IT_NAILGUN)) ) {
 
       return ( IT_NAILGUN );
 
    }
+
+   // Shotgun
    if ( ((self.ammo_shells >= TRUE) && (it & IT_SHOTGUN)) ) {
 
       return ( IT_SHOTGUN );
 
    }
+
    return ( IT_AXE );
 
 };

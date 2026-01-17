@@ -32,8 +32,12 @@
 - Fixed: Suppressed `Bot should be dead!` log spam by skipping BotPostThink on dead bots.
 - Improved: Pain reflex triggers immediate bot reaction when taking damage from a player/bot.
 - Improved: Added a developer-only `KNOCKBACK_END` log when bots return to step movement.
-- Improved: Range-based weapon selection to avoid close-range rockets when low on health and prefer nails at long range.
+- Improved: Range-based weapon selection with close-quarters combat logic (< 150 units: SNG > SSG > LG > NG > SG, explosives only with Quad; standard range: LG > RL > SNG > GL mid-range only > SSG; long range: prefer nails over shotguns).
 - Improved: Added developer-only AI state logging in `BotAI_Main` (logs only on state changes).
+- Fixed: Zero-velocity knockback causing stuck/jittery bots (require velocity > 50 before entering MOVETYPE_BOUNCE AND resetting knockback timer - prevents recovery timer from being reset by zero-velocity hits).
+- Improved: KNOCKBACK log now filters zero-velocity entries and debounces duplicates (0.05s) to reduce console spam.
+- Fixed: GOODY/RETREAT AI oscillation (added 0.5s hysteresis to prevent rapid state flipping).
+- Fixed: Stale knockback/AI state after respawn (reset values in PutBotInServer).
 - Fixed: Backpacks spawning in unreachable locations (CONTENT_SOLID/SKY check).
 - Fixed: sv_aim warning spam (one-time flag per map).
 - Feature: Unlocked high skill levels (skill 0-10, was 0-3).
