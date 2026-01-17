@@ -24,6 +24,7 @@
 - Fixed: Low-skill bots felt like cheaters (increased aim jitter from ~10° to ~25° max at skill 0).
 - Fixed: Bots attacking observers/spectators (added MOVETYPE_NOCLIP and deadflag checks).
 - Fixed: Bots not affected by explosion knockback (velocity preservation when airborne).
+- Fixed: Bot knockback now uses bounce physics to avoid embedding; restores step mode when settled.
 - Fixed: Backpacks spawning in unreachable locations (CONTENT_SOLID/SKY check).
 - Fixed: sv_aim warning spam (one-time flag per map).
 - Feature: Unlocked high skill levels (skill 0-10, was 0-3).

@@ -3,11 +3,17 @@
 This repo is a clean reboot of the Reaper Bot. The authoritative source lives
 under `mre/`, and we fix community-reported issues first.
 
+## Active code location (do not edit legacy)
+All active, working code lives in `mre/` only:
+https://github.com/saworbit/mre/tree/master/mre
+Everything under `archive/` is legacy reference material. Do not edit or build
+from `archive/`.
+
 ## Layout
 - `mre/` - Clean baseline QuakeC sources.
 - `launch/quake-spasm/mre/` - Local runtime folder (progs.dat deploy target).
 - `ci/` - CI build scripts and artifacts.
-- `archive/` - Legacy materials and historical docs.
+- `archive/` - Legacy materials and historical docs (read-only reference).
   - Legacy docs/tools/launch assets were moved to `archive/legacy/clean_slate/`.
 
 ## Build
@@ -23,6 +29,10 @@ cd c:\reaperai\mre
 ..\tools\fteqcc_win64\fteqcc64.exe -O3 progs.src
 ```
 Manual builds write `c:\reaperai\progs.dat` (the parent folder).
+Copy it to the runtime folder:
+```
+copy c:\reaperai\progs.dat c:\reaperai\launch\quake-spasm\mre\progs.dat /Y
+```
 
 ## Deploy
 The build script copies to:
@@ -32,6 +42,13 @@ The build script copies to:
 ```
 c:\reaperai\launch\quake-spasm\launch_reapbot_v2.bat 8 dm4
 ```
+
+## Test (full command + logging)
+From `c:\reaperai\launch\quake-spasm`:
+```
+quakespasm.exe -game mre -condebug +developer 1 -listen 8 +maxplayers 8 +deathmatch 1 +map dm4
+```
+Log output: `c:\reaperai\launch\quake-spasm\qconsole.log`
 
 ## CI
 ```

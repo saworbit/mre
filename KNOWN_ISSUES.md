@@ -1,13 +1,11 @@
 # Known Issues
 
-## 1. Bot collision escapes
-- **Symptom:** Bots can still be pushed (rocket knockback or player hits) into solid geometry and end up stuck inside ceilings or walls.
-- **Repro:** In `dm4` (or other tight level), damage a bot with a rocket so it bounces into a nearby wall/ceiling; occasionally the trace checks run during knockback still leave the bot inside solid and it never recovers.
-- **Current workaround:** Restart the map or `impulse 102` to clear the stuck bot.
-- **Next steps:** Need better trace resolution when applying `knockback_time` movement to stop the bot before colliding.
+## 1. Bot knockback embedding (regression watch)
+- **Status:** Addressed by switching `dmbot` to `MOVETYPE_BOUNCE` on knockback and removing the manual traceline teleport in `botmove.qc`. Movement returns to `MOVETYPE_STEP` once grounded or slow.
+- **Verify:** Build from `mre/`, deploy the resulting `progs.dat` into `launch/quake-spasm/mre/`, then test on tight maps (dm4/dm6). If a bot still embeds, capture the map name and log.
+- **Fallback:** If it still happens, restart the map or `impulse 102` to clear the stuck bot.
 
-## 2. Logging/console output missing during the clip
-- **Symptom:** `launch/quake-spasm/qconsole.log` does not show the collision moment even when `condebug` or `developer` is toggled.
-- **Confirmed working sequence:** Launch from `launch/quake-spasm` with the same `mre/progs.dat` produced by `.\ci\build_mre.ps1`, then run `quakespasm.exe -game mre +condebug 1 +developer 1 -listen 8 +maxplayers 8 +deathmatch 1 +map dm4`.
-- **Tip:** Delete `qconsole.log` before the run to ensure the file grows; use the `+developer 1` / `+condebug 1` startup switches so verbose output enters the log (once running, `-condebug` will replay the toggle if needed); after reproducing the bug, inspect the end of `qconsole.log`.
-- **Next steps:** Investigate whether the traceline tracing during knockback is toggled off in this build or if the log output is being redirected elsewhere.
+## 2. Knockback logging missing
+- **Status:** Added developer-only `KNOCKBACK` logs in `BotPostThink` when knockback is recent.
+- **Confirm:** Run with `+developer 1 +condebug 1` and check `launch/quake-spasm/qconsole.log` for `[BotName] KNOCKBACK: vel=... type=...` lines near impacts.
+- **Tip:** Delete `qconsole.log` before the run so you can easily spot new lines at the end.

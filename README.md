@@ -4,6 +4,12 @@ We are rebooting the classic Reaper Bot from the original source and fixing
 the community-reported issues first. The goal is a stable, fair, and readable
 baseline that we can extend in small, testable steps.
 
+## Active code (do not edit legacy)
+All active, working code lives in `mre/` only:
+https://github.com/saworbit/mre/tree/master/mre
+Everything under `archive/` is legacy reference material. Do not edit or build
+from `archive/`.
+
 ## Status
 
 **28 community issues addressed + 2 new features** - see [CHANGELOG.md](CHANGELOG.md) for details.
@@ -38,11 +44,21 @@ baseline that we can extend in small, testable steps.
 .\ci\build_mre.ps1
 ```
 This compiles `mre/`, writes `progs.dat` into `ci/mre/progs.dat`, and deploys the same copy to `launch/quake-spasm/mre/progs.dat` so the runtime directory stays in-sync with the build.
+Manual build (fteqcc) + deploy:
+```powershell
+cd c:\reaperai\mre
+..\tools\fteqcc_win64\fteqcc64.exe -O3 progs.src
+copy c:\reaperai\progs.dat c:\reaperai\launch\quake-spasm\mre\progs.dat /Y
+```
 
 ## Run
 ```batch
 cd launch\quake-spasm
 launch_reapbot_v2.bat 8 dm4
+```
+Manual command with logging:
+```batch
+quakespasm.exe -game mre -condebug +developer 1 -listen 8 +maxplayers 8 +deathmatch 1 +map dm4
 ```
 
 ## Test

@@ -134,6 +134,11 @@ void (entity targ, entity inflictor, entity attacker, float damage) T_Damage = {
       dir = normalize (dir);
       targ.velocity = (targ.velocity + ((dir * damage) * FL_CLIENT));
       targ.knockback_time = time;  // Track when knockback was applied
+      if ( (targ.classname == "dmbot") ) {
+
+         targ.movetype = MOVETYPE_BOUNCE;
+
+      }
 
    }
    if ( (targ.flags & FL_GODMODE) ) {

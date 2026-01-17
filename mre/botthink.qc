@@ -347,6 +347,27 @@ void () BotPostThink = {
    }
    BotCheckPowerups ();
    BotWaterMove ();
+   if ( (self.movetype == MOVETYPE_BOUNCE) ) {
+
+      if ( ((self.flags & FL_ONGROUND) || (vlen (self.velocity) < 40.000)) ) {
+
+         self.movetype = MOVETYPE_STEP;
+         self.velocity = '0 0 0';
+
+      }
+      if ( (cvar ("developer") > 0.000) && (self.knockback_time > (time - 0.100)) ) {
+
+         dprint ("[");
+         dprint (self.netname);
+         dprint ("] KNOCKBACK: vel=");
+         dprint (vtos (self.velocity));
+         dprint (" type=");
+         dprint (ftos (self.movetype));
+         dprint ("\n");
+
+      }
+
+   }
    fraglimit = cvar ("fraglimit");
    if ( (fraglimit && (self.frags >= fraglimit)) ) {
 
