@@ -346,10 +346,17 @@ void () BotPostThink = {
    BotWaterMove ();
    if ( (self.movetype == MOVETYPE_BOUNCE) ) {
 
-      if ( ((self.flags & FL_ONGROUND) || (vlen (self.velocity) < 40.000)) ) {
+      if ( (time > (self.knockback_time + 0.100)) && ((self.flags & FL_ONGROUND) || (vlen (self.velocity) < 40.000)) ) {
 
          self.movetype = MOVETYPE_STEP;
          self.velocity = '0 0 0';
+         if ( (cvar ("developer") > 0.000) ) {
+
+            dprint ("[");
+            dprint (self.netname);
+            dprint ("] KNOCKBACK_END\n");
+
+         }
 
       }
       if ( (cvar ("developer") > 0.000) && (self.knockback_time > (time - 0.100)) ) {

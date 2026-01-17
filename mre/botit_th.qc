@@ -22,6 +22,7 @@ float () CheckDropPath;
 
 void () DropBotPath;
 float () BotFoundTarget;
+void () BotHuntTarget;
 
 void (entity en2) secondEnemy;
 

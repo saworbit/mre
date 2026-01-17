@@ -54,6 +54,8 @@ Log output: `c:\reaperai\launch\quake-spasm\qconsole.log`
 If `+developer 1` is enabled and `sv_aim` is not `0.93`, the bot spawner prints
 a one-time note with the current `sv_aim` value. Set `sv_aim 0.93` to match the
 baseline bot aiming behavior.
+Knockback debug lines include `[BotName] KNOCKBACK: ...` while bouncing and
+`[BotName] KNOCKBACK_END` when the bot returns to step movement.
 
 ## CI
 ```

@@ -137,6 +137,17 @@ void (entity targ, entity inflictor, entity attacker, float damage) T_Damage = {
       if ( (targ.classname == "dmbot") ) {
 
          targ.movetype = MOVETYPE_BOUNCE;
+         if ( ((attacker.classname == "player") || (attacker.classname == "dmbot")) && (attacker != targ) && (targ.enemy != attacker) ) {
+
+            oldself = self;
+            self = targ;
+            self.enemy = attacker;
+            self.pending_enemy = world;
+            self.reaction_time = FALSE;
+            BotHuntTarget ();
+            self = oldself;
+
+         }
 
       }
 
