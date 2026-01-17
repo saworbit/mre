@@ -34,6 +34,7 @@ ci/reaper_mre/
 ci/mre/
 launch/quake-spasm/reaper_mre/
 launch/quake-spasm/mre/
+ci/stability-results.json
 
 # Legacy decompiled source (use src/ for reference only)
 reaper/

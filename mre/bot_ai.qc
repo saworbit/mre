@@ -603,6 +603,14 @@ void (float dist, float turn) aibot_run_slide = {
    local float dis;
    local float trn;
    local float weap;
+   local vector cover_angles;
+   local vector enemy_view;
+   local vector cover_left;
+   local vector cover_right;
+   local float cover_bias;
+   local float cover_thresh;
+   local float left_frac;
+   local float right_frac;
 
    trn = turn;
    self.ideal_yaw = vectoyaw ((self.enemy.origin - self.origin));
@@ -613,6 +621,34 @@ void (float dist, float turn) aibot_run_slide = {
    if ( (self.strafeonly > FALSE) ) {
 
       trn = NOTURN;
+
+   }
+   cover_bias = FALSE;
+   cover_thresh = 0.900;
+   cover_angles_x = FALSE;
+   cover_angles_y = self.ideal_yaw;
+   cover_angles_z = FALSE;
+   makevectors (cover_angles);
+   enemy_view = (self.enemy.origin + self.enemy.view_ofs);
+   cover_left = (self.origin - (v_right * 32.000));
+   cover_right = (self.origin + (v_right * 32.000));
+   left_frac = TRUE;
+   right_frac = TRUE;
+   traceline (enemy_view,cover_left,TRUE,self.enemy);
+   left_frac = trace_fraction;
+   traceline (enemy_view,cover_right,TRUE,self.enemy);
+   right_frac = trace_fraction;
+   if ( ((left_frac < cover_thresh) || (right_frac < cover_thresh)) ) {
+
+      if ( (left_frac < right_frac) ) {
+
+         cover_bias = CONTENT_EMPTY;
+
+      } else {
+
+         cover_bias = TRUE;
+
+      }
 
    }
    rdir = (random () * MOVETYPE_WALK);
@@ -839,6 +875,32 @@ void (float dist, float turn) aibot_run_slide = {
    if ( (self.lefty & STRAFE_DIR) ) {
 
       ofs = (CONTENT_EMPTY * ofs);
+
+   }
+   if ( (cover_bias != FALSE) ) {
+
+      if ( ((cover_bias > FALSE) && (ofs < FALSE)) || ((cover_bias < FALSE) && (ofs > FALSE)) ) {
+
+         ofs = (CONTENT_EMPTY * ofs);
+
+      }
+      if ( (ofs < FALSE) ) {
+
+         if ( !(self.lefty & STRAFE_DIR) ) {
+
+            self.lefty = (self.lefty + STRAFE_DIR);
+
+         }
+
+      } else {
+
+         if ( (self.lefty & STRAFE_DIR) ) {
+
+            self.lefty = (self.lefty - STRAFE_DIR);
+
+         }
+
+      }
 
    }
    if ( botwalkmove ((self.ideal_yaw + ofs),dis) ) {
@@ -1267,6 +1329,46 @@ float (float minweight) aibot_checkforGoodies = {
                   if ( !e.istrigger ) {
 
                      weight = itemweight (e);
+                     if ( (weight > DONT_WANT) ) {
+
+                        // Boost survival goodies when we are wounded or running away.
+                        local float health_deficit;
+                        local float armor_deficit;
+
+                        health_deficit = (self.max_health - self.health);
+                        if ( (health_deficit > 0.000) && (e.healamount > 0.000) ) {
+
+                           if ( (health_deficit > 60.000) ) {
+
+                              health_deficit = 60.000;
+
+                           }
+                           weight = (weight + (health_deficit * 0.300));
+
+                        }
+                        armor_deficit = (e.armorvalue - self.armorvalue);
+                        if ( (armor_deficit > 0.000) ) {
+
+                           if ( (armor_deficit > 120.000) ) {
+
+                              armor_deficit = 120.000;
+
+                           }
+                           weight = (weight + (armor_deficit * 0.250));
+
+                        }
+                        if ( AFRAID ) {
+
+                           if ( ((e.healamount > 0.000) || (armor_deficit > 0.000)) ) {
+
+                              weight = (weight + (KINDA_WANT * 0.400));
+
+                           }
+                           weight = (weight + (0.050 * vlen ((self.enemy.origin - e.origin))));
+
+                        }
+
+                     }
                      if ( (weight < MUST_HAVE) ) {
 
                         if ( (((e.origin_z < self.enemy.absmin_z) && (e.origin_z < self.absmin_z)) && !AFRAID) ) {

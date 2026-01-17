@@ -35,7 +35,6 @@ Run before every release to catch regressions:
 .\ci\test_stability.bat          # Full tests (~4 min)
 .\ci\test_stability.bat --quick  # Quick tests (~2 min)
 ```
-
 Tests automatically check for:
 - Edict overflow (SP crash)
 - Runaway loops (MP lockup)

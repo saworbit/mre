@@ -37,6 +37,7 @@ baseline that we can extend in small, testable steps.
 ```powershell
 .\ci\build_mre.ps1
 ```
+This compiles `mre/`, writes `progs.dat` into `ci/mre/progs.dat`, and deploys the same copy to `launch/quake-spasm/mre/progs.dat` so the runtime directory stays in-sync with the build.
 
 ## Run
 ```batch
@@ -52,6 +53,7 @@ launch_reapbot_v2.bat 8 dm4
 # Quick tests (~2 minutes)
 .\ci\test_stability.bat --quick
 ```
+Command to run stability regression tests: `.\ci\test_stability.bat` (add `--quick` for shorter runs).
 
 Automated tests check for: edict overflow, runaway loops, route recursion, scoreboard overflow.
 
@@ -61,3 +63,4 @@ Automated tests check for: edict overflow, runaway loops, route recursion, score
 - [mre/COMMUNITY_ISSUES.md](mre/COMMUNITY_ISSUES.md) - Issue tracker
 - [mre/CHANGELOG.md](mre/CHANGELOG.md) - Detailed changes
 - [mre/SOURCES.md](mre/SOURCES.md) - Research sources
+- [KNOWN_ISSUES.md](KNOWN_ISSUES.md) - Current regressions (bots clipping, logging gaps) and reproduction notes

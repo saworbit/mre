@@ -7,6 +7,8 @@ float (float s_yaw, float s_dist) botwalkmove = {
 
    local vector move_dir;
    local vector check_pos;
+   local vector knock_move;
+   local vector knock_target;
    local float contents;
 
    self.oldorigin = self.origin;
@@ -30,9 +32,16 @@ float (float s_yaw, float s_dist) botwalkmove = {
    // apply knockback displacement during the knockback window
    if ( (time < (self.knockback_time + 0.400)) ) {
 
-      // Apply velocity-based movement manually (frametime ~= 0.1)
-      // Scale down to prevent excessive distance
-      setorigin (self, (self.origin + (self.velocity * 0.050)));
+      knock_move = (self.velocity * 0.050);
+      knock_target = (self.origin + knock_move);
+      traceline (self.origin, knock_target, TRUE, self);
+      if ( (trace_fraction != TRUE) ) {
+
+         knock_target = (self.origin + (knock_move * trace_fraction));
+         self.velocity = '0 0 0';
+
+      }
+      setorigin (self, knock_target);
       return ( FALSE );
 
    }
@@ -863,12 +872,23 @@ void (float dist) strafemove = {
    local float ofs;
    local float rnd;
    local float move_yaw;
+   local vector knock_move;
+   local vector knock_target;
 
    // FIX: Respect knockback physics
    // MOVETYPE_STEP ignores velocity, so apply displacement manually
    if ( (time < (self.knockback_time + 0.400)) ) {
 
-      setorigin (self, (self.origin + (self.velocity * 0.050)));
+      knock_move = (self.velocity * 0.050);
+      knock_target = (self.origin + knock_move);
+      traceline (self.origin, knock_target, TRUE, self);
+      if ( (trace_fraction != TRUE) ) {
+
+         knock_target = (self.origin + (knock_move * trace_fraction));
+         self.velocity = '0 0 0';
+
+      }
+      setorigin (self, knock_target);
       return ;
 
    }
