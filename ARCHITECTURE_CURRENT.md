@@ -212,6 +212,13 @@ Botmovetogoal(dist)                    [botmove.qc:1304]
         └─> strafemove(dist * 0.8)
 ```
 
+### Feeler Steering + Breadcrumbs (Exploration)
+
+- Activation: `ai_botseek` enables `feeler_mode_active` after > 1.5s stuck time.
+- Steering: `Bot_FindClearestDirection` runs an 8-way traceline scan and overrides flow yaw for up to 10s.
+- Breadcrumbs: `Bot_DropBreadcrumb` calls `SpawnSavedWaypoint` (pathtype `DROPPED`) every 64 units while exploring.
+
+
 ### Low-Level Movement
 
 ```
@@ -223,7 +230,9 @@ botwalkmove(yaw, dist)                 [botmove.qc:513]
   ├─> [if waterlevel >= 2]
   │     ├─> BotSwim()                 [3D swim control]
   │     └─> BotCheckWaterJump()
-  ├─> flow_yaw = BotSteer(yaw, 1.0)    [sensor fusion steering]
+  ├─> [if feeler_mode_active]
+  │     └─> flow_yaw = Bot_FindClearestDirection()
+  ├─> [else] flow_yaw = BotSteer(yaw, 1.0)    [sensor fusion steering]
   │
   ├─> flow_yaw = BotClampYaw(flow_yaw) [turn speed limiting: 180°/sec cap]
   │
@@ -231,6 +240,7 @@ botwalkmove(yaw, dist)                 [botmove.qc:513]
   │
   ├─> [if moved]
   │     ├─> velocity matching          [client interpolation fix]
+  │     ├─> Bot_DropBreadcrumb()     [if feeler_mode_active]
   │     ├─> ground glue (velocity_z=-20) [anti-jitter on ramps]
   │     ├─> BotApplyEdgeFriction()     [0.7x friction near ledges]
   │     └─> visual turn smoothing      [face into turns]
@@ -353,6 +363,7 @@ While no redundant loops exist, these areas could be simplified:
 
 | Date | Change |
 |------|--------|
+| 2026-01-20 | Added feeler steering + breadcrumb exploration mode |
 | 2026-01-19 | Added 3D swim engine (BotSwim) with critical-health surfacing logic |
 | 2026-01-18 | Added humanized physics system (turn limiting, air steering, edge friction, wall sliding) |
 | 2026-01-17 | Added sensor fusion steering system documentation |

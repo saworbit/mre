@@ -317,6 +317,10 @@ float () Bot_CheckReaction; // Forward declaration
 // Stuck detection
 .float stuck_time;           // Time when bot became stuck (0 = not stuck)
 .vector obstruction_normal;  // Wall normal when stuck (for velocity decomposition)
+// Feeler steering / breadcrumbs
+.float feeler_mode_active;   // TRUE when using feeler navigation
+.float feeler_start_time;    // When feeler mode was activated
+.vector last_breadcrumb_pos; // Position of last dropped breadcrumb
 
 // Turn speed limiting (inspired by FrikBot mouse emulation)
 .float last_yaw;             // Previous frame's yaw for delta calculation

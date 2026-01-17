@@ -214,6 +214,20 @@ void (entity a, entity b) addTarget = {
 
 };
 float () FindAPath;
+
+// Spawn a saved waypoint for breadcrumbs/exploration.
+// NOTE: traffic/danger fields are not wired in MRE yet.
+void (vector org, float traffic, float danger, string tgt) SpawnSavedWaypoint = {
+
+   local entity node;
+
+   node = botpath ();
+   setorigin (node, org);
+   node.pathtype = DROPPED;
+   node.classname = "BotPath";
+
+};
+
 float () FindAltPath = {
 
    local entity e;

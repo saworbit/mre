@@ -8,6 +8,7 @@ void (float dist) Botmovetogoal;
 void () ChangeYaw;
 float () FacingIdeal;
 void (float shotcount, vector dir, vector spread) FireBullets;
+void (vector org, float traffic, float danger, string tgt) SpawnSavedWaypoint;
 
 // FIX: Platform riding - handles func_train (DM2 lava platforms) and func_plat
 // Returns TRUE if bot should wait/ride, FALSE to continue with normal movement
@@ -605,6 +606,76 @@ void () BotCheckWaterJump = {
 
 };
 
+// --- FEELER STEERING & BREADCRUMBS ---
+
+// Scan 8 directions to find the clearest path (longest traceline)
+float (entity bot) Bot_FindClearestDirection = {
+
+   local vector start;
+   local float best_yaw;
+   local float best_dist;
+   local float i;
+   local float scan_yaw;
+   local float score;
+   local float goal_yaw;
+   local float diff;
+
+   start = bot.origin + '0 0 24';  // Waist height
+   best_yaw = bot.ideal_yaw;
+   best_dist = 0;
+
+   i = 0;
+   while ( i < 8 ) {
+      scan_yaw = i * 45;
+
+      makevectors ('0 1 0' * scan_yaw);
+      traceline (start, start + (v_forward * 200), TRUE, bot);
+      score = trace_fraction * 200;
+
+      // Bias toward the goal if we have one
+      if ( bot.goalentity && (bot.goalentity != world) ) {
+         goal_yaw = vectoyaw (bot.goalentity.origin - bot.origin);
+         diff = scan_yaw - goal_yaw;
+         while ( diff > 180 ) {
+            diff = diff - 360;
+         }
+         while ( diff < -180 ) {
+            diff = diff + 360;
+         }
+         diff = fabs (diff);
+         score = score * (1.0 - (diff / 360));
+      }
+
+      if ( score > best_dist ) {
+         best_dist = score;
+         best_yaw = scan_yaw;
+      }
+
+      i = i + 1;
+   }
+
+   return best_yaw;
+
+};
+
+void () Bot_DropBreadcrumb = {
+
+   // Only drop if we have moved far enough from the last one
+   if ( (self.last_breadcrumb_pos != '0 0 0') && (vlen (self.origin - self.last_breadcrumb_pos) < 64) ) {
+      return;
+   }
+
+   // Use the saved waypoint helper
+   SpawnSavedWaypoint (self.origin, 0.1, 0.0, "");
+   self.last_breadcrumb_pos = self.origin;
+
+   if ( cvar("developer") ) {
+      bprint (self.netname);
+      bprint (" dropped breadcrumb.\n");
+   }
+
+};
+
 // =========================================================================
 // MAIN MOVEMENT FUNCTION
 // =========================================================================
@@ -647,10 +718,28 @@ float (float s_yaw, float s_dist) botwalkmove = {
       return TRUE;
    }
 
-   // --- EXECUTE SENSOR FUSION ---
-   // Calculate the best path through the geometry using vector-based steering
-   // This handles walls AND hazards (lava, slime, cliffs) in one unified system
-   flow_yaw = BotSteer (s_yaw, 1.0);
+   // --- EXECUTE STEERING ---
+   if ( self.feeler_mode_active ) {
+      // FEELER MODE: Override normal steering
+      if ( time > (self.feeler_start_time + 10) ) {
+         self.feeler_mode_active = FALSE;
+         flow_yaw = BotSteer (s_yaw, 1.0);
+      } else {
+         flow_yaw = Bot_FindClearestDirection (self);
+
+         // If we found a clear exit and can see the goal, drop back to normal
+         makevectors ('0 1 0' * flow_yaw);
+         traceline (self.origin, self.origin + (v_forward * 128), TRUE, self);
+         if ( (trace_fraction == 1.0) && self.goalentity && (self.goalentity != world) ) {
+            if ( Spotvisible (self.goalentity) ) {
+               self.feeler_mode_active = FALSE;
+            }
+         }
+      }
+   } else {
+      // STANDARD MODE: Sensor fusion
+      flow_yaw = BotSteer (s_yaw, 1.0);
+   }
 
    // TURN SPEED LIMITING (FrikBot-inspired)
    // Cap angular velocity so bots don't instantly snap to new directions
@@ -663,6 +752,11 @@ float (float s_yaw, float s_dist) botwalkmove = {
       // MOVEMENT SUCCESS
       // Clear any stored obstruction from previous frame
       self.obstruction_normal = '0 0 0';
+
+      // Drop breadcrumbs while exploring
+      if ( self.feeler_mode_active ) {
+         Bot_DropBreadcrumb ();
+      }
 
       // 1. Velocity Matching (Fixes teleport/jitter)
       makevectors ('0 1 0' * flow_yaw);

@@ -101,6 +101,15 @@ void (float dist) ai_botseek = {
          }
 
          self.stuck_time = 0;  // Reset for next cycle
+
+         // Activate feeler mode to search for an exit
+         if ( !self.feeler_mode_active ) {
+            self.feeler_mode_active = TRUE;
+            self.feeler_start_time = time;
+            if ( cvar("developer") ) {
+               dprint("Activating FEELER mode\n");
+            }
+         }
       } else {
          // Normal stuck handling - reduce search time faster
          self.search_time = (self.search_time - 0.150);

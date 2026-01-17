@@ -59,6 +59,8 @@ Knockback debug lines include `[BotName] KNOCKBACK: ...` while bouncing and
 Full think-logic traces are available in `BotAI_Main` when `developer` is on.
 Logs emit `[BotName] AI: <STATE>` only when the bot's high-level state changes
 (GOODY/RETREAT/ATTACK/CHASE/NO_ENEMY).
+Feeler exploration logs are developer-only: `Activating FEELER mode` and
+`<BotName> dropped breadcrumb.` appear when feeler mode triggers and breadcrumbs drop.
 
 ## CI
 ```
