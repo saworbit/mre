@@ -698,6 +698,11 @@ void () bot_die_ax1;
 
 void () BotDead = {
 
+   // FIX: Reset animation state to prevent stale frames on h_player.mdl
+   // The gibbed head model only has ~2 frames, but bot animations use 6-118
+   self.frame = FALSE;
+   self.walkframe = FALSE;
+
    self.nextthink = ((time + 0.300) + ((random () * (NUMBOTS + MOVETYPE_WALK)) * 0.100));
    if ( teamplay ) {
 

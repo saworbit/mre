@@ -43,6 +43,7 @@
 - Improved: KNOCKBACK log now filters zero-velocity entries and debounces duplicates (0.05s) to reduce console spam.
 - Fixed: GOODY/RETREAT AI oscillation (added 0.5s hysteresis to prevent rapid state flipping).
 - Fixed: Stale knockback/AI state after respawn (reset values in PutBotInServer).
+- Fixed: Invalid frame errors on gibbed head (reset frame/walkframe in BotDead and on respawn).
 - Fixed: Backpacks spawning in unreachable locations (CONTENT_SOLID/SKY check).
 - Fixed: sv_aim warning spam (one-time flag per map).
 - Feature: Unlocked high skill levels (skill 0-10, was 0-3).

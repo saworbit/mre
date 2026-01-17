@@ -398,6 +398,7 @@ void () PutBotInServer = {
    self.last_ai_state = FALSE;
    self.last_ai_state_time = FALSE;
    self.stuck_time = FALSE;
+   self.walkframe = FALSE;  // Reset animation frame counter
    spwn = SelectSpawnPoint ();
    spot = (spwn.origin + '0.000 0.000 1.000');
    self.origin = spot;

@@ -143,6 +143,10 @@
 - Fixed: Stale knockback/AI state after respawn (`botspawn.qc`). Reset
   `knockback_time`, `last_ai_state`, and `last_ai_state_time` to zero in
   `PutBotInServer()` to prevent values from previous life affecting new spawn.
+- Fixed: Invalid frame errors on gibbed head (`dmbot.qc`, `botspawn.qc`). Reset
+  `frame` and `walkframe` in `BotDead()` to prevent stale animation frames being
+  rendered on `h_player.mdl` which only has ~2 frames. Also reset `walkframe` on
+  respawn. Eliminates 2000+ "R_AliasSetupFrame: no such frame" console warnings.
 - Fixed: sv_aim warning spam (`botspawn.qc`). Added `sv_aim_warned` flag to only
   print the non-default sv_aim warning once per map instead of every bot spawn.
 - Feature: Unlocked high skill levels (`botspawn.qc`, `botscore.qc`). Skill cap
