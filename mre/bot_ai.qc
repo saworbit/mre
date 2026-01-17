@@ -1059,6 +1059,27 @@ void (float dist) ai_botretreat = {
 
 };
 
+void (float state, string label) BotLogAI = {
+
+   if ( (cvar ("developer") <= 0.000) ) {
+
+      return ;
+
+   }
+   if ( (self.last_ai_state == state) ) {
+
+      return ;
+
+   }
+   dprint ("[");
+   dprint (self.netname);
+   dprint ("] AI: ");
+   dprint (label);
+   dprint ("\n");
+   self.last_ai_state = state;
+
+};
+
 void (float dist) BotAI_Main = {
 
    local vector delta;
@@ -1072,18 +1093,21 @@ void (float dist) BotAI_Main = {
 
    if ( (self.enemy.deadflag != DEAD_NO) ) {
 
+      BotLogAI (AI_STATE_NONE, "NO_ENEMY");
       endEnemy ();
       return ;
 
    }
    if ( !self.enemy ) {
 
+      BotLogAI (AI_STATE_NONE, "NO_ENEMY");
       endEnemy ();
       return ;
 
    }
    if ( (self.lefty & GETGOODY) ) {
 
+      BotLogAI (AI_STATE_GOODY, "GOODY");
       ai_botgetGoody (dist);
       return ;
 
@@ -1117,6 +1141,7 @@ void (float dist) BotAI_Main = {
    }
    if ( (self.search_time < time) ) {
 
+      BotLogAI (AI_STATE_NONE, "SEARCH_EXPIRED");
       endEnemy ();
       BotFindTarget ();
       return ;
@@ -1128,6 +1153,7 @@ void (float dist) BotAI_Main = {
       self.lastseenpos = self.goalentity.origin;
       if ( aibot_checkforGoodies (DONT_WANT) ) {
 
+         BotLogAI (AI_STATE_GOODY, "GOODY");
          ai_botgetGoody (dist);
          return ;
 
@@ -1141,10 +1167,12 @@ void (float dist) BotAI_Main = {
       self.lastseenpos = self.goalentity.origin;
       if ( aibot_checkforGoodies (DONT_WANT) ) {
 
+         BotLogAI (AI_STATE_GOODY, "GOODY");
          ai_botgetGoody (dist);
          return ;
 
       }
+      BotLogAI (AI_STATE_RETREAT, "RETREAT");
       ai_botretreat (dist);
       return ;
 
@@ -1162,12 +1190,14 @@ void (float dist) BotAI_Main = {
       if ( (time < (self.last_seen_time + memory_duration)) ) {
 
          // Still in memory window - fire at last known position
+         BotLogAI (AI_STATE_ATTACK, "MEMORY_ATTACK");
          CheckBotAttack ();
          aibot_run_slide (dist,CANTURN);
          return ;
 
       }
       // Memory expired - chase
+      BotLogAI (AI_STATE_CHASE, "CHASE");
       aibot_setupchase ();
       Botmovetogoal (dist);
       return ;
@@ -1175,9 +1205,11 @@ void (float dist) BotAI_Main = {
    }
    if ( (self.attack_state == AS_MELEE) ) {
 
+      BotLogAI (AI_STATE_ATTACK, "MELEE");
       aibot_run_melee ();
 
    }
+   BotLogAI (AI_STATE_ATTACK, "ATTACK");
    CheckBotAttack ();
    aibot_run_slide (dist,CANTURN);
    return ;

@@ -56,6 +56,9 @@ a one-time note with the current `sv_aim` value. Set `sv_aim 0.93` to match the
 baseline bot aiming behavior.
 Knockback debug lines include `[BotName] KNOCKBACK: ...` while bouncing and
 `[BotName] KNOCKBACK_END` when the bot returns to step movement.
+Full think-logic traces are available in `BotAI_Main` when `developer` is on.
+Logs emit `[BotName] AI: <STATE>` only when the bot's high-level state changes
+(GOODY/RETREAT/ATTACK/CHASE/NO_ENEMY).
 
 ## CI
 ```

@@ -244,14 +244,26 @@ float () W_BestBotWeapon = {
    local float it;
    local float rng;
    local float wlevel;
+   local float dist;
 
    it = self.items;
+   dist = FALSE;
+   if ( self.enemy ) {
+
+      dist = vlen ((self.enemy.origin - self.origin));
+
+   }
    rng = botrange (self.enemy);
    if ( (rng != RANGE_MELEE) ) {
 
       if ( ((self.ammo_rockets >= TRUE) && (it & IT_ROCKET_LAUNCHER)) ) {
 
-         return ( IT_ROCKET_LAUNCHER );
+         // Avoid rockets at point-blank when we are too fragile for splash.
+         if ( !((dist < 150.000) && (self.health < 50.000)) ) {
+
+            return ( IT_ROCKET_LAUNCHER );
+
+         }
 
       }
 
@@ -293,6 +305,21 @@ float () W_BestBotWeapon = {
       }
 
    }
+   // Prefer nails over shotguns at long range.
+   if ( (dist > 500.000) ) {
+
+      if ( ((self.ammo_nails >= FL_SWIM) && (it & IT_SUPER_NAILGUN)) ) {
+
+         return ( IT_SUPER_NAILGUN );
+
+      }
+      if ( ((self.ammo_nails >= TRUE) && (it & IT_NAILGUN)) ) {
+
+         return ( IT_NAILGUN );
+
+      }
+
+   }
    if ( ((rng == RANGE_NEAR) || (rng == RANGE_MELEE)) ) {
 
       if ( ((self.ammo_shells >= FL_SWIM) && (it & IT_SUPER_SHOTGUN)) ) {
@@ -319,11 +346,23 @@ float () W_BestHeldWeapon = {
 
    local float it;
    local float wlevel;
+   local float dist;
 
    it = self.items;
+   dist = FALSE;
+   if ( self.enemy ) {
+
+      dist = vlen ((self.enemy.origin - self.origin));
+
+   }
    if ( ((self.ammo_rockets >= TRUE) && (it & IT_ROCKET_LAUNCHER)) ) {
 
-      return ( IT_ROCKET_LAUNCHER );
+      // Avoid rockets at point-blank when we are too fragile for splash.
+      if ( !((dist < 150.000) && (self.health < 50.000)) ) {
+
+         return ( IT_ROCKET_LAUNCHER );
+
+      }
 
    }
    if ( ((self.ammo_cells >= TRUE) && (it & IT_LIGHTNING)) ) {
@@ -351,6 +390,21 @@ float () W_BestHeldWeapon = {
       if ( (self.enemy.origin_z < (self.origin_z + 175.000)) ) {
 
          return ( IT_GRENADE_LAUNCHER );
+
+      }
+
+   }
+   // Prefer nails over shotguns at long range.
+   if ( (dist > 500.000) ) {
+
+      if ( ((self.ammo_nails >= FL_SWIM) && (it & IT_SUPER_NAILGUN)) ) {
+
+         return ( IT_SUPER_NAILGUN );
+
+      }
+      if ( ((self.ammo_nails >= TRUE) && (it & IT_NAILGUN)) ) {
+
+         return ( IT_NAILGUN );
 
       }
 

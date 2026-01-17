@@ -32,6 +32,8 @@
 - Fixed: Suppressed `Bot should be dead!` log spam by skipping BotPostThink on dead bots.
 - Improved: Pain reflex triggers immediate bot reaction when taking damage from a player/bot.
 - Improved: Added a developer-only `KNOCKBACK_END` log when bots return to step movement.
+- Improved: Range-based weapon selection to avoid close-range rockets when low on health and prefer nails at long range.
+- Improved: Added developer-only AI state logging in `BotAI_Main` (logs only on state changes).
 - Fixed: Backpacks spawning in unreachable locations (CONTENT_SOLID/SKY check).
 - Fixed: sv_aim warning spam (one-time flag per map).
 - Feature: Unlocked high skill levels (skill 0-10, was 0-3).

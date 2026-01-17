@@ -142,6 +142,7 @@ void end_sys_globals;
 .string noise3;
 void end_sys_fields;
 .entity bot_next;
+.float last_ai_state;
 float FALSE    = 0.000;
 float TRUE    = 1.000;
 float FL_FLY    = 1.000;
