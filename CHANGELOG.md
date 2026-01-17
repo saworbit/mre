@@ -13,6 +13,10 @@
 - Fixed: Jumpy/teleport-like strafing (removed sub-frame timing, added velocity for interpolation).
 - Improved: Movement smoothing (Z-axis ground glue, zero velocity on collision, consistent 0.1s think timing).
 - Feature: Sensor fusion steering (vector-based whisker system for fluid navigation around walls and hazards).
+- Improved: Sensor fusion steering V2 (step-over obstacles and water-safe hazard detection).
+- Feature: Humanized physics (turn clamp, air steering, edge friction, wall sliding).
+- Feature: 3D swim engine for deep water (3D velocity, pitch steering, "drown a bit" behavior).
+- Feature: Feeler steering + breadcrumbs (8-way scan escape + dropped BotPath waypoints).
 - Feature: Humanized idle behavior (BotRoam makes bots wander and scavenge instead of freezing).
 - Fixed: "Flashing" bots near water (stricter teleptest checks).
 - Fixed: Bots getting stuck running in place (time-based tracking, 1.5s forced goal change, 20% jump chance).
@@ -44,7 +48,7 @@
 - Improved: KNOCKBACK log now filters zero-velocity entries and debounces duplicates (0.05s) to reduce console spam.
 - Fixed: GOODY/RETREAT AI oscillation (added 0.5s hysteresis to prevent rapid state flipping).
 - Fixed: Stale knockback/AI state after respawn (reset values in PutBotInServer).
-- Fixed: Invalid frame errors on gibbed head (reset frame/walkframe in BotDead and on respawn).
+- Reverted: BotDead frame reset removed to preserve death animations (gibbed head frame warnings are cosmetic).
 - Fixed: Backpacks spawning in unreachable locations (CONTENT_SOLID/SKY check).
 - Fixed: sv_aim warning spam (one-time flag per map).
 - Feature: Unlocked high skill levels (skill 0-10, was 0-3).
