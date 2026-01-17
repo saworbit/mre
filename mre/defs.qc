@@ -141,6 +141,7 @@ void end_sys_globals;
 .string noise2;
 .string noise3;
 void end_sys_fields;
+.entity bot_next;
 float FALSE    = 0.000;
 float TRUE    = 1.000;
 float FL_FLY    = 1.000;

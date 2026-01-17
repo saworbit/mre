@@ -4,6 +4,59 @@ void () AddAnotherBot;
 // FIX: Flag to prevent sv_aim warning spam (only warn once per map)
 float sv_aim_warned;
 
+void () BotList_Clear = {
+
+   bot_list_head = world;
+
+};
+
+void (entity bot) BotList_Add = {
+
+   if ( !bot ) {
+
+      return ;
+
+   }
+   bot.bot_next = bot_list_head;
+   bot_list_head = bot;
+
+};
+
+void (entity bot) BotList_Remove = {
+
+   local entity cur;
+   local entity prev;
+
+   if ( !bot ) {
+
+      return ;
+
+   }
+   if ( bot_list_head == bot ) {
+
+      bot_list_head = bot.bot_next;
+      bot.bot_next = world;
+      return ;
+
+   }
+   prev = bot_list_head;
+   cur = bot_list_head.bot_next;
+   while ( cur ) {
+
+      if ( cur == bot ) {
+
+         prev.bot_next = cur.bot_next;
+         cur.bot_next = world;
+         return ;
+
+      }
+      prev = cur;
+      cur = cur.bot_next;
+
+   }
+
+};
+
 void () initBotLevel = {
 
    local float num;
@@ -13,6 +66,7 @@ void () initBotLevel = {
    local string tmp;
 
    NOISEQUEUE = noisetarget ();
+   BotList_Clear ();
    num = ((serverflags & BOTS) / FL_INWATER);
    serverflags = ((serverflags - (serverflags & BOTS)) - INITLEVEL);
    NUMBOTS = FALSE;
@@ -185,6 +239,7 @@ void () respawnBot = {
             }
             remove (self.movetarget);
             remove (self.goalentity);
+            BotList_Remove (self);
             self.think = SUB_Remove;
             if ( self.pather ) {
 
@@ -422,6 +477,7 @@ entity () AddBot = {
    local float plycolor;
 
    newbot = spawn ();
+   BotList_Add (newbot);
    oldself = self;
    self = newbot;
    self.think = SpawnNewBot;
@@ -496,6 +552,7 @@ newbot.id = FindGood();
    if ( (newbot.id == -1.000) ) {
 
       bprint ("Server full - cannot add bot\n");
+      BotList_Remove (newbot);
       remove (newbot);
       NUMBOTS = (NUMBOTS - TRUE);
       return ;
@@ -506,6 +563,7 @@ newbot.id = FindGood();
 
       bprint ("Server full - max players reached\n");
       MakeGood (newbot.id);
+      BotList_Remove (newbot);
       remove (newbot);
       NUMBOTS = (NUMBOTS - TRUE);
       return ;
@@ -806,6 +864,7 @@ void (entity ply, float n) removeTeamBots = {
       }
       remove (e.movetarget);
       remove (e.goalentity);
+      BotList_Remove (e);
       remove (e);
       i = (i - TRUE);
 
@@ -832,6 +891,7 @@ void () removeAllBots = {
       }
       remove (e.movetarget);
       remove (e.goalentity);
+      BotList_Remove (e);
       remove (e);
       e = find (e,classname,"dmbot");
 

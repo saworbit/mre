@@ -1,4 +1,5 @@
 entity bodyque_head;
+entity bot_list_head;
 
 .float LoggedIn;
 

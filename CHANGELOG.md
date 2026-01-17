@@ -17,7 +17,7 @@
 - Fixed: Bots walking into lava/slime (hazard avoidance with powerup awareness).
 - Fixed: Bots walking off lifts mid-ride (platform state detection).
 - Fixed: Bots stuck at closed doors (trigger door and back up to let it open).
-- Fixed: Bots ganging up on players (rewrote target selection to pick closest enemy).
+- Fixed: Bots ganging up on players (closest-target selection now uses checkclient + cached bot list).
 - Fixed: "Vacuum pickup" where items vanished before bot reached them (added distance check).
 - Investigated: "Extra SNG ammo" complaint (not found in baseline - bots use same ammo as players).
 - Investigated: "Firing faster" complaint (not found - bots use identical attack timings as players).
@@ -28,6 +28,7 @@
 - Improved: sv_aim warning now prints the current value and expected baseline.
 - Feature: Added tactical retreat fallback when running away and no goodies are found.
 - Refactor: Centralized run logic via `BotAI_Main` during shot/axe frames to reduce tunnel vision.
+- Optimization: BotFindTarget scans players via checkclient and bots via cached list to avoid full entity walks.
 - Fixed: Backpacks spawning in unreachable locations (CONTENT_SOLID/SKY check).
 - Fixed: sv_aim warning spam (one-time flag per map).
 - Feature: Unlocked high skill levels (skill 0-10, was 0-3).

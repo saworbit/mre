@@ -499,42 +499,52 @@ float (entity targ) BotValidTarget = {
 
 };
 
-// FIX: Rewritten to iterate ALL targets and pick closest, preventing "gang up on player" bias
-// Previously used checkclient() which always returns human players first due to entity slot order
+// Target acquisition: use checkclient() for players and cached bot list to avoid full entity scans
 float /* Warning: Could not determine return type */ () BotFindTarget = {
 
    local entity head;
    local entity best;
    local float dist;
    local float best_dist;
+   local float limit;
 
    best = world;
    best_dist = 100000;
 
-   // Search through human players first
-   head = find (world, classname, "player");
-   while ( head ) {
+   // Scan human players via checkclient (fast, avoids full entity walk).
+   limit = fMaxClients;
+   if ( (limit < TRUE) ) {
 
-      if ( BotValidTarget (head) ) {
+      limit = 16.000;
 
-         dist = vlen (head.origin - self.origin);
-         if ( dist < best_dist ) {
+   }
+   while ( (limit > FALSE) ) {
 
-            best_dist = dist;
-            best = head;
+      limit = (limit - TRUE);
+      head = checkclient ();
+      if ( head ) {
+
+         if ( BotValidTarget (head) ) {
+
+            dist = vlen (head.origin - self.origin);
+            if ( dist < best_dist ) {
+
+               best_dist = dist;
+               best = head;
+
+            }
 
          }
 
       }
-      head = find (head, classname, "player");
 
    }
 
-   // Search through other bots (dmbot)
-   head = find (world, classname, "dmbot");
+   // Scan cached bot list.
+   head = bot_list_head;
    while ( head ) {
 
-      if ( BotValidTarget (head) ) {
+      if ( (head.classname == "dmbot") && BotValidTarget (head) ) {
 
          dist = vlen (head.origin - self.origin);
          if ( dist < best_dist ) {
@@ -545,7 +555,7 @@ float /* Warning: Could not determine return type */ () BotFindTarget = {
          }
 
       }
-      head = find (head, classname, "dmbot");
+      head = head.bot_next;
 
    }
 

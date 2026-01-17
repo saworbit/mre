@@ -9,3 +9,8 @@
 - **Status:** Added developer-only `KNOCKBACK` logs in `BotPostThink` when knockback is recent.
 - **Confirm:** Run with `+developer 1 +condebug 1` and check `launch/quake-spasm/qconsole.log` for `[BotName] KNOCKBACK: vel=... type=...` lines near impacts.
 - **Tip:** Delete `qconsole.log` before the run so you can easily spot new lines at the end.
+
+## 3. "Bot should be dead!" log line
+- **Symptom:** `Bot should be dead!` appears in `qconsole.log` during heavy combat (often after telefrags/gibs).
+- **Impact:** BotPostThink force-gibs the entity, so gameplay continues, but the log line indicates a deadflagged bot reached `BotPostThink`.
+- **Next steps:** Add a guard to avoid calling `BotPostThink` from attack frames when `self.deadflag != DEAD_NO`, or early-return at the top of `BotPostThink` without printing unless debugging.

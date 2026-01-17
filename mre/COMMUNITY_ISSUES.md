@@ -40,8 +40,8 @@ Items are grouped by theme and phrased as fixable targets.
   identical attack_finished timings as players (0.5s shotgun, 0.7s SSG, 0.8s RL,
   etc.) and low-skill bots add extra delay via `addt`. No faster firing found. (fandom)
 - ~~Reports that bots gang up on players instead of fighting each other.~~ **Fixed:**
-  Rewrote `BotFindTarget` to iterate all targets and pick closest, instead of using
-  `checkclient()` which returned humans first due to entity slot order. (fandom)
+  `BotFindTarget` now picks the closest valid target using a fast `checkclient()` scan
+  for players plus a cached bot list, avoiding full entity walks while still comparing bots. (fandom)
 - ~~Extra SNG ammo to compensate for aiming is viewed as unfair.~~ **Not Found:**
   Searched all weapon pickup, spawn, and firing code - no bot-specific ammo bonus
   exists in this baseline. Bots consume identical ammo as players (2 nails/shot SNG).
