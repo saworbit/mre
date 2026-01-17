@@ -12,7 +12,7 @@
 - Fixed: Crash when adding bots beyond maxplayers (scoreboard overflow guard).
 - Fixed: Jumpy/teleport-like strafing (removed sub-frame timing, added velocity for interpolation).
 - Fixed: "Flashing" bots near water (stricter teleptest checks).
-- Fixed: Bots getting stuck running in place (position delta detection + jump attempts).
+- Fixed: Bots getting stuck running in place (time-based tracking, 1.5s forced goal change, 20% jump chance).
 - Fixed: Camper behavior near best weapons (ignore owned weapons when ammo sufficient).
 - Fixed: Suicidal explosive firing (switch weapons when enemy <150 units).
 - Fixed: Thunderbolt water discharge (switch weapons when in water).

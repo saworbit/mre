@@ -314,6 +314,9 @@ float () Bot_CheckReaction; // Forward declaration
 .entity blocking_door;       // Door blocking our path
 .entity target_button;       // Button to press/shoot
 
+// Stuck detection
+.float stuck_time;           // Time when bot became stuck (0 = not stuck)
+
 // Object permanence (target memory)
 .float last_seen_time;     // When enemy was last visible
 float (entity targ) enemyvisible; // Forward declaration

@@ -49,9 +49,11 @@
   setting after `walkmove` calls so clients can predict motion smoothly.
 - Fixed: "Flashing" bots near water (`botmove.qc`). Added stricter checks to
   `teleptest` for headroom and floor footing before allowing water teleportation.
-- Fixed: Bots getting stuck running in place (`botgoal.qc`). Added position delta
-  check in `ai_botseek` that forces faster goal timeout when bot hasn't moved, with
-  occasional jump attempts to dislodge.
+- Fixed: Bots getting stuck running in place (`botgoal.qc`). Improved stuck
+  detection with time-based tracking via `stuck_time` field. Raised movement
+  threshold from 1.0 to 3.0 units to catch subtle stuck states. After 1.5 seconds
+  stuck, forces immediate goal change. Increased jump attempt chance from 10% to
+  20%. Added developer-only STUCK logging.
 - Fixed: Camper behavior near best weapons (`botgoal.qc`). Modified `itemweight` to
   ignore weapons the bot already owns when ammo is sufficient (>50 nails/cells,
   >10 rockets).

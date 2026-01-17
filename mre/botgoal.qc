@@ -73,20 +73,47 @@ void (float dist) ai_botseek = {
       return;
    }
 
-   // FIX: Detect if bot is stuck running in place
+   // FIX: Improved stuck detection
+   // Check if bot hasn't moved much (threshold raised to catch more cases)
    stuck_dist = vlen (self.origin - self.oldorigin);
-   if ( (stuck_dist < 1.000) ) {
+   if ( (stuck_dist < 3.000) ) {
 
-      // Haven't moved much - force faster goal timeout
-      self.search_time = (self.search_time - 0.100);
-
-      // Occasionally try to jump to dislodge
-      if ( (random () < 0.100) ) {
-
-         Bot_tryjump (270.000, dist, FALSE);
-
+      // Track how long we've been stuck
+      if ( self.stuck_time == 0 ) {
+         self.stuck_time = time;  // Start stuck timer
       }
 
+      local float stuck_duration;
+      stuck_duration = time - self.stuck_time;
+
+      // Aggressive timeout after 1.5 seconds stuck
+      if ( stuck_duration > 1.5 ) {
+         // Force immediate goal change
+         self.search_time = time - 1;
+
+         // Log stuck event (developer mode only)
+         if ( cvar("developer") ) {
+            dprint("[");
+            dprint(self.netname);
+            dprint("] STUCK: forcing goal change after ");
+            dprint(ftos(stuck_duration));
+            dprint("s\n");
+         }
+
+         self.stuck_time = 0;  // Reset for next cycle
+      } else {
+         // Normal stuck handling - reduce search time faster
+         self.search_time = (self.search_time - 0.150);
+
+         // Try to jump more often when stuck (20% chance)
+         if ( (random () < 0.200) ) {
+            Bot_tryjump (270.000, dist, FALSE);
+         }
+      }
+
+   } else {
+      // Moving normally - clear stuck timer
+      self.stuck_time = 0;
    }
 
    botTarget = self.goalentity;

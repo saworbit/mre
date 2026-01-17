@@ -397,6 +397,7 @@ void () PutBotInServer = {
    self.knockback_log_time = FALSE;
    self.last_ai_state = FALSE;
    self.last_ai_state_time = FALSE;
+   self.stuck_time = FALSE;
    spwn = SelectSpawnPoint ();
    spot = (spwn.origin + '0.000 0.000 1.000');
    self.origin = spot;
