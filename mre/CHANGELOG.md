@@ -25,6 +25,15 @@
   bots continue firing at the last known position for a skill-based duration
   (Skill 0 = 0.5s, Skill 4 = 1.5s). Prevents robotic instant-stop behavior when
   target crosses a doorframe.
+- Feature: Humanized idle behavior (`bot_ai.qc`). Bots no longer freeze when idle.
+  New `BotRoam()` function makes them wander, look around, and scavenge nearby
+  items. Replaces empty `ai_botstand` and turret-like `ai_botturn` behaviors.
+- Improved: Movement smoothing (`botmove.qc`). Added Z-axis "ground glue" to prevent
+  floaty jitter on ramps/stairs. Zero velocity on collision prevents client-side
+  prediction sliding into walls.
+- Improved: Consistent think timing (`botthink.qc`). `BotPostThink` enforces minimum
+  0.1s think interval to match velocity calculations (dist * 10), eliminating
+  network interpolation "judder" from variable frame rates.
 - Fixed: Bots not pushed by rockets/explosions (`botmove.qc`, `combat.qc`). The
   bot movement code was overwriting knockback velocity every frame. Added
   `knockback_time` tracking so bots respect knockback physics for 0.3s after

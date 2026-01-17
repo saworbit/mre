@@ -313,6 +313,13 @@ float (float s_yaw, float s_dist) botwalkmove = {
          // Back up slightly to let it open
          self.velocity = (v_forward * -200.000);
 
+      } else {
+
+         // FIX: Zero velocity on collision to prevent client-side "sliding" into walls
+         // This eliminates prediction errors where client thinks bot is moving
+         self.velocity_x = 0;
+         self.velocity_y = 0;
+
       }
 
       return ( FALSE );
@@ -324,6 +331,13 @@ float (float s_yaw, float s_dist) botwalkmove = {
    makevectors ('0 1 0' * s_yaw);
    self.velocity_x = (v_forward_x * s_dist * 10.000);
    self.velocity_y = (v_forward_y * s_dist * 10.000);
+
+   // FIX: Ground Glue (Anti-Jitter)
+   // If on ground, apply slight downward velocity to stick to ramps/stairs
+   // This prevents the "floaty" jitter when walking down inclines
+   if ( (self.flags & FL_ONGROUND) ) {
+      self.velocity_z = -20.000;
+   }
 
    return ( TRUE );
 

@@ -376,6 +376,15 @@ void () BotPostThink = {
       }
 
    }
+
+   // FIX: Force consistent think rate for smooth movement
+   // Velocity smoothing in botwalkmove assumes 0.1s frame time (dist * 10)
+   // If nextthink is too fast, the velocity calculation becomes incorrect
+   // causing client prediction to desync and create "judder" effect
+   if ( (self.nextthink < (time + 0.050)) ) {
+      self.nextthink = (time + 0.100);
+   }
+
    fraglimit = cvar ("fraglimit");
    if ( (fraglimit && (self.frags >= fraglimit)) ) {
 

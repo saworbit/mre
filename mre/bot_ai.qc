@@ -1,4 +1,7 @@
 
+// Forward declarations for functions used before they're defined
+float (float minweight) aibot_checkforGoodies;
+
 void () endEnemy = {
 
    local entity olden;
@@ -570,24 +573,65 @@ float /* Warning: Could not determine return type */ () BotFindTarget = {
 
 };
 
+// FIX: Humanized roaming behavior for idle bots
+// Instead of standing frozen, bots wander, look around, and scavenge items
+float BOT_IDLE_THINK = 0.100;
+
+void () BotRoam = {
+
+   local float roam_dist;
+
+   // 1. Scan for items to give them purpose (Greedy Roaming)
+   // Low weight threshold so they lazily pick up nearby stuff
+   if ( aibot_checkforGoodies (20.000) ) {
+      return;
+   }
+
+   // 2. If no items, pick a random direction occasionally
+   // Change direction every 1-3 seconds or if hitting a wall
+   if ( (self.search_time < time) || !walkmove (self.ideal_yaw, 0.000) ) {
+      self.ideal_yaw = (random () * 360.000);
+      self.search_time = (time + 1.000 + (random () * 2.000));
+      ChangeYaw ();
+   }
+
+   // 3. Smoothly rotate towards interest points (slight look wander)
+   if ( (random () < 0.100) ) {
+      self.ideal_yaw = (self.ideal_yaw + (random () * 30.000) - 15.000);
+      ChangeYaw ();
+   }
+
+   // 4. Move forward at casual trot speed (~200 vs 350 run speed)
+   roam_dist = (200.000 * BOT_IDLE_THINK);
+
+   // Call robust movement function
+   if ( !botwalkmove (self.ideal_yaw, roam_dist) ) {
+      // If blocked, pick new direction for next frame
+      self.search_time = (time - 1.000);
+   }
+
+};
+
 void () ai_botstand = {
 
+   // Check for enemies first (high alert)
    if ( BotFindTarget () ) {
-
-      return ;
-
+      return;
    }
+
+   // Otherwise, look alive
+   BotRoam ();
 
 };
 
 void () ai_botturn = {
 
    if ( BotFindTarget () ) {
-
-      return ;
-
+      return;
    }
-   ChangeYaw ();
+
+   // Roam instead of just turning in place
+   BotRoam ();
 
 };
 
