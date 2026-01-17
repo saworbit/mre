@@ -507,6 +507,105 @@ void () BotDecomposeVelocity = {
 };
 
 // =========================================================================
+// SOPHISTICATED 3D SWIMMING (THE "SHARK" ENGINE)
+// =========================================================================
+
+void () BotSwim = {
+
+   local vector target_pos;
+   local vector swim_dir;
+   local vector sonar;
+   local float speed;
+
+   // 1. ACQUIRE TARGET (3D)
+   // Unlike land, we care about the Z-axis (height) heavily here.
+   if ( self.enemy ) {
+      // Intercept: Aim for the enemy's chest height
+      target_pos = self.enemy.origin + self.enemy.view_ofs;
+   } else if ( self.goalentity ) {
+      // Navigation: Aim for the goal
+      target_pos = self.goalentity.origin;
+   } else {
+      // Fallback: keep moving forward
+      makevectors ('0 1 0' * self.ideal_yaw);
+      target_pos = self.origin + (v_forward * 64);
+   }
+
+   // 2. CALCULATE 3D VECTOR
+   swim_dir = target_pos - self.origin;
+   swim_dir = normalize (swim_dir);
+
+   // 3. TACTICAL BREATHING ("Drown a Bit")
+   // Only panic when health is critical; otherwise keep moving.
+   if ( self.air_finished < time ) {
+      if ( self.health < 30 ) {
+         // Critical: override direction to surface immediately
+         if ( pointcontents (self.origin + '0 0 64') == CONTENT_WATER ) {
+            // We are deep, swim up
+            swim_dir = '0 0 1';
+         } else {
+            // We are at surface, jump out
+            self.velocity_z = 250;
+            return;
+         }
+      }
+   }
+
+   // 4. WATER AGILITY
+   speed = 180;
+   if ( self.enemy ) {
+      speed = 250;
+   }
+
+   // 5. OBSTACLE AVOIDANCE (3D Raycasting)
+   // Simple sonar: if we are about to hit a wall, slide along it.
+   sonar = self.origin + (swim_dir * 40);
+   traceline (self.origin, sonar, TRUE, self);
+
+   if ( trace_fraction < 1.0 ) {
+      // We hit a wall underwater - project along the wall plane to slide
+      swim_dir = swim_dir + (trace_plane_normal * 1.2);
+      swim_dir = normalize (swim_dir);
+   }
+
+   // 6. EXECUTE PHYSICS
+   // Set velocity directly, bypassing walkmove. In water, do this every frame.
+   self.velocity = swim_dir * speed;
+
+   // 7. ORIENTATION
+   // Face the direction we are swimming (Pitch and Yaw)
+   self.angles = vectoangles (swim_dir);
+
+   // Fix Quake's pitch quirk if needed:
+   // self.angles_x = 0 - self.angles_x;
+
+   // Update AI's awareness of where it's looking
+   self.ideal_yaw = self.angles_y;
+
+};
+
+// Helper: Attempt to jump out of water if near surface
+void () BotCheckWaterJump = {
+
+   local vector start;
+   local vector end;
+
+   // Only jump if we are close to the surface (waterlevel 2 or 3) and moving up
+   if ( self.velocity_z > 50 ) {
+      start = self.origin;
+      end = start;
+      end_z = end_z + 32;
+
+      // Look up. If we see empty air, jump out.
+      if ( pointcontents (end) == CONTENT_EMPTY ) {
+         self.velocity_z = 300;
+         self.flags = self.flags - FL_ONGROUND;
+      }
+   }
+
+};
+
+// =========================================================================
 // MAIN MOVEMENT FUNCTION
 // =========================================================================
 
@@ -536,6 +635,15 @@ float (float s_yaw, float s_dist) botwalkmove = {
 
    // Platform riding - handles func_train (DM2) and func_plat
    if ( BotCheckPlatformRide () ) {
+      return TRUE;
+   }
+
+   // --- WATER LOGIC: 3D Swim Control ("Shark" Engine) ---
+   // Level 0 = Dry, 1 = Feet, 2 = Waist, 3 = Eyes (Submerged)
+   // Take control at Level 2+ to avoid walkmove fighting underwater motion
+   if ( self.waterlevel >= 2 ) {
+      BotSwim ();
+      BotCheckWaterJump ();
       return TRUE;
    }
 
@@ -1478,6 +1586,12 @@ void (float dist, float wlevel) BotUnderwaterMove = {
    local float rng;
    local float oldrng;
    local float rnd;
+
+   if ( wlevel >= 2 ) {
+      BotSwim ();
+      BotCheckWaterJump ();
+      return;
+   }
 
    rnd = random ();
    if ( (rnd < 0.750) ) {

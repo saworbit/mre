@@ -62,6 +62,10 @@
     collision via `obstruction_normal` field, then projects velocity onto wall
     plane to calculate sliding direction. Bots now slide along walls instead of
     stopping dead, reducing stuck states.
+- Feature: 3D swim engine ("Shark" mode) (`botmove.qc`). When submerged (waterlevel
+  >= 2), bots bypass `walkmove` and drive velocity in 3D, including pitch steering,
+  wall sliding via sonar traces, and a "drown a bit" rule that only surfaces for air
+  when health is critical (< 30).
 - Fixed: Bots getting stuck on shallow water pool edges (`botmove.qc`). The whisker
   collision sensors were detecting small lips (8-16 units) as walls and steering bots
   away, trapping them on "islands". Added `BotIsStep()` to check if obstacles are

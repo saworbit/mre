@@ -174,7 +174,8 @@ BotSteer(ideal_yaw, speed_factor)      [botmove.qc:232]
 ```
 BotDetectHazard(spot)                  [botmove.qc:197]
   │
-  ├─> traceline(spot, spot - '0 0 48') [look down 48 units]
+  ├─> content = pointcontents(spot)    [ignore CONTENT_WATER]
+  ├─> traceline(spot, spot - '0 0 256') [look down 256 units]
   │
   ├─> [if trace_fraction == 1.0]       [cliff/void]
   │     └─> return TRUE
@@ -196,6 +197,8 @@ Botmovetogoal(dist)                    [botmove.qc:1304]
   ├─> [if in water]
   │     ├─> CheckWaterLevel()
   │     └─> BotUnderwaterMove(dist)
+  │           ├─> BotSwim()           [if waterlevel >= 2]
+  │           └─> BotCheckWaterJump()
   │
   ├─> [if goal is wind tunnel]
   │     └─> BotmovetoWindTunnel(dist)
@@ -217,6 +220,9 @@ botwalkmove(yaw, dist)                 [botmove.qc:513]
   ├─> [pre-checks: bounce mode, airborne knockback, platform ride]
   │     └─> BotAirSteer(yaw)           [mid-air course correction]
   │
+  ├─> [if waterlevel >= 2]
+  │     ├─> BotSwim()                 [3D swim control]
+  │     └─> BotCheckWaterJump()
   ├─> flow_yaw = BotSteer(yaw, 1.0)    [sensor fusion steering]
   │
   ├─> flow_yaw = BotClampYaw(flow_yaw) [turn speed limiting: 180°/sec cap]
@@ -347,6 +353,9 @@ While no redundant loops exist, these areas could be simplified:
 
 | Date | Change |
 |------|--------|
+| 2026-01-19 | Added 3D swim engine (BotSwim) with critical-health surfacing logic |
 | 2026-01-18 | Added humanized physics system (turn limiting, air steering, edge friction, wall sliding) |
 | 2026-01-17 | Added sensor fusion steering system documentation |
 | 2026-01-16 | Initial architecture mapping for clean baseline |
+
+
