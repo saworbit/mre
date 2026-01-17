@@ -50,6 +50,11 @@ quakespasm.exe -game mre -condebug +developer 1 -listen 8 +maxplayers 8 +deathma
 ```
 Log output: `c:\reaperai\launch\quake-spasm\qconsole.log`
 
+## Logging notes
+If `+developer 1` is enabled and `sv_aim` is not `0.93`, the bot spawner prints
+a one-time note with the current `sv_aim` value. Set `sv_aim 0.93` to match the
+baseline bot aiming behavior.
+
 ## CI
 ```
 powershell -ExecutionPolicy Bypass -File c:\reaperai\ci\build_mre.ps1

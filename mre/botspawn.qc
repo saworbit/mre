@@ -389,7 +389,10 @@ void () PutBotInServer = {
       aimvar = cvar ("sv_aim");
       if ( (aimvar != 0.930) ) {
 
-         dprint ("Note: sv_aim is not 0.93 (bot aiming may differ)\n");
+         dprint ("Note: sv_aim is ");
+         tmp = ftos (aimvar);
+         dprint (tmp);
+         dprint (" (expected 0.93 for baseline bot aim)\n");
          sv_aim_warned = TRUE;
 
       }
