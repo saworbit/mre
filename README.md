@@ -39,6 +39,14 @@ from `archive/`.
 - **Smooth Steering**: 3-frame angle averaging prevents jitter from pathfinder/whisker oscillation
 - **Sixth Sense**: 360-degree awareness for items within 300 units (no facing check needed)
 - **High-Value Item Focus**: Direct drive to powerups when close (<200 units) prevents strafing past
+- **Mastermind Update**: Proactive tactical combat
+  - Pre-Fire: Bots shoot rockets at corners where you just disappeared
+  - The Trap: Low-health bots stop running and ambush chasers with SSG/RL
+  - Displacement: Bots knock enemies into lava/slime using splash damage
+- **Episodic Learning**: Teach bots by demonstration
+  - Teleport detection: >500 unit instant travel creates LINK_TELE shortcuts
+  - Golden paths: Routes to powerups (Quad/Pent/Ring) and weapons (RL/LG) are marked and prioritized
+  - Path locking: Player trail nodes get boosted priority when picking up high-value items
 
 ### Investigated (Likely Fixed / Not Found)
 - "Bot frags not shown" - MSG_UPDATEFRAGS sent correctly, likely fixed by 0-index fix

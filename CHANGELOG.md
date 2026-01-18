@@ -26,6 +26,11 @@
   - Map Control (Timing): Bots track powerup respawn times (Quad, Pent, Ring) and rush to spawns.
   - Sensory Awareness (Hearing): Bots hear combat sounds and investigate (rockets, grenades, explosions).
   - Curiosity (Solving): Bots shoot shootable buttons, doors, and walls to discover secrets.
+- **Episodic Learning**: Teach bots by demonstration
+  - Teleport detection: >500 unit instant travel creates LINK_TELE shortcuts with explicit destination.
+  - Golden path locking: Quad/Pent/Ring pickups boost trail priority by +500; RL/LG pickups boost by +200.
+  - Link usage boost: Golden path links get +100 usage weight so A* strongly favors proven powerup routes.
+  - Path optimization: After locking a path, shortcuts are created via line-of-sight checks.
 
 ### Fixes
 - Single player crash to DOS caused by edict overflow (waypoint cap reduced to 50 in SP).

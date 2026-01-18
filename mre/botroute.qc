@@ -432,6 +432,62 @@ void (entity player, float reward_val) BackPropagateReward = {
 
 };
 
+// =============================================================================
+// EPISODIC LEARNING: Lock in "Golden" powerup paths
+// When a player grabs a major powerup, mark their recent trail as THE path to
+// that powerup. Bots will then heavily favor this route.
+// =============================================================================
+void (entity player, string powerup_type) LockInPowerupPath = {
+
+   local float priority_boost;
+
+   if ( !player ) {
+      return;
+   }
+
+   // Quad/Pent get massive boost, weapons get moderate boost
+   if ( powerup_type == "Quad" || powerup_type == "Pent" || powerup_type == "Ring" ) {
+      priority_boost = 500;
+   } else {
+      priority_boost = 200;  // Weapons, armor
+   }
+
+   if ( cvar("developer") ) {
+      dprint ("EPISODIC: Locking in ");
+      dprint (powerup_type);
+      dprint (" path!\n");
+   }
+
+   // Mark entire trail as "golden" path with decaying priority
+   if ( player.trail_node1 ) {
+      player.trail_node1.is_powerup_path = TRUE;
+      player.trail_node1.node_priority = player.trail_node1.node_priority + priority_boost;
+      player.trail_node1.link_usage1 = player.trail_node1.link_usage1 + 100;
+   }
+   if ( player.trail_node2 ) {
+      player.trail_node2.is_powerup_path = TRUE;
+      player.trail_node2.node_priority = player.trail_node2.node_priority + (priority_boost * 0.9);
+   }
+   if ( player.trail_node3 ) {
+      player.trail_node3.is_powerup_path = TRUE;
+      player.trail_node3.node_priority = player.trail_node3.node_priority + (priority_boost * 0.8);
+   }
+   if ( player.trail_node4 ) {
+      player.trail_node4.is_powerup_path = TRUE;
+      player.trail_node4.node_priority = player.trail_node4.node_priority + (priority_boost * 0.7);
+   }
+   if ( player.trail_node5 ) {
+      player.trail_node5.is_powerup_path = TRUE;
+      player.trail_node5.node_priority = player.trail_node5.node_priority + (priority_boost * 0.6);
+   }
+
+   // Optimize the path - create shortcuts between trail nodes
+   OptimizePathSegment (player.trail_node3, player.trail_node2, player.trail_node1);
+   OptimizePathSegment (player.trail_node4, player.trail_node3, player.trail_node2);
+   OptimizePathSegment (player.trail_node5, player.trail_node4, player.trail_node3);
+
+};
+
 // Call this in PlayerPostThink to learn from humans
 void () Player_AutoWaypoint = {
 
@@ -519,29 +575,45 @@ void () Player_AutoWaypoint = {
 
    // 3. Link logic
    if ( self.last_waypoint && near_node && (self.last_waypoint != near_node) ) {
-      type = LINK_WALK;
+      local float link_dist;
+      link_dist = vlen (near_node.origin - self.last_waypoint.origin);
 
-      if ( self.is_jumping ) {
-         type = LINK_JUMP;
-         if ( (self.origin_z < (self.jump_origin_z - 64.000)) ) {
+      // EPISODIC LEARNING: Teleport detection
+      // If we moved >500 units instantly, we probably teleported
+      if ( link_dist > 500 ) {
+         type = LINK_TELE;
+         // Store explicit destination for this teleport link
+         self.last_waypoint.tele_dest = near_node.origin;
+         if ( cvar("developer") ) {
+            dprint ("Learned TELEPORT shortcut! (");
+            dprint (ftos(floor(link_dist)));
+            dprint (" units)\n");
+         }
+      } else {
+         type = LINK_WALK;
+
+         if ( self.is_jumping ) {
+            type = LINK_JUMP;
+            if ( (self.origin_z < (self.jump_origin_z - 64.000)) ) {
+               type = LINK_DROP;
+            }
+         } else if ( (self.origin_z < (self.last_waypoint.origin_z - 64.000)) ) {
             type = LINK_DROP;
+         } else if ( self.groundentity ) {
+            if ( (self.groundentity.classname == "func_plat") || (self.groundentity.classname == "func_train") ) {
+               type = LINK_PLAT;
+            }
          }
-      } else if ( (self.origin_z < (self.last_waypoint.origin_z - 64.000)) ) {
-         type = LINK_DROP;
-      } else if ( self.groundentity ) {
-         if ( (self.groundentity.classname == "func_plat") || (self.groundentity.classname == "func_train") ) {
-            type = LINK_PLAT;
-         }
-      }
-      // Rocket jump detection (heuristic)
-      if ( (self.weapon == IT_ROCKET_LAUNCHER) ) {
-         if ( (!(self.flags & FL_ONGROUND)) && (self.waterlevel == 0) ) {
-            if ( (self.velocity_z > 250.000) && (self.v_angle_x > 45.000) ) {
-               if ( (time > (self.last_rj_time + 1.000)) ) {
-                  type = LINK_ROCKETJUMP;
-                  self.last_rj_time = time;
-                  if ( cvar("developer") ) {
-                     dprint ("Learned ROCKET JUMP path!\n");
+         // Rocket jump detection (heuristic)
+         if ( (self.weapon == IT_ROCKET_LAUNCHER) ) {
+            if ( (!(self.flags & FL_ONGROUND)) && (self.waterlevel == 0) ) {
+               if ( (self.velocity_z > 250.000) && (self.v_angle_x > 45.000) ) {
+                  if ( (time > (self.last_rj_time + 1.000)) ) {
+                     type = LINK_ROCKETJUMP;
+                     self.last_rj_time = time;
+                     if ( cvar("developer") ) {
+                        dprint ("Learned ROCKET JUMP path!\n");
+                     }
                   }
                }
             }

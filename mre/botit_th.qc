@@ -25,6 +25,7 @@ float () BotFoundTarget;
 void () BotHuntTarget;
 void () Player_AutoWaypoint;
 void (entity player, float reward_val) BackPropagateReward;
+void (entity player, string powerup_type) LockInPowerupPath;  // Episodic learning
 void (entity node) MarkDanger;
 void () MaintainGraph;
 
@@ -153,6 +154,7 @@ float AI_STATE_ATTACK    = 3.000;
 float AI_STATE_CHASE    = 4.000;
 float AI_STATE_TIMING    = 5.000;   // Rushing to powerup spawn
 float AI_STATE_INVESTIGATE = 6.000; // Investigating a sound
+float AI_STATE_AMBUSH    = 7.000;   // Setting up a trap (Mastermind)
 float VERBOSEBOT;
 float BOTSPEED;
 float NUMBOTS;

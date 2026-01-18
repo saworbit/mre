@@ -585,6 +585,10 @@ void () weapon_touch = {
                   cacheRoute (other.movetarget,other.movetarget.movetarget,FALSE,self);
 
                }
+               // EPISODIC LEARNING: RL is a major weapon
+               if ( other.classname == "player" && !hadammo ) {
+                  LockInPowerupPath (other, "Weapon");
+               }
 
             } else {
 
@@ -620,6 +624,10 @@ void () weapon_touch = {
 
                         cacheRoute (other.movetarget,other.movetarget.movetarget,FALSE,self);
 
+                     }
+                     // EPISODIC LEARNING: LG is a major weapon
+                     if ( other.classname == "player" && !hadammo ) {
+                        LockInPowerupPath (other, "Weapon");
                      }
 
                   } else {
@@ -1344,6 +1352,10 @@ void () powerup_touch = {
       if ( cvar("developer") ) {
          bprint("Bots learned: Pent spawns in 300s\n");
       }
+      // EPISODIC LEARNING: Lock in the path used to get here
+      if ( other.classname == "player" ) {
+         LockInPowerupPath (other, "Pent");
+      }
 
    }
    if ( (self.classname == "item_artifact_invisibility") ) {
@@ -1361,6 +1373,10 @@ void () powerup_touch = {
       if ( cvar("developer") ) {
          bprint("Bots learned: Ring spawns in 300s\n");
       }
+      // EPISODIC LEARNING: Lock in the path used to get here
+      if ( other.classname == "player" ) {
+         LockInPowerupPath (other, "Ring");
+      }
 
    }
    if ( (self.classname == "item_artifact_super_damage") ) {
@@ -1377,6 +1393,10 @@ void () powerup_touch = {
       quad_spawn_ent = self;
       if ( cvar("developer") ) {
          bprint("Bots learned: Quad spawns in 60s\n");
+      }
+      // EPISODIC LEARNING: Lock in the path used to get here
+      if ( other.classname == "player" ) {
+         LockInPowerupPath (other, "Quad");
       }
 
    }

@@ -508,10 +508,150 @@ botwalkmove()                          [botmove.qc]
 
 ---
 
+## Call Graph: Mastermind Update (Tactical Combat)
+
+### Pre-Fire (Corner Suppression)
+
+Bots shoot at corners where enemies just disappeared:
+
+```
+BotBlindFire()                         [botfight.qc]
+  │
+  ├─> [checks]
+  │     ├─> Has enemy?
+  │     ├─> Enemy NOT visible?
+  │     ├─> Saw them < 2 seconds ago?
+  │     ├─> Has RL or GL?
+  │     └─> Distance 100-600 units?
+  │
+  ├─> BotPredictPosition(time_since_seen * 0.5)
+  │     ├─> Linear extrapolation: lastseenpos + (velocity * time)
+  │     └─> Apply gravity if jumping/falling
+  │
+  ├─> [if random() < skill-scaled chance]
+  │     ├─> Aim at predicted position (feet for splash)
+  │     └─> self.button0 = TRUE (fire!)
+  │
+  └─> Set cooldown (0.8s)
+```
+
+Called from `ai_botrun()` during MEMORY_ATTACK state.
+
+### The Trap (Ambush)
+
+Low-health bots set up ambushes instead of running:
+
+```
+[in ai_botrun, when enemy not visible]   [bot_ai.qc]
+  │
+  ├─> [if health < 40 AND enemy exists]
+  │     │
+  │     ├─> Calculate: is enemy chasing?
+  │     │     └─> dot(enemy_velocity, dir_to_bot) > 0.4
+  │     │
+  │     ├─> [if chasing]
+  │     │     ├─> Set ambush_ready = TRUE
+  │     │     ├─> Switch to SSG or RL
+  │     │     ├─> STOP: velocity = '0 0 0'
+  │     │     ├─> AIM: face lastseenpos
+  │     │     │
+  │     │     ├─> [if enemy very close < 200]
+  │     │     │     └─> NERVOUS TRIGGER: button0 = TRUE
+  │     │     │
+  │     │     └─> [timeout after 4 seconds]
+  │     │
+  │     └─> return (skip normal behavior)
+```
+
+### Displacement Kill
+
+Knock enemies into hazards:
+
+```
+BotCheckEnvironmentKill()              [botfight.qc]
+  │
+  ├─> [checks]
+  │     ├─> Has enemy and can see them?
+  │     └─> Has RL or GL?
+  │
+  ├─> Check behind enemy for hazards
+  │     ├─> 100 units behind: pointcontents for LAVA/SLIME
+  │     └─> Check for cliff edge into hazard
+  │
+  ├─> [if hazard found]
+  │     ├─> Aim at enemy's feet (pitch down)
+  │     └─> self.button0 = TRUE (knockback!)
+  │
+  └─> return TRUE/FALSE
+```
+
+Called from `ai_botrun()` before normal `CheckBotAttack()`.
+
+---
+
+## Call Graph: Episodic Learning
+
+### Teleport Detection
+
+When the player uses a teleporter, the auto-waypoint system detects the >500 unit
+instant travel and creates a special LINK_TELE connection:
+
+```
+Player_AutoWaypoint()                  [botroute.qc]
+  │
+  ├─> link_dist = vlen(near_node - last_waypoint)
+  │
+  ├─> [if link_dist > 500]            [teleport threshold]
+  │     ├─> type = LINK_TELE
+  │     ├─> last_waypoint.tele_dest = near_node.origin
+  │     └─> dprint("Learned TELEPORT shortcut!")
+  │
+  └─> LinkNodes(last_waypoint, near_node, type)
+```
+
+### Golden Path Locking
+
+When the player picks up high-value items, their recent trail is marked as a
+"golden" powerup path with boosted priority:
+
+```
+powerup_touch() / weapon_touch()       [items.qc]
+  │
+  └─> [if picker is player]
+        └─> LockInPowerupPath(player, "Quad")  (or Pent/Ring/Weapon)
+
+LockInPowerupPath(player, type)        [botroute.qc]
+  │
+  ├─> priority_boost = (type == powerup) ? 500 : 200
+  │
+  ├─> [for each trail_node 1-5]
+  │     ├─> trail_node.is_powerup_path = TRUE
+  │     ├─> trail_node.node_priority += boost * decay
+  │     │     (decay: 1.0, 0.9, 0.8, 0.7, 0.6)
+  │     └─> trail_node.link_usage1 += 100
+  │
+  └─> OptimizePathSegment() for trail segments
+        └─> Creates shortcuts via line-of-sight
+```
+
+### Items That Trigger Path Locking
+
+| Item | Priority Boost | Trigger Location |
+|------|---------------|------------------|
+| Quad Damage | +500 | `items.qc:powerup_touch()` |
+| Pentagram | +500 | `items.qc:powerup_touch()` |
+| Ring of Shadows | +500 | `items.qc:powerup_touch()` |
+| Rocket Launcher | +200 | `items.qc:weapon_touch()` |
+| Lightning Gun | +200 | `items.qc:weapon_touch()` |
+
+---
+
 ## Version History
 
 | Date | Change |
 |------|--------|
+| 2026-01-18 | Added Episodic Learning (teleport detection, golden path locking) |
+| 2026-01-18 | Added Mastermind Update (pre-fire, ambush, displacement) |
 | 2026-01-18 | Added Smooth Steering, Sixth Sense, and High-Value Item Focus |
 | 2026-01-18 | Added Predator Update (map timing, sound navigation, curiosity) |
 | 2026-01-22 | Added reflex dodge and bunny hop mechanics |

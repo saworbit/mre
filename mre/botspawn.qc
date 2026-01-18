@@ -344,6 +344,11 @@ void () PutBotInServer = {
    self.last_ai_state_time = FALSE;
    self.stuck_time = FALSE;
    self.walkframe = FALSE;  // Reset animation frame counter
+   // Reset tactical intelligence state (Mastermind Update)
+   self.ambush_ready = FALSE;
+   self.ambush_start_time = FALSE;
+   self.blind_fire_time = FALSE;
+   self.last_enemy_vel = '0 0 0';
    spwn = SelectSpawnPoint ();
    spot = (spwn.origin + '0.000 0.000 1.000');
    self.origin = spot;

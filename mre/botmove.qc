@@ -548,8 +548,9 @@ float (float target_yaw) BotSmoothSteer = {
       delta = -15;
    }
 
-   // Log when smoothing significantly dampens jitter (clamped > 5 degrees)
-   if ( cvar("developer") && (fabs(raw_delta) > 20) && (fabs(raw_delta - delta) > 5) ) {
+   // Log when smoothing significantly dampens jitter (only extreme cases)
+   // Raised threshold from 20° to 40° to reduce spam - only log big corrections
+   if ( cvar("developer") && (fabs(raw_delta) > 40) && (fabs(raw_delta - delta) > 20) ) {
       dprint ("[");
       dprint (self.netname);
       dprint ("] SMOOTH: Dampened ");

@@ -38,6 +38,147 @@ void () BotReflexDodge = {
    }
 
 };
+
+// =============================================================================
+// TACTICAL INTELLIGENCE (Mastermind Update)
+// Predictive state estimation and proactive combat behaviors
+// =============================================================================
+
+// Predict where the enemy will be based on last known position and velocity
+// Accounts for gravity if they were airborne
+vector (float lead_time) BotPredictPosition = {
+
+   local vector pred;
+
+   // Basic linear prediction: Origin + (Velocity * Time)
+   pred = self.lastseenpos + (self.last_enemy_vel * lead_time);
+
+   // If they were jumping/falling, apply gravity to prediction
+   // Quake gravity is ~800 units/sec^2
+   if ( self.last_enemy_vel_z != 0 ) {
+      pred_z = pred_z - (0.5 * 800 * lead_time * lead_time);
+      // Don't predict through floor - clamp to reasonable depth
+      if ( pred_z < self.lastseenpos_z - 100 ) {
+         pred_z = self.lastseenpos_z - 20;
+      }
+   }
+
+   return pred;
+
+};
+
+// Pre-fire/Blind fire at corners when enemy just disappeared
+// Creates "did I just see that?" moments when bot fires rockets at corners
+void () BotBlindFire = {
+
+   local vector aim_at;
+   local float dist;
+   local float time_since_seen;
+
+   // Need an enemy we recently lost sight of
+   if ( !self.enemy ) return;
+   if ( enemyvisible(self.enemy) ) return;
+
+   // Only pre-fire if we saw them less than 2 seconds ago
+   time_since_seen = time - self.last_seen_time;
+   if ( time_since_seen > 2.0 ) return;
+
+   // Cooldown to prevent spam
+   if ( time < self.blind_fire_time ) return;
+
+   // Distance check - too close is dangerous, too far is wasteful
+   dist = vlen (self.lastseenpos - self.origin);
+   if ( dist < 100 || dist > 600 ) return;
+
+   // THE CORNER SHOT: Rocket/Grenade only (splash damage around corners)
+   if ( self.weapon == IT_ROCKET_LAUNCHER || self.weapon == IT_GRENADE_LAUNCHER ) {
+
+      // Predict where they went
+      aim_at = BotPredictPosition (time_since_seen * 0.5);
+
+      // Aim at feet for splash damage
+      aim_at_z = aim_at_z - 24;
+
+      // Check if we have line of sight to the predicted spot
+      traceline (self.origin + self.view_ofs, aim_at, TRUE, self);
+
+      // 15% chance per frame to suppress fire (skill-scaled)
+      // Higher skill = more likely to pre-fire
+      if ( random() < (0.05 + self.skil * 0.03) ) {
+
+         local vector aim_angles;
+         aim_angles = vectoangles (aim_at - self.origin);
+         self.v_angle_y = aim_angles_y;
+         self.v_angle_x = aim_angles_x;
+         self.button0 = TRUE;
+         self.blind_fire_time = time + 0.8;  // Cooldown
+
+         if ( cvar("developer") ) {
+            dprint ("[");
+            dprint (self.netname);
+            dprint ("] PREFIRE: Suppressing corner at ");
+            dprint (vtos(aim_at));
+            dprint ("\n");
+         }
+      }
+   }
+
+};
+
+// Check if we can knock the enemy into a hazard (lava/slime)
+// The "Smart" bot aims at feet to push enemies backward into danger
+float () BotCheckEnvironmentKill = {
+
+   local vector check_spot;
+   local float hazard_found;
+
+   // Need a visible enemy and knockback weapon
+   if ( !self.enemy ) return FALSE;
+   if ( !enemyvisible(self.enemy) ) return FALSE;
+   if ( !(self.items & (IT_ROCKET_LAUNCHER | IT_GRENADE_LAUNCHER)) ) return FALSE;
+
+   // Check 100 units behind the enemy for hazards
+   makevectors (self.enemy.angles);
+   check_spot = self.enemy.origin - (v_forward * 100);
+   check_spot_z = check_spot_z - 64;  // Look down for floor hazard
+
+   hazard_found = FALSE;
+   if ( pointcontents(check_spot) == CONTENT_LAVA ) {
+      hazard_found = TRUE;
+   } else if ( pointcontents(check_spot) == CONTENT_SLIME ) {
+      hazard_found = TRUE;
+   }
+
+   // Also check directly behind (cliff edge into hazard)
+   if ( !hazard_found ) {
+      check_spot = self.enemy.origin - (v_forward * 80);
+      traceline (check_spot, check_spot - '0 0 128', TRUE, world);
+      if ( trace_fraction == 1.0 ) {
+         // Cliff detected - check what's below
+         check_spot_z = check_spot_z - 128;
+         if ( pointcontents(check_spot) == CONTENT_LAVA || pointcontents(check_spot) == CONTENT_SLIME ) {
+            hazard_found = TRUE;
+         }
+      }
+   }
+
+   if ( hazard_found ) {
+      // Aim at enemy's FEET to knock them backward
+      self.v_angle_x = 20;  // Pitch down
+      self.button0 = TRUE;
+
+      if ( cvar("developer") ) {
+         dprint ("[");
+         dprint (self.netname);
+         dprint ("] DISPLACEMENT: Attempting hazard knockback!\n");
+      }
+      return TRUE;
+   }
+
+   return FALSE;
+
+};
+
 vector (vector src, vector trg, float invMvel) leadtarget = {
 
    local vector tg;

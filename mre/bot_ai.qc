@@ -4,6 +4,8 @@ float (float minweight) aibot_checkforGoodies;
 float (float ideal_yaw, float speed_factor) BotSteer;
 void () BotReflexDodge;
 void () BotCheckCuriosity;  // Curiosity system (defined in botmove.qc)
+void () BotBlindFire;       // Tactical: Pre-fire at corners (defined in botfight.qc)
+float () BotCheckEnvironmentKill;  // Tactical: Displacement kills (defined in botfight.qc)
 
 // =============================================================================
 // SENSORY AWARENESS: Sound-based alerting system
@@ -1344,14 +1346,16 @@ float (float dist) BotAI_CheckSoundInvestigation = {
    // Move toward the sound
    botwalkmove (self.ideal_yaw, dist);
 
-   // Only log once when investigation starts (noise_age < 0.15 = first frame)
-   if ( cvar("developer") && (noise_age < 0.15) ) {
+   // Only log once when investigation starts (check investigating flag)
+   // The flag is set AFTER this check, so first call logs, subsequent don't
+   if ( cvar("developer") && !self.investigating ) {
       dprint ("[");
       dprint (self.netname);
       dprint ("] INVESTIGATING: Moving to ");
       dprint (vtos(self.noise_target));
       dprint ("\n");
    }
+   self.investigating = TRUE;  // Mark as actively investigating
 
    return ( TRUE );
 
@@ -1445,6 +1449,10 @@ void (float dist) BotAI_Main = {
       // Object Permanence: track when enemy was last seen
       self.last_seen_time = time;
       self.lastseenpos = self.enemy.origin;
+      // Tactical Intelligence: track enemy velocity for prediction
+      self.last_enemy_vel = self.enemy.velocity;
+      // Clear ambush state when we can see them
+      self.ambush_ready = FALSE;
 
    }
    if ( (self.search_time < time) ) {
@@ -1507,6 +1515,82 @@ void (float dist) BotAI_Main = {
    enemy_yaw = vectoyaw ((self.enemy.origin - self.origin));
    if ( !enemy_vis ) {
 
+      // =================================================================
+      // TACTICAL INTELLIGENCE: THE TRAP (Ambush Logic)
+      // When low health and being chased, set up an ambush instead of
+      // running. Stop, aim at the entry point, and wait with SSG/RL.
+      // =================================================================
+      if ( self.health < 40 && self.health > 0 && self.enemy ) {
+
+         // Calculate if enemy is chasing us (dot product check)
+         local vector dir_to_bot;
+         local float chasing;
+         dir_to_bot = normalize (self.origin - self.lastseenpos);
+         chasing = normalize(self.last_enemy_vel) * dir_to_bot;
+
+         if ( chasing > 0.4 ) {
+            // They are chasing! Set the trap.
+
+            // Timeout: don't ambush forever (max 4 seconds)
+            if ( self.ambush_ready && time > self.ambush_start_time + 4.0 ) {
+               self.ambush_ready = FALSE;
+               if ( cvar("developer") ) {
+                  dprint ("[");
+                  dprint (self.netname);
+                  dprint ("] AMBUSH: Timeout - resuming normal behavior\n");
+               }
+            }
+
+            if ( !self.ambush_ready ) {
+               // Start the ambush
+               self.ambush_ready = TRUE;
+               self.ambush_start_time = time;
+
+               // Switch to "Punisher" weapon (SSG or RL)
+               if ( self.items & IT_SUPER_SHOTGUN && self.ammo_shells >= 2 ) {
+                  self.weapon = IT_SUPER_SHOTGUN;
+               } else if ( self.items & IT_ROCKET_LAUNCHER && self.ammo_rockets >= 1 ) {
+                  self.weapon = IT_ROCKET_LAUNCHER;
+               }
+
+               if ( cvar("developer") ) {
+                  dprint ("[");
+                  dprint (self.netname);
+                  dprint ("] AMBUSH: Setting trap! Waiting with ");
+                  if ( self.weapon == IT_SUPER_SHOTGUN ) {
+                     dprint ("SSG");
+                  } else if ( self.weapon == IT_ROCKET_LAUNCHER ) {
+                     dprint ("RL");
+                  } else {
+                     dprint ("current weapon");
+                  }
+                  dprint ("\n");
+               }
+            }
+
+            // Execute the ambush: STOP and AIM
+            self.velocity = '0 0 0';
+            self.ideal_yaw = vectoyaw (self.lastseenpos - self.origin);
+            self.v_angle_y = self.ideal_yaw;
+            ChangeYaw ();
+
+            // NERVOUS TRIGGER: If they're very close, pre-fire!
+            if ( vlen(self.lastseenpos - self.origin) < 200 ) {
+               if ( time - self.last_seen_time < 1.5 ) {
+                  self.button0 = TRUE;
+                  if ( cvar("developer") && random() < 0.1 ) {
+                     dprint ("[");
+                     dprint (self.netname);
+                     dprint ("] AMBUSH: Nervous trigger!\n");
+                  }
+               }
+            }
+
+            BotLogAI (AI_STATE_AMBUSH, "AMBUSH");
+            return;
+         }
+      }
+
       // Object Permanence: continue engaging last known position
       local float memory_duration;
       memory_duration = (0.500 + (self.skil * 0.250));
@@ -1517,6 +1601,10 @@ void (float dist) BotAI_Main = {
 
          // Still in memory window - fire at last known position
          BotLogAI (AI_STATE_ATTACK, "MEMORY_ATTACK");
+
+         // TACTICAL: Try pre-firing at corners (suppressive fire)
+         BotBlindFire ();
+
          CheckBotAttack ();
          aibot_run_slide (dist,CANTURN);
          return ;
@@ -1542,7 +1630,12 @@ void (float dist) BotAI_Main = {
 
    }
    BotLogAI (AI_STATE_ATTACK, "ATTACK");
-   CheckBotAttack ();
+
+   // TACTICAL: Check for displacement kill opportunity (knock into hazard)
+   if ( !BotCheckEnvironmentKill () ) {
+      CheckBotAttack ();
+   }
+
    aibot_run_slide (dist,CANTURN);
    return ;
 
@@ -1774,8 +1867,9 @@ float (float minweight) aibot_checkforGoodies = {
                               // Proximity boost: closer = more weight
                               weight = weight + ((300 - dist_to_item) * 0.1);
 
-                              // Log when sixth sense detects item not in front
-                              if ( cvar("developer") && !infrontofbot(e) && (weight > WANT) ) {
+                              // Log when sixth sense detects item not in front (with cooldown)
+                              // Use blind_fire_time as cooldown to prevent spam when walking past items
+                              if ( cvar("developer") && !infrontofbot(e) && (weight > WANT) && (time > self.blind_fire_time) ) {
                                  dprint ("[");
                                  dprint (self.netname);
                                  dprint ("] SIXTH_SENSE: Detected ");
@@ -1783,6 +1877,7 @@ float (float minweight) aibot_checkforGoodies = {
                                  dprint (" behind me (");
                                  dprint (ftos(floor(dist_to_item)));
                                  dprint (" units)\n");
+                                 self.blind_fire_time = time + 1.0;  // 1 second cooldown
                               }
                            }
                         }

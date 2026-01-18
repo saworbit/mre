@@ -330,6 +330,8 @@ float () Bot_CheckReaction; // Forward declaration
 .entity trail_node5;
 // Node value
 .float node_priority;        // Base importance (0 = hallway, 100 = near Quad)
+.float is_powerup_path;      // TRUE if this node is part of a learned "golden" powerup route
+.vector tele_dest;           // Explicit teleport destination (for LINK_TELE links)
 // Advanced movement mechanics
 .float strafe_state;         // 0=None, 1=Left, 2=Right
 .float strafe_timer;         // Rhythm keeper
@@ -399,6 +401,14 @@ float BOT_AIR_CONTROL = 1;   // Flag: allow limited air steering after knockback
 // Object permanence (target memory)
 .float last_seen_time;     // When enemy was last visible
 float (entity targ) enemyvisible; // Forward declaration
+
+// --- TACTICAL INTELLIGENCE (Mastermind Update) ---
+// Predictive state estimation for "thinking" combat
+.vector last_enemy_vel;      // Enemy velocity when we last saw them
+.float  ambush_ready;        // Are we waiting in a trap?
+.vector predict_pos;         // Calculated future position of enemy
+.float  blind_fire_time;     // Cooldown for suppressive fire
+.float  ambush_start_time;   // When we started the ambush (for timeout)
 .float invincible_finished;
 .float invisible_finished;
 .float super_damage_finished;

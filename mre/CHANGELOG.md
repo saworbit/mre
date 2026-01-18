@@ -2,6 +2,21 @@
 
 ## Unreleased
 - Clean baseline restored in `mre/`.
+- Feature: Episodic Learning / One-Shot Learning (`botroute.qc`, `items.qc`, `defs.qc`,
+  `botit_th.qc`). Bots learn optimal routes by watching the player:
+  - **Teleport detection**: When `Player_AutoWaypoint()` detects movement >500 units
+    in a single frame, it marks the link as `LINK_TELE` and stores the explicit
+    destination in `tele_dest` field. Bots can later use these learned teleport
+    shortcuts without bumbling around the teleporter entrance.
+  - **Golden path locking**: `LockInPowerupPath()` is called when the player picks
+    up high-value items (Quad, Pent, Ring, RL, LG). It marks the last 5 trail nodes
+    as `is_powerup_path = TRUE` and boosts their priority (+500 for powerups, +200
+    for weapons) with decay (90%→60%) so nodes closer to the item are preferred.
+  - **Link usage boost**: Golden path links get +100 usage weight so A* routing
+    strongly favors these proven paths to important pickups.
+  - **Path optimization**: After locking in a path, `OptimizePathSegment()` is
+    called on the trail to create shortcut links where line-of-sight exists.
+  - Developer logging: "Learned TELEPORT shortcut!" and "EPISODIC: Locking in X path!"
 - Feature: Smooth steering anti-jitter (`botmove.qc`, `defs.qc`). Bots now average
   steering decisions over 3 frames (0.3s at 10Hz) to prevent oscillation between
   pathfinder and whisker steering. `BotSmoothSteer()` uses a circular buffer with
@@ -20,6 +35,19 @@
   at 1-second intervals instead of every frame. Pent rush logs only on state change.
 - Improved: Reduced INVESTIGATING log spam (`bot_ai.qc`). Sound investigation logging
   now only fires on first frame of investigation instead of continuously.
+- Feature: Mastermind Update - Tactical Intelligence (`botfight.qc`, `bot_ai.qc`,
+  `defs.qc`, `botspawn.qc`, `botit_th.qc`). Three "proactive" combat behaviors:
+  - **Pre-Fire (Corner Suppression)**: `BotBlindFire()` shoots rockets/grenades at
+    corners where enemy just disappeared. Uses `BotPredictPosition()` to estimate
+    where target went based on last velocity. Creates "did I just see that?" moments.
+  - **The Trap (Ambush)**: When low health (<40) and being chased but lost sight,
+    bot stops running, switches to SSG/RL, aims at entry point, and waits. Nervous
+    trigger pre-fires when enemy is close. 4-second timeout prevents camping forever.
+  - **Displacement Kill**: `BotCheckEnvironmentKill()` detects hazards (lava/slime)
+    behind the enemy and aims at their feet to knock them backward into danger.
+  - Tracks enemy velocity (`last_enemy_vel`) for prediction when line of sight breaks
+  - New AI state `AI_STATE_AMBUSH` for trap behavior tracking
+  - Developer logging: PREFIRE, AMBUSH, DISPLACEMENT tags
 - Feature: Platform riding for func_train (`botmove.qc`). Bots now properly ride
   horizontal moving platforms (like DM2 lava room) by inheriting platform velocity.
   Added `BotCheckPlatformRide()` function that detects MOVETYPE_PUSH entities and
