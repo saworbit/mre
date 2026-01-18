@@ -23,6 +23,10 @@ float () CheckDropPath;
 void () DropBotPath;
 float () BotFoundTarget;
 void () BotHuntTarget;
+void () Player_AutoWaypoint;
+void (entity player, float reward_val) BackPropagateReward;
+void (entity node) MarkDanger;
+void () MaintainGraph;
 
 void (entity en2) secondEnemy;
 
@@ -161,6 +165,7 @@ float NUMPATHERS;
 float SKINSMODE;
 float RECURSEDEPTH;
 float route_search_id;  // unique ID per route cache search (cycle detection)
+float graph_decay_next; // Next time to run path decay (global throttle)
 vector REBOUNDSPOT;
 float REBOUND;
 float TELEFRAGFLAG;

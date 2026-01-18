@@ -9,6 +9,9 @@ void () ChangeYaw;
 float () FacingIdeal;
 void (float shotcount, vector dir, vector spread) FireBullets;
 void (vector org, float traffic, float danger, string tgt) SpawnSavedWaypoint;
+float (entity next_node, float dist) BotExecuteLink;
+float (float vz, float dist, float imagine) Bot_tryjump;
+float (vector jmpv) Botwaterjump;
 
 // FIX: Platform riding - handles func_train (DM2 lava platforms) and func_plat
 // Returns TRUE if bot should wait/ride, FALSE to continue with normal movement
@@ -508,80 +511,61 @@ void () BotDecomposeVelocity = {
 };
 
 // =========================================================================
-// SOPHISTICATED 3D SWIMMING (THE "SHARK" ENGINE)
+// NEW: PHYSICS-BASED SWIMMING
 // =========================================================================
 
-void () BotSwim = {
+float (float desired_speed) BotSwim = {
 
-   local vector target_pos;
-   local vector swim_dir;
-   local vector sonar;
-   local float speed;
+   local vector aim_dir;
+   local vector target_org;
+   local vector wall_normal;
+   local vector swim_angles;
+   local float heading;
 
-   // 1. ACQUIRE TARGET (3D)
-   // Unlike land, we care about the Z-axis (height) heavily here.
-   if ( self.enemy ) {
-      // Intercept: Aim for the enemy's chest height
-      target_pos = self.enemy.origin + self.enemy.view_ofs;
-   } else if ( self.goalentity ) {
-      // Navigation: Aim for the goal
-      target_pos = self.goalentity.origin;
-   } else {
-      // Fallback: keep moving forward
-      makevectors ('0 1 0' * self.ideal_yaw);
-      target_pos = self.origin + (v_forward * 64);
-   }
-
-   // 2. CALCULATE 3D VECTOR
-   swim_dir = target_pos - self.origin;
-   swim_dir = normalize (swim_dir);
-
-   // 3. TACTICAL BREATHING ("Drown a Bit")
-   // Only panic when health is critical; otherwise keep moving.
-   if ( self.air_finished < time ) {
-      if ( self.health < 30 ) {
-         // Critical: override direction to surface immediately
-         if ( pointcontents (self.origin + '0 0 64') == CONTENT_WATER ) {
-            // We are deep, swim up
-            swim_dir = '0 0 1';
-         } else {
-            // We are at surface, jump out
-            self.velocity_z = 250;
-            return;
+   // 1. SURVIVAL: Oxygen check
+   if ( self.air_finished < (time + 5.000) ) {
+      if ( (pointcontents (self.origin + '0 0 32') == CONTENT_WATER) || (pointcontents (self.origin + '0 0 32') == CONTENT_SLIME) ) {
+         self.velocity_z = 220.000;
+         if ( (self.velocity_x == 0.000) && (self.velocity_y == 0.000) ) {
+            makevectors ('0 1 0' * self.ideal_yaw);
+            self.velocity_x = v_forward_x * 50.000;
+            self.velocity_y = v_forward_y * 50.000;
          }
+         return ( TRUE );
       }
    }
 
-   // 4. WATER AGILITY
-   speed = 180;
-   if ( self.enemy ) {
-      speed = 250;
+   // 2. TARGET ACQUISITION
+   if ( self.goalentity ) {
+      target_org = self.goalentity.origin;
+      target_org_z = target_org_z + (self.goalentity.view_ofs_z * 0.500);
+   } else {
+      makevectors (self.angles);
+      target_org = self.origin + (v_forward * 100.000);
    }
 
-   // 5. OBSTACLE AVOIDANCE (3D Raycasting)
-   // Simple sonar: if we are about to hit a wall, slide along it.
-   sonar = self.origin + (swim_dir * 40);
-   traceline (self.origin, sonar, TRUE, self);
+   // 3. CALCULATE 3D DIRECTION (Pitch + Yaw)
+   aim_dir = normalize ((target_org - self.origin));
+   swim_angles = vectoangles (aim_dir);
+   heading = vectoyaw (aim_dir);
+   self.ideal_yaw = BotClampYaw (heading);
+   self.angles = swim_angles;
+   self.angles_y = self.ideal_yaw;
 
-   if ( trace_fraction < 1.0 ) {
-      // We hit a wall underwater - project along the wall plane to slide
-      swim_dir = swim_dir + (trace_plane_normal * 1.2);
-      swim_dir = normalize (swim_dir);
+   // 4. APPLY PHYSICS VELOCITY
+   self.velocity = (aim_dir * desired_speed);
+
+   // 5. OBSTACLE AVOIDANCE (Whisker slide)
+   traceline (self.origin, self.origin + (aim_dir * 32.000), TRUE, self);
+   if ( (trace_fraction < 1.0) ) {
+      wall_normal = trace_plane_normal;
+      self.velocity = self.velocity - (wall_normal * (self.velocity * wall_normal));
+      if ( (wall_normal_z < 0.200) ) {
+         self.velocity_z = (self.velocity_z + 80.000);
+      }
    }
 
-   // 6. EXECUTE PHYSICS
-   // Set velocity directly, bypassing walkmove. In water, do this every frame.
-   self.velocity = swim_dir * speed;
-
-   // 7. ORIENTATION
-   // Face the direction we are swimming (Pitch and Yaw)
-   self.angles = vectoangles (swim_dir);
-
-   // Fix Quake's pitch quirk if needed:
-   // self.angles_x = 0 - self.angles_x;
-
-   // Update AI's awareness of where it's looking
-   self.ideal_yaw = self.angles_y;
+   return ( TRUE );
 
 };
 
@@ -661,7 +645,7 @@ float (entity bot) Bot_FindClearestDirection = {
 void () Bot_DropBreadcrumb = {
 
    // Only drop if we have moved far enough from the last one
-   if ( (self.last_breadcrumb_pos != '0 0 0') && (vlen (self.origin - self.last_breadcrumb_pos) < 64) ) {
+   if ( (self.last_breadcrumb_pos != '0 0 0') && (vlen (self.origin - self.last_breadcrumb_pos) < 48) ) {
       return;
    }
 
@@ -670,9 +654,83 @@ void () Bot_DropBreadcrumb = {
    self.last_breadcrumb_pos = self.origin;
 
    if ( cvar("developer") ) {
-      bprint (self.netname);
-      bprint (" dropped breadcrumb.\n");
+      dprint ("[");
+      dprint (self.netname);
+      dprint ("] BREADCRUMB: Dropped at ");
+      dprint (vtos (self.origin));
+      dprint ("\n");
    }
+
+};
+
+float (entity next_node, float dist) BotExecuteLink = {
+
+   local float type;
+
+   self.whiskers_allowed = TRUE;
+
+   if ( !next_node || (next_node == world) ) {
+      return ( FALSE );
+   }
+   if ( !self.last_waypoint || (self.last_waypoint == world) ) {
+      return ( FALSE );
+   }
+
+   type = LINK_WALK;
+   if ( (self.last_waypoint.movetarget == next_node) ) {
+      type = self.last_waypoint.link_type1;
+   } else if ( (self.last_waypoint.movetarget2 == next_node) ) {
+      type = self.last_waypoint.link_type2;
+   } else if ( (self.last_waypoint.movetarget3 == next_node) ) {
+      type = self.last_waypoint.link_type3;
+   } else if ( (self.last_waypoint.movetarget4 == next_node) ) {
+      type = self.last_waypoint.link_type4;
+   } else if ( (self.last_waypoint.movetarget5 == next_node) ) {
+      type = self.last_waypoint.link_type5;
+   } else if ( (self.last_waypoint.movetarget6 == next_node) ) {
+      type = self.last_waypoint.link_type6;
+   }
+
+   if ( type == LINK_JUMP ) {
+      self.whiskers_allowed = FALSE;
+      self.ideal_yaw = vectoyaw ((next_node.origin - self.origin));
+      ChangeYaw ();
+      Bot_tryjump (270.000, dist, FALSE);
+      return ( TRUE );
+   }
+   if ( type == LINK_DROP ) {
+      self.whiskers_allowed = FALSE;
+      self.ideal_yaw = vectoyaw ((next_node.origin - self.origin));
+      ChangeYaw ();
+      return ( FALSE );
+   }
+   if ( type == LINK_ROCKETJUMP ) {
+      if ( (self.items & IT_ROCKET_LAUNCHER) ) {
+         if ( (self.ammo_rockets > 0.000) && (self.health > 50.000) ) {
+            self.weapon = IT_ROCKET_LAUNCHER;
+            self.v_angle_x = 80.000;
+            self.v_angle_y = vectoyaw ((next_node.origin - self.origin));
+            self.ideal_yaw = self.v_angle_y;
+            ChangeYaw ();
+            self.button0 = TRUE;
+            self.button2 = TRUE;
+            self.whiskers_allowed = FALSE;
+            return ( TRUE );
+         }
+      }
+      return ( FALSE );
+   }
+   if ( type == LINK_PLAT ) {
+      // Simplified platform wait: pause if the link is clearly above us
+      if ( next_node.origin_z > (self.origin_z + 16.000) ) {
+         self.velocity = '0 0 0';
+         return ( TRUE );
+      }
+      self.whiskers_allowed = TRUE;
+      return ( FALSE );
+   }
+
+   return ( FALSE );
 
 };
 
@@ -709,17 +767,22 @@ float (float s_yaw, float s_dist) botwalkmove = {
       return TRUE;
    }
 
-   // --- WATER LOGIC: 3D Swim Control ("Shark" Engine) ---
+   // --- WATER LOGIC: Physics-based swim control ---
    // Level 0 = Dry, 1 = Feet, 2 = Waist, 3 = Eyes (Submerged)
-   // Take control at Level 2+ to avoid walkmove fighting underwater motion
    if ( self.waterlevel >= 2 ) {
-      BotSwim ();
-      BotCheckWaterJump ();
+      if ( (self.waterlevel == 2) && (self.velocity_z > 0.000) ) {
+         if ( Botwaterjump (self.velocity) ) {
+            return TRUE;
+         }
+      }
+      BotSwim (s_dist * 10.000);
       return TRUE;
    }
 
    // --- EXECUTE STEERING ---
-   if ( self.feeler_mode_active ) {
+   if ( !self.whiskers_allowed ) {
+      flow_yaw = s_yaw;
+   } else if ( self.feeler_mode_active ) {
       // FEELER MODE: Override normal steering
       if ( time > (self.feeler_start_time + 10) ) {
          self.feeler_mode_active = FALSE;
@@ -1682,8 +1745,7 @@ void (float dist, float wlevel) BotUnderwaterMove = {
    local float rnd;
 
    if ( wlevel >= 2 ) {
-      BotSwim ();
-      BotCheckWaterJump ();
+      BotSwim (dist * 10.000);
       return;
    }
 
@@ -1838,6 +1900,12 @@ void (float dist) Botmovetogoal = {
    Botgoal = self.goalentity;
    self.ideal_yaw = vectoyaw ((Botgoal.origin - self.origin));
    ChangeYaw ();
+   self.whiskers_allowed = TRUE;
+   if ( Botgoal.goalentity && (Botgoal.goalentity.classname == "BotPath") ) {
+      if ( BotExecuteLink (Botgoal.goalentity, dist) ) {
+         return ;
+      }
+   }
    if ( (self.flags & FL_INWATER) ) {
 
       wlevel = CheckWaterLevel ();

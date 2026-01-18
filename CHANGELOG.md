@@ -12,8 +12,11 @@
 - Intelligent button interaction (bots find and shoot/touch buttons to open doors).
 - Sensor fusion steering (vector-based whisker system for fluid navigation around walls and hazards).
 - Humanized physics (turn clamp, air steering, edge friction, wall sliding).
-- 3D swim engine for deep water (3D velocity, pitch steering, "drown a bit" behavior).
+- Velocity-based 3D swimming (oxygen-aware surfacing, pitch steering, direct velocity control).
 - Feeler steering + breadcrumbs (8-way scan escape + dropped BotPath waypoints).
+- Navigation learning + link types (player-learned links with usage weighting, danger scents, decay, and rocket-jump traversal).
+- Retrospective learning (trail buffer, node priority rewards, shortcut optimization).
+- Teacher Mode debugging (impulse 102 show / 103 hide BotPath nodes with particles).
 - Humanized idle behavior (BotRoam makes bots wander and scavenge instead of freezing).
 - Unlocked high skill levels (skill 0-10, was 0-3).
 - Added impulse 100 quick-add bot (standard convention).
@@ -24,6 +27,7 @@
 - Multiplayer lockups from exponential route cache recursion (added cycle detection).
 - Potential hang from infinite jump simulation into void (added safety counter).
 - Crash when adding bots beyond maxplayers (scoreboard overflow guard).
+- Crash from graph decay writing to world entity (decay throttling moved to global).
 - Jumpy/teleport-like strafing (removed sub-frame timing, added velocity for interpolation).
 - "Flashing" bots near water (stricter teleptest checks).
 - Bots getting stuck running in place (time-based tracking, 1.5s forced goal change, 20% jump chance).
@@ -43,6 +47,7 @@
 - Zero-velocity knockback causing stuck/jittery bots (require velocity > 50 before entering MOVETYPE_BOUNCE AND resetting knockback timer - prevents recovery timer from being reset by zero-velocity hits).
 - GOODY/RETREAT AI oscillation (added 0.5s hysteresis to prevent rapid state flipping).
 - Stale knockback/AI state after respawn (reset values in PutBotInServer).
+- Bots quitting mid-match (respawn loop no longer removes bots for crowding/score).
 - Backpacks spawning in unreachable locations (CONTENT_SOLID/SKY check).
 - sv_aim warning spam (one-time flag per map).
 - Reverted: BotDead frame reset removed to preserve death animations (gibbed head frame warnings are cosmetic).

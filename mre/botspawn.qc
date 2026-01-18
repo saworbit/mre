@@ -230,56 +230,8 @@ void () respawnBot = {
          n = (NUMBOTS + numplayers ());
          o = ((serverflags & TEAMBOTS) / FL_ITEM);
          if ( ((o < n) || (self.team != 99.000)) ) {
-
-            self.nextthink = (time + TRUE);
-            if ( (self.team == 99.000) ) {
-
-               NUMBOTS = (NUMBOTS - TRUE);
-
-            }
-            remove (self.movetarget);
-            remove (self.goalentity);
-            BotList_Remove (self);
-            self.think = SUB_Remove;
-            if ( self.pather ) {
-
-               NUMPATHERS = (NUMPATHERS - TRUE);
-
-            }
-            if ( (self.team != 99.000) ) {
-
-               m = ": I'm going to find a team server.\n";
-
-            } else {
-
-               if ( (totalscore (self) < FALSE) ) {
-
-                  m = ": I'm tired of getting fragged.  I'm off\n";
-
-               } else {
-
-                  if ( (totalscore (self) > MUST_HAVE) ) {
-
-                     m = ": I'm going to find some real competition\n";
-
-                  } else {
-
-                     m = ": This server's too crowded.  I'm off\n";
-
-                  }
-
-               }
-
-            }
-            bprint (self.teamname);
-            bprint (self.netname);
-            bprint (m);
-            bprint (self.teamname);
-            bprint (self.netname);
-            bprint (" left the game with ");
-            m = ftos (self.frags);
-            bprint (m);
-            bprint (" frags\n");
+            // Bots no longer quit or leave due to crowding/score.
+            PutBotInServer ();
             return ;
 
          }
@@ -302,15 +254,8 @@ void () respawnBot = {
             e = find (e,classname,"player");
 
          }
-         bprint (self.teamname);
-         bprint (self.netname);
-         bprint (": Going off to join my team\n");
-         bprint (self.teamname);
-         bprint (self.netname);
-         bprint (" left the game with ");
-         m = ftos (self.frags);
-         bprint (m);
-         bprint (" frags\n");
+         // No teammate found; keep bot active instead of leaving.
+         PutBotInServer ();
          return ;
 
       } else {

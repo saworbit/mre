@@ -321,6 +321,42 @@ float () Bot_CheckReaction; // Forward declaration
 .float feeler_mode_active;   // TRUE when using feeler navigation
 .float feeler_start_time;    // When feeler mode was activated
 .vector last_breadcrumb_pos; // Position of last dropped breadcrumb
+.float last_breadcrumb_yaw;  // Yaw at last breadcrumb drop
+// Retrospective learning trail (most recent -> oldest)
+.entity trail_node1;
+.entity trail_node2;
+.entity trail_node3;
+.entity trail_node4;
+.entity trail_node5;
+// Node value
+.float node_priority;        // Base importance (0 = hallway, 100 = near Quad)
+// Navigation learning & link types
+float LINK_WALK     = 0;
+float LINK_JUMP     = 1; // Requires jump
+float LINK_DROP     = 2; // Safe to fall
+float LINK_PLAT     = 3; // Requires waiting for/riding platform
+float LINK_TELE     = 4; // Teleporter
+float LINK_ROCKETJUMP = 5; // Requires rocket jump
+float LINK_LADDER     = 6; // Vertical water/ladder logic
+// Parallel fields to movetarget1..6
+.float link_type1; .float link_usage1;
+.float link_type2; .float link_usage2;
+.float link_type3; .float link_usage3;
+.float link_type4; .float link_usage4;
+.float link_type5; .float link_usage5;
+.float link_type6; .float link_usage6;
+// Player/bot traversal tracking
+.entity last_waypoint;       // The last node the player/bot was near
+.float last_waypoint_time;   // When they were there
+.vector jump_origin;         // Where the player started their jump
+.float is_jumping;           // Flag to track air traversal
+.float whiskers_allowed;     // Allow steering sensors for special links
+// Graph weighting & scents
+.float danger_cost;          // "Scent" of death here (increases path cost)
+.float last_decay_time;      // For forgetting old paths
+.float node_traffic;         // Total visits (heat map)
+// Rocket jump detection
+.float last_rj_time;         // To debounce RJ detection
 
 // Turn speed limiting (inspired by FrikBot mouse emulation)
 .float last_yaw;             // Previous frame's yaw for delta calculation

@@ -1286,6 +1286,12 @@ void (float dist) BotAI_Main = {
       return ;
 
    }
+   // FIX: Survival override - keep moving if drowning
+   if ( (self.waterlevel >= 3.000) && (self.air_finished < (time + 4.000)) ) {
+      BotLogAI (AI_STATE_RETREAT, "DROWN");
+      aibot_run_slide (dist,CANTURN);
+      return ;
+   }
    if ( (self.attack_state == AS_MELEE) ) {
 
       BotLogAI (AI_STATE_ATTACK, "MELEE");
@@ -1450,6 +1456,11 @@ float (float minweight) aibot_checkforGoodies = {
    local float weap;
    local float minimum;
    local vector spot;
+
+   // FIX: Do not forage for items if drowning
+   if ( (self.air_finished < (time + 5.000)) && (self.waterlevel >= 3.000) ) {
+      return ( FALSE );
+   }
 
    if ( (self.air_finished < (time + MOVETYPE_FLYMISSILE)) ) {
 

@@ -62,13 +62,22 @@
     collision via `obstruction_normal` field, then projects velocity onto wall
     plane to calculate sliding direction. Bots now slide along walls instead of
     stopping dead, reducing stuck states.
-- Feature: 3D swim engine ("Shark" mode) (`botmove.qc`). When submerged (waterlevel
-  >= 2), bots bypass `walkmove` and drive velocity in 3D, including pitch steering,
-  wall sliding via sonar traces, and a "drown a bit" rule that only surfaces for air
-  when health is critical (< 30).
+- Feature: Velocity-based 3D swimming (`botmove.qc`, `bot_ai.qc`). When submerged
+  (waterlevel >= 2), bots drive velocity in 3D with pitch steering and wall sliding.
+  Oxygen-aware surfacing overrides combat and item foraging when air is low.
 - Feature: Feeler steering + breadcrumbs (`botmove.qc`, `botroute.qc`, `botgoal.qc`,
   `defs.qc`). When stuck, bots enter feeler mode to scan 8 directions for the
-  clearest exit and drop `BotPath` breadcrumbs every 64 units for future routing.
+  clearest exit and drop `BotPath` breadcrumbs every ~48 units for future routing.
+- Feature: Navigation learning + link types (`botroute.qc`, `client.qc`,
+  `items.qc`, `defs.qc`, `botmove.qc`, `world.qc`). Players auto-drop/attach
+  waypoints with link types (walk/jump/drop/platform/rocket jump), link usage
+  weighting and node priority bias A* routing, danger scents steer bots away
+  from lethal nodes, and graph decay lets paths be forgotten over time.
+- Feature: Retrospective learning + path optimization (`botroute.qc`, `items.qc`,
+  `defs.qc`). Tracks a 5-node trail, rewards winning paths via `node_priority`,
+  and creates shortcut links when line-of-sight exists.
+- Feature: Teacher Mode debugging (`weapons.qc`). `impulse 102` shows `BotPath`
+  nodes with bubble sprites/particles; `impulse 103` hides them.
 - Fixed: Bots getting stuck on shallow water pool edges (`botmove.qc`). The whisker
   collision sensors were detecting small lips (8-16 units) as walls and steering bots
   away, trapping them on "islands". Added `BotIsStep()` to check if obstacles are
@@ -94,6 +103,8 @@
   `cacheRouteTarget` recursion with 6 neighbors per node and depth 12 could cause
   6^12 operations. Added cycle detection via `visited_id` field to visit each node
   only once per search.
+- Fixed: Crash from graph decay writing to world entity (`botroute.qc`). Moved the
+  decay throttle to a global `graph_decay_next` timer.
 - Fixed: Potential infinite loop in jump simulation (`botmove.qc`). The
   `Bot_tryjump` while loop could hang if simulating a fall into void where
   traceline never hits ground. Added safety counter (100 iterations max).
@@ -190,6 +201,8 @@
 - Fixed: Stale knockback/AI state after respawn (`botspawn.qc`). Reset
   `knockback_time`, `last_ai_state`, and `last_ai_state_time` to zero in
   `PutBotInServer()` to prevent values from previous life affecting new spawn.
+- Fixed: Bots quitting mid-match (`botspawn.qc`). Respawn logic no longer removes
+  bots for crowding or poor performance; they rejoin instead of leaving.
 - Reverted: Frame reset in `BotDead()` removed - it caused zombie axe corpses.
   The `walkframe` reset in `PutBotInServer()` remains. Frame errors on `h_player.mdl`
   (gibbed head model) are a cosmetic issue that doesn't affect gameplay.

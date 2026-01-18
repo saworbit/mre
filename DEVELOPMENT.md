@@ -60,7 +60,13 @@ Full think-logic traces are available in `BotAI_Main` when `developer` is on.
 Logs emit `[BotName] AI: <STATE>` only when the bot's high-level state changes
 (GOODY/RETREAT/ATTACK/CHASE/NO_ENEMY).
 Feeler exploration logs are developer-only: `Activating FEELER mode` and
-`<BotName> dropped breadcrumb.` appear when feeler mode triggers and breadcrumbs drop.
+`[BotName] BREADCRUMB: Dropped at ...` appear when feeler mode triggers and
+bots drop breadcrumbs. Player learning logs appear as
+`[Player] BREADCRUMB: Learned waypoint at ...`. Retrospective learning prints
+`AI Optimized: Created shortcut!` and reward logs like
+`Learned path to Power Weapon!` / `Learned CRITICAL path to Powerup!`.
+Teacher Mode visualization uses `impulse 102` to show BotPath nodes and
+`impulse 103` to hide them.
 
 ## CI
 ```

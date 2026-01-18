@@ -197,7 +197,7 @@ Botmovetogoal(dist)                    [botmove.qc:1304]
   ├─> [if in water]
   │     ├─> CheckWaterLevel()
   │     └─> BotUnderwaterMove(dist)
-  │           ├─> BotSwim()           [if waterlevel >= 2]
+  │           ├─> BotSwim()           [velocity-based swim + oxygen check]
   │           └─> BotCheckWaterJump()
   │
   ├─> [if goal is wind tunnel]
@@ -216,7 +216,21 @@ Botmovetogoal(dist)                    [botmove.qc:1304]
 
 - Activation: `ai_botseek` enables `feeler_mode_active` after > 1.5s stuck time.
 - Steering: `Bot_FindClearestDirection` runs an 8-way traceline scan and overrides flow yaw for up to 10s.
-- Breadcrumbs: `Bot_DropBreadcrumb` calls `SpawnSavedWaypoint` (pathtype `DROPPED`) every 64 units while exploring.
+- Breadcrumbs: `Bot_DropBreadcrumb` calls `SpawnSavedWaypoint` (pathtype `DROPPED`) every ~48 units while exploring.
+
+
+### Navigation Learning + Retrospective Learning
+
+- Player auto-waypoints: `Player_AutoWaypoint` drops `BotPath` nodes during movement and links them with typed edges (walk/jump/drop/platform/rocket jump).
+- Usage weighting: `cacheRouteTarget` biases A* routing toward heavily used links and high-priority nodes.
+- Retrospective rewards: `UpdateTrail` tracks last 5 nodes; `BackPropagateReward` boosts `node_priority` and `link_usage` when items are picked up.
+- Path optimization: `OptimizePathSegment` links around intermediate nodes if line-of-sight exists, creating shortcuts.
+- Graph maintenance: `MaintainGraph` decays usage and danger scent over time.
+
+### Teacher Mode Debugging
+
+- `impulse 102` reveals `BotPath` nodes with bubble sprites and particles for high priority or jump links.
+- `impulse 103` hides the debug sprites again.
 
 
 ### Low-Level Movement
@@ -227,8 +241,8 @@ botwalkmove(yaw, dist)                 [botmove.qc:513]
   ├─> [pre-checks: bounce mode, airborne knockback, platform ride]
   │     └─> BotAirSteer(yaw)           [mid-air course correction]
   │
-  ├─> [if waterlevel >= 2]
-  │     ├─> BotSwim()                 [3D swim control]
+  ├─> [velocity-based swim + oxygen check]
+  │     ├─> BotSwim()                 [velocity-based swim control]
   │     └─> BotCheckWaterJump()
   ├─> [if feeler_mode_active]
   │     └─> flow_yaw = Bot_FindClearestDirection()
@@ -363,8 +377,10 @@ While no redundant loops exist, these areas could be simplified:
 
 | Date | Change |
 |------|--------|
+| 2026-01-21 | Added navigation learning, retrospective rewards, and Teacher Mode debugging |
+| 2026-01-21 | Updated swim control to velocity-based oxygen-aware swimming |
 | 2026-01-20 | Added feeler steering + breadcrumb exploration mode |
-| 2026-01-19 | Added 3D swim engine (BotSwim) with critical-health surfacing logic |
+| 2026-01-19 | Added 3D swim engine (BotSwim) with pitch steering and direct velocity control |
 | 2026-01-18 | Added humanized physics system (turn limiting, air steering, edge friction, wall sliding) |
 | 2026-01-17 | Added sensor fusion steering system documentation |
 | 2026-01-16 | Initial architecture mapping for clean baseline |

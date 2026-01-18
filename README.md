@@ -12,7 +12,7 @@ from `archive/`.
 
 ## Status
 
-**28 community issues addressed + 2 new features** - see [CHANGELOG.md](CHANGELOG.md) for details.
+**28+ community issues addressed + expanded navigation features** - see [CHANGELOG.md](CHANGELOG.md) for details.
 
 ### Fixed
 - Crashes: SP edict overflow, MP route recursion, scoreboard overflow
@@ -26,6 +26,11 @@ from `archive/`.
 ### New Features
 - High skill levels unlocked (skill 0-10, was 0-3) - skill 4+ = "god mode" bots
 - Impulse 100 quick-add bot (standard convention from Frogbot)
+- Velocity-based 3D swimming (oxygen-aware surfacing and pitch steering)
+- Feeler steering + breadcrumbs (escape scans and dropped BotPath waypoints)
+- Navigation learning (link types, usage weighting, danger/decay, rocket jumps)
+- Retrospective learning + path optimization (trail rewards and shortcut links)
+- Teacher Mode debug impulses (102 show / 103 hide bot learning nodes)
 
 ### Investigated (Likely Fixed / Not Found)
 - "Bot frags not shown" - MSG_UPDATEFRAGS sent correctly, likely fixed by 0-index fix

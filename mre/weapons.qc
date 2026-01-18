@@ -1311,6 +1311,43 @@ void () botImpulseCommand;
 void () ImpulseCommands = {
 
    local string tmp;
+   local entity node;
+   local float count;
+
+   if ( (self.impulse == 102.000) && (self.classname == "player") ) {
+      count = 0.000;
+      bprint ("Visualizing Bot Knowledge...\n");
+
+      node = find (world,classname,"BotPath");
+      while ( node ) {
+         setmodel (node,"progs/s_bubble.spr");
+         if ( (node.node_priority > 50.000) ) {
+            particle (node.origin,'0 0 50',244.000,10.000);
+         } else if ( (node.link_type1 == LINK_JUMP) || (node.link_type1 == LINK_ROCKETJUMP) ) {
+            particle (node.origin,'0 0 30',225.000,10.000);
+         }
+         count = (count + TRUE);
+         node = find (node,classname,"BotPath");
+      }
+
+      bprint ("Revealed ");
+      bprint (ftos (count));
+      bprint (" learned waypoints.\n");
+
+      self.impulse = FALSE;
+      return ;
+   }
+
+   if ( (self.impulse == 103.000) && (self.classname == "player") ) {
+      node = find (world,classname,"BotPath");
+      while ( node ) {
+         setmodel (node,string_null);
+         node = find (node,classname,"BotPath");
+      }
+      bprint ("Hidden waypoints.\n");
+      self.impulse = FALSE;
+      return ;
+   }
 
       if ( (self.impulse == 16) ) {
 

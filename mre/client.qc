@@ -1390,6 +1390,9 @@ void () PlayerPostThink = {
 
    }
    CheckPowerups ();
+   if ( !intermission_running ) {
+      Player_AutoWaypoint ();
+   }
 
 };
 
@@ -1468,6 +1471,10 @@ void (entity targ, entity attacker) ClientObituary = {
    local float rnum;
    local string deathstring;
    local string deathstring2;
+   local entity near_node;
+   local entity e;
+   local float best_dist;
+   local float dist;
 
    rnum = random ();
    if ( ((targ.classname == "player") || (targ.classname == "dmbot")) ) {
@@ -1480,7 +1487,7 @@ void (entity targ, entity attacker) ClientObituary = {
          bprint (attacker.owner.teamname);
          bprint (attacker.owner.netname);
          bprint ("\n");
-         if ( (attacker.owner.classname == "dmbot") ) {
+      if ( (attacker.owner.classname == "dmbot") ) {
 
             TELEFRAGFLAG = TRUE;
 
@@ -1838,6 +1845,23 @@ void (entity targ, entity attacker) ClientObituary = {
          }
          bprint (" died\n");
 
+      }
+      // Mark nearby waypoint as dangerous
+      near_node = world;
+      best_dist = 99999.000;
+      e = findradius (targ.origin,200.000);
+      while ( e ) {
+         if ( (e.classname == "BotPath") ) {
+            dist = vlen ((e.origin - targ.origin));
+            if ( (dist < best_dist) ) {
+               best_dist = dist;
+               near_node = e;
+            }
+         }
+         e = e.chain;
+      }
+      if ( near_node && (near_node != world) ) {
+         MarkDanger (near_node);
       }
 
    }
