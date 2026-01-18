@@ -125,6 +125,10 @@ Frame Function (bot_run, bot_chase, etc.)
         └─> th_melee()
 ```
 
+### Reflex Dodge
+
+- `BotReflexDodge` runs at the top of `BotAI_Main` to evade incoming rockets/grenades with a short cooldown.
+
 ### Target Acquisition
 
 ```
@@ -234,6 +238,8 @@ Botmovetogoal(dist)                    [botmove.qc:1304]
 
 
 ### Low-Level Movement
+
+- Bunny hop: `BotBunnyHop` adds a strafe-jump style velocity boost on long, straight runs when safe.
 
 ```
 botwalkmove(yaw, dist)                 [botmove.qc:513]
@@ -377,6 +383,7 @@ While no redundant loops exist, these areas could be simplified:
 
 | Date | Change |
 |------|--------|
+| 2026-01-22 | Added reflex dodge and bunny hop mechanics |
 | 2026-01-21 | Added navigation learning, retrospective rewards, and Teacher Mode debugging |
 | 2026-01-21 | Updated swim control to velocity-based oxygen-aware swimming |
 | 2026-01-20 | Added feeler steering + breadcrumb exploration mode |

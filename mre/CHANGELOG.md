@@ -78,6 +78,8 @@
   and creates shortcut links when line-of-sight exists.
 - Feature: Teacher Mode debugging (`weapons.qc`). `impulse 102` shows `BotPath`
   nodes with bubble sprites/particles; `impulse 103` hides them.
+- Feature: Speed Demon update (`botmove.qc`, `botfight.qc`, `bot_ai.qc`). Adds
+  bunny hopping on straight runs and reflex dodging of incoming rockets/grenades.
 - Fixed: Bots getting stuck on shallow water pool edges (`botmove.qc`). The whisker
   collision sensors were detecting small lips (8-16 units) as walls and steering bots
   away, trapping them on "islands". Added `BotIsStep()` to check if obstacles are
@@ -105,6 +107,8 @@
   only once per search.
 - Fixed: Crash from graph decay writing to world entity (`botroute.qc`). Moved the
   decay throttle to a global `graph_decay_next` timer.
+- Fixed: Reflex dodge not triggering on rockets (`weapons.qc`, `botfight.qc`). Rockets
+  now set `classname = "missile"` and dodge checks also fall back to the rocket model.
 - Fixed: Potential infinite loop in jump simulation (`botmove.qc`). The
   `Bot_tryjump` while loop could hang if simulating a fall into void where
   traceline never hits ground. Added safety counter (100 iterations max).

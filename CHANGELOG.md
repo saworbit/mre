@@ -17,6 +17,7 @@
 - Navigation learning + link types (player-learned links with usage weighting, danger scents, decay, and rocket-jump traversal).
 - Retrospective learning (trail buffer, node priority rewards, shortcut optimization).
 - Teacher Mode debugging (impulse 102 show / 103 hide BotPath nodes with particles).
+- Speed Demon update (bunny hopping on straight runs and reflex projectile dodging).
 - Humanized idle behavior (BotRoam makes bots wander and scavenge instead of freezing).
 - Unlocked high skill levels (skill 0-10, was 0-3).
 - Added impulse 100 quick-add bot (standard convention).
@@ -28,6 +29,7 @@
 - Potential hang from infinite jump simulation into void (added safety counter).
 - Crash when adding bots beyond maxplayers (scoreboard overflow guard).
 - Crash from graph decay writing to world entity (decay throttling moved to global).
+- Projectile dodge detection missing rocket classname (rockets now tagged as missiles).
 - Jumpy/teleport-like strafing (removed sub-frame timing, added velocity for interpolation).
 - "Flashing" bots near water (stricter teleptest checks).
 - Bots getting stuck running in place (time-based tracking, 1.5s forced goal change, 20% jump chance).

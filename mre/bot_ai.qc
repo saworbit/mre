@@ -2,6 +2,7 @@
 // Forward declarations for functions used before they're defined
 float (float minweight) aibot_checkforGoodies;
 float (float ideal_yaw, float speed_factor) BotSteer;
+void () BotReflexDodge;
 
 void () endEnemy = {
 
@@ -1155,6 +1156,11 @@ void (float dist) BotAI_Main = {
    local float ang_rint;
    local float ang_floor;
    local float ang_ceil;
+
+   // Reflex dodge before normal combat/path logic
+   if ( self.health > 0 ) {
+      BotReflexDodge ();
+   }
 
    if ( (self.enemy.deadflag != DEAD_NO) ) {
 

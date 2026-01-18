@@ -1574,6 +1574,11 @@ void (entity targ, entity attacker) ClientObituary = {
               }
 
             countkill (attacker,targ);
+            if ( (attacker.classname == "dmbot") ) {
+               if ( !(attacker.flags & FL_ONGROUND) ) {
+                  attacker.strafe_timer = (time + 2.000);
+               }
+            }
             rnum = attacker.weapon;
             if ( (rnum == IT_AXE) ) {
 

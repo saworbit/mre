@@ -734,6 +734,54 @@ float (entity next_node, float dist) BotExecuteLink = {
 
 };
 
+// --- ADVANCED MOVEMENT MECHANICS ---
+void (entity bot, float desired_yaw) BotBunnyHop = {
+
+   local float strafe_angle;
+
+   if ( !bot ) {
+      return ;
+   }
+   if ( vlen (bot.velocity) < 200.000 ) {
+      return ;
+   }
+
+   // Air control: simulate strafe-jump acceleration
+   if ( !(bot.flags & FL_ONGROUND) ) {
+      makevectors ('0 1 0' * desired_yaw);
+      bot.velocity = (bot.velocity + (v_forward * 12.000));
+      if ( (vlen (bot.velocity) > 550.000) ) {
+         bot.velocity = (normalize (bot.velocity) * 550.000);
+      }
+      return ;
+   }
+
+   // Rhythm: alternate strafe direction and jump
+   if ( time > bot.strafe_timer ) {
+      if ( (bot.strafe_state == 1.000) ) {
+         bot.strafe_state = 2.000;
+      } else {
+         bot.strafe_state = 1.000;
+      }
+      bot.strafe_timer = (time + 0.400);
+      bot.button2 = TRUE;
+
+      strafe_angle = 15.000;
+      if ( (bot.strafe_state == 1.000) ) {
+         bot.v_angle_y = (desired_yaw + strafe_angle);
+      } else {
+         bot.v_angle_y = (desired_yaw - strafe_angle);
+      }
+
+      makevectors ('0 1 0' * desired_yaw);
+      bot.velocity = (bot.velocity + (v_forward * 40.000));
+      if ( (vlen (bot.velocity) > 550.000) ) {
+         bot.velocity = (normalize (bot.velocity) * 550.000);
+      }
+   }
+
+};
+
 // =========================================================================
 // MAIN MOVEMENT FUNCTION
 // =========================================================================
@@ -743,6 +791,7 @@ float (float s_yaw, float s_dist) botwalkmove = {
    local float flow_yaw;
    local float moved;
    local vector jump_check;
+   local float is_straight_path;
 
    self.oldorigin = self.origin;
 
@@ -777,6 +826,19 @@ float (float s_yaw, float s_dist) botwalkmove = {
       }
       BotSwim (s_dist * 10.000);
       return TRUE;
+   }
+
+   // Bunny hop on long, straight runs
+   is_straight_path = FALSE;
+   if ( self.goalentity && (self.goalentity != world) ) {
+      if ( Spotvisible (self.goalentity) && (vlen (self.goalentity.origin - self.origin) > 300.000) ) {
+         is_straight_path = TRUE;
+      }
+   }
+   if ( is_straight_path && (self.health > 50.000) && !self.feeler_mode_active && self.whiskers_allowed ) {
+      if ( !self.enemy || (self.enemy == world) || (vlen (self.enemy.origin - self.origin) > 200.000) ) {
+         BotBunnyHop (self, s_yaw);
+      }
    }
 
    // --- EXECUTE STEERING ---

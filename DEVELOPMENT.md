@@ -65,6 +65,7 @@ bots drop breadcrumbs. Player learning logs appear as
 `[Player] BREADCRUMB: Learned waypoint at ...`. Retrospective learning prints
 `AI Optimized: Created shortcut!` and reward logs like
 `Learned path to Power Weapon!` / `Learned CRITICAL path to Powerup!`.
+Reflex dodge logs appear as `Bot attempting DODGE!`.
 Teacher Mode visualization uses `impulse 102` to show BotPath nodes and
 `impulse 103` to hide them.
 

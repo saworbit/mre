@@ -1,4 +1,43 @@
 float (entity targ) botrange;
+
+// Reflex dodge: evade incoming rockets/grenades
+void () BotReflexDodge = {
+
+   local entity missile;
+   local vector dir;
+   local vector side_dir;
+
+   if ( time < self.last_dodge_time ) {
+      return ;
+   }
+
+   missile = findradius (self.origin,500.000);
+   while ( missile ) {
+      if ( (missile.classname == "missile") || (missile.classname == "grenade") || (missile.model == "progs/missile.mdl") ) {
+         if ( vlen (missile.velocity) > 10.000 ) {
+            dir = normalize ((self.origin - missile.origin));
+            if ( (normalize (missile.velocity) * dir) > 0.800 ) {
+               self.last_dodge_time = (time + 1.500);
+               if ( cvar ("developer") ) {
+                  dprint ("Bot attempting DODGE!\n");
+               }
+               side_dir_x = missile.velocity_y;
+               side_dir_y = -missile.velocity_x;
+               side_dir_z = 0;
+               side_dir = normalize (side_dir);
+               if ( (random () > 0.500) ) {
+                  side_dir = (side_dir * -1.000);
+               }
+               self.velocity = (self.velocity + (side_dir * 350.000));
+               self.button2 = TRUE;
+               return ;
+            }
+         }
+      }
+      missile = missile.chain;
+   }
+
+};
 vector (vector src, vector trg, float invMvel) leadtarget = {
 
    local vector tg;

@@ -330,6 +330,10 @@ float () Bot_CheckReaction; // Forward declaration
 .entity trail_node5;
 // Node value
 .float node_priority;        // Base importance (0 = hallway, 100 = near Quad)
+// Advanced movement mechanics
+.float strafe_state;         // 0=None, 1=Left, 2=Right
+.float strafe_timer;         // Rhythm keeper
+.float last_dodge_time;      // Reflex cooldown
 // Navigation learning & link types
 float LINK_WALK     = 0;
 float LINK_JUMP     = 1; // Requires jump

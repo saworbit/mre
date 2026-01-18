@@ -348,6 +348,7 @@ void () W_FireRocket = {
    missile.owner = self;
    missile.movetype = MOVETYPE_FLYMISSILE;
    missile.solid = SOLID_BBOX;
+   missile.classname = "missile";
    makevectors (self.v_angle);
    if ( (self.classname == "dmbot") ) {
 

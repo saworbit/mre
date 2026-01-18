@@ -31,6 +31,7 @@ from `archive/`.
 - Navigation learning (link types, usage weighting, danger/decay, rocket jumps)
 - Retrospective learning + path optimization (trail rewards and shortcut links)
 - Teacher Mode debug impulses (102 show / 103 hide bot learning nodes)
+- Speed Demon update (bunny hopping on straight runs and reflex projectile dodging)
 
 ### Investigated (Likely Fixed / Not Found)
 - "Bot frags not shown" - MSG_UPDATEFRAGS sent correctly, likely fixed by 0-index fix
