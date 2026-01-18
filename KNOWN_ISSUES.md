@@ -12,3 +12,8 @@
 
 ## 3. "Bot should be dead!" log line
 - **Status:** Fixed. `BotPostThink` now returns immediately for deadflagged bots to avoid the noisy log line during telefrags/gibs.
+
+## 4. Quad pickup at respawn without proximity
+- **Status:** Investigating. Bots sometimes receive Quad instantly when it respawns, even when they are not nearby.
+- **Repro:** Run `dm2` or similar with `+developer 1 +condebug 1`, time Quad, and watch a bot across rooms on respawn.
+- **Logs:** Check `launch/quake-spasm/qconsole.log` for `[QuadSpawn]` / `[QuadTouch]` lines and note bot location vs. Quad location.
