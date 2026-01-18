@@ -32,6 +32,13 @@ from `archive/`.
 - Retrospective learning + path optimization (trail rewards and shortcut links)
 - Teacher Mode debug impulses (102 show / 103 hide bot learning nodes)
 - Speed Demon update (bunny hopping on straight runs and reflex projectile dodging)
+- **Predator Update**: Strategic intelligence upgrade
+  - Map Control: Bots time powerups (Quad/Pent/Ring) and rush to spawns before they appear
+  - Sound Navigation: Bots hear combat (rockets, grenades, explosions) and investigate
+  - Curiosity: Bots shoot shootable buttons/doors/walls to discover secrets
+- **Smooth Steering**: 3-frame angle averaging prevents jitter from pathfinder/whisker oscillation
+- **Sixth Sense**: 360-degree awareness for items within 300 units (no facing check needed)
+- **High-Value Item Focus**: Direct drive to powerups when close (<200 units) prevents strafing past
 
 ### Investigated (Likely Fixed / Not Found)
 - "Bot frags not shown" - MSG_UPDATEFRAGS sent correctly, likely fixed by 0-index fix

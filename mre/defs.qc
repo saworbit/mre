@@ -362,8 +362,36 @@ float LINK_LADDER     = 6; // Vertical water/ladder logic
 // Rocket jump detection
 .float last_rj_time;         // To debounce RJ detection
 
+// --- MAP CONTROL (Global Knowledge) ---
+// These track when major powerups will return (shared knowledge among all bots)
+float next_quad_time;        // When Quad Damage will respawn
+float next_pent_time;        // When Pentagram will respawn
+float next_ring_time;        // When Ring of Shadows will respawn
+float next_suit_time;        // When Biosuit will respawn
+
+// Cached powerup spawn locations (set at map start)
+entity quad_spawn_ent;       // The Quad Damage item entity
+entity pent_spawn_ent;       // The Pentagram item entity
+entity ring_spawn_ent;       // The Ring of Shadows item entity
+
+// --- SENSORY AWARENESS (Hearing) ---
+.vector noise_target;        // Where the sound came from
+.float  noise_time;          // When we heard it
+.float  investigating;       // Are we currently checking out a noise?
+.float  noise_priority;      // How important is this sound? (weapon > item)
+
+// --- CURIOSITY (Solving) ---
+.float  button_search_time;  // Cooldown for looking for buttons
+
 // Turn speed limiting (inspired by FrikBot mouse emulation)
 .float last_yaw;             // Previous frame's yaw for delta calculation
+
+// --- SMOOTH STEERING (Anti-Jitter) ---
+// 3-frame circular buffer for angle smoothing (low-pass filter)
+.float smooth_yaw_0;         // Buffer slot 0
+.float smooth_yaw_1;         // Buffer slot 1
+.float smooth_yaw_2;         // Buffer slot 2
+.float smooth_idx;           // Current buffer index (0-2)
 
 // Air control (inspired by Frogbot AIR_ACCELERATION)
 float BOT_AIR_CONTROL = 1;   // Flag: allow limited air steering after knockback

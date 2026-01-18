@@ -193,6 +193,88 @@ void (float dist) BotHandleButton = {
 
 };
 
+// =============================================================================
+// CURIOSITY SYSTEM: Bots can "solve" maps by shooting shootable objects
+// This helps bots discover secrets and open doors they couldn't otherwise
+// =============================================================================
+
+// Check if the bot is looking at something interesting they should shoot
+// Called during idle/wandering phases to discover secrets
+void () BotCheckCuriosity = {
+
+   local vector scan_start;
+   local vector scan_end;
+   local entity tr_ent;
+
+   // Cooldown check - don't spam curiosity checks
+   if ( (time < self.button_search_time) ) {
+      return;
+   }
+   self.button_search_time = time + 0.5;
+
+   // Don't be curious if we're busy fighting
+   if ( self.enemy && enemyvisible(self.enemy) ) {
+      return;
+   }
+
+   // Trace forward from eye level
+   makevectors (self.v_angle);
+   scan_start = self.origin + self.view_ofs;
+   scan_end = scan_start + (v_forward * 300);
+
+   traceline (scan_start, scan_end, FALSE, self);
+   tr_ent = trace_ent;
+
+   if ( !tr_ent ) {
+      return;
+   }
+
+   // Is it a shootable button?
+   if ( (tr_ent.classname == "func_button") && (tr_ent.health > 0) ) {
+
+      // Shoot the button!
+      self.button0 = TRUE;
+
+      if ( cvar("developer") ) {
+         dprint ("[");
+         dprint (self.netname);
+         dprint ("] CURIOSITY: Shooting button!\n");
+      }
+      return;
+
+   }
+
+   // Is it a shootable door (secret)?
+   if ( (tr_ent.classname == "func_door") && (tr_ent.health > 0) ) {
+
+      // Might be a secret door - shoot it!
+      self.button0 = TRUE;
+
+      if ( cvar("developer") ) {
+         dprint ("[");
+         dprint (self.netname);
+         dprint ("] CURIOSITY: Shooting possible secret!\n");
+      }
+      return;
+
+   }
+
+   // Is it a shootable wall (some maps use this)?
+   if ( (tr_ent.classname == "func_wall") && (tr_ent.health > 0) ) {
+
+      self.button0 = TRUE;
+
+      if ( cvar("developer") ) {
+         dprint ("[");
+         dprint (self.netname);
+         dprint ("] CURIOSITY: Shooting wall target!\n");
+      }
+      return;
+
+   }
+
+};
+
 // =========================================================================
 // SENSOR FUSION STEERING (V2: With Step-Over & Liquid Handling)
 // =========================================================================
@@ -384,6 +466,113 @@ float (float target_yaw) BotClampYaw = {
    self.last_yaw = clamped_yaw;
 
    return clamped_yaw;
+
+};
+
+// =============================================================================
+// SMOOTH STEERING (Low-Pass Filter / Anti-Jitter)
+// Averages steering decisions over 3 frames to prevent oscillation
+// =============================================================================
+
+// Helper: Average angles while handling 0/360 wraparound
+// Uses vector addition to properly blend angles near the discontinuity
+float (float y1, float y2, float y3) BotAverageAngles = {
+
+   local vector v1, v2, v3, sum;
+
+   // Convert each angle to a unit vector
+   makevectors ('0 1 0' * y1);
+   v1 = v_forward;
+   makevectors ('0 1 0' * y2);
+   v2 = v_forward;
+   makevectors ('0 1 0' * y3);
+   v3 = v_forward;
+
+   // Sum the vectors and convert back to angle
+   sum = v1 + v2 + v3;
+
+   // Handle degenerate case (all vectors cancel out)
+   if ( vlen (sum) < 0.01 ) {
+      return y1;  // Just use most recent
+   }
+
+   return vectoyaw (sum);
+
+};
+
+// Smooth steering: Buffer desired angles and average over 3 frames
+// This absorbs single-frame "panic" spikes from whiskers
+float (float target_yaw) BotSmoothSteer = {
+
+   local float smoothed;
+   local float delta;
+   local float raw_delta;
+
+   // 1. Update circular buffer with new target
+   self.smooth_idx = self.smooth_idx + 1;
+   if ( self.smooth_idx > 2 ) {
+      self.smooth_idx = 0;
+   }
+
+   // Store in appropriate slot (QuakeC doesn't support array syntax)
+   if ( self.smooth_idx == 0 ) {
+      self.smooth_yaw_0 = target_yaw;
+   } else if ( self.smooth_idx == 1 ) {
+      self.smooth_yaw_1 = target_yaw;
+   } else {
+      self.smooth_yaw_2 = target_yaw;
+   }
+
+   // 2. Average the last 3 frames (0.3 seconds at 10Hz)
+   // This absorbs frame-to-frame oscillations
+   smoothed = BotAverageAngles (self.smooth_yaw_0, self.smooth_yaw_1, self.smooth_yaw_2);
+
+   // 3. Apply turn speed clamping (max 20 deg/frame for weightier feel)
+   delta = smoothed - self.last_yaw;
+
+   // Normalize to -180..180
+   while ( delta > 180 ) {
+      delta = delta - 360;
+   }
+   while ( delta < -180 ) {
+      delta = delta + 360;
+   }
+
+   // Save raw delta before clamping for logging
+   raw_delta = delta;
+
+   // Clamp delta - slightly lower than BotClampYaw for smoother turns
+   if ( delta > 15 ) {
+      delta = 15;
+   } else if ( delta < -15 ) {
+      delta = -15;
+   }
+
+   // Log when smoothing significantly dampens jitter (clamped > 5 degrees)
+   if ( cvar("developer") && (fabs(raw_delta) > 20) && (fabs(raw_delta - delta) > 5) ) {
+      dprint ("[");
+      dprint (self.netname);
+      dprint ("] SMOOTH: Dampened ");
+      dprint (ftos(floor(raw_delta)));
+      dprint ("° to ");
+      dprint (ftos(floor(delta)));
+      dprint ("°\n");
+   }
+
+   smoothed = self.last_yaw + delta;
+
+   // Normalize to 0..360
+   while ( smoothed < 0 ) {
+      smoothed = smoothed + 360;
+   }
+   while ( smoothed >= 360 ) {
+      smoothed = smoothed - 360;
+   }
+
+   // Store for next frame
+   self.last_yaw = smoothed;
+
+   return smoothed;
 
 };
 
@@ -800,6 +989,61 @@ float (float s_yaw, float s_dist) botwalkmove = {
       return FALSE;
    }
 
+   // HIGH-VALUE ITEM FOCUS: Direct drive to powerups when close
+   // Prevents bot from strafing past valuable items
+   if ( self.goalentity && self.goalentity.goalentity ) {
+      local entity target_item;
+      local float dist_to_item;
+      local string itname;
+
+      target_item = self.goalentity.goalentity;
+      itname = target_item.classname;
+
+      // Check if it's a high-value item
+      if ( (itname == "weapon_rocketlauncher") ||
+           (itname == "weapon_lightning") ||
+           (itname == "item_artifact_super_damage") ||
+           (itname == "item_artifact_invulnerability") ||
+           (itname == "item_health") ||
+           (itname == "item_armorInv") ) {
+
+         dist_to_item = vlen (target_item.origin - self.origin);
+
+         // When close to powerup, stop complex steering and direct drive
+         if ( dist_to_item < 200 ) {
+            local vector dir_to_item;
+            local float direct_yaw;
+
+            dir_to_item = normalize (target_item.origin - self.origin);
+            direct_yaw = vectoyaw (dir_to_item);
+
+            // Log once when focus mode activates (use button_search_time as cooldown)
+            if ( cvar("developer") && (time > self.button_search_time) ) {
+               dprint ("[");
+               dprint (self.netname);
+               dprint ("] FOCUS: Direct drive to ");
+               dprint (itname);
+               dprint (" (");
+               dprint (ftos(floor(dist_to_item)));
+               dprint (" units)\n");
+               self.button_search_time = time + 1.0;  // Don't spam
+            }
+
+            // Direct walk toward the item
+            if ( walkmove (direct_yaw, s_dist) ) {
+               // Set velocity for smooth interpolation
+               makevectors ('0 1 0' * direct_yaw);
+               self.velocity_x = v_forward_x * s_dist * 10.0;
+               self.velocity_y = v_forward_y * s_dist * 10.0;
+               if ( self.flags & FL_ONGROUND ) {
+                  self.velocity_z = -20;
+               }
+               return TRUE;
+            }
+         }
+      }
+   }
+
    // Knockback / Rocket Jump Support
    // If airborne with significant velocity, let physics take over
    // BUT allow limited air steering during knockback recovery (Frogbot-style)
@@ -866,9 +1110,9 @@ float (float s_yaw, float s_dist) botwalkmove = {
       flow_yaw = BotSteer (s_yaw, 1.0);
    }
 
-   // TURN SPEED LIMITING (FrikBot-inspired)
-   // Cap angular velocity so bots don't instantly snap to new directions
-   flow_yaw = BotClampYaw (flow_yaw);
+   // SMOOTH STEERING (Anti-Jitter)
+   // Average over 3 frames to prevent pathfinder/whisker oscillation
+   flow_yaw = BotSmoothSteer (flow_yaw);
 
    // Try to move using the calculated Flow Angle
    moved = walkmove (flow_yaw, s_dist);

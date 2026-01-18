@@ -1325,6 +1325,8 @@ void () powerup_touch = {
 
       other.rad_time = TRUE;
       other.radsuit_finished = (time + SVC_INTERMISSION);
+      // MAP CONTROL: Track biosuit respawn (60s)
+      next_suit_time = time + 60;
 
    }
    if ( (self.classname == "item_artifact_invulnerability") ) {
@@ -1335,6 +1337,12 @@ void () powerup_touch = {
 
          cacheRoute (other.movetarget,other.movetarget.movetarget,FALSE,self);
 
+      }
+      // MAP CONTROL: Track Pentagram respawn (5 minutes)
+      next_pent_time = time + 300;
+      pent_spawn_ent = self;
+      if ( cvar("developer") ) {
+         bprint("Bots learned: Pent spawns in 300s\n");
       }
 
    }
@@ -1347,6 +1355,12 @@ void () powerup_touch = {
          cacheRoute (other.movetarget,other.movetarget.movetarget,FALSE,self);
 
       }
+      // MAP CONTROL: Track Ring respawn (5 minutes)
+      next_ring_time = time + 300;
+      ring_spawn_ent = self;
+      if ( cvar("developer") ) {
+         bprint("Bots learned: Ring spawns in 300s\n");
+      }
 
    }
    if ( (self.classname == "item_artifact_super_damage") ) {
@@ -1357,6 +1371,12 @@ void () powerup_touch = {
 
          cacheRoute (other.movetarget,other.movetarget.movetarget,FALSE,self);
 
+      }
+      // MAP CONTROL: Track Quad respawn (60s)
+      next_quad_time = time + 60;
+      quad_spawn_ent = self;
+      if ( cvar("developer") ) {
+         bprint("Bots learned: Quad spawns in 60s\n");
       }
 
    }

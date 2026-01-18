@@ -12,6 +12,9 @@ float /* Warning: Could not determine return type */ () BotFindTarget;
 // Forward declarations for button solving (defined in botmove.qc)
 void (float dist) BotHandleButton;
 
+// Forward declaration for strategic AI (defined in bot_ai.qc)
+float (float dist) BotAI_Strategic;
+
 void () shoottarget = {
 
    local vector dir;
@@ -59,6 +62,12 @@ void (float dist) ai_botseek = {
       self.lefty = (self.lefty | FAR_SEEK);
       return ;
 
+   }
+
+   // STRATEGIC AI: Check for powerup timing and sound investigation
+   // This runs when we have no enemy, making bots proactive
+   if ( BotAI_Strategic (dist) ) {
+      return;
    }
 
    // FIX: Handle button solving mode

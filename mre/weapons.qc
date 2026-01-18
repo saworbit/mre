@@ -5,6 +5,9 @@ void (vector org, vector vel, float damage) SpawnBlood;
 
 void () SuperDamageSound;
 
+// Forward declaration for bot sound awareness
+void (vector source_loc, float volume, float priority) Bot_AlertNoise;
+
 void () W_Precache = {
 
    precache_sound ("weapons/r_exp3.wav");
@@ -330,6 +333,10 @@ void () T_MissileTouch = {
    WriteCoord (MSG_BROADCAST,self.origin_x);
    WriteCoord (MSG_BROADCAST,self.origin_y);
    WriteCoord (MSG_BROADCAST,self.origin_z);
+
+   // SENSORY AWARENESS: Rocket explosions are very loud!
+   Bot_AlertNoise (self.origin, 1200, 100);
+
    BecomeExplosion ();
 
 };
@@ -377,6 +384,9 @@ void () W_FireRocket = {
       setorigin (missile,((self.origin + (v_forward * FL_CLIENT)) + '0.000 0.000 16.000'));
 
    }
+
+   // SENSORY AWARENESS: Alert bots to rocket fire (loudest weapon)
+   Bot_AlertNoise (self.origin, 1000, 100);
 
 };
 
@@ -510,6 +520,10 @@ void () GrenadeExplode = {
    WriteCoord (MSG_BROADCAST,self.origin_x);
    WriteCoord (MSG_BROADCAST,self.origin_y);
    WriteCoord (MSG_BROADCAST,self.origin_z);
+
+   // SENSORY AWARENESS: Explosions are very loud!
+   Bot_AlertNoise (self.origin, 1200, 100);
+
    BecomeExplosion ();
 
 };
@@ -581,6 +595,9 @@ void () W_FireGrenade = {
    setsize (missile,VEC_ORIGIN,VEC_ORIGIN);
    setorigin (missile,self.origin);
 
+   // SENSORY AWARENESS: Alert bots to grenade fire
+   Bot_AlertNoise (self.origin, 800, 90);
+
 };
 
 void () spike_touch;
@@ -625,6 +642,9 @@ void () W_FireSuperSpikes = {
    setmodel (newmis,"progs/s_spike.mdl");
    setsize (newmis,VEC_ORIGIN,VEC_ORIGIN);
    self.punchangle_x = CONTENT_SOLID;
+
+   // SENSORY AWARENESS: Alert bots to super nailgun fire
+   Bot_AlertNoise (self.origin, 600, 80);
 
 };
 

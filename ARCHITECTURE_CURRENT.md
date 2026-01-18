@@ -237,6 +237,27 @@ Botmovetogoal(dist)                    [botmove.qc:1304]
 - `impulse 103` hides the debug sprites again.
 
 
+### Smooth Steering (Anti-Jitter)
+
+Averages steering over 3 frames to prevent pathfinder/whisker oscillation:
+
+```
+BotSmoothSteer(target_yaw)             [botmove.qc]
+  │
+  ├─> Update circular buffer (smooth_yaw_0/1/2)
+  │
+  ├─> BotAverageAngles(yaw0, yaw1, yaw2)
+  │     ├─> Convert each angle to unit vector
+  │     ├─> Sum vectors (handles 0/360 wraparound)
+  │     └─> Convert back to angle via vectoyaw()
+  │
+  ├─> Clamp delta to ±15°/frame
+  │
+  └─> Return smoothed yaw
+```
+
+Called from `botwalkmove()` after sensor fusion but before `walkmove()`.
+
 ### Low-Level Movement
 
 - Bunny hop: `BotBunnyHop` adds a strafe-jump style velocity boost on long, straight runs when safe.
@@ -379,10 +400,120 @@ While no redundant loops exist, these areas could be simplified:
 
 ---
 
+## Call Graph: Predator Update (Strategic AI)
+
+### Map Control (Timing)
+
+Bots track powerup respawn times and rush to spawns before they appear:
+
+```
+powerup_touch()                        [items.qc]
+  └─> Updates global timers:
+        ├─> next_quad_time = time + 60  (Quad Damage)
+        ├─> next_pent_time = time + 300 (Pentagram)
+        └─> next_ring_time = time + 300 (Ring of Shadows)
+
+BotAI_CheckPowerupTiming()             [bot_ai.qc]
+  │
+  ├─> [if Quad spawns in <10s]
+  │     ├─> Check distance to spawn
+  │     └─> Redirect goal to Quad spawn
+  │
+  └─> [if Pent spawns in <15s]
+        └─> Redirect goal to Pent spawn
+```
+
+### Sensory Awareness (Hearing)
+
+Bots can "hear" combat sounds and investigate them:
+
+```
+W_FireRocket / W_FireGrenade / GrenadeExplode / T_MissileTouch
+  └─> Bot_AlertNoise(origin, volume, priority)
+        │
+        ├─> Find all bots in hearing range
+        ├─> Apply wall attenuation (blocked = 1.5x distance)
+        └─> Set bot.noise_target, bot.noise_time, bot.investigating
+
+BotAI_CheckSoundInvestigation(dist)    [bot_ai.qc]
+  │
+  ├─> [if investigating && no visible enemy]
+  │     ├─> Move toward noise_target
+  │     └─> Look around while moving
+  │
+  └─> [if arrived at noise location]
+        └─> Clear investigating flag
+```
+
+### Curiosity (Solving)
+
+Bots shoot shootable objects they discover:
+
+```
+BotCheckCuriosity()                    [botmove.qc]
+  │
+  ├─> traceline(forward * 300)
+  │
+  ├─> [if func_button with health > 0]
+  │     └─> self.button0 = TRUE (fire!)
+  │
+  ├─> [if func_door with health > 0]
+  │     └─> self.button0 = TRUE (secret?)
+  │
+  └─> [if func_wall with health > 0]
+        └─> self.button0 = TRUE
+```
+
+Called from `BotRoam()` during idle wandering.
+
+### Sixth Sense (Item Awareness)
+
+Bots detect nearby items even when facing away:
+
+```
+aibot_checkforGoodies()                [bot_ai.qc]
+  │
+  ├─> [for each item entity]
+  │     │
+  │     ├─> dist_to_item = vlen(item - self)
+  │     │
+  │     ├─> [if dist < 300]           [SIXTH SENSE range]
+  │     │     ├─> traceline(self, item)  [LOS only, no facing check]
+  │     │     ├─> weight += (300 - dist) * 0.1  [proximity boost]
+  │     │     └─> can_see = TRUE
+  │     │
+  │     ├─> [else if dist < 800]      [standard vision]
+  │     │     └─> visible() && infrontofbot()
+  │     │
+  │     └─> [else]                    [too far - ignore]
+```
+
+### High-Value Item Focus
+
+Direct drive to powerups bypasses complex steering:
+
+```
+botwalkmove()                          [botmove.qc]
+  │
+  ├─> [if goal is high-value item]
+  │     │  (RL, LG, Quad, Pent, Mega, Red Armor)
+  │     │
+  │     └─> [if dist < 200]
+  │           ├─> Calculate direct_yaw to item
+  │           ├─> walkmove(direct_yaw)  [bypass steering]
+  │           └─> return TRUE
+  │
+  └─> [else: normal sensor fusion steering]
+```
+
+---
+
 ## Version History
 
 | Date | Change |
 |------|--------|
+| 2026-01-18 | Added Smooth Steering, Sixth Sense, and High-Value Item Focus |
+| 2026-01-18 | Added Predator Update (map timing, sound navigation, curiosity) |
 | 2026-01-22 | Added reflex dodge and bunny hop mechanics |
 | 2026-01-21 | Added navigation learning, retrospective rewards, and Teacher Mode debugging |
 | 2026-01-21 | Updated swim control to velocity-based oxygen-aware swimming |

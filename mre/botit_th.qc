@@ -151,6 +151,8 @@ float AI_STATE_GOODY    = 1.000;
 float AI_STATE_RETREAT    = 2.000;
 float AI_STATE_ATTACK    = 3.000;
 float AI_STATE_CHASE    = 4.000;
+float AI_STATE_TIMING    = 5.000;   // Rushing to powerup spawn
+float AI_STATE_INVESTIGATE = 6.000; // Investigating a sound
 float VERBOSEBOT;
 float BOTSPEED;
 float NUMBOTS;

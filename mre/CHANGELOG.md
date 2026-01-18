@@ -2,6 +2,24 @@
 
 ## Unreleased
 - Clean baseline restored in `mre/`.
+- Feature: Smooth steering anti-jitter (`botmove.qc`, `defs.qc`). Bots now average
+  steering decisions over 3 frames (0.3s at 10Hz) to prevent oscillation between
+  pathfinder and whisker steering. `BotSmoothSteer()` uses a circular buffer with
+  `BotAverageAngles()` helper that properly handles 0/360 wraparound via vector
+  addition. Turn speed clamped to 15°/frame for smooth curves.
+- Feature: Sixth Sense item awareness (`bot_ai.qc`). Bots now have 360-degree
+  awareness for items within 300 units - they "sense" nearby items even when not
+  looking at them. Uses `traceline()` for LOS check instead of `infrontofbot()`.
+  Items detected via sixth sense get a proximity weight boost (closer = more
+  attractive). Items beyond 300 units still require standard forward-facing vision.
+- Feature: High-value item focus (`botmove.qc`). When within 200 units of a powerup
+  or major weapon (RL, LG, Quad, Pent, Mega Health, Red Armor), bots enter "direct
+  drive" mode - they stop complex steering and walk straight toward the item. This
+  prevents bots from strafing past valuable items due to whisker deflection.
+- Improved: Reduced TIMING log spam (`bot_ai.qc`). Quad rush logging now only fires
+  at 1-second intervals instead of every frame. Pent rush logs only on state change.
+- Improved: Reduced INVESTIGATING log spam (`bot_ai.qc`). Sound investigation logging
+  now only fires on first frame of investigation instead of continuously.
 - Feature: Platform riding for func_train (`botmove.qc`). Bots now properly ride
   horizontal moving platforms (like DM2 lava room) by inheriting platform velocity.
   Added `BotCheckPlatformRide()` function that detects MOVETYPE_PUSH entities and

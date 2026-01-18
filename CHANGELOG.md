@@ -22,6 +22,10 @@
 - Unlocked high skill levels (skill 0-10, was 0-3).
 - Added impulse 100 quick-add bot (standard convention).
 - Added tactical retreat fallback when running away and no goodies are found.
+- **Predator Update**: Map Control, Sound Navigation, and Curiosity
+  - Map Control (Timing): Bots track powerup respawn times (Quad, Pent, Ring) and rush to spawns.
+  - Sensory Awareness (Hearing): Bots hear combat sounds and investigate (rockets, grenades, explosions).
+  - Curiosity (Solving): Bots shoot shootable buttons, doors, and walls to discover secrets.
 
 ### Fixes
 - Single player crash to DOS caused by edict overflow (waypoint cap reduced to 50 in SP).

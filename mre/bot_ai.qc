@@ -3,6 +3,72 @@
 float (float minweight) aibot_checkforGoodies;
 float (float ideal_yaw, float speed_factor) BotSteer;
 void () BotReflexDodge;
+void () BotCheckCuriosity;  // Curiosity system (defined in botmove.qc)
+
+// =============================================================================
+// SENSORY AWARENESS: Sound-based alerting system
+// Bots can "hear" combat sounds and investigate them
+// =============================================================================
+
+// Alert all bots within hearing range to a sound
+// source_loc: where the sound originated
+// volume: hearing range in units (1000 for rockets, 800 for grenades, 600 for SNG)
+// priority: importance of the sound (100 = weapon fire, 50 = item pickup)
+void (vector source_loc, float volume, float priority) Bot_AlertNoise = {
+
+   local entity bot;
+   local float dist;
+   local float effective_dist;
+
+   // Find all bots and alert those within range
+   bot = find (world, classname, "dmbot");
+   while ( bot ) {
+      if ( (bot.health > FALSE) ) {
+         // Calculate distance
+         dist = vlen (source_loc - bot.origin);
+
+         // Simple wall attenuation: sounds through walls are harder to hear
+         traceline (bot.origin + bot.view_ofs, source_loc, TRUE, bot);
+         if ( (trace_fraction < TRUE) ) {
+            // Sound is blocked by geometry - reduce effective hearing
+            effective_dist = dist * 1.5;
+         } else {
+            effective_dist = dist;
+         }
+
+         // If within hearing range
+         if ( (effective_dist < volume) ) {
+            // Only distract if not fighting a visible enemy
+            if ( (bot.enemy == world) || !enemyvisible (bot.enemy) ) {
+               // Only update if this sound is more important or more recent
+               if ( (priority >= bot.noise_priority) || (time > (bot.noise_time + 2.0)) ) {
+                  bot.noise_target = source_loc;
+                  bot.noise_time = time;
+                  bot.noise_priority = priority;
+                  bot.investigating = TRUE;
+
+                  if ( cvar("developer") ) {
+                     dprint ("[");
+                     dprint (bot.netname);
+                     dprint ("] HEARD: Combat at ");
+                     dprint (vtos(source_loc));
+                     dprint ("\n");
+                  }
+               }
+            }
+         }
+      }
+      bot = find (bot, classname, "dmbot");
+   }
+
+};
+
+// Simplified version for quick calls (uses default priority)
+void (vector source_loc, float volume) Bot_AlertNoiseSimple = {
+
+   Bot_AlertNoise (source_loc, volume, 100);
+
+};
 
 void () endEnemy = {
 
@@ -584,6 +650,10 @@ void () BotRoam = {
    local float roam_dist;
    local float flow_yaw;
 
+   // 0. CURIOSITY: Check if we're looking at something shootable
+   // This lets bots discover secrets and open doors
+   BotCheckCuriosity ();
+
    // 1. Scan for items to give them purpose (Greedy Roaming)
    // Low weight threshold so they lazily pick up nearby stuff
    if ( aibot_checkforGoodies (20.000) ) {
@@ -1141,6 +1211,173 @@ void (float state, string label) BotLogAI = {
 
 };
 
+// =============================================================================
+// STRATEGIC AI: Map Control (Timing) and Sound Investigation
+// This is what elevates bots from "skilled mover" to "intelligent strategist"
+// =============================================================================
+
+// Check if bot should rush to an upcoming powerup spawn
+// Returns TRUE if bot is now rushing to a powerup, FALSE otherwise
+float () BotAI_CheckPowerupTiming = {
+
+   local entity target_spot;
+   local float time_until_spawn;
+   local float dist_to_spawn;
+   local float rush_window;
+
+   // Don't rush if we're badly hurt
+   if ( (self.health < 40) ) {
+      return ( FALSE );
+   }
+
+   // Don't rush if we have invulnerability (no need for more powerups)
+   if ( (self.items & IT_INVULNERABILITY) ) {
+      return ( FALSE );
+   }
+
+   // QUAD DAMAGE - highest priority, rush 10s before spawn
+   if ( (next_quad_time > 0) && quad_spawn_ent ) {
+      time_until_spawn = next_quad_time - time;
+      if ( (time_until_spawn > 0) && (time_until_spawn < 10) ) {
+         // Check if we can reasonably get there
+         dist_to_spawn = vlen (quad_spawn_ent.origin - self.origin);
+         // Bots move ~320 units/sec, so 10s = 3200 units max
+         if ( (dist_to_spawn < 3000) ) {
+            // Rush to Quad!
+            if ( (self.goalentity.classname == "BotTarget") ) {
+               setorigin (self.goalentity, quad_spawn_ent.origin);
+               self.goalentity.goalentity = quad_spawn_ent;
+            }
+            self.movetarget = quad_spawn_ent;
+            BotLogAI (AI_STATE_TIMING, "QUAD_RUSH");
+            // Only log at 5-second intervals to reduce spam
+            if ( cvar("developer") && (floor(time_until_spawn) != floor(time_until_spawn + 0.1)) ) {
+               dprint ("[");
+               dprint (self.netname);
+               dprint ("] TIMING: Rushing to Quad! (");
+               dprint (ftos(floor(time_until_spawn)));
+               dprint ("s)\n");
+            }
+            return ( TRUE );
+         }
+      }
+   }
+
+   // PENTAGRAM - rush 15s before (it's more valuable)
+   if ( (next_pent_time > 0) && pent_spawn_ent ) {
+      time_until_spawn = next_pent_time - time;
+      if ( (time_until_spawn > 0) && (time_until_spawn < 15) ) {
+         dist_to_spawn = vlen (pent_spawn_ent.origin - self.origin);
+         if ( (dist_to_spawn < 4000) ) {
+            if ( (self.goalentity.classname == "BotTarget") ) {
+               setorigin (self.goalentity, pent_spawn_ent.origin);
+               self.goalentity.goalentity = pent_spawn_ent;
+            }
+            self.movetarget = pent_spawn_ent;
+            BotLogAI (AI_STATE_TIMING, "PENT_RUSH");
+            // Only log once when rush starts
+            if ( cvar("developer") && (self.last_ai_state != AI_STATE_TIMING) ) {
+               dprint ("[");
+               dprint (self.netname);
+               dprint ("] TIMING: Rushing to Pent!\n");
+            }
+            return ( TRUE );
+         }
+      }
+   }
+
+   return ( FALSE );
+
+};
+
+// Check if bot should investigate a sound they heard
+// Returns TRUE if bot is now investigating, FALSE otherwise
+float (float dist) BotAI_CheckSoundInvestigation = {
+
+   local float noise_age;
+   local float dist_to_noise;
+   local vector dir_to_noise;
+
+   // Must have heard something recently
+   if ( !self.investigating ) {
+      return ( FALSE );
+   }
+
+   // How long ago did we hear it?
+   noise_age = time - self.noise_time;
+
+   // Sounds older than 4 seconds are stale
+   if ( (noise_age > 4.0) ) {
+      self.investigating = FALSE;
+      return ( FALSE );
+   }
+
+   // Don't investigate if we have a visible enemy
+   if ( self.enemy && enemyvisible(self.enemy) ) {
+      self.investigating = FALSE;
+      return ( FALSE );
+   }
+
+   // Calculate distance to noise source
+   dist_to_noise = vlen (self.noise_target - self.origin);
+
+   // If we're close enough, we've "arrived" at the investigation point
+   if ( (dist_to_noise < 64) ) {
+      self.investigating = FALSE;
+      // Do a quick look around
+      self.ideal_yaw = self.ideal_yaw + 90;
+      ChangeYaw ();
+      return ( FALSE );
+   }
+
+   // Move toward the noise
+   BotLogAI (AI_STATE_INVESTIGATE, "INVESTIGATING");
+   dir_to_noise = self.noise_target - self.origin;
+   self.ideal_yaw = vectoyaw (dir_to_noise);
+   ChangeYaw ();
+
+   // Look around while investigating (slight head movement)
+   if ( (random () < 0.3) ) {
+      self.v_angle_y = self.ideal_yaw + (random () * 40) - 20;
+   }
+
+   // Move toward the sound
+   botwalkmove (self.ideal_yaw, dist);
+
+   // Only log once when investigation starts (noise_age < 0.15 = first frame)
+   if ( cvar("developer") && (noise_age < 0.15) ) {
+      dprint ("[");
+      dprint (self.netname);
+      dprint ("] INVESTIGATING: Moving to ");
+      dprint (vtos(self.noise_target));
+      dprint ("\n");
+   }
+
+   return ( TRUE );
+
+};
+
+// Main strategic decision function - called early in the AI loop
+// Returns TRUE if strategic behavior took over, FALSE to continue normal AI
+float (float dist) BotAI_Strategic = {
+
+   // 1. MAP CONTROL: Powerup timing takes highest priority
+   //    A skilled player will time quad and rush to it
+   if ( BotAI_CheckPowerupTiming () ) {
+      Botmovetogoal (dist);
+      return ( TRUE );
+   }
+
+   // 2. AUDITORY INVESTIGATION: If idle, go check out sounds
+   //    This makes bots hunt players based on weapon fire
+   if ( BotAI_CheckSoundInvestigation (dist) ) {
+      return ( TRUE );
+   }
+
+   return ( FALSE );
+
+};
+
 void (float dist) BotAI_Main = {
 
    // FIX: Stop AI if dead - prevents overriding death animation frames
@@ -1516,6 +1753,51 @@ float (float minweight) aibot_checkforGoodies = {
 
                      weight = itemweight (e);
                      if ( (weight > DONT_WANT) ) {
+
+                        // SIXTH SENSE: 360-degree awareness for close items
+                        // Bots "sense" nearby items even if not looking at them
+                        local float dist_to_item;
+                        local float can_see_item;
+                        local float sixth_sense_triggered;
+
+                        dist_to_item = vlen (e.origin - self.origin);
+                        can_see_item = FALSE;
+                        sixth_sense_triggered = FALSE;
+
+                        // Very close items (< 300 units): 360-degree awareness
+                        // Only need basic LOS check, ignore facing angle
+                        if ( dist_to_item < 300 ) {
+                           traceline (self.origin + self.view_ofs, e.origin, TRUE, self);
+                           if ( trace_fraction == 1.0 ) {
+                              can_see_item = TRUE;
+                              sixth_sense_triggered = TRUE;
+                              // Proximity boost: closer = more weight
+                              weight = weight + ((300 - dist_to_item) * 0.1);
+
+                              // Log when sixth sense detects item not in front
+                              if ( cvar("developer") && !infrontofbot(e) && (weight > WANT) ) {
+                                 dprint ("[");
+                                 dprint (self.netname);
+                                 dprint ("] SIXTH_SENSE: Detected ");
+                                 dprint (e.classname);
+                                 dprint (" behind me (");
+                                 dprint (ftos(floor(dist_to_item)));
+                                 dprint (" units)\n");
+                              }
+                           }
+                        }
+                        // Medium distance (< 800): standard vision
+                        else if ( dist_to_item < 800 ) {
+                           if ( visible (e) && infrontofbot (e) ) {
+                              can_see_item = TRUE;
+                           }
+                        }
+                        // Far away: ignore to save CPU and prevent cross-map wandering
+
+                        // If we can't see the item at all, reduce weight significantly
+                        if ( !can_see_item && (dist_to_item > 300) ) {
+                           weight = weight * 0.3;
+                        }
 
                         // Boost survival goodies when we are wounded or running away.
                         local float health_deficit;
