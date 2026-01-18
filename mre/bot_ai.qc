@@ -110,7 +110,6 @@ void () CallForHelp = {
    local entity e;
    local entity p;
    local entity tmp;
-   local float d;
 
    HELPING = TRUE;
    e = find (world,classname,"dmbot");
@@ -1124,8 +1123,6 @@ void (float dist) ai_botcharge = {
 
 void (float dist) ai_botnailcharge = {
 
-   local float rnd;
-
    if ( !enemyvisible (self.enemy) ) {
 
       self.think = self.th_run;
@@ -1222,10 +1219,9 @@ void (float state, string label) BotLogAI = {
 // Returns TRUE if bot is now rushing to a powerup, FALSE otherwise
 float () BotAI_CheckPowerupTiming = {
 
-   local entity target_spot;
    local float time_until_spawn;
    local float dist_to_spawn;
-   local float rush_window;
+   local entity route;
 
    // Don't rush if we're badly hurt
    if ( (self.health < 40) ) {
@@ -1247,8 +1243,9 @@ float () BotAI_CheckPowerupTiming = {
          if ( (dist_to_spawn < 3000) ) {
             // Rush to Quad!
             if ( (self.goalentity.classname == "BotTarget") ) {
-               setorigin (self.goalentity, quad_spawn_ent.origin);
-               self.goalentity.goalentity = quad_spawn_ent;
+               route = BestChaseRoute (self, quad_spawn_ent);
+               setorigin (self.goalentity, route.origin);
+               self.goalentity.goalentity = route;
             }
             self.movetarget = quad_spawn_ent;
             BotLogAI (AI_STATE_TIMING, "QUAD_RUSH");
@@ -1272,8 +1269,9 @@ float () BotAI_CheckPowerupTiming = {
          dist_to_spawn = vlen (pent_spawn_ent.origin - self.origin);
          if ( (dist_to_spawn < 4000) ) {
             if ( (self.goalentity.classname == "BotTarget") ) {
-               setorigin (self.goalentity, pent_spawn_ent.origin);
-               self.goalentity.goalentity = pent_spawn_ent;
+               route = BestChaseRoute (self, pent_spawn_ent);
+               setorigin (self.goalentity, route.origin);
+               self.goalentity.goalentity = route;
             }
             self.movetarget = pent_spawn_ent;
             BotLogAI (AI_STATE_TIMING, "PENT_RUSH");
@@ -1389,14 +1387,8 @@ void (float dist) BotAI_Main = {
       return;
    }
 
-   local vector delta;
-   local float axis;
    local float rng;
    local float oldrng;
-   local float direct;
-   local float ang_rint;
-   local float ang_floor;
-   local float ang_ceil;
 
    // Reflex dodge before normal combat/path logic
    if ( self.health > 0 ) {
@@ -1677,7 +1669,6 @@ void () aibot_setupchase = {
 void (float dist) aibot_chase = {
 
    local entity olden;
-   local float weap;
    local float rnd;
 
    if ( (self.enemy.deadflag != DEAD_NO) ) {
@@ -1784,14 +1775,9 @@ float (float minweight) aibot_checkforGoodies = {
    local entity e;
    local entity botTarget;
    local float AFRAID;
-   local float steps;
    local float best;
    local float weight;
-   local float goody_yaw;
-   local float lnd;
-   local float weap;
    local float minimum;
-   local vector spot;
 
    // FIX: Do not forage for items if drowning
    if ( (self.air_finished < (time + 5.000)) && (self.waterlevel >= 3.000) ) {
