@@ -389,13 +389,6 @@ entity quad_spawn_ent;       // The Quad Damage item entity
 entity pent_spawn_ent;       // The Pentagram item entity
 entity ring_spawn_ent;       // The Ring of Shadows item entity
 
-// --- AUDITORY SYSTEM ---
-float NOISE_GENERIC = 0.000;
-float NOISE_ITEM    = 1.000; // Pickup sound
-float NOISE_WATER   = 2.000; // Splash/Swim
-float NOISE_WEAPON  = 3.000; // Gunfire
-float NOISE_STEP    = 4.000; // Footsteps
-
 // --- SENSORY AWARENESS (Hearing) ---
 .vector noise_target;        // Where the sound came from
 .float  noise_time;          // When we heard it

@@ -177,6 +177,13 @@ entity NOISEQUEUE;
 float HELPING;
 float NAMEBOTS;
 
+// --- AUDITORY SYSTEM ---
+float NOISE_GENERIC = 0.000;
+float NOISE_ITEM    = 1.000; // Pickup sound
+float NOISE_WATER   = 2.000; // Splash/Swim
+float NOISE_WEAPON  = 3.000; // Gunfire
+float NOISE_STEP    = 4.000; // Footsteps
+
 void (entity noisemaker, entity noiseobject) signalnoise;
 float (entity e) hearnoise;
 entity () noisetarget;
