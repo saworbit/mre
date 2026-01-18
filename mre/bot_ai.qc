@@ -1305,6 +1305,12 @@ float () BotAI_CheckPowerupTiming = {
             // Rush to Quad!
             if ( (self.goalentity.classname == "BotTarget") ) {
                route = BestChaseRoute (self, quad_spawn_ent);
+               if ( (route == world) ) {
+                  return ( FALSE );
+               }
+               if ( (route == quad_spawn_ent) && !Spotvisible (quad_spawn_ent) ) {
+                  return ( FALSE );
+               }
                setorigin (self.goalentity, route.origin);
                self.goalentity.goalentity = route;
             }
@@ -1331,6 +1337,12 @@ float () BotAI_CheckPowerupTiming = {
          if ( (dist_to_spawn < 4000) ) {
             if ( (self.goalentity.classname == "BotTarget") ) {
                route = BestChaseRoute (self, pent_spawn_ent);
+               if ( (route == world) ) {
+                  return ( FALSE );
+               }
+               if ( (route == pent_spawn_ent) && !Spotvisible (pent_spawn_ent) ) {
+                  return ( FALSE );
+               }
                setorigin (self.goalentity, route.origin);
                self.goalentity.goalentity = route;
             }
