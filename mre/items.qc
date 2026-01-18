@@ -1329,8 +1329,8 @@ void () powerup_touch = {
    tr_ent = trace_ent;
    tr_inopen = trace_inopen;
    tr_inwater = trace_inwater;
-   traceline ((other.origin + other.view_ofs),(self.origin + '0 0 16'),TRUE,other);
-   if ( trace_startsolid || trace_allsolid || (trace_fraction < TRUE) ) {
+   traceline ((self.origin + '0 0 16'),(other.origin + other.view_ofs),FALSE,self);
+   if ( trace_startsolid || trace_allsolid || (trace_ent != other) ) {
       if ( cvar("developer") && (self.classname == "item_artifact_super_damage") ) {
          dprint ("[QuadTouch] blocked dist=");
          dprint (ftos(floor(dist)));
@@ -1340,6 +1340,12 @@ void () powerup_touch = {
          dprint (ftos(trace_startsolid));
          dprint (" allsolid=");
          dprint (ftos(trace_allsolid));
+         dprint (" ent=");
+         if ( trace_ent ) {
+            dprint (trace_ent.classname);
+         } else {
+            dprint ("none");
+         }
          dprint (" bot=");
          dprint (other.netname);
          dprint (" bot_org=");
