@@ -377,6 +377,28 @@ void () BotPostThink = {
 
    }
 
+   if ( cvar ("developer") ) {
+      local float warp_dist;
+
+      if ( self.last_frame_origin != VEC_ORIGIN ) {
+         warp_dist = vlen (self.origin - self.last_frame_origin);
+         if ( (warp_dist > 200.000) ) {
+            dprint ("[BotWarp] ");
+            dprint (self.netname);
+            dprint (" dist=");
+            dprint (ftos (floor (warp_dist)));
+            dprint (" from=");
+            dprint (vtos (self.last_frame_origin));
+            dprint (" to=");
+            dprint (vtos (self.origin));
+            dprint (" tele=");
+            dprint (ftos (self.teleport_time > time));
+            dprint ("\n");
+         }
+      }
+      self.last_frame_origin = self.origin;
+   }
+
    // FIX: Force consistent think rate for smooth movement
    // Velocity smoothing in botwalkmove assumes 0.1s frame time (dist * 10)
    // If nextthink is too fast, the velocity calculation becomes incorrect

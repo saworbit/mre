@@ -31,6 +31,12 @@
   - Golden path locking: Quad/Pent/Ring pickups boost trail priority by +500; RL/LG pickups boost by +200.
   - Link usage boost: Golden path links get +100 usage weight so A* strongly favors proven powerup routes.
   - Path optimization: After locking a path, shortcuts are created via line-of-sight checks.
+- **Darwin Update**: Adaptive reinforcement learning
+  - Natural Selection: Death locations get danger penalty (+500), kill locations get glory boost (+10).
+  - Weapon Specialization: Bots develop personal weapon preferences (-10 to +10 confidence per weapon).
+  - Stuck Learning: Navigation failures mark nodes as difficult (-100 penalty).
+  - Decay System: Danger decays fast (×0.8), glory decays slow (×0.9) every 10 seconds.
+  - A* Integration: Glory reduces path cost (up to 30%), danger increases path cost.
 
 ### Fixes
 - Single player crash to DOS caused by edict overflow (waypoint cap reduced to 50 in SP).
@@ -50,6 +56,8 @@
 - Bots stuck at closed doors (trigger door and back up to let it open).
 - Bots ganging up on players (closest-target selection now uses checkclient + cached bot list).
 - "Vacuum pickup" where items vanished before bot reached them (added distance check).
+- Bots "stealing" powerups from players waiting at spawn points (only Direct drive when item exists).
+- Powerups could be picked through walls/adjacent rooms (added line-of-sight check on touch).
 - Low-skill bots felt like cheaters (increased aim jitter from ~10?? to ~25?? max at skill 0).
 - Bots attacking observers/spectators (added MOVETYPE_NOCLIP and deadflag checks).
 - Bots not affected by explosion knockback (velocity preservation when airborne).

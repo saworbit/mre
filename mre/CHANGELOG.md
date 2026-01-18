@@ -48,6 +48,23 @@
   - Tracks enemy velocity (`last_enemy_vel`) for prediction when line of sight breaks
   - New AI state `AI_STATE_AMBUSH` for trap behavior tracking
   - Developer logging: PREFIRE, AMBUSH, DISPLACEMENT tags
+- Feature: Darwin Update - Adaptive Reinforcement Learning (`botroute.qc`, `client.qc`,
+  `botfight.qc`, `botgoal.qc`, `defs.qc`). Bots learn from their own experience:
+  - **Natural Selection**: Deaths mark nearby nodes as dangerous (+500 danger_cost),
+    kills mark nodes as glorious (+10 glory_level). `ModulateNodeWeight()` handles
+    both positive and negative reinforcement.
+  - **Danger Avoidance**: A* pathfinding adds danger_cost to path distances, making
+    bots naturally avoid recent death locations.
+  - **Glory Seeking**: Nodes with glory reduce path cost by up to 30%, attracting
+    bots to proven kill zones.
+  - **Weapon Specialization**: Bots track confidence (-10 to +10) for RL, LG, GL,
+    and SG/SSG. Kills boost confidence (+1), deaths reduce it (-1). `W_BestBotWeapon()`
+    now uses scoring with confidence multipliers.
+  - **Stuck Learning**: Navigation failures (2+ seconds stuck) mark nodes as difficult
+    (-100 danger). Bots eventually try alternate routes.
+  - **Decay System**: In `MaintainGraph()`, danger decays fast (×0.8) for courage,
+    glory decays slow (×0.9) for nostalgia. Prevents permanent map "scars".
+  - Developer logging: DARWIN tags for node weight changes, weapon confidence updates
 - Feature: Platform riding for func_train (`botmove.qc`). Bots now properly ride
   horizontal moving platforms (like DM2 lava room) by inheriting platform velocity.
   Added `BotCheckPlatformRide()` function that detects MOVETYPE_PUSH entities and
@@ -160,6 +177,13 @@
   traceline never hits ground. Added safety counter (100 iterations max).
 - Fixed: Scoreboard overflow crash (`client.qc`, `botspawn.qc`). The `FindGood()`
   function returned 1-indexed slots (1-16) but protocol expects 0-indexed (0-15).
+- Fixed: Bots "stealing" powerups from players at spawn points (`botmove.qc`). The
+  high-value item Focus (Direct drive) code was walking bots into item spawn locations
+  even when the item hadn't respawned yet. When the item respawned, the actively-moving
+  bot triggered touch before the stationary player. Added `solid == SOLID_TRIGGER` check
+  to only Direct drive when the item actually exists.
+- Fixed: Powerups could be picked through walls/adjacent rooms (`items.qc`). Added
+  a line-of-sight check to `powerup_touch` so items only grant on clear trace.
   Changed to 0-indexed and added guard to check slot < fMaxClients (maxplayers).
 - Fixed: Jumpy/teleport-like strafing (`botmove.qc`). Removed `halfwalkmove` which
   caused 0.05s sub-frame updates that confused client interpolation. Added velocity

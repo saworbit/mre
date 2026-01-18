@@ -5,6 +5,11 @@ void () SUB_regen = {
 
    self.model = self.mdl;
    self.solid = SOLID_TRIGGER;
+   if ( cvar("developer") && (self.classname == "item_artifact_super_damage") ) {
+      dprint ("[QuadSpawn] origin=");
+      dprint (vtos(self.origin));
+      dprint ("\n");
+   }
    sound (self,CHAN_VOICE,"items/itembk2.wav",TRUE,ATTN_NORM);
    setorigin (self,self.origin);
 
@@ -128,7 +133,6 @@ void () item_health = {
 
 void () health_touch = {
 
-   local float amount;
    local string s;
 
    if ( (other.classname != "player") ) {
@@ -1072,9 +1076,6 @@ void () item_weapon = {
 
 void () key_touch = {
 
-   local entity stemp;
-   local float best;
-
    if ( (other.classname != "player") ) {
 
       if ( (other.classname != "dmbot") ) {
@@ -1212,9 +1213,6 @@ void () item_key2 = {
 
 void () sigil_touch = {
 
-   local entity stemp;
-   local float best;
-
    if ( (other.classname != "player") ) {
 
       return ;
@@ -1278,8 +1276,16 @@ void () item_sigil = {
 
 void () powerup_touch = {
 
-   local entity stemp;
-   local float best;
+   local float dist;
+   local float tr_allsolid;
+   local float tr_startsolid;
+   local float tr_fraction;
+   local vector tr_endpos;
+   local vector tr_plane_normal;
+   local float tr_plane_dist;
+   local entity tr_ent;
+   local float tr_inopen;
+   local float tr_inwater;
 
    if ( (other.classname != "player") ) {
 
@@ -1294,6 +1300,80 @@ void () powerup_touch = {
 
       return ;
 
+   }
+   dist = vlen (other.origin - self.origin);
+   // Guard against ghost touches (e.g., bot target overlap far from item).
+   if ( (dist > 96.000) ) {
+      if ( cvar("developer") && (self.classname == "item_artifact_super_damage") ) {
+         dprint ("[QuadTouch] reject dist=");
+         dprint (ftos(floor(dist)));
+         dprint (" bot=");
+         dprint (other.netname);
+         dprint (" bot_org=");
+         dprint (vtos(other.origin));
+         dprint (" quad_org=");
+         dprint (vtos(self.origin));
+         dprint ("\n");
+      }
+
+      return ;
+
+   }
+   // Prevent picking through thin walls/doors by requiring line-of-sight to the item.
+   tr_allsolid = trace_allsolid;
+   tr_startsolid = trace_startsolid;
+   tr_fraction = trace_fraction;
+   tr_endpos = trace_endpos;
+   tr_plane_normal = trace_plane_normal;
+   tr_plane_dist = trace_plane_dist;
+   tr_ent = trace_ent;
+   tr_inopen = trace_inopen;
+   tr_inwater = trace_inwater;
+   traceline (other.origin,self.origin,TRUE,other);
+   if ( (trace_fraction < TRUE) ) {
+      if ( cvar("developer") && (self.classname == "item_artifact_super_damage") ) {
+         dprint ("[QuadTouch] blocked dist=");
+         dprint (ftos(floor(dist)));
+         dprint (" frac=");
+         dprint (ftos(trace_fraction));
+         dprint (" bot=");
+         dprint (other.netname);
+         dprint (" bot_org=");
+         dprint (vtos(other.origin));
+         dprint (" quad_org=");
+         dprint (vtos(self.origin));
+         dprint ("\n");
+      }
+      trace_allsolid = tr_allsolid;
+      trace_startsolid = tr_startsolid;
+      trace_fraction = tr_fraction;
+      trace_endpos = tr_endpos;
+      trace_plane_normal = tr_plane_normal;
+      trace_plane_dist = tr_plane_dist;
+      trace_ent = tr_ent;
+      trace_inopen = tr_inopen;
+      trace_inwater = tr_inwater;
+      return ;
+   }
+   trace_allsolid = tr_allsolid;
+   trace_startsolid = tr_startsolid;
+   trace_fraction = tr_fraction;
+   trace_endpos = tr_endpos;
+   trace_plane_normal = tr_plane_normal;
+   trace_plane_dist = tr_plane_dist;
+   trace_ent = tr_ent;
+   trace_inopen = tr_inopen;
+   trace_inwater = tr_inwater;
+   if ( cvar("developer") && (self.classname == "item_artifact_super_damage") ) {
+      dprint ("[QuadTouch] accept dist=");
+      dprint (ftos(floor(dist)));
+      dprint (" bot=");
+      dprint (other.netname);
+      dprint (" bot_org=");
+      dprint (vtos(other.origin));
+      dprint (" quad_org=");
+      dprint (vtos(self.origin));
+      dprint ("\n");
    }
    if ( (other.classname == "player") ) {
 

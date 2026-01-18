@@ -63,7 +63,6 @@ void () initBotLevel = {
    local float offset;
    local float i;
    local entity e;
-   local string tmp;
 
    NOISEQUEUE = noisetarget ();
    BotList_Clear ();
@@ -149,7 +148,6 @@ void () setBotGravity = {
 
    local float newmax;
    local float vel;
-   local float sk;
    local string tmp;
 
    GRAVITY = (cvar ("sv_gravity") * 0.100);
@@ -217,7 +215,6 @@ float (entity e) totalscore;
 
 void () respawnBot = {
 
-   local string m;
    local float n;
    local float o;
    local entity e;
@@ -273,7 +270,7 @@ void () respawnBot = {
 
 };
 
-void () bot_pain;
+void (entity attacker, float damage) bot_pain;
 
 void () BotDie;
 
@@ -353,6 +350,7 @@ void () PutBotInServer = {
    spot = (spwn.origin + '0.000 0.000 1.000');
    self.origin = spot;
    setorigin (self,spot);
+   self.last_frame_origin = self.origin;
    self.angles = spwn.angles;
    self.fixangle = TRUE;
    setmodel (self,"progs/eyes.mdl");
@@ -430,8 +428,6 @@ entity () AddBot = {
 
    local entity newbot;
    local entity oldself;
-   local string mycolor;
-   local float plycolor;
 
    newbot = spawn ();
    BotList_Add (newbot);
@@ -480,7 +476,6 @@ float () numplayers = {
 void () AddAnotherBot = {
 
    local entity newbot;
-   local entity tmp;
    local float n;
    local string st;
 
@@ -753,7 +748,6 @@ WriteShort( MSG_ALL, newbot.frags );
 void (entity ply, float n) addTeamBots = {
 
    local entity newbot;
-   local entity tmp;
    local float i;
 
    i = n;

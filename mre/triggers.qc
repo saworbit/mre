@@ -1,7 +1,4 @@
-entity stemp;
-entity otemp;
 entity s;
-entity old;
 
 void () trigger_reactivate = {
 
@@ -229,8 +226,6 @@ void () trigger_secret = {
 
 void () counter_use = {
 
-   local string junk;
-
    self.count = (self.count - TRUE);
    if ( (self.count < FALSE) ) {
 
@@ -452,6 +447,17 @@ void () teleport_touch = {
       objerror ("couldn't find target");
 
    }
+   if ( (other.classname == "dmbot") && (cvar("developer") > 0.000) ) {
+      dprint ("[Teleport] bot=");
+      dprint (other.netname);
+      dprint (" from=");
+      dprint (vtos (other.origin));
+      dprint (" to=");
+      dprint (vtos (t.origin));
+      dprint (" target=");
+      dprint (self.target);
+      dprint ("\n");
+   }
    makevectors (t.mangle);
    org = (t.origin + (FL_MONSTER * v_forward));
    spawn_tfog (org);
@@ -544,10 +550,7 @@ void () trigger_teleport = {
 };
 
 void () trigger_skill_touch = {
-
-   return ;
-   cvar_set ("skill",self.message);
-
+   // Skill change disabled in multiplayer
 };
 
 void () trigger_setskill = {

@@ -265,7 +265,6 @@ float MSG_INIT    = 3.000;
 float movedist /* = 0.000 */;
 float gameover /* = 0.000 */;
 string string_null /* = "" */;
-float empty_float /* = 0.000 */;
 entity newmis;
 entity activator;
 entity damage_attacker;
@@ -361,6 +360,19 @@ float LINK_LADDER     = 6; // Vertical water/ladder logic
 .float danger_cost;          // "Scent" of death here (increases path cost)
 .float last_decay_time;      // For forgetting old paths
 .float node_traffic;         // Total visits (heat map)
+
+// --- DARWIN UPDATE: Adaptive Learning ---
+// Node-level learning (BotPath entities)
+.float glory_level;          // Kills happened here - attracts bots
+.float last_event_time;      // For decaying danger/glory values
+
+// Bot-level weapon confidence (-10 to +10)
+// Positive = bot is confident, negative = bot avoids
+.float confidence_rl;        // Rocket Launcher
+.float confidence_lg;        // Lightning Gun
+.float confidence_gl;        // Grenade Launcher
+.float confidence_sg;        // Shotgun/Super Shotgun
+
 // Rocket jump detection
 .float last_rj_time;         // To debounce RJ detection
 
@@ -387,6 +399,7 @@ entity ring_spawn_ent;       // The Ring of Shadows item entity
 
 // Turn speed limiting (inspired by FrikBot mouse emulation)
 .float last_yaw;             // Previous frame's yaw for delta calculation
+.vector last_frame_origin;   // Debug: track per-frame movement for warp detection
 
 // --- SMOOTH STEERING (Anti-Jitter) ---
 // 3-frame circular buffer for angle smoothing (low-pass filter)
@@ -488,7 +501,7 @@ void () traceon = #29;
 void () traceoff = #30; 
 void (entity e) eprint = #31; 
 float (float yaw, float dist) walkmove = #32; 
-float (float yaw, float dist) droptofloor = #34; 
+float () droptofloor = #34; 
 void (float style, string value) lightstyle = #35; 
 float (float v) rint = #36; 
 float (float v) floor = #37; 
@@ -513,7 +526,7 @@ void (float to, string s) WriteString = #58;
 void (float to, entity s) WriteEntity = #59; 
 void (float step) movetogoal = #67; 
 string (string s) precache_file = #68; 
-void (entity e) makestatic = #69; 
+void () makestatic = #69; 
 void (string s) changelevel = #70; 
 void (string var, string val) cvar_set = #72; 
 void (entity client, string s) centerprint = #73; 

@@ -19,6 +19,7 @@ from `archive/`.
 - Movement: Jumpy strafing, water flashing, stuck in place, lift/door handling
 - Hazards: Lava/slime avoidance, explosive self-damage, LG water discharge
 - Fairness: Target selection, vacuum pickup, camping, skill-based aim jitter, observer targeting
+- Powerups: Line-of-sight required for pickups (prevents through-wall grabs)
 - Physics: Explosion knockback, backpack spawning
 - Compatibility: sv_aim warning spam
 - Aiming: Predictive lead capping
@@ -47,6 +48,11 @@ from `archive/`.
   - Teleport detection: >500 unit instant travel creates LINK_TELE shortcuts
   - Golden paths: Routes to powerups (Quad/Pent/Ring) and weapons (RL/LG) are marked and prioritized
   - Path locking: Player trail nodes get boosted priority when picking up high-value items
+- **Darwin Update**: Adaptive self-learning through reinforcement
+  - Natural Selection: Bots mark death locations as dangerous (avoided) and kill locations as glorious (attractive)
+  - Weapon Specialization: Bots develop personal weapon preferences based on success/failure history
+  - Stuck Learning: Navigation failures mark problematic nodes as difficult
+  - Decay System: Danger fades fast (courage) while glory fades slow (nostalgia)
 
 ### Investigated (Likely Fixed / Not Found)
 - "Bot frags not shown" - MSG_UPDATEFRAGS sent correctly, likely fixed by 0-index fix
