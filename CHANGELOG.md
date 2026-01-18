@@ -26,6 +26,7 @@
   - Map Control (Timing): Bots track powerup respawn times (Quad, Pent, Ring) and rush to spawns.
   - Sensory Awareness (Hearing): Bots hear combat sounds and investigate (rockets, grenades, explosions).
   - Curiosity (Solving): Bots shoot shootable buttons, doors, and walls to discover secrets.
+- Auditory system: Virtual sound events for item pickups, water splashes, and footsteps with occlusion; bots infer and investigate.
 - **Episodic Learning**: Teach bots by demonstration
   - Teleport detection: >500 unit instant travel creates LINK_TELE shortcuts with explicit destination.
   - Golden path locking: Quad/Pent/Ring pickups boost trail priority by +500; RL/LG pickups boost by +200.

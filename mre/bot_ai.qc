@@ -6,6 +6,8 @@ void () BotReflexDodge;
 void () BotCheckCuriosity;  // Curiosity system (defined in botmove.qc)
 void () BotBlindFire;       // Tactical: Pre-fire at corners (defined in botfight.qc)
 float () BotCheckEnvironmentKill;  // Tactical: Displacement kills (defined in botfight.qc)
+void (entity source, vector org, float volume, float type) Bot_BroadcastNoise;
+void () Bot_AnalyzeSound;
 
 // =============================================================================
 // SENSORY AWARENESS: Sound-based alerting system
@@ -21,6 +23,8 @@ void (vector source_loc, float volume, float priority) Bot_AlertNoise = {
    local entity bot;
    local float dist;
    local float effective_dist;
+
+   Bot_BroadcastNoise (self, source_loc, volume, NOISE_WEAPON);
 
    // Find all bots and alert those within range
    bot = find (world, classname, "dmbot");
@@ -62,6 +66,63 @@ void (vector source_loc, float volume, float priority) Bot_AlertNoise = {
       }
       bot = find (bot, classname, "dmbot");
    }
+
+};
+
+// Analyze the most recent heard sound and infer intent
+void () Bot_AnalyzeSound = {
+
+   local float sound_age;
+   local float dist;
+
+   if ( (self.heard_sound_time <= FALSE) ) {
+      return ;
+   }
+   sound_age = time - self.heard_sound_time;
+   if ( (sound_age > 2.000) ) {
+      return ;
+   }
+   if ( self.enemy && enemyvisible (self.enemy) ) {
+      return ;
+   }
+   if ( (self.heard_sound_type == NOISE_WEAPON) ) {
+      return ;
+   }
+   if ( (self.heard_sound_type == NOISE_ITEM) ) {
+      if ( (self.health > 80.000) && (self.items & IT_ROCKET_LAUNCHER) ) {
+         self.noise_target = self.heard_sound_loc;
+         self.noise_time = time;
+         self.noise_priority = 80.000;
+         self.investigating = TRUE;
+      } else {
+         self.ideal_yaw = vectoyaw (self.origin - self.heard_sound_loc);
+         ChangeYaw ();
+      }
+      return ;
+   }
+   if ( (self.heard_sound_type == NOISE_WATER) ) {
+      self.noise_target = self.heard_sound_loc;
+      self.noise_time = time;
+      self.noise_priority = 70.000;
+      self.investigating = TRUE;
+      self.ideal_yaw = vectoyaw (self.heard_sound_loc - self.origin);
+      ChangeYaw ();
+      dist = vlen (self.heard_sound_loc - self.origin);
+      if ( (self.items & IT_ROCKET_LAUNCHER) && (dist < 600.000) ) {
+         self.button0 = TRUE;
+      }
+      return ;
+   }
+   if ( (self.heard_sound_type == NOISE_STEP) ) {
+      self.noise_target = self.heard_sound_loc;
+      self.noise_time = time;
+      self.noise_priority = 40.000;
+      self.investigating = TRUE;
+      return ;
+   }
+
+   self.ideal_yaw = vectoyaw (self.heard_sound_loc - self.origin);
+   ChangeYaw ();
 
 };
 
@@ -1370,7 +1431,10 @@ float (float dist) BotAI_Strategic = {
       return ( TRUE );
    }
 
-   // 2. AUDITORY INVESTIGATION: If idle, go check out sounds
+   // 2. AUDITORY INFERENCE: React to item/water/step sounds
+   Bot_AnalyzeSound ();
+
+   // 3. AUDITORY INVESTIGATION: If idle, go check out sounds
    //    This makes bots hunt players based on weapon fire
    if ( BotAI_CheckSoundInvestigation (dist) ) {
       return ( TRUE );

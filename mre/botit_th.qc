@@ -180,6 +180,7 @@ float NAMEBOTS;
 void (entity noisemaker, entity noiseobject) signalnoise;
 float (entity e) hearnoise;
 entity () noisetarget;
+void (entity source, vector org, float volume, float type) Bot_BroadcastNoise;
 
 void () CopyrightNotice = {
 

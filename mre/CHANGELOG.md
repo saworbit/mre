@@ -27,6 +27,9 @@
   looking at them. Uses `traceline()` for LOS check instead of `infrontofbot()`.
   Items detected via sixth sense get a proximity weight boost (closer = more
   attractive). Items beyond 300 units still require standard forward-facing vision.
+- Feature: Auditory inference system (`botnoise.qc`, `bot_ai.qc`, `client.qc`,
+  `items.qc`, `defs.qc`). Bots hear item pickups, water splashes, and footsteps
+  with simple occlusion and react to the sound type.
 - Feature: High-value item focus (`botmove.qc`). When within 200 units of a powerup
   or major weapon (RL, LG, Quad, Pent, Mega Health, Red Armor), bots enter "direct
   drive" mode - they stop complex steering and walk straight toward the item. This

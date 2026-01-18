@@ -70,6 +70,8 @@ Quad debug logs appear as `[QuadSpawn]` when the item respawns and
 `[QuadTouch] accept/blocked/reject` when a player or bot tries to pick it up.
 Teleport traces appear as `[Teleport]` for bot teleporter use, and large
 position jumps log as `[BotWarp]`.
+Auditory inference uses virtual noise events (NOISE_ITEM/WATER/STEP/WEAPON);
+combat hearing still logs `[BotName] HEARD: Combat at ...` when `developer` is on.
 Teacher Mode visualization uses `impulse 102` to show BotPath nodes and
 `impulse 103` to hide them.
 

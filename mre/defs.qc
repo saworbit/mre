@@ -104,6 +104,7 @@ void end_sys_globals;
 .entity chain;
 .float deadflag;
 .vector view_ofs;
+.float old_waterlevel;
 .float button0;
 .float button1;
 .float button2;
@@ -388,11 +389,21 @@ entity quad_spawn_ent;       // The Quad Damage item entity
 entity pent_spawn_ent;       // The Pentagram item entity
 entity ring_spawn_ent;       // The Ring of Shadows item entity
 
+// --- AUDITORY SYSTEM ---
+float NOISE_GENERIC = 0.000;
+float NOISE_ITEM    = 1.000; // Pickup sound
+float NOISE_WATER   = 2.000; // Splash/Swim
+float NOISE_WEAPON  = 3.000; // Gunfire
+float NOISE_STEP    = 4.000; // Footsteps
+
 // --- SENSORY AWARENESS (Hearing) ---
 .vector noise_target;        // Where the sound came from
 .float  noise_time;          // When we heard it
 .float  investigating;       // Are we currently checking out a noise?
 .float  noise_priority;      // How important is this sound? (weapon > item)
+.float  heard_sound_type;    // What did we hear?
+.float  heard_sound_time;    // When?
+.vector heard_sound_loc;     // Where?
 
 // --- CURIOSITY (Solving) ---
 .float  button_search_time;  // Cooldown for looking for buttons

@@ -185,6 +185,9 @@ void () health_touch = {
       stuffcmd (other,"bf\n");
 
    }
+   if ( (self.spawnflags & H_MEGA) ) {
+      Bot_BroadcastNoise (other, self.origin, 1500.000, NOISE_ITEM);
+   }
    self.model = string_null;
    self.solid = SOLID_NOT;
    if ( (self.healtype == FL_SWIM) ) {
@@ -661,6 +664,9 @@ void () weapon_touch = {
 
       stuffcmd (other,"bf\n");
 
+   }
+   if ( (new == IT_ROCKET_LAUNCHER) ) {
+      Bot_BroadcastNoise (other, self.origin, 1000.000, NOISE_ITEM);
    }
    bound_other_ammo ();
    old = other.items;
@@ -1473,6 +1479,7 @@ void () powerup_touch = {
 
       other.super_time = TRUE;
       other.super_damage_finished = (time + SVC_INTERMISSION);
+      Bot_BroadcastNoise (other, self.origin, 1000.000, NOISE_ITEM);
       if ( other.movetarget.movetarget ) {
 
          cacheRoute (other.movetarget,other.movetarget.movetarget,FALSE,self);

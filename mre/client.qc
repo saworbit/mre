@@ -2,6 +2,9 @@
 .float fClientNo;
 .float id;
 
+// Forward declaration for Darwin Update (defined in botroute.qc)
+void (entity node, float amount) ModulateNodeWeight;
+
 
 
 // Returns 0-indexed client slot (0-15), or -1 if full
@@ -82,7 +85,7 @@ void(entity object) Update_Frags =
  WriteShort( MSG_ALL, object.frags );
 };
 
-void () player_pain;
+void (entity attacker, float damage) player_pain;
 
 void () player_stand1;
 
@@ -268,6 +271,7 @@ entity () FindIntermission = {
 
    }
    objerror ("FindIntermission: no spot");
+   return ( world );
 
 };
 string nextmap /* = "" */;
@@ -436,8 +440,6 @@ void () execute_changelevel = {
 };
 
 void () changelevel_touch = {
-
-   local entity pos;
 
    if ( (other.classname != "player") ) {
 
@@ -648,6 +650,7 @@ void () PutClientInServer = {
    modelindex_player = self.modelindex;
    setsize (self,VEC_HULL_MIN,VEC_HULL_MAX);
    self.view_ofs = '0.000 0.000 22.000';
+   self.old_waterlevel = self.waterlevel;
    if ( (self.movetarget == world) ) {
 
       NewCarriedPath ();
@@ -858,7 +861,6 @@ void () CheckRules = {
 
 void () PlayerDeathThink = {
 
-   local entity old_self;
    local float forward;
 
    if ( (self.flags & FL_ONGROUND) ) {
@@ -900,9 +902,6 @@ void () PlayerDeathThink = {
 };
 
 void () PlayerJump = {
-
-   local vector start;
-   local vector end;
 
    if ( (self.flags & FL_WATERJUMP) ) {
 
@@ -1119,10 +1118,6 @@ void () CheckWaterJump = {
 
 void () PlayerPreThink = {
 
-   local float mspeed;
-   local float aspeed;
-   local float r;
-
    floaterPreThink();
 
    if ( intermission_running ) {
@@ -1338,10 +1333,6 @@ void () CheckPowerups = {
 
 void () PlayerPostThink = {
 
-   local float mspeed;
-   local float aspeed;
-   local float r;
-
    if ( (self.view_ofs == VEC_ORIGIN) ) {
 
       return ;
@@ -1360,6 +1351,21 @@ void () PlayerPostThink = {
    self.movetarget.flags = self.flags;
    setorigin (self.movetarget,self.origin);
    W_WeaponFrame ();
+   // Auditory system: water entry/exit splash
+   if ( (self.waterlevel > FALSE) && (self.old_waterlevel == FALSE) ) {
+      Bot_BroadcastNoise (self, self.origin, 800.000, NOISE_WATER);
+   } else {
+      if ( (self.waterlevel == FALSE) && (self.old_waterlevel > FALSE) ) {
+         Bot_BroadcastNoise (self, self.origin, 800.000, NOISE_WATER);
+      }
+   }
+   // Auditory system: footsteps (running on ground)
+   if ( ((self.flags & FL_ONGROUND) && (vlen (self.velocity) > 250.000)) ) {
+      if ( (time > self.noise_time) ) {
+         Bot_BroadcastNoise (self, self.origin, 400.000, NOISE_STEP);
+         self.noise_time = (time + 0.400);
+      }
+   }
    if ( (((self.jump_flag < -300.000) && (self.flags & FL_ONGROUND)) && (self.health > FALSE)) ) {
 
       if ( (self.watertype == CONTENT_WATER) ) {
@@ -1393,6 +1399,7 @@ void () PlayerPostThink = {
    if ( !intermission_running ) {
       Player_AutoWaypoint ();
    }
+   self.old_waterlevel = self.waterlevel;
 
 };
 
@@ -1429,9 +1436,6 @@ void () printIntro = {
 
 void () ClientConnect = {
 
-   local string tmp;
-   local float num;
-
    bprint (self.netname);
    bprint (" entered the game\n");
    self.id = FindGood();
@@ -1446,8 +1450,6 @@ void () ClientConnect = {
 };
 
 void () ClientDisconnect = {
-
-   local float num;
 
    if ( gameover ) {
 
@@ -1578,7 +1580,71 @@ void (entity targ, entity attacker) ClientObituary = {
                if ( !(attacker.flags & FL_ONGROUND) ) {
                   attacker.strafe_timer = (time + 2.000);
                }
+
+               // ============================================================
+               // DARWIN UPDATE: POSITIVE REINFORCEMENT (The Winner)
+               // Mark this location as glorious and boost weapon confidence
+               // ============================================================
+               local entity victor_node;
+               local entity node_search;
+               local float node_dist;
+               local float best_node_dist;
+
+               victor_node = world;
+               best_node_dist = 99999;
+               node_search = findradius (attacker.origin, 250);
+               while ( node_search ) {
+                  if ( node_search.classname == "BotPath" ) {
+                     node_dist = vlen (node_search.origin - attacker.origin);
+                     if ( node_dist < best_node_dist ) {
+                        best_node_dist = node_dist;
+                        victor_node = node_search;
+                     }
+                  }
+                  node_search = node_search.chain;
+               }
+
+               // Mark killzone as glorious
+               if ( victor_node && victor_node != world ) {
+                  ModulateNodeWeight (victor_node, 10);
+               }
+
+               // WEAPON LEARNING: "I got a kill with this weapon!"
+               if ( attacker.weapon == IT_ROCKET_LAUNCHER ) {
+                  attacker.confidence_rl = attacker.confidence_rl + 1;
+                  if ( attacker.confidence_rl > 10 ) attacker.confidence_rl = 10;
+               } else if ( attacker.weapon == IT_LIGHTNING ) {
+                  attacker.confidence_lg = attacker.confidence_lg + 1;
+                  if ( attacker.confidence_lg > 10 ) attacker.confidence_lg = 10;
+               } else if ( attacker.weapon == IT_GRENADE_LAUNCHER ) {
+                  attacker.confidence_gl = attacker.confidence_gl + 1;
+                  if ( attacker.confidence_gl > 10 ) attacker.confidence_gl = 10;
+               } else if ( attacker.weapon == IT_SHOTGUN || attacker.weapon == IT_SUPER_SHOTGUN ) {
+                  attacker.confidence_sg = attacker.confidence_sg + 1;
+                  if ( attacker.confidence_sg > 10 ) attacker.confidence_sg = 10;
+               }
             }
+
+            // ============================================================
+            // DARWIN UPDATE: NEGATIVE REINFORCEMENT (The Loser)
+            // Bot lost with this weapon - reduce confidence
+            // ============================================================
+            if ( (targ.classname == "dmbot") ) {
+               if ( targ.weapon == IT_ROCKET_LAUNCHER ) {
+                  targ.confidence_rl = targ.confidence_rl - 1;
+                  if ( targ.confidence_rl < -10 ) targ.confidence_rl = -10;
+               } else if ( targ.weapon == IT_LIGHTNING ) {
+                  targ.confidence_lg = targ.confidence_lg - 1;
+                  if ( targ.confidence_lg < -10 ) targ.confidence_lg = -10;
+               } else if ( targ.weapon == IT_GRENADE_LAUNCHER ) {
+                  targ.confidence_gl = targ.confidence_gl - 1;
+                  if ( targ.confidence_gl < -10 ) targ.confidence_gl = -10;
+               } else if ( targ.weapon == IT_SHOTGUN || targ.weapon == IT_SUPER_SHOTGUN ) {
+                  targ.confidence_sg = targ.confidence_sg - 1;
+                  if ( targ.confidence_sg < -10 ) targ.confidence_sg = -10;
+               }
+            }
+
             rnum = attacker.weapon;
             if ( (rnum == IT_AXE) ) {
 
@@ -1851,22 +1917,26 @@ void (entity targ, entity attacker) ClientObituary = {
          bprint (" died\n");
 
       }
-      // Mark nearby waypoint as dangerous
-      near_node = world;
-      best_dist = 99999.000;
-      e = findradius (targ.origin,200.000);
-      while ( e ) {
-         if ( (e.classname == "BotPath") ) {
-            dist = vlen ((e.origin - targ.origin));
-            if ( (dist < best_dist) ) {
-               best_dist = dist;
-               near_node = e;
+      // DARWIN: Mark nearby waypoint as dangerous for bots
+      // This teaches bots to avoid death locations
+      if ( targ.classname == "dmbot" ) {
+         near_node = world;
+         best_dist = 99999.000;
+         e = findradius (targ.origin, 250);
+         while ( e ) {
+            if ( (e.classname == "BotPath") ) {
+               dist = vlen ((e.origin - targ.origin));
+               if ( (dist < best_dist) ) {
+                  best_dist = dist;
+                  near_node = e;
+               }
             }
+            e = e.chain;
          }
-         e = e.chain;
-      }
-      if ( near_node && (near_node != world) ) {
-         MarkDanger (near_node);
+         if ( near_node && (near_node != world) ) {
+            // Use Darwin's ModulateNodeWeight for adaptive learning
+            ModulateNodeWeight (near_node, -500);  // Massive danger penalty
+         }
       }
 
    }

@@ -445,6 +445,10 @@ BotAI_CheckSoundInvestigation(dist)    [bot_ai.qc]
         └─> Clear investigating flag
 ```
 
+Virtual sound events (item pickups, water splashes, footsteps) are broadcast via
+`Bot_BroadcastNoise` and interpreted by `Bot_AnalyzeSound` to trigger pursuit,
+aiming, or avoidance behavior based on sound type.
+
 ### Curiosity (Solving)
 
 Bots shoot shootable objects they discover:
@@ -646,10 +650,133 @@ LockInPowerupPath(player, type)        [botroute.qc]
 
 ---
 
+## Call Graph: Darwin Update (Adaptive Learning)
+
+### Negative Reinforcement (Death Learning)
+
+When a bot dies, it learns that the death location is dangerous:
+
+```
+ClientObituary(targ, attacker)             [client.qc]
+  │
+  ├─> [if targ is "dmbot"]
+  │     │
+  │     ├─> findradius(targ.origin, 250)   [find nearest BotPath]
+  │     │
+  │     ├─> ModulateNodeWeight(node, -500) [mark dangerous]
+  │     │
+  │     └─> [Weapon Learning]
+  │           ├─> targ.weapon == IT_ROCKET_LAUNCHER → confidence_rl -= 1
+  │           ├─> targ.weapon == IT_LIGHTNING       → confidence_lg -= 1
+  │           ├─> targ.weapon == IT_GRENADE_LAUNCHER → confidence_gl -= 1
+  │           └─> targ.weapon == IT_SHOTGUN/SSG     → confidence_sg -= 1
+  │
+  └─> [Decay happens later in MaintainGraph()]
+```
+
+### Positive Reinforcement (Kill Learning)
+
+When a bot gets a kill, it learns that the location is a good hunting ground:
+
+```
+ClientObituary(targ, attacker)             [client.qc]
+  │
+  ├─> [if attacker is "dmbot"]
+  │     │
+  │     ├─> findradius(attacker.origin, 250)
+  │     │
+  │     ├─> ModulateNodeWeight(node, +10)  [mark glorious]
+  │     │
+  │     └─> [Weapon Learning]
+  │           ├─> attacker.weapon == IT_ROCKET_LAUNCHER → confidence_rl += 1
+  │           ├─> attacker.weapon == IT_LIGHTNING       → confidence_lg += 1
+  │           ├─> attacker.weapon == IT_GRENADE_LAUNCHER → confidence_gl += 1
+  │           └─> attacker.weapon == IT_SHOTGUN/SSG     → confidence_sg += 1
+  │
+  └─> Confidence clamped to [-10, +10]
+```
+
+### Stuck Learning (Navigation Failure)
+
+When a bot gets stuck trying to traverse a path:
+
+```
+ai_botseek(dist)                           [botgoal.qc]
+  │
+  ├─> [if stuck_duration > 1.5 seconds]
+  │     │
+  │     ├─> ModulateNodeWeight(last_waypoint, -100)
+  │     │
+  │     └─> dprint("DARWIN: Learned BROKEN LINK")
+  │
+  └─> Activate feeler mode to escape
+```
+
+### A* Path Cost Integration
+
+The Darwin learning affects pathfinding in cacheRouteTarget:
+
+```
+cacheRouteTarget(node, targ, len, item)    [botroute.qc]
+  │
+  ├─> rng = base_distance / usage_weight
+  │
+  ├─> rng = rng + targ.danger_cost         [DANGER: add cost]
+  │
+  ├─> [if targ.glory_level > 0]            [GLORY: reduce cost]
+  │     └─> rng = rng * (1.0 - glory * 0.01)  [up to 30% reduction]
+  │
+  └─> continue A* pathfinding with modified cost
+```
+
+### Decay System
+
+Both danger and glory decay over time to allow relearning:
+
+```
+MaintainGraph()                            [botroute.qc]
+  │                                        [called from StartFrame every 10s]
+  ├─> [for each BotPath node]
+  │     │
+  │     ├─> danger_cost *= 0.8             [fast decay - courage]
+  │     │     └─> if < 10 → set to 0
+  │     │
+  │     └─> glory_level *= 0.9             [slow decay - nostalgia]
+  │           └─> if < 1 → set to 0
+  │
+  └─> [Continue to next node]
+```
+
+### Weapon Selection with Confidence
+
+Bots apply their learned weapon preferences:
+
+```
+W_BestBotWeapon()                          [botfight.qc]
+  │
+  ├─> [Calculate base scores]
+  │     ├─> LG: base 100
+  │     ├─> RL: base 90
+  │     ├─> SNG: base 80
+  │     ├─> GL: base 70 (mid-range only)
+  │     └─> SSG: base 60
+  │
+  ├─> [Apply confidence multipliers]
+  │     ├─> LG: score += confidence_lg * 5
+  │     ├─> RL: score += confidence_rl * 8  [biggest impact]
+  │     ├─> GL: score += confidence_gl * 6
+  │     └─> SSG: score += confidence_sg * 4
+  │
+  └─> Return weapon with highest score
+```
+
+---
+
 ## Version History
 
 | Date | Change |
 |------|--------|
+| 2026-01-18 | Added Darwin Update (adaptive learning, weapon confidence, decay) |
 | 2026-01-18 | Added Episodic Learning (teleport detection, golden path locking) |
 | 2026-01-18 | Added Mastermind Update (pre-fire, ambush, displacement) |
 | 2026-01-18 | Added Smooth Steering, Sixth Sense, and High-Value Item Focus |

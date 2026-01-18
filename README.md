@@ -35,7 +35,7 @@ from `archive/`.
 - Speed Demon update (bunny hopping on straight runs and reflex projectile dodging)
 - **Predator Update**: Strategic intelligence upgrade
   - Map Control: Bots time powerups (Quad/Pent/Ring) and rush to spawns before they appear
-  - Sound Navigation: Bots hear combat (rockets, grenades, explosions) and investigate
+  - Sound Navigation: Bots hear combat, item pickups, water splashes, and footsteps (with occlusion) and investigate
   - Curiosity: Bots shoot shootable buttons/doors/walls to discover secrets
 - **Smooth Steering**: 3-frame angle averaging prevents jitter from pathfinder/whisker oscillation
 - **Sixth Sense**: 360-degree awareness for items within 300 units (no facing check needed)
