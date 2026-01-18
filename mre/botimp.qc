@@ -314,7 +314,7 @@ void () botImpulseCommand = {
 
                      if ( (self.impulse == 222.000) ) {
 
-                        PrintTopScores ();
+                        PrintTopScores (NORMALSCORE);
 
                      } else {
 

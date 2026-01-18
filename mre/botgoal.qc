@@ -15,6 +15,9 @@ void (float dist) BotHandleButton;
 // Forward declaration for strategic AI (defined in bot_ai.qc)
 float (float dist) BotAI_Strategic;
 
+// Forward declaration for Darwin Update (defined in botroute.qc)
+void (entity node, float amount) ModulateNodeWeight;
+
 void () shoottarget = {
 
    local vector dir;
@@ -107,6 +110,20 @@ void (float dist) ai_botseek = {
             dprint("] STUCK: forcing goal change after ");
             dprint(ftos(stuck_duration));
             dprint("s\n");
+         }
+
+         // ============================================================
+         // DARWIN UPDATE: Learn from navigation failure
+         // Mark the current area as difficult/dangerous
+         // ============================================================
+         if ( self.last_waypoint && self.last_waypoint != world ) {
+            // "I cannot navigate through here easily"
+            ModulateNodeWeight (self.last_waypoint, -100);
+            if ( cvar("developer") ) {
+               dprint("[");
+               dprint(self.netname);
+               dprint("] DARWIN: Learned BROKEN LINK\n");
+            }
          }
 
          self.stuck_time = 0;  // Reset for next cycle
@@ -623,7 +640,6 @@ float (entity e) cacheweight = {
 };
 float (entity e) pathweight = {
 
-   local float OK_HIGH;
    local float weight;
    local vector org;
 
@@ -898,7 +914,6 @@ void () aibot_chooseGoal = {
    local entity e;
    local entity current;
    local entity botTarget;
-   local string tmp;
 
    botTarget = self.goalentity;
    if ( (self.lefty & FAR_SEEK) ) {
@@ -1160,7 +1175,6 @@ entity (entity chaser, entity en) BestChaseRoute = {
    local entity tmp;
    local float weight;
    local float best;
-   local string ts;
 
    RouteToEnemy (en);
    e = findradius (chaser.origin,SEARCH_RADIUS);

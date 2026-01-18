@@ -83,6 +83,9 @@ CI publishes: `c:\reaperai\ci\mre\progs.dat`
 
 ## Critical QuakeC gotchas
 1) **System globals**: never modify anything before `end_sys_globals` in `defs.qc`.
+   If you see `Host_Error: progs.dat system vars have been modified, progdefs.h is out of date`,
+   move any new globals into `mre/botit_th.qc` (safe global area) and keep new entity
+   fields after `end_sys_fields` in `defs.qc`, then rebuild and redeploy.
 2) **Impulse scope**: guard global toggles with `self.classname == "player"`.
 3) **Trace globals**: `traceline()` overwrites `trace_*` globally; save/restore in helpers.
 4) **Bitmask clears**: use masked subtraction (`var = var - (var & FLAG)`).

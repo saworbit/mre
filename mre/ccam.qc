@@ -67,7 +67,6 @@
                                       };
                                       void (float amount) CCamRight =
                                       {
-                                              local string aa;
                                               self.camview_y = self.camview_y + amount;
                                               if (self.camview_y < -8)
                                                       self.camview_y = -8;

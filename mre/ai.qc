@@ -8,7 +8,6 @@ void () knight_walk1;
 void () knight_bow6;
 
 void () knight_bow1;
-float current_yaw /* = 0.000 */;
 entity sight_entity;
 float sight_entity_time /* = 0.000 */;
 float (float v) anglemod = {
@@ -311,7 +310,7 @@ float () FindTarget = {
       client = sight_entity;
       if ( (client.enemy == self.enemy) ) {
 
-         return ;
+         return ( FALSE );
 
       }
 
@@ -415,8 +414,6 @@ void (float dist) ai_painforward = {
 
 void (float dist) ai_walk = {
 
-   local vector mtemp;
-
    movedist = dist;
    if ( (self.classname == "monster_dragon") ) {
 
@@ -498,13 +495,14 @@ float () FacingIdeal = {
 
 };
 
-void () CheckAnyAttack = {
+float () CheckAnyAttack = {
 
    if ( !enemy_vis ) {
 
-      return ;
+      return ( FALSE );
 
    }
+   return ( FALSE );
 
 };
 
@@ -560,13 +558,6 @@ void () ai_run_slide = {
 };
 
 void (float dist) ai_run = {
-
-   local vector delta;
-   local float axis;
-   local float direct;
-   local float ang_rint;
-   local float ang_floor;
-   local float ang_ceil;
 
    movedist = dist;
    if ( (self.enemy.health <= FALSE) ) {

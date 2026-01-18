@@ -1,8 +1,6 @@
 
 void () bot_start = [ 12.000, bot_walk ] {
 
-   local string tmp;
-
    BotPostThink ();
    droptofloor ();
    self.nextthink = ((time + 0.200) + (0.200 * random ()));
@@ -660,7 +658,7 @@ void () bot_axpain6 = [ 34.000, bot_run ] {
 
 };
 
-void () bot_pain = {
+void (entity attacker, float damage) bot_pain = {
 
    if ( self.weaponframe ) {
 

@@ -1,4 +1,3 @@
-float botcounter;
 // client number of the player/bot
 .float fClientNo;
 
@@ -335,12 +334,6 @@ sends an update client name message to a player in the game
 void( entity player, float clientno, string clientname ) msgUpdateNameToPlayer =
 {
    msgUpdateNameToAll( clientno, clientname );
-   return;
-
-   msg_entity = player;
-   WriteByte( MSG_ONE, MSG_UPDATENAME );
-   WriteByte( MSG_ONE, clientno );
-   WriteString( MSG_ONE, clientname );
 };
 
 /*
@@ -354,12 +347,6 @@ sends an update client colors message to a player in the game
 void( entity player, float clientno, float clientshirt, float clientpants ) msgUpdateColorsToPlayer =
 {
    msgUpdateColorsToAll( clientno, clientshirt, clientpants );
-   return;
-
-   msg_entity = player;
-   WriteByte( MSG_ONE, MSG_UPDATECOLORS );
-   WriteByte( MSG_ONE, clientno );
-   WriteByte( MSG_ONE, clientshirt * 16 + clientpants );
 };
 
 /*
@@ -373,12 +360,6 @@ sends an update client frags message to a player in the game
 void( entity player, float clientno, float clientfrags ) msgUpdateFragsToPlayer =
 {
    msgUpdateFragsToAll( clientno, clientfrags );
-   return;
-
-   msg_entity = player;
-   WriteByte( MSG_ONE, MSG_UPDATEFRAGS );
-   WriteByte( MSG_ONE, clientno );
-   WriteShort( MSG_ONE, clientfrags );
 };
 
 /*

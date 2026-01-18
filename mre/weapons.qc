@@ -83,7 +83,6 @@ vector () wall_velocity = {
 void (vector org, vector vel) SpawnMeatSpray = {
 
    local entity missile;
-   local entity mpuff;
 
    missile = spawn ();
    missile.owner = self;
@@ -344,7 +343,6 @@ void () T_MissileTouch = {
 void () W_FireRocket = {
 
    local entity missile;
-   local entity mpuff;
    local vector bfwd;
 
    self.currentammo = self.ammo_rockets = self.ammo_rockets - 1;
@@ -553,7 +551,6 @@ void () GrenadeTouch = {
 void () W_FireGrenade = {
 
    local entity missile;
-   local entity mpuff;
 
    self.currentammo = self.ammo_rockets = self.ammo_rockets - 1;
 
@@ -625,7 +622,6 @@ void (vector org, vector dir) launch_spike = {
 void () W_FireSuperSpikes = {
 
    local vector dir;
-   local entity old;
 
    sound (self,CHAN_WEAPON,"weapons/spike2.wav",TRUE,ATTN_NORM);
    self.attack_finished = (time + 0.200);
@@ -651,7 +647,6 @@ void () W_FireSuperSpikes = {
 void (float ox) W_FireSpikes = {
 
    local vector dir;
-   local entity old;
 
    makevectors (self.v_angle);
    if ( ((self.ammo_nails >= FL_SWIM) && (self.weapon == IT_SUPER_NAILGUN)) ) {
@@ -689,8 +684,6 @@ void (float ox) W_FireSpikes = {
 .float hit_z;
 
 void () spike_touch = {
-
-   local float rand;
 
    if ( (other == self.owner) ) {
 
@@ -743,8 +736,6 @@ void () spike_touch = {
 };
 
 void () superspike_touch = {
-
-   local float rand;
 
    if ( (other == self.owner) ) {
 
@@ -1331,7 +1322,6 @@ void () botImpulseCommand;
 
 void () ImpulseCommands = {
 
-   local string tmp;
    local entity node;
    local float count;
 

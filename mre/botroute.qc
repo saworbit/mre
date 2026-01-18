@@ -659,6 +659,51 @@ void () Player_AutoWaypoint = {
 
 };
 
+// =============================================================================
+// DARWIN UPDATE: Adaptive Node Weighting
+// Bots learn from experience - deaths make nodes dangerous, kills make them attractive
+// =============================================================================
+
+// Modulate a node's danger or glory level
+// amount > 0 = glory (kills), amount < 0 = danger (deaths)
+void (entity node, float amount) ModulateNodeWeight = {
+
+   if ( !node || (node == world) ) {
+      return;
+   }
+
+   if ( amount > 0 ) {
+      // Positive = glory (we got a kill here)
+      node.glory_level = node.glory_level + amount;
+      // Cap to prevent runaway values
+      if ( node.glory_level > 50 ) {
+         node.glory_level = 50;
+      }
+   } else {
+      // Negative = danger (we died here)
+      node.danger_cost = node.danger_cost + fabs(amount);
+      // Cap to prevent permanent avoidance
+      if ( node.danger_cost > 2000 ) {
+         node.danger_cost = 2000;
+      }
+   }
+
+   node.last_event_time = time;
+
+   if ( cvar("developer") ) {
+      if ( amount > 0 ) {
+         dprint ("DARWIN: Node marked GLORIOUS (+");
+         dprint (ftos(amount));
+         dprint (")\n");
+      } else {
+         dprint ("DARWIN: Node marked DANGEROUS (");
+         dprint (ftos(amount));
+         dprint (")\n");
+      }
+   }
+
+};
+
 void (entity node) MarkDanger = {
 
    if ( !node || (node == world) ) {
@@ -709,11 +754,21 @@ void () MaintainGraph = {
          if ( (node.link_usage6 < 1.000) ) node.link_usage6 = 1.000;
       }
 
-      // Decay danger scent
+      // DARWIN: Decay danger scent (fast - courage)
+      // Bots quickly forget danger and try again
       if ( (node.danger_cost > 0.000) ) {
-         node.danger_cost = (node.danger_cost - 100.000);
-         if ( (node.danger_cost < 0.000) ) {
+         node.danger_cost = node.danger_cost * 0.8;
+         if ( (node.danger_cost < 10.000) ) {
             node.danger_cost = 0.000;
+         }
+      }
+
+      // DARWIN: Decay glory level (slow - nostalgia)
+      // Good hunting grounds are remembered longer
+      if ( (node.glory_level > 0.000) ) {
+         node.glory_level = node.glory_level * 0.9;
+         if ( (node.glory_level < 1.000) ) {
+            node.glory_level = 0.000;
          }
       }
 
@@ -818,8 +873,6 @@ float () CheckDropPath = {
    local entity upstreamPath;
    local float rng;
    local float lnd;
-   local float OK_HIGH;
-   local string tmp;
 
    // Cap waypoints strictly in Single Player to prevent edict overflow
    // SP maps have many more entities (monsters, triggers) leaving fewer slots
@@ -925,7 +978,6 @@ void () NewCarriedPath = {
 
 void () DropBotPath = {
 
-   local string tmp;
    local entity oldpath;
    local float drop;
 
@@ -996,7 +1048,19 @@ void (entity node, entity targ, float len, entity item) cacheRouteTarget = {
       weight = 10.000;
    }
    rng = (rng / weight);
+
+   // DARWIN: Danger avoidance - dangerous nodes effectively add distance
    rng = (rng + targ.danger_cost);
+
+   // DARWIN: Glory seeking - killzones reduce effective cost (attract bots)
+   // Up to 30% cost reduction for high-glory nodes
+   if ( targ.glory_level > 0 ) {
+      rng = rng * (1.0 - (targ.glory_level * 0.01));
+      if ( rng < 10 ) {
+         rng = 10;  // Minimum path cost
+      }
+   }
+
    rng = ((rng + len) + KINDA_WANT);
    RECURSEDEPTH = (RECURSEDEPTH + FL_SWIM);
    if ( (RECURSEDEPTH < 24.000) ) {

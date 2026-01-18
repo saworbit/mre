@@ -4,6 +4,11 @@ void () SUB_Null = {
 
 };
 
+// Wrapper for th_pain that takes proper signature
+void (entity attacker, float damage) SUB_NullPain = {
+
+};
+
 void () SUB_Remove = {
 
    remove (self);

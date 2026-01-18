@@ -136,7 +136,6 @@ float (entity targ) Spotvisible = {
 
    local vector spot1;
    local vector spot2;
-   local string t1;
 
    spot1 = (self.origin + self.view_ofs);
    spot2 = ((targ.absmin + targ.absmax) * 0.500);
@@ -184,7 +183,6 @@ float (entity targ) Platvisible = {
 
    local vector spot1;
    local vector spot2;
-   local string t1;
 
    spot1 = (self.origin + self.view_ofs);
    spot2 = ((targ.absmin + targ.absmax) * 0.500);
@@ -207,7 +205,6 @@ float (vector spot) dropline = {
 
    local float drop;
    local vector spot2;
-   local string tmp;
 
    spot2 = spot;
    spot2_z = (spot2_z - 500.000);
@@ -305,8 +302,6 @@ float /* Warning: Could not determine return type */ (entity a, entity b, float 
    local float rng;
    local float maxzd;
    local float bmaxjump;
-   local float brad;
-   local string tmp;
 
    if ( truereach ) {
 

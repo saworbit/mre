@@ -240,8 +240,6 @@ void () plat_use = {
 
 void () func_plat = {
 
-   local entity t;
-
    if ( !self.t_length ) {
 
       self.t_length = 80.000;
@@ -361,7 +359,6 @@ void () train_wait = {
 void () train_next = {
 
    local entity targ;
-   local float rnd;
 
    targ = find (world,targetname,self.target);
    self.target = targ.target;

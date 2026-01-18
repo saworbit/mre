@@ -63,8 +63,6 @@ void () button_use = {
 
 void () button_touch = {
 
-   local vector org;
-
    if ( (other.classname != "player") ) {
 
       if ( (other.classname != "dmbot") ) {
@@ -99,9 +97,6 @@ void () button_killed = {
 };
 
 void () func_button = {
-
-   local float gtemp;
-   local float ftemp;
 
    if ( (self.sounds == FALSE) ) {
 

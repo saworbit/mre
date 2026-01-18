@@ -228,7 +228,6 @@ vector (vector trg) adjustgrenade = {
    local vector tg;
    local vector tgxy;
    local vector selfxy;
-   local vector lead;
    local float xypct;
 
    tg = trg;
@@ -494,90 +493,106 @@ float () W_BestBotWeapon = {
    }
 
    // --- STANDARD COMBAT (>= 150 units) ---
+   // ============================================================
+   // DARWIN UPDATE: Scoring-based weapon selection with confidence
+   // Bots develop personal weapon preferences based on experience
+   // ============================================================
 
-   // Thunderbolt: best DPS at close-mid range, check water safety
+   local float score_rl;
+   local float score_lg;
+   local float score_gl;
+   local float score_sng;
+   local float score_ssg;
+   local float best_score;
+   local float best_weapon;
+
+   best_score = 0;
+   best_weapon = IT_AXE;
+
+   // Thunderbolt scoring
    if ( ((self.ammo_cells >= TRUE) && (it & IT_LIGHTNING)) ) {
-
       if ( ((rng == RANGE_MELEE) || (rng == RANGE_NEAR)) ) {
-
          wlevel = CheckWaterLevel ();
-         if ( (wlevel < FL_SWIM) ) {
-
-            return ( IT_LIGHTNING );
-
+         if ( (wlevel < FL_SWIM) || (self.items & IT_INVULNERABILITY) ) {
+            score_lg = 100;
+            // DARWIN: Apply personal confidence
+            score_lg = score_lg + (self.confidence_lg * 5);
+            if ( score_lg > best_score ) {
+               best_score = score_lg;
+               best_weapon = IT_LIGHTNING;
+            }
          }
-         if ( (self.items & IT_INVULNERABILITY) ) {
-
-            return ( IT_LIGHTNING );
-
-         }
-
       }
-
    }
 
-   // Rocket Launcher: high burst damage, safe at this range
+   // Rocket Launcher scoring
    if ( ((self.ammo_rockets >= TRUE) && (it & IT_ROCKET_LAUNCHER)) ) {
-
-      return ( IT_ROCKET_LAUNCHER );
-
-   }
-
-   // Super Nailgun: reliable at all ranges
-   if ( ((self.ammo_nails >= FL_SWIM) && (it & IT_SUPER_NAILGUN)) ) {
-
-      return ( IT_SUPER_NAILGUN );
-
-   }
-
-   // Grenade Launcher: good at mid-range (150-600 units), bad at long range
-   if ( ((self.ammo_rockets >= TRUE) && (it & IT_GRENADE_LAUNCHER)) ) {
-
-      if ( (dist < 600.000) ) {
-
-         if ( (self.enemy.origin_z < (self.origin_z + 175.000)) ) {
-
-            return ( IT_GRENADE_LAUNCHER );
-
-         }
-
+      score_rl = 90;
+      // DARWIN: Apply personal confidence (biggest impact)
+      score_rl = score_rl + (self.confidence_rl * 8);
+      if ( score_rl > best_score ) {
+         best_score = score_rl;
+         best_weapon = IT_ROCKET_LAUNCHER;
       }
+   }
 
+   // Super Nailgun scoring
+   if ( ((self.ammo_nails >= FL_SWIM) && (it & IT_SUPER_NAILGUN)) ) {
+      score_sng = 80;
+      if ( score_sng > best_score ) {
+         best_score = score_sng;
+         best_weapon = IT_SUPER_NAILGUN;
+      }
+   }
+
+   // Grenade Launcher scoring (mid-range only)
+   if ( ((self.ammo_rockets >= TRUE) && (it & IT_GRENADE_LAUNCHER)) ) {
+      if ( (dist < 600.000) && (self.enemy.origin_z < (self.origin_z + 175.000)) ) {
+         score_gl = 70;
+         // DARWIN: Apply personal confidence
+         score_gl = score_gl + (self.confidence_gl * 6);
+         if ( score_gl > best_score ) {
+            best_score = score_gl;
+            best_weapon = IT_GRENADE_LAUNCHER;
+         }
+      }
+   }
+
+   // Super Shotgun scoring
+   if ( ((self.ammo_shells >= FL_SWIM) && (it & IT_SUPER_SHOTGUN)) ) {
+      score_ssg = 60;
+      // DARWIN: Apply personal confidence
+      score_ssg = score_ssg + (self.confidence_sg * 4);
+      // Bonus at close-mid range
+      if ( dist < 400 ) {
+         score_ssg = score_ssg + 15;
+      }
+      if ( score_ssg > best_score ) {
+         best_score = score_ssg;
+         best_weapon = IT_SUPER_SHOTGUN;
+      }
    }
 
    // Prefer nails over shotguns at long range (> 500 units)
-   if ( (dist > 500.000) ) {
-
+   if ( (dist > 500.000) && best_weapon == IT_AXE ) {
       if ( ((self.ammo_nails >= TRUE) && (it & IT_NAILGUN)) ) {
-
-         return ( IT_NAILGUN );
-
+         best_weapon = IT_NAILGUN;
+         best_score = 50;
       }
-
    }
 
-   // Super Shotgun: reliable mid-range fallback
-   if ( ((self.ammo_shells >= FL_SWIM) && (it & IT_SUPER_SHOTGUN)) ) {
-
-      return ( IT_SUPER_SHOTGUN );
-
+   // Fallbacks if nothing scored well
+   if ( best_score < 30 ) {
+      if ( ((self.ammo_nails >= TRUE) && (it & IT_NAILGUN)) ) {
+         return ( IT_NAILGUN );
+      }
+      if ( ((self.ammo_shells >= TRUE) && (it & IT_SHOTGUN)) ) {
+         return ( IT_SHOTGUN );
+      }
+      return ( IT_AXE );
    }
 
-   // Nailgun
-   if ( ((self.ammo_nails >= TRUE) && (it & IT_NAILGUN)) ) {
-
-      return ( IT_NAILGUN );
-
-   }
-
-   // Shotgun
-   if ( ((self.ammo_shells >= TRUE) && (it & IT_SHOTGUN)) ) {
-
-      return ( IT_SHOTGUN );
-
-   }
-
-   return ( IT_AXE );
+   return ( best_weapon );
 
 };
 float () W_BestHeldWeapon = {
@@ -1017,5 +1032,6 @@ float () CheckReboundAttack = {
 
    }
    REBOUND = FALSE;
+   return ( TRUE );
 
 };

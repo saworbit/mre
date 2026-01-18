@@ -104,7 +104,6 @@ void end_sys_globals;
 .entity chain;
 .float deadflag;
 .vector view_ofs;
-.float old_waterlevel;
 .float button0;
 .float button1;
 .float button2;
@@ -142,6 +141,7 @@ void end_sys_globals;
 .string noise2;
 .string noise3;
 void end_sys_fields;
+.float old_waterlevel;
 .entity bot_next;
 .float last_ai_state;
 .float last_ai_state_time;  // FIX: Time when AI state last changed (hysteresis)

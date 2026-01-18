@@ -89,7 +89,7 @@ void () light_globe = {
 
    precache_model ("progs/s_light.spr");
    setmodel (self,"progs/s_light.spr");
-   makestatic (self);
+   makestatic ();
 
 };
 
@@ -105,7 +105,7 @@ void () light_torch_small_walltorch = {
    precache_model ("progs/flame.mdl");
    setmodel (self,"progs/flame.mdl");
    FireAmbient ();
-   makestatic (self);
+   makestatic ();
 
 };
 
@@ -115,7 +115,7 @@ void () light_flame_large_yellow = {
    setmodel (self,"progs/flame2.mdl");
    self.frame = TRUE;
    FireAmbient ();
-   makestatic (self);
+   makestatic ();
 
 };
 
@@ -124,7 +124,7 @@ void () light_flame_small_yellow = {
    precache_model ("progs/flame2.mdl");
    setmodel (self,"progs/flame2.mdl");
    FireAmbient ();
-   makestatic (self);
+   makestatic ();
 
 };
 
@@ -133,7 +133,7 @@ void () light_flame_small_white = {
    precache_model ("progs/flame2.mdl");
    setmodel (self,"progs/flame2.mdl");
    FireAmbient ();
-   makestatic (self);
+   makestatic ();
 
 };
 
@@ -397,8 +397,6 @@ void () bubble_bob = {
    local float rnd1;
    local float rnd2;
    local float rnd3;
-   local vector vtmp1;
-   local vector modi;
 
    self.cnt = (self.cnt + TRUE);
    if ( (self.cnt == MOVETYPE_STEP) ) {

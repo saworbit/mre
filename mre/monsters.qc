@@ -34,10 +34,6 @@ void () monster_use = {
 
 void () monster_death_use = {
 
-   local entity ent;
-   local entity otemp;
-   local entity stemp;
-
    if ( (self.flags & FL_FLY) ) {
 
       self.flags = (self.flags - FL_FLY);
@@ -59,9 +55,6 @@ void () monster_death_use = {
 };
 
 void () walkmonster_start_go = {
-
-   local string stemp;
-   local entity etemp;
 
    self.origin_z = (self.origin_z + TRUE);
    droptofloor ();

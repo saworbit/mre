@@ -1008,6 +1008,13 @@ float (float s_yaw, float s_dist) botwalkmove = {
            (itname == "item_health") ||
            (itname == "item_armorInv") ) {
 
+         // FIX: Only direct drive to items that actually exist
+         // If item hasn't spawned yet, don't walk into the spawn point
+         // This prevents bots from "stealing" items from players waiting at spawn
+         if ( target_item.solid != SOLID_TRIGGER ) {
+            // Item not spawned yet - skip direct drive, let normal movement handle it
+         } else {
+
          dist_to_item = vlen (target_item.origin - self.origin);
 
          // When close to powerup, stop complex steering and direct drive
@@ -1042,6 +1049,7 @@ float (float s_yaw, float s_dist) botwalkmove = {
                return TRUE;
             }
          }
+         } // end else (item exists check)
       }
    }
 
@@ -1343,7 +1351,6 @@ float (float dist) teleptest = {
 };
 float (float dist) waterupz = {
 
-   local vector start;
    local vector up;
 
    if ( !teleptest (dist) ) {
@@ -1360,7 +1367,6 @@ float (float dist) waterupz = {
 float (float dist) waterdownz = {
 
    local vector up;
-   local vector start;
 
    if ( !teleptest ((CONTENT_EMPTY * dist)) ) {
 
@@ -1595,7 +1601,6 @@ float /* Warning: Could not determine return type */ (float vz, float dist, floa
    local float NOTLAND;
    local float lnd;
    local float len;
-   local float depth;
    local float wlevel;
    local float velz;
    local float ht;
@@ -1609,11 +1614,8 @@ float /* Warning: Could not determine return type */ (float vz, float dist, floa
    local vector jumpv;
    local vector newtop;
    local vector newbottom;
-   local vector back;
-   local vector front;
    local vector dir;
    local vector start;
-   local string tmp;
    local entity botTarget;
 
    if ( !(self.flags & (FL_ONGROUND + FL_SWIM)) ) {
@@ -1903,8 +1905,6 @@ float (float dist) waterupdown = {
 
    local float wlevel;
    local float dis;
-   local float rnd;
-   local float zbottom;
 
    dis = KINDA_WANT;
    wlevel = CheckWaterLevel ();

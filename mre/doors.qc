@@ -181,8 +181,6 @@ void () door_killed = {
 
 void () door_touch = {
 
-   local vector org;
-
    if ( (other.classname != "player") ) {
 
       if ( (other.classname != "dmbot") ) {
@@ -633,7 +631,7 @@ void () fd_secret_use = {
    SUB_UseTargets ();
    if ( !(self.spawnflags & SECRET_NO_SHOOT) ) {
 
-      self.th_pain = SUB_Null;
+      self.th_pain = SUB_NullPain;
       self.takedamage = DAMAGE_NO;
 
    }
@@ -729,13 +727,18 @@ void () fd_secret_move6 = {
 
 };
 
+// Wrapper for th_pain signature
+void (entity attacker, float damage) fd_secret_pain = {
+   fd_secret_use();
+};
+
 void () fd_secret_done = {
 
    if ( (!self.targetname || (self.spawnflags & SECRET_YES_SHOOT)) ) {
 
       self.health = 10000.000;
       self.takedamage = DAMAGE_YES;
-      self.th_pain = fd_secret_use;
+      self.th_pain = fd_secret_pain;
 
    }
    sound (self,CHAN_VOICE,self.noise3,TRUE,ATTN_NORM);
@@ -840,7 +843,7 @@ void () func_door_secret = {
 
       self.health = 10000.000;
       self.takedamage = DAMAGE_YES;
-      self.th_pain = fd_secret_use;
+      self.th_pain = fd_secret_pain;
 
    }
    self.oldorigin = self.origin;
