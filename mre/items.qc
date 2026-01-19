@@ -1517,6 +1517,7 @@ void () item_artifact_invulnerability = {
    self.th_weight = artifactweight;
    self.th_cache = cachepowerup;
    self.th_update = updatepowerup;
+   BotEnsureWaypoint (self.origin);
    StartItem ();
 
 };
@@ -1571,6 +1572,7 @@ void () item_artifact_super_damage = {
    self.th_weight = artifactweight;
    self.th_cache = cachepowerup;
    self.th_update = updatepowerup;
+   BotEnsureWaypoint (self.origin);
    StartItem ();
 
 };

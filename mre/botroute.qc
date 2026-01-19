@@ -234,6 +234,27 @@ void (vector org, float traffic, float danger, string tgt) SpawnSavedWaypoint = 
 
 };
 
+// Ensure a navigation node exists at a powerup spawn
+void (vector org) BotEnsureWaypoint = {
+
+   local entity e;
+
+   e = findradius (org, 32.000);
+   while ( e ) {
+      if ( (e.classname == "BotPath") ) {
+         return ;
+      }
+      e = e.chain;
+   }
+
+   SpawnSavedWaypoint (org, 0.000, 0.000, "");
+
+   if ( cvar("developer") ) {
+      dprint ("Auto-dropped waypoint at powerup spawn\n");
+   }
+
+};
+
 // --- Dynamic Waypoint Management ---
 
 entity (vector org) SpawnLearnedWaypoint = {

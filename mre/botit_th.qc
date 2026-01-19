@@ -47,6 +47,7 @@ vector () botaim;
 void () botImpulseCommand;
 
 void () setBotGravity;
+void (vector org) BotEnsureWaypoint;
 
 void (vector tdest, float tspeed, void() func) SUB_CalcMove;
 

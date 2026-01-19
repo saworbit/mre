@@ -144,6 +144,8 @@
   and creates shortcut links when line-of-sight exists.
 - Feature: Teacher Mode debugging (`weapons.qc`). `impulse 102` shows `BotPath`
   nodes with bubble sprites/particles; `impulse 103` hides them.
+- Fixed: Timing rushes to Quad/Pent could beeline without nearby waypoints. Auto-drop
+  a BotPath node at powerup spawns so routing stays on breadcrumbs.
 - Feature: Speed Demon update (`botmove.qc`, `botfight.qc`, `bot_ai.qc`). Adds
   bunny hopping on straight runs and reflex dodging of incoming rockets/grenades.
 - Fixed: Bots getting stuck on shallow water pool edges (`botmove.qc`). The whisker
