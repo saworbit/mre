@@ -142,6 +142,8 @@ void end_sys_globals;
 .string noise3;
 void end_sys_fields;
 .float old_waterlevel;
+.float is_mandatory;
+.float mandatory_until;
 .entity bot_next;
 .float last_ai_state;
 .float last_ai_state_time;  // FIX: Time when AI state last changed (hysteresis)

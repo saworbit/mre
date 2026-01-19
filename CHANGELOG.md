@@ -60,6 +60,7 @@
 - Bots "stealing" powerups from players waiting at spawn points (only Direct drive when item exists).
 - Powerups could be picked through walls/adjacent rooms (added line-of-sight check on touch).
 - Quad/Pent timing rushes could beeline when spawn areas lacked waypoints (auto-drop BotPath at powerup spawns).
+- Button-triggered paths can now be enforced via mandatory waypoints when players press buttons (prevents A* from skipping required detours).
 - Low-skill bots felt like cheaters (increased aim jitter from ~10?? to ~25?? max at skill 0).
 - Bots attacking observers/spectators (added MOVETYPE_NOCLIP and deadflag checks).
 - Bots not affected by explosion knockback (velocity preservation when airborne).

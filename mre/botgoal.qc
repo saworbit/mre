@@ -1175,6 +1175,14 @@ entity (entity chaser, entity en) BestChaseRoute = {
    local entity tmp;
    local float weight;
    local float best;
+   local entity mandatory;
+
+   if ( (en.classname == "item_artifact_super_damage") || (en.classname == "item_artifact_invulnerability") ) {
+      mandatory = FindMandatoryWaypoint (chaser);
+      if ( (mandatory != world) ) {
+         return ( mandatory );
+      }
+   }
 
    RouteToEnemy (en);
    e = findradius (chaser.origin,SEARCH_RADIUS);

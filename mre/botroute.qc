@@ -255,6 +255,123 @@ void (vector org) BotEnsureWaypoint = {
 
 };
 
+entity (vector org, float max_dist) FindNearestWaypoint = {
+
+   local entity e;
+   local entity best;
+   local float best_dist;
+   local float dist;
+   local float tr_allsolid;
+   local float tr_startsolid;
+   local float tr_fraction;
+   local vector tr_endpos;
+   local vector tr_plane_normal;
+   local float tr_plane_dist;
+   local entity tr_ent;
+   local float tr_inopen;
+   local float tr_inwater;
+
+   best = world;
+   best_dist = max_dist;
+
+   // Save trace globals
+   tr_allsolid = trace_allsolid;
+   tr_startsolid = trace_startsolid;
+   tr_fraction = trace_fraction;
+   tr_endpos = trace_endpos;
+   tr_plane_normal = trace_plane_normal;
+   tr_plane_dist = trace_plane_dist;
+   tr_ent = trace_ent;
+   tr_inopen = trace_inopen;
+   tr_inwater = trace_inwater;
+
+   e = findradius (org, max_dist);
+   while ( e ) {
+      if ( (e.classname == "BotPath") ) {
+         dist = vlen (e.origin - org);
+         if ( (dist < best_dist) ) {
+            traceline (org, e.origin, TRUE, world);
+            if ( (trace_fraction == TRUE) ) {
+               best_dist = dist;
+               best = e;
+            }
+         }
+      }
+      e = e.chain;
+   }
+
+   // Restore trace globals
+   trace_allsolid = tr_allsolid;
+   trace_startsolid = tr_startsolid;
+   trace_fraction = tr_fraction;
+   trace_endpos = tr_endpos;
+   trace_plane_normal = tr_plane_normal;
+   trace_plane_dist = tr_plane_dist;
+   trace_ent = tr_ent;
+   trace_inopen = tr_inopen;
+   trace_inwater = tr_inwater;
+
+   return ( best );
+
+};
+
+void (entity player, entity button) BotMarkMandatoryWaypoint = {
+
+   local entity near_node;
+
+   if ( !player || !button ) {
+      return ;
+   }
+   near_node = FindNearestWaypoint (button.origin, 128.000);
+   if ( !near_node || (near_node == world) ) {
+      return ;
+   }
+   near_node.is_mandatory = TRUE;
+   near_node.mandatory_until = (time + 20.000);
+   if ( cvar("developer") ) {
+      dprint ("Marked mandatory waypoint at ");
+      dprint (vtos (near_node.origin));
+      dprint ("\n");
+   }
+
+};
+
+entity (entity chaser) FindMandatoryWaypoint = {
+
+   local entity e;
+   local entity best;
+   local float best_dist;
+   local float dist;
+   local entity tmp;
+
+   best = world;
+   best_dist = 99999.000;
+
+   tmp = self;
+   self = chaser;
+   e = find (world,classname,"BotPath");
+   while ( e ) {
+      if ( e.is_mandatory ) {
+         if ( (e.mandatory_until > time) ) {
+            if ( TrueReachable (e) ) {
+               dist = vlen (self.origin - e.origin);
+               if ( (dist < best_dist) ) {
+                  best_dist = dist;
+                  best = e;
+               }
+            }
+         } else {
+            e.is_mandatory = FALSE;
+         }
+      }
+      e = find (e,classname,"BotPath");
+   }
+   self = tmp;
+
+   return ( best );
+
+};
+
 // --- Dynamic Waypoint Management ---
 
 entity (vector org) SpawnLearnedWaypoint = {

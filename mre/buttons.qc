@@ -52,6 +52,9 @@ void () button_fire = {
 void () button_use = {
 
    self.enemy = activator;
+   if ( (activator.classname == "player") ) {
+      BotMarkMandatoryWaypoint (activator, self);
+   }
    if ( (other.classname == "dmbot") ) {
 
       bot_triggered (other);
@@ -73,6 +76,9 @@ void () button_touch = {
 
    }
    self.enemy = other;
+   if ( (other.classname == "player") ) {
+      BotMarkMandatoryWaypoint (other, self);
+   }
    if ( (other.classname == "dmbot") ) {
 
       bot_triggered (other);
@@ -87,6 +93,9 @@ void () button_killed = {
    self.enemy = damage_attacker;
    self.health = self.max_health;
    self.takedamage = DAMAGE_NO;
+   if ( (self.enemy.classname == "player") ) {
+      BotMarkMandatoryWaypoint (self.enemy, self);
+   }
    if ( (other.classname == "dmbot") ) {
 
       bot_triggered (other);

@@ -48,6 +48,8 @@ void () botImpulseCommand;
 
 void () setBotGravity;
 void (vector org) BotEnsureWaypoint;
+void (entity player, entity button) BotMarkMandatoryWaypoint;
+entity (entity chaser) FindMandatoryWaypoint;
 
 void (vector tdest, float tspeed, void() func) SUB_CalcMove;
 
