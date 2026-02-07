@@ -10,6 +10,7 @@ void (vector start, vector end) Vortex_RecordEpisode;
 void (vector entry, vector exit) Vortex_FuseTeleChain;
 float (vector pos) Vortex_FindNode;
 void (float idx, float amt) Vortex_BoostUsage;
+void (vector pos) Vortex_RefineLiftPhase;
 
 #define MAX_EPISODES 50
 #define EPISODE_DURATION 10.000
@@ -521,6 +522,7 @@ void (entity ph) Spectral_EndEpisode = {
    if ( trace_ent && ((trace_ent.classname == "func_plat") || (trace_ent.classname == "plat") || (trace_ent.classname == "func_train") || (trace_ent.classname == "train")) ) {
       lidx = Vortex_FindNode (ph.origin);
       if ( lidx >= 0.000 ) {
+         Vortex_RefineLiftPhase (ph.origin);
          Vortex_BoostUsage (lidx, 30.000);
       }
    }

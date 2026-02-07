@@ -66,6 +66,7 @@ For visual/behavioral verification:
 - [ ] **Vortex Telechains**: Teleporter chains are detected (dm2/dm4), exits are predictable, and bots avoid cursed exits
 - [ ] **Lift Riding**: Bots wait on platforms, don't walk off mid-ride
 - [ ] **Apex Lifts**: Bots time lifts, chain lift paths, and don't spam jump on platforms
+- [ ] **Oracle Rides**: Bots sync approach speed to catch lift up-phases (reduced wait)
 - [ ] **Door Opening**: Bots trigger doors and wait for them to open
 - [ ] **Hazard Avoidance**: Bots refuse to walk into lava/slime
 - [ ] **Wall Flow**: Bots curve smoothly around corners (no stop-turn-go)

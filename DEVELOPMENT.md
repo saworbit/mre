@@ -152,7 +152,7 @@ Compile-time tuning knobs:
 - `VORTEX_MAX_NODES`, `VORTEX_MAX_CONN`, `VORTEX_TRACE_BUDGET`, `VORTEX_BUILD_THROTTLE`
 - `VORTEX_MIN_READY`, `VORTEX_DECAY_THROTTLE`
 - `VORTEX_TELE_CHAIN_MAX`, `VORTEX_TELE_WARP_DIST`, `VORTEX_TELE_COST`
-- `VORTEX_LIFT_SAMPLE_THROTTLE`
+- `VORTEX_LIFT_SAMPLE_THROTTLE`, `VORTEX_LIFT_UP_START`, `VORTEX_LIFT_UP_END`
 - `APEX_BUILD_THROTTLE`, `APEX_MIN_NODES`
 
 ## Vortex Telechains + Apex Lifts (teleport + platform fusion)
@@ -160,7 +160,9 @@ Compile-time tuning knobs:
   into one-way tele edges; chain depth is limited to prevent loops.
 - Lifts: nodes are sampled against `func_plat`/`func_train`, with a wait penalty
   based on the lift cycle; Apex clusters mark lift portals as low-cost edges.
-- Rollout sim grants a small reward when riding lifts to encourage stable platform usage.
+- Oracle Rides: ETA-based wait cost, movement sync to catch lift up-phases, and
+  phase refinement from successful lift rides.
+- Rollout sim grants a lift reward with bias for upward motion to encourage stable rides.
 
 ## Mirage Minds tuning (cvars)
 - `sv_mirage` (0/1): master enable for persona-driven humanization

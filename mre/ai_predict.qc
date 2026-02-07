@@ -54,6 +54,7 @@ vector sp_tmp_pos; vector sp_tmp_vel; float sp_tmp_air; float sp_tmp_reward; flo
 // Sim outputs
 vector sp_out_pos; vector sp_out_vel; float sp_out_air; float sp_out_blocked;
 float sp_out_onlift;
+float sp_out_lift_velz;
 
 // Combat beams (bot + enemy)
 vector cb_bpos1; vector cb_bvel1; float cb_bair1; float cb_bhp1; float cb_bammo1; float cb_reward1; float cb_action1;
@@ -214,11 +215,13 @@ void (vector pos, vector vel, float air_left, float action_id, vector fwd, vecto
    }
 
    sp_out_onlift = FALSE;
+   sp_out_lift_velz = 0.000;
    traceline ((newpos + '0.000 0.000 16.000'), (newpos - '0.000 0.000 64.000'), TRUE, self);
    lift = trace_ent;
    if ( lift && ((lift.classname == "func_plat") || (lift.classname == "plat") || (lift.classname == "func_train") || (lift.classname == "train")) ) {
       vel = lift.velocity + (normalize (lift.origin - newpos) * 80.000);
       sp_out_onlift = TRUE;
+      sp_out_lift_velz = lift.velocity_z;
    }
 
    sp_out_pos = newpos;
@@ -282,7 +285,13 @@ float (vector pos, vector vel, float air_left, vector goal_pos, float use_trace,
    }
 
    if ( sp_out_onlift ) {
-      r = (r + 200.000);
+      if ( sp_out_lift_velz > 1.000 ) {
+         r = (r + 200.000);
+      } else if ( sp_out_lift_velz < -1.000 ) {
+         r = (r - 50.000);
+      } else {
+         r = (r + 100.000);
+      }
    }
 
    return ( r );

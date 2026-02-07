@@ -301,7 +301,7 @@ float (float start_c, float goal_c) Apex_NextCluster = {
          if ( ptype == APEX_PORTAL_TELE ) {
             tentative = (apex_g[cur] + 20.000);
          } else if ( ptype == APEX_PORTAL_LIFT ) {
-            tentative = (apex_g[cur] + 30.000);
+            tentative = (apex_g[cur] + 20.000);
          }
          tentative = (tentative + GetCursePenalty (apex_center[neigh]));
          if ( tentative < apex_g[neigh] ) {

@@ -6,6 +6,7 @@ float (vector spot) dropline;
 vector (vector start, vector goal) Apex_VortexNext;
 float (vector spot) BotDetectHazard;
 void (vector pos) CurseNode;
+float (float idx, float at_time) Vortex_LiftWaitAt;
 
 #define VORTEX_MAX_NODES 512
 #define VORTEX_MAX_CONN 8
@@ -26,6 +27,8 @@ void (vector pos) CurseNode;
 #define VORTEX_TELE_COST 10.000
 #define VORTEX_TELE_WARP_DIST 500.000
 #define VORTEX_LIFT_SAMPLE_THROTTLE 5.000
+#define VORTEX_LIFT_UP_START 0.000
+#define VORTEX_LIFT_UP_END 0.250
 
 vector vortex_pos[VORTEX_MAX_NODES];
 float vortex_conn[VORTEX_MAX_EDGES];
@@ -35,6 +38,8 @@ float vortex_usage[VORTEX_MAX_NODES];
 float vortex_tele_exit[VORTEX_MAX_NODES];
 float vortex_lift_cycle[VORTEX_MAX_NODES];
 float vortex_lift_phase[VORTEX_MAX_NODES];
+float vortex_lift_up_start[VORTEX_MAX_NODES];
+float vortex_lift_up_end[VORTEX_MAX_NODES];
 float vortex_count;
 float vortex_last_build;
 float vortex_last_decay;
@@ -132,6 +137,8 @@ float (vector pos, float ntype) Vortex_AddNode = {
    vortex_tele_exit[idx] = -1.000;
    vortex_lift_cycle[idx] = 0.000;
    vortex_lift_phase[idx] = 0.000;
+   vortex_lift_up_start[idx] = VORTEX_LIFT_UP_START;
+   vortex_lift_up_end[idx] = VORTEX_LIFT_UP_END;
    if ( ntype == VORTEX_NODE_ITEM ) {
       vortex_usage[idx] = 2.000;
    } else if ( ntype == VORTEX_NODE_TELE ) {
@@ -263,9 +270,16 @@ float (float node) Vortex_TeleChainDepth = {
 };
 
 float (float idx) Vortex_LiftWait = {
+   return Vortex_LiftWaitAt (idx, time);
+
+};
+
+float (float idx, float at_time) Vortex_LiftWaitAt = {
 
    local float cycle;
    local float phase;
+   local float start;
+   local float end;
    local float wait;
 
    if ( idx < 0.000 ) {
@@ -275,12 +289,118 @@ float (float idx) Vortex_LiftWait = {
    if ( cycle <= 0.000 ) {
       return 0.000;
    }
-   phase = Vortex_Mod ((time - vortex_lift_phase[idx]), cycle);
-   wait = (cycle - phase);
-   if ( (wait < 0.000) || (wait > cycle) ) {
-      wait = 0.000;
+   start = vortex_lift_up_start[idx];
+   end = vortex_lift_up_end[idx];
+   if ( end <= start ) {
+      start = VORTEX_LIFT_UP_START;
+      end = VORTEX_LIFT_UP_END;
+   }
+   phase = Vortex_Mod ((at_time - vortex_lift_phase[idx]), cycle);
+   if ( phase < 0.000 ) {
+      phase = 0.000;
+   }
+   phase = (phase / cycle);
+   if ( (phase >= start) && (phase <= end) ) {
+      return 0.000;
+   }
+   if ( phase < start ) {
+      wait = ((start - phase) * cycle);
+   } else {
+      wait = (((1.000 - phase) + start) * cycle);
    }
    return wait;
+
+};
+
+float (float cur, float next) Vortex_LiftWaitETA = {
+
+   local float dist;
+   local float speed;
+   local float eta;
+
+   if ( (cur < 0.000) || (next < 0.000) ) {
+      return 0.000;
+   }
+   dist = vlen (vortex_pos[next] - vortex_pos[cur]);
+   speed = BOTSPEED;
+   if ( speed < 10.000 ) {
+      speed = 32.000;
+   }
+   eta = (dist / (speed * 10.000));
+   return Vortex_LiftWaitAt (next, (time + eta));
+
+};
+
+float (vector from, vector to, float base_dist) Vortex_LiftSyncDist = {
+
+   local float idx;
+   local float dist;
+   local float cycle;
+   local float speed;
+   local float eta;
+   local float wait;
+   local float target_eta;
+   local float desired_dist;
+
+   if ( base_dist <= 0.000 ) {
+      return base_dist;
+   }
+   idx = Vortex_FindNode (to);
+   if ( idx < 0.000 ) {
+      return base_dist;
+   }
+   if ( vortex_type[idx] != VORTEX_NODE_LIFT ) {
+      return base_dist;
+   }
+   dist = vlen (to - from);
+   if ( (dist < 1.000) || (dist > 256.000) ) {
+      return base_dist;
+   }
+   cycle = vortex_lift_cycle[idx];
+   if ( cycle <= 0.000 ) {
+      return base_dist;
+   }
+   speed = (base_dist * 10.000);
+   if ( speed < 50.000 ) {
+      speed = 50.000;
+   }
+   eta = (dist / speed);
+   wait = Vortex_LiftWaitAt (idx, (time + eta));
+   if ( wait < 0.050 ) {
+      return base_dist;
+   }
+   target_eta = (eta + wait);
+   if ( target_eta <= 0.000 ) {
+      return base_dist;
+   }
+   desired_dist = ((dist / target_eta) / 10.000);
+   if ( desired_dist < (base_dist * 0.500) ) {
+      desired_dist = (base_dist * 0.500);
+   }
+   if ( desired_dist > base_dist ) {
+      desired_dist = base_dist;
+   }
+   return desired_dist;
+
+};
+
+void (vector pos) Vortex_RefineLiftPhase = {
+
+   local float idx;
+
+   if ( !vortex_seeded ) {
+      Vortex_Seed ();
+   }
+   idx = Vortex_FindNode (pos);
+   if ( idx < 0.000 ) {
+      return;
+   }
+   if ( vortex_type[idx] != VORTEX_NODE_LIFT ) {
+      return;
+   }
+   vortex_lift_phase[idx] = time;
+   vortex_lift_up_start[idx] = VORTEX_LIFT_UP_START;
+   vortex_lift_up_end[idx] = VORTEX_LIFT_UP_END;
 
 };
 
@@ -392,6 +512,13 @@ void () Vortex_SampleLifts = {
          }
          vortex_lift_cycle[i] = cycle;
          vortex_lift_phase[i] = time;
+         if ( (lift.state == STATE_TOP) || (lift.state == STATE_DOWN) ) {
+            vortex_lift_phase[i] = (time - (cycle * 0.500));
+         }
+         if ( vortex_lift_up_end[i] <= vortex_lift_up_start[i] ) {
+            vortex_lift_up_start[i] = VORTEX_LIFT_UP_START;
+            vortex_lift_up_end[i] = VORTEX_LIFT_UP_END;
+         }
          if ( vortex_usage[i] < 2.000 ) {
             vortex_usage[i] = 2.000;
          }
@@ -576,7 +703,7 @@ float (float cur, float next) Vortex_EdgeCost = {
    cost = (cost + GetCursePenalty (vortex_pos[next]));
 
    if ( vortex_type[next] == VORTEX_NODE_LIFT ) {
-      wait = Vortex_LiftWait (next);
+      wait = Vortex_LiftWaitETA (cur, next);
       impatience = (1.000 - (self.skil * 0.080));
       if ( impatience < 0.200 ) {
          impatience = 0.200;
@@ -866,6 +993,8 @@ void (float idx) Vortex_RemoveNode = {
       vortex_tele_exit[idx] = vortex_tele_exit[last];
       vortex_lift_cycle[idx] = vortex_lift_cycle[last];
       vortex_lift_phase[idx] = vortex_lift_phase[last];
+      vortex_lift_up_start[idx] = vortex_lift_up_start[last];
+      vortex_lift_up_end[idx] = vortex_lift_up_end[last];
 
       base = (idx * VORTEX_MAX_CONN);
       c = 0.000;

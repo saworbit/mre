@@ -15,6 +15,7 @@ float (vector jmpv) Botwaterjump;
 float (vector goal_pos, float dist) BotShadowPuppetYaw;
 float (float base_yaw, float target_yaw, float strength) Mirage_BlendYaw;
 float (vector pos, vector vel, float air_left, vector goal_pos, vector fwd, vector right, float use_trace) ShadowLookaheadReward;
+float (vector from, vector to, float base_dist) Vortex_LiftSyncDist;
 
 // FIX: Platform riding - handles func_train (DM2 lava platforms) and func_plat
 // Returns TRUE if bot should wait/ride, FALSE to continue with normal movement
@@ -1118,6 +1119,11 @@ float (float s_yaw, float s_dist) botwalkmove = {
    // Platform riding - handles func_train (DM2) and func_plat
    if ( BotCheckPlatformRide () ) {
       return TRUE;
+   }
+
+   // Oracle Rides: slow slightly to sync lift cycles when approaching lift nodes
+   if ( self.goalentity && (self.goalentity != world) ) {
+      s_dist = Vortex_LiftSyncDist (self.origin, self.goalentity.origin, s_dist);
    }
 
    // --- WATER LOGIC: Physics-based swim control ---

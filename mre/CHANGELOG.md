@@ -26,10 +26,11 @@
   Detects teleporter warps (>500u), fuses one-way quantum edges between entry/exit
   nodes, and allows chain-limited low-cost tele routing. Hazard exits are cursed;
   strong exits gain usage/glory boosts. Apex portals favor tele links.
-- Feature: **Apex Lifts** (`ai_vortex.qc`, `ai_predict.qc`, `ai_apex.qc`).
-  Samples lift nodes (func_plat/func_train), adds wait-cost biasing in Vortex A*,
-  rewards lift rides in rollouts, and tags lift portals for low-cost abstraction
-  in Apex clusters.
+- Feature: **Apex Lifts + Oracle Rides** (`ai_vortex.qc`, `ai_predict.qc`, `ai_apex.qc`,
+  `botmove.qc`, `bot_learn.qc`). Samples lift nodes (func_plat/func_train), adds
+  ETA-based wait-cost biasing in Vortex A*, rewards lift rides (upward bias) in
+  rollouts, syncs approach speed to lift phases, refines lift phase timing from
+  successful rides, and tags lift portals for low-cost abstraction in Apex clusters.
 - Removed: Legacy episodic learning (golden locks, teleport shortcuts, LOS shortcutting, trail rewards).
 - Removed: Broken map-control timing rushes (auto-drop BotPath at powerup spawns,
   spawn-time beelines, and hard lock boosts).
