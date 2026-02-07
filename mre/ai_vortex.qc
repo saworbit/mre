@@ -525,7 +525,7 @@ void () Vortex_Flood = {
       if ( trace_fraction > 0.700 ) {
          endpos = trace_endpos;
          contents = pointcontents (endpos);
-         if ( (contents != CONTENTS_LAVA) && (contents != CONTENTS_SOLID) && (contents != CONTENTS_SKY) ) {
+         if ( (contents != CONTENT_LAVA) && (contents != CONTENT_SOLID) && (contents != CONTENT_SKY) ) {
             floorpos = endpos;
             floorpos_z = (dropline (endpos) + 1.000);
             tidx = Vortex_FindNode (floorpos);
