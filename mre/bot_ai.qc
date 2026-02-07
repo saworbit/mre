@@ -6,6 +6,7 @@ void () BotReflexDodge;
 void () BotCheckCuriosity;  // Curiosity system (defined in botmove.qc)
 void () BotBlindFire;       // Tactical: Pre-fire at corners (defined in botfight.qc)
 float () BotCheckEnvironmentKill;  // Tactical: Displacement kills (defined in botfight.qc)
+void (entity enemy, float dist) BotShadowCombatThink; // Shadow Puppets combat (ai_predict.qc)
 void (entity source, vector org, float volume, float type) Bot_BroadcastNoise;
 void () Bot_AnalyzeSound;
 
@@ -783,7 +784,11 @@ void () ai_botturn = {
 
 void () aibot_run_melee = {
 
-   self.ideal_yaw = vectoyaw ((self.enemy.origin - self.origin));
+   if ( (self.shadow_combat_time > time) && (self.shadow_combat_yaw != 9999.000) ) {
+      self.ideal_yaw = self.shadow_combat_yaw;
+   } else {
+      self.ideal_yaw = vectoyaw ((self.enemy.origin - self.origin));
+   }
    ChangeYaw ();
    if ( FacingIdeal () ) {
 
@@ -1283,14 +1288,63 @@ float () BotAI_CheckPowerupTiming = {
    local float time_until_spawn;
    local float dist_to_spawn;
    local entity route;
+   local float debug_ready;
+
+   debug_ready = (cvar("developer") && (time >= self.timing_debug_time));
 
    // Don't rush if we're badly hurt
    if ( (self.health < 40) ) {
+      if ( debug_ready ) {
+         if ( (next_quad_time > 0) && quad_spawn_ent ) {
+            time_until_spawn = next_quad_time - time;
+            if ( (time_until_spawn > 0) && (time_until_spawn < 10) ) {
+               dprint ("[");
+               dprint (self.netname);
+               dprint ("] TIMING: Quad skip low health (");
+               dprint (ftos(floor(self.health)));
+               dprint (")\n");
+               self.timing_debug_time = time + 0.5;
+               debug_ready = FALSE;
+            }
+         }
+         if ( debug_ready && (next_pent_time > 0) && pent_spawn_ent ) {
+            time_until_spawn = next_pent_time - time;
+            if ( (time_until_spawn > 0) && (time_until_spawn < 15) ) {
+               dprint ("[");
+               dprint (self.netname);
+               dprint ("] TIMING: Pent skip low health (");
+               dprint (ftos(floor(self.health)));
+               dprint (")\n");
+               self.timing_debug_time = time + 0.5;
+            }
+         }
+      }
       return ( FALSE );
    }
 
    // Don't rush if we have invulnerability (no need for more powerups)
    if ( (self.items & IT_INVULNERABILITY) ) {
+      if ( debug_ready ) {
+         if ( (next_quad_time > 0) && quad_spawn_ent ) {
+            time_until_spawn = next_quad_time - time;
+            if ( (time_until_spawn > 0) && (time_until_spawn < 10) ) {
+               dprint ("[");
+               dprint (self.netname);
+               dprint ("] TIMING: Quad skip invuln\n");
+               self.timing_debug_time = time + 0.5;
+               debug_ready = FALSE;
+            }
+         }
+         if ( debug_ready && (next_pent_time > 0) && pent_spawn_ent ) {
+            time_until_spawn = next_pent_time - time;
+            if ( (time_until_spawn > 0) && (time_until_spawn < 15) ) {
+               dprint ("[");
+               dprint (self.netname);
+               dprint ("] TIMING: Pent skip invuln\n");
+               self.timing_debug_time = time + 0.5;
+            }
+         }
+      }
       return ( FALSE );
    }
 
@@ -1306,13 +1360,35 @@ float () BotAI_CheckPowerupTiming = {
             if ( (self.goalentity.classname == "BotTarget") ) {
                route = BestChaseRoute (self, quad_spawn_ent);
                if ( (route == world) ) {
+                  if ( debug_ready ) {
+                     dprint ("[");
+                     dprint (self.netname);
+                  dprint ("] TIMING: Quad skip no route\n");
+                  self.timing_debug_time = time + 0.5;
+                  debug_ready = FALSE;
+                  }
                   return ( FALSE );
                }
                if ( (route == quad_spawn_ent) && !Spotvisible (quad_spawn_ent) ) {
+                  if ( debug_ready ) {
+                     dprint ("[");
+                     dprint (self.netname);
+                     dprint ("] TIMING: Quad skip no LOS\n");
+                     self.timing_debug_time = time + 0.5;
+                     debug_ready = FALSE;
+                  }
                   return ( FALSE );
                }
                setorigin (self.goalentity, route.origin);
                self.goalentity.goalentity = route;
+            } else if ( debug_ready ) {
+               dprint ("[");
+               dprint (self.netname);
+               dprint ("] TIMING: Quad skip goalentity=");
+               dprint (self.goalentity.classname);
+               dprint ("\n");
+               self.timing_debug_time = time + 0.5;
+               debug_ready = FALSE;
             }
             self.movetarget = quad_spawn_ent;
             BotLogAI (AI_STATE_TIMING, "QUAD_RUSH");
@@ -1325,6 +1401,14 @@ float () BotAI_CheckPowerupTiming = {
                dprint ("s)\n");
             }
             return ( TRUE );
+         } else if ( debug_ready ) {
+            dprint ("[");
+            dprint (self.netname);
+            dprint ("] TIMING: Quad skip dist=");
+            dprint (ftos(floor(dist_to_spawn)));
+            dprint ("\n");
+            self.timing_debug_time = time + 0.5;
+            debug_ready = FALSE;
          }
       }
    }
@@ -1338,13 +1422,35 @@ float () BotAI_CheckPowerupTiming = {
             if ( (self.goalentity.classname == "BotTarget") ) {
                route = BestChaseRoute (self, pent_spawn_ent);
                if ( (route == world) ) {
+                  if ( debug_ready ) {
+                     dprint ("[");
+                     dprint (self.netname);
+                  dprint ("] TIMING: Pent skip no route\n");
+                  self.timing_debug_time = time + 0.5;
+                  debug_ready = FALSE;
+                  }
                   return ( FALSE );
                }
                if ( (route == pent_spawn_ent) && !Spotvisible (pent_spawn_ent) ) {
+                  if ( debug_ready ) {
+                     dprint ("[");
+                     dprint (self.netname);
+                     dprint ("] TIMING: Pent skip no LOS\n");
+                     self.timing_debug_time = time + 0.5;
+                     debug_ready = FALSE;
+                  }
                   return ( FALSE );
                }
                setorigin (self.goalentity, route.origin);
                self.goalentity.goalentity = route;
+            } else if ( debug_ready ) {
+               dprint ("[");
+               dprint (self.netname);
+               dprint ("] TIMING: Pent skip goalentity=");
+               dprint (self.goalentity.classname);
+               dprint ("\n");
+               self.timing_debug_time = time + 0.5;
+               debug_ready = FALSE;
             }
             self.movetarget = pent_spawn_ent;
             BotLogAI (AI_STATE_TIMING, "PENT_RUSH");
@@ -1355,6 +1461,14 @@ float () BotAI_CheckPowerupTiming = {
                dprint ("] TIMING: Rushing to Pent!\n");
             }
             return ( TRUE );
+         } else if ( debug_ready ) {
+            dprint ("[");
+            dprint (self.netname);
+            dprint ("] TIMING: Pent skip dist=");
+            dprint (ftos(floor(dist_to_spawn)));
+            dprint ("\n");
+            self.timing_debug_time = time + 0.5;
+            debug_ready = FALSE;
          }
       }
    }
@@ -1521,6 +1635,8 @@ void (float dist) BotAI_Main = {
       self.last_enemy_vel = self.enemy.velocity;
       // Clear ambush state when we can see them
       self.ambush_ready = FALSE;
+      // Shadow Puppets: combat rollout guidance
+      BotShadowCombatThink (self.enemy, rng);
 
    }
    if ( (self.search_time < time) ) {

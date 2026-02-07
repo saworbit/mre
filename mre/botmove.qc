@@ -12,6 +12,7 @@ void (vector org, float traffic, float danger, string tgt) SpawnSavedWaypoint;
 float (entity next_node, float dist) BotExecuteLink;
 float (float vz, float dist, float imagine) Bot_tryjump;
 float (vector jmpv) Botwaterjump;
+float (vector goal_pos, float dist) BotShadowPuppetYaw;
 
 // FIX: Platform riding - handles func_train (DM2 lava platforms) and func_plat
 // Returns TRUE if bot should wait/ride, FALSE to continue with normal movement
@@ -2202,10 +2203,20 @@ void (float dist) Botmovetogoal = {
 
    local entity Botgoal;
    local float wlevel;
+   local float shadow_yaw;
 
    self.oldorigin = self.origin;
    Botgoal = self.goalentity;
-   self.ideal_yaw = vectoyaw ((Botgoal.origin - self.origin));
+   shadow_yaw = BotShadowPuppetYaw (Botgoal.origin, dist);
+   if ( (shadow_yaw != 9999.000) ) {
+      self.ideal_yaw = shadow_yaw;
+      // Jump hint from Shadow Puppets
+      if ( (self.shadow_jump_time > time) ) {
+         Bot_tryjump (270.000, dist, FALSE);
+      }
+   } else {
+      self.ideal_yaw = vectoyaw ((Botgoal.origin - self.origin));
+   }
    ChangeYaw ();
    self.whiskers_allowed = TRUE;
    if ( Botgoal.goalentity && (Botgoal.goalentity.classname == "BotPath") ) {

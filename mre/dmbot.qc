@@ -1,4 +1,6 @@
 
+float () BotShadowCombatWeapon;
+
 void () bot_start = [ 12.000, bot_walk ] {
 
    BotPostThink ();
@@ -338,7 +340,14 @@ void () bot_axed4 = [ 140.000, bot_run ] {
 
 void () dmbot_melee = {
 
-   self.weapon = W_BestBotWeapon ();
+   local float shadow_weap;
+   shadow_weap = BotShadowCombatWeapon ();
+   if ( (shadow_weap > FALSE) ) {
+      self.weapon = shadow_weap;
+      W_SetCurrentAmmo ();
+   } else {
+      self.weapon = W_BestBotWeapon ();
+   }
    W_BotAttack ();
 
 };

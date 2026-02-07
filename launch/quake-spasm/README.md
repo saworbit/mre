@@ -10,8 +10,11 @@ launch_reapbot_v2.bat 8 dm4
 
 ## Manual launch
 ```
-quakespasm.exe -basedir C:\reaperai\launch\quake-spasm -game mre -listen 8 +maxplayers 8 +deathmatch 1 +map dm4
+quakespasm-sdl12.exe -basedir C:\reaperai\launch\quake-spasm -game mre -listen 8 +maxplayers 8 +deathmatch 1 +map dm4
 ```
+
+Note: If `quakespasm.exe` is missing or zero bytes, use `quakespasm-sdl12.exe`
+or copy/rename it to `quakespasm.exe`.
 
 ## Files
 - `mre\progs.dat` - current build output to test.

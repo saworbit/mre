@@ -85,7 +85,7 @@ launch_reapbot_v2.bat 8 dm4
 ```
 Manual command with logging:
 ```batch
-quakespasm.exe -game mre -condebug +developer 1 -listen 8 +maxplayers 8 +deathmatch 1 +map dm4
+quakespasm-sdl12.exe -game mre -condebug +developer 1 -listen 8 +maxplayers 8 +deathmatch 1 +map dm4
 ```
 
 ## Test
@@ -102,6 +102,7 @@ Automated tests check for: edict overflow, runaway loops, route recursion, score
 
 ## Docs
 - [ARCHITECTURE_CURRENT.md](ARCHITECTURE_CURRENT.md) - Control flow and call graph
+- [REAPER_BOT_REBOOT_SPEC.md](REAPER_BOT_REBOOT_SPEC.md) - Design and implementation spec (aligned)
 - [mre/README.md](mre/README.md) - Quick start and testing checklist
 - [mre/COMMUNITY_ISSUES.md](mre/COMMUNITY_ISSUES.md) - Issue tracker
 - [mre/CHANGELOG.md](mre/CHANGELOG.md) - Detailed changes

@@ -293,6 +293,7 @@ void () PutBotInServer = {
    local float aimvar;
 
    self.classname = "dmbot";
+   self.bot = TRUE;
    self.health = MUST_HAVE;
    self.takedamage = DAMAGE_AIM;
    self.solid = SOLID_SLIDEBOX;
@@ -340,6 +341,14 @@ void () PutBotInServer = {
    self.last_ai_state = FALSE;
    self.last_ai_state_time = FALSE;
    self.stuck_time = FALSE;
+   self.shadow_next_time = FALSE;
+   self.shadow_jump_time = FALSE;
+   self.shadow_combat_time = FALSE;
+   self.shadow_combat_yaw = 9999.000;
+   self.shadow_combat_fire = FALSE;
+   self.shadow_combat_weapon = FALSE;
+   self.shadow_combat_next_time = FALSE;
+   self.shadow_nav_debug_time = FALSE;
    self.walkframe = FALSE;  // Reset animation frame counter
    // Reset tactical intelligence state (Mastermind Update)
    self.ambush_ready = FALSE;
@@ -451,6 +460,7 @@ entity () AddBot = {
       }
 
    }
+   self.bot = TRUE;
    initscore ();
    self = oldself;
    return ( newbot );

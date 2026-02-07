@@ -12,6 +12,12 @@ functions chain together, creating an animation/behavior state machine.
 **Key insight**: There is ONE control loop per bot - the `.think` function. All AI
 decisions happen within that single execution path.
 
+## Spec Alignment
+
+For the design and implementation specification aligned to this codebase, see
+`REAPER_BOT_REBOOT_SPEC.md`. This document remains the authoritative call graph
+and control-flow reference.
+
 ---
 
 ## Entry Points

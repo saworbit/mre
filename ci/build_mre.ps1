@@ -71,7 +71,12 @@ if (!(Test-Path -Path $launchDir)) {
 $startTime = Get-Date
 Push-Location $srcDir
 try {
-    & $compiler -O3 progs.src
+    $flags = $env:FTEQCC_FLAGS
+    if ([string]::IsNullOrWhiteSpace($flags)) {
+        $flags = "-O3"
+    }
+    $flagArgs = $flags -split "\\s+"
+    & $compiler @flagArgs progs.src
     if ($LASTEXITCODE -ne 0) {
         throw "Compiler failed with exit code $LASTEXITCODE"
     }

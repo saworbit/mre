@@ -388,12 +388,17 @@ float () CheckBotAttack = {
    local vector spot1;
    local vector spot2;
    local entity targ;
+   local float dist;
 
    targ = self.enemy;
    if ( (time < self.attack_finished) ) {
 
       return ( FALSE );
 
+   }
+   dist = vlen ((targ.origin - self.origin));
+   if ( (self.shadow_combat_time > time) && (self.shadow_combat_fire == FALSE) && (dist > 80.000) ) {
+      return ( FALSE );
    }
    spot1 = (self.origin + self.view_ofs);
    spot2 = (targ.origin + targ.view_ofs);

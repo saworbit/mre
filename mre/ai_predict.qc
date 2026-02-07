@@ -1,0 +1,1214 @@
+// Shadow Puppets: Predictive rollout beam search for movement steering
+// Lightweight lookahead to reduce hazards and dead-ends
+
+float SHADOW_MAX_DEPTH = 12.000;
+float SHADOW_MAX_BEAM = 5.000;
+float SHADOW_DT = 0.100;
+float SHADOW_GRAVITY = 80.000;   // Approx 800 * 0.1s
+float SHADOW_NEG = -999999.000;
+
+// Combat Crucible (dual-rollout)
+float SHADOW_COMBAT_MAX_DEPTH = 10.000;
+float SHADOW_COMBAT_MAX_BEAM = 4.000;
+float SHADOW_COMBAT_NEG = -999999.000;
+
+// Current beam states
+vector sp_c_pos1; vector sp_c_vel1; float sp_c_air1; float sp_c_reward1; float sp_c_action1;
+vector sp_c_pos2; vector sp_c_vel2; float sp_c_air2; float sp_c_reward2; float sp_c_action2;
+vector sp_c_pos3; vector sp_c_vel3; float sp_c_air3; float sp_c_reward3; float sp_c_action3;
+vector sp_c_pos4; vector sp_c_vel4; float sp_c_air4; float sp_c_reward4; float sp_c_action4;
+vector sp_c_pos5; vector sp_c_vel5; float sp_c_air5; float sp_c_reward5; float sp_c_action5;
+
+// Next beam states
+vector sp_n_pos1; vector sp_n_vel1; float sp_n_air1; float sp_n_reward1; float sp_n_action1;
+vector sp_n_pos2; vector sp_n_vel2; float sp_n_air2; float sp_n_reward2; float sp_n_action2;
+vector sp_n_pos3; vector sp_n_vel3; float sp_n_air3; float sp_n_reward3; float sp_n_action3;
+vector sp_n_pos4; vector sp_n_vel4; float sp_n_air4; float sp_n_reward4; float sp_n_action4;
+vector sp_n_pos5; vector sp_n_vel5; float sp_n_air5; float sp_n_reward5; float sp_n_action5;
+
+// Candidate temp
+vector sp_tmp_pos; vector sp_tmp_vel; float sp_tmp_air; float sp_tmp_reward; float sp_tmp_action;
+
+// Sim outputs
+vector sp_out_pos; vector sp_out_vel; float sp_out_air; float sp_out_blocked;
+
+// Combat beams (bot + enemy)
+vector cb_bpos1; vector cb_bvel1; float cb_bair1; float cb_bhp1; float cb_bammo1; float cb_reward1; float cb_action1;
+vector cb_bpos2; vector cb_bvel2; float cb_bair2; float cb_bhp2; float cb_bammo2; float cb_reward2; float cb_action2;
+vector cb_bpos3; vector cb_bvel3; float cb_bair3; float cb_bhp3; float cb_bammo3; float cb_reward3; float cb_action3;
+vector cb_bpos4; vector cb_bvel4; float cb_bair4; float cb_bhp4; float cb_bammo4; float cb_reward4; float cb_action4;
+
+vector cb_epos1; vector cb_evel1; float cb_eair1; float cb_ehp1; float cb_eammo1;
+vector cb_epos2; vector cb_evel2; float cb_eair2; float cb_ehp2; float cb_eammo2;
+vector cb_epos3; vector cb_evel3; float cb_eair3; float cb_ehp3; float cb_eammo3;
+vector cb_epos4; vector cb_evel4; float cb_eair4; float cb_ehp4; float cb_eammo4;
+
+vector cbn_bpos1; vector cbn_bvel1; float cbn_bair1; float cbn_bhp1; float cbn_bammo1; float cbn_reward1; float cbn_action1;
+vector cbn_bpos2; vector cbn_bvel2; float cbn_bair2; float cbn_bhp2; float cbn_bammo2; float cbn_reward2; float cbn_action2;
+vector cbn_bpos3; vector cbn_bvel3; float cbn_bair3; float cbn_bhp3; float cbn_bammo3; float cbn_reward3; float cbn_action3;
+vector cbn_bpos4; vector cbn_bvel4; float cbn_bair4; float cbn_bhp4; float cbn_bammo4; float cbn_reward4; float cbn_action4;
+
+vector cbn_epos1; vector cbn_evel1; float cbn_eair1; float cbn_ehp1; float cbn_eammo1;
+vector cbn_epos2; vector cbn_evel2; float cbn_eair2; float cbn_ehp2; float cbn_eammo2;
+vector cbn_epos3; vector cbn_evel3; float cbn_eair3; float cbn_ehp3; float cbn_eammo3;
+vector cbn_epos4; vector cbn_evel4; float cbn_eair4; float cbn_ehp4; float cbn_eammo4;
+
+vector cb_tmp_bpos; vector cb_tmp_bvel; float cb_tmp_bair; float cb_tmp_bhp; float cb_tmp_bammo;
+vector cb_tmp_epos; vector cb_tmp_evel; float cb_tmp_eair; float cb_tmp_ehp; float cb_tmp_eammo;
+float cb_tmp_reward; float cb_tmp_action;
+
+vector cb_out_bpos; vector cb_out_bvel; float cb_out_bair; float cb_out_bhp; float cb_out_bammo;
+vector cb_out_epos; vector cb_out_evel; float cb_out_eair; float cb_out_ehp; float cb_out_eammo;
+float cb_out_blocked;
+
+float cb_start_bhp;
+float cb_start_ehp;
+float cb_best_action;
+
+void () ShadowResetNext = {
+
+   sp_n_reward1 = SHADOW_NEG; sp_n_action1 = -1.000;
+   sp_n_reward2 = SHADOW_NEG; sp_n_action2 = -1.000;
+   sp_n_reward3 = SHADOW_NEG; sp_n_action3 = -1.000;
+   sp_n_reward4 = SHADOW_NEG; sp_n_action4 = -1.000;
+   sp_n_reward5 = SHADOW_NEG; sp_n_action5 = -1.000;
+
+};
+
+void () ShadowPromoteNext = {
+
+   sp_c_pos1 = sp_n_pos1; sp_c_vel1 = sp_n_vel1; sp_c_air1 = sp_n_air1; sp_c_reward1 = sp_n_reward1; sp_c_action1 = sp_n_action1;
+   sp_c_pos2 = sp_n_pos2; sp_c_vel2 = sp_n_vel2; sp_c_air2 = sp_n_air2; sp_c_reward2 = sp_n_reward2; sp_c_action2 = sp_n_action2;
+   sp_c_pos3 = sp_n_pos3; sp_c_vel3 = sp_n_vel3; sp_c_air3 = sp_n_air3; sp_c_reward3 = sp_n_reward3; sp_c_action3 = sp_n_action3;
+   sp_c_pos4 = sp_n_pos4; sp_c_vel4 = sp_n_vel4; sp_c_air4 = sp_n_air4; sp_c_reward4 = sp_n_reward4; sp_c_action4 = sp_n_action4;
+   sp_c_pos5 = sp_n_pos5; sp_c_vel5 = sp_n_vel5; sp_c_air5 = sp_n_air5; sp_c_reward5 = sp_n_reward5; sp_c_action5 = sp_n_action5;
+
+};
+
+void () ShadowConsiderCandidate = {
+
+   if ( (sp_tmp_reward > sp_n_reward1) ) {
+
+      sp_n_pos5 = sp_n_pos4; sp_n_vel5 = sp_n_vel4; sp_n_air5 = sp_n_air4; sp_n_reward5 = sp_n_reward4; sp_n_action5 = sp_n_action4;
+      sp_n_pos4 = sp_n_pos3; sp_n_vel4 = sp_n_vel3; sp_n_air4 = sp_n_air3; sp_n_reward4 = sp_n_reward3; sp_n_action4 = sp_n_action3;
+      sp_n_pos3 = sp_n_pos2; sp_n_vel3 = sp_n_vel2; sp_n_air3 = sp_n_air2; sp_n_reward3 = sp_n_reward2; sp_n_action3 = sp_n_action2;
+      sp_n_pos2 = sp_n_pos1; sp_n_vel2 = sp_n_vel1; sp_n_air2 = sp_n_air1; sp_n_reward2 = sp_n_reward1; sp_n_action2 = sp_n_action1;
+
+      sp_n_pos1 = sp_tmp_pos; sp_n_vel1 = sp_tmp_vel; sp_n_air1 = sp_tmp_air; sp_n_reward1 = sp_tmp_reward; sp_n_action1 = sp_tmp_action;
+      return;
+
+   }
+   if ( (sp_tmp_reward > sp_n_reward2) ) {
+
+      sp_n_pos5 = sp_n_pos4; sp_n_vel5 = sp_n_vel4; sp_n_air5 = sp_n_air4; sp_n_reward5 = sp_n_reward4; sp_n_action5 = sp_n_action4;
+      sp_n_pos4 = sp_n_pos3; sp_n_vel4 = sp_n_vel3; sp_n_air4 = sp_n_air3; sp_n_reward4 = sp_n_reward3; sp_n_action4 = sp_n_action3;
+      sp_n_pos3 = sp_n_pos2; sp_n_vel3 = sp_n_vel2; sp_n_air3 = sp_n_air2; sp_n_reward3 = sp_n_reward2; sp_n_action3 = sp_n_action2;
+
+      sp_n_pos2 = sp_tmp_pos; sp_n_vel2 = sp_tmp_vel; sp_n_air2 = sp_tmp_air; sp_n_reward2 = sp_tmp_reward; sp_n_action2 = sp_tmp_action;
+      return;
+
+   }
+   if ( (sp_tmp_reward > sp_n_reward3) ) {
+
+      sp_n_pos5 = sp_n_pos4; sp_n_vel5 = sp_n_vel4; sp_n_air5 = sp_n_air4; sp_n_reward5 = sp_n_reward4; sp_n_action5 = sp_n_action4;
+      sp_n_pos4 = sp_n_pos3; sp_n_vel4 = sp_n_vel3; sp_n_air4 = sp_n_air3; sp_n_reward4 = sp_n_reward3; sp_n_action4 = sp_n_action3;
+
+      sp_n_pos3 = sp_tmp_pos; sp_n_vel3 = sp_tmp_vel; sp_n_air3 = sp_tmp_air; sp_n_reward3 = sp_tmp_reward; sp_n_action3 = sp_tmp_action;
+      return;
+
+   }
+   if ( (sp_tmp_reward > sp_n_reward4) ) {
+
+      sp_n_pos5 = sp_n_pos4; sp_n_vel5 = sp_n_vel4; sp_n_air5 = sp_n_air4; sp_n_reward5 = sp_n_reward4; sp_n_action5 = sp_n_action4;
+
+      sp_n_pos4 = sp_tmp_pos; sp_n_vel4 = sp_tmp_vel; sp_n_air4 = sp_tmp_air; sp_n_reward4 = sp_tmp_reward; sp_n_action4 = sp_tmp_action;
+      return;
+
+   }
+   if ( (sp_tmp_reward > sp_n_reward5) ) {
+
+      sp_n_pos5 = sp_tmp_pos; sp_n_vel5 = sp_tmp_vel; sp_n_air5 = sp_tmp_air; sp_n_reward5 = sp_tmp_reward; sp_n_action5 = sp_tmp_action;
+      return;
+
+   }
+
+};
+
+void (vector pos, vector vel, float air_left, float action_id, vector fwd, vector right, float use_trace) ShadowSimStep = {
+
+   local vector delta;
+   local vector newpos;
+   local float contents;
+
+   delta = '0.000 0.000 0.000';
+   if ( (action_id == 0.000) ) {
+      delta = (fwd * 400.000);
+   } else if ( (action_id == 1.000) ) {
+      delta = (right * -300.000);
+   } else if ( (action_id == 2.000) ) {
+      delta = (right * 300.000);
+   } else if ( (action_id == 3.000) ) {
+      delta = (fwd * -200.000);
+   } else if ( (action_id == 4.000) ) {
+      delta = (fwd * 400.000);
+      vel_z = (vel_z + 270.000);
+   } else if ( (action_id == 5.000) ) {
+      delta = ((right * -300.000) + (fwd * 200.000));
+      vel_z = (vel_z + 270.000);
+   } else if ( (action_id == 6.000) ) {
+      delta = ((right * 300.000) + (fwd * 200.000));
+      vel_z = (vel_z + 270.000);
+   } else if ( (action_id == 7.000) ) {
+      delta = (fwd * 300.000);
+   }
+
+   // Basic accel + gravity
+   vel = (vel * 0.90) + (delta * 0.10);
+   vel_z = (vel_z - SHADOW_GRAVITY);
+
+   newpos = (pos + (vel * SHADOW_DT));
+   sp_out_blocked = FALSE;
+
+   if ( (use_trace > FALSE) ) {
+      traceline ((pos + '0.000 0.000 16.000'), (newpos + '0.000 0.000 16.000'), TRUE, self);
+      if ( (trace_fraction < TRUE) ) {
+         newpos = (trace_endpos - '0.000 0.000 16.000');
+         vel = '0.000 0.000 0.000';
+         sp_out_blocked = TRUE;
+      }
+   }
+
+   contents = pointcontents (newpos);
+   if ( (contents == CONTENT_WATER) ) {
+      air_left = (air_left - SHADOW_DT);
+      if ( (air_left < FALSE) ) {
+         air_left = FALSE;
+      }
+      vel = (vel * 0.800);
+   } else {
+      air_left = 12.000;
+   }
+
+   sp_out_pos = newpos;
+   sp_out_vel = vel;
+   sp_out_air = air_left;
+
+};
+
+float (vector pos, vector vel, float air_left, vector goal_pos, float use_trace, float blocked, float hazard_bias, float water_bias) ShadowReward = {
+
+   local float dist;
+   local float r;
+   local float contents;
+
+   dist = vlen ((goal_pos - pos));
+   r = (1000.000 / (dist + 1.000));
+
+   // Collision penalty
+   if ( blocked ) {
+      r = (r - (1200.000 * hazard_bias));
+   }
+
+   contents = pointcontents (pos);
+   if ( (contents == CONTENT_LAVA) ) {
+      r = (r - (5000.000 * hazard_bias));
+   } else if ( (contents == CONTENT_SLIME) ) {
+      r = (r - (3500.000 * hazard_bias));
+   } else if ( (contents == CONTENT_WATER) ) {
+      if ( (air_left < 3.000) ) {
+         r = (r - (600.000 * water_bias));
+      } else {
+         r = (r - (100.000 * water_bias));
+      }
+   }
+
+   if ( (use_trace > FALSE) ) {
+      traceline (pos, (pos - '0.000 0.000 96.000'), TRUE, self);
+      if ( (trace_fraction == TRUE) ) {
+         // Cliff/void
+         r = (r - (1200.000 * hazard_bias));
+      } else if ( (trace_plane_normal_z < 0.700) ) {
+         // Steep drop or ledge
+         r = (r - (500.000 * hazard_bias));
+      } else {
+         contents = pointcontents (trace_endpos);
+         if ( (contents == CONTENT_LAVA) || (contents == CONTENT_SLIME) ) {
+            r = (r - (5000.000 * hazard_bias));
+         }
+      }
+   }
+
+   // Stagnation penalty
+   if ( (vlen (vel) < 60.000) ) {
+      r = (r - 200.000);
+   }
+
+   return ( r );
+
+};
+
+// Returns suggested yaw or 9999 if unused
+float (vector goal_pos, float dist) BotShadowPuppetYaw = {
+
+   local float depth;
+   local float beam_w;
+   local float throttle;
+   local float a;
+   local float d;
+   local float debug;
+   local float depth_override;
+   local float beam_override;
+   local float hazard_bias;
+   local float water_bias;
+   local vector ang;
+   local vector fwd;
+   local vector right;
+   local float air_left;
+   local vector dir;
+   local float best_action;
+   local float tr_allsolid;
+   local float tr_startsolid;
+   local float tr_fraction;
+   local vector tr_endpos;
+   local vector tr_plane_normal;
+   local float tr_plane_dist;
+   local entity tr_ent;
+   local float tr_inopen;
+   local float tr_inwater;
+
+   // Fast exits
+   if ( (self.deadflag != DEAD_NO) ) {
+      return ( 9999.000 );
+   }
+   if ( !self.goalentity || (self.goalentity == world) ) {
+      return ( 9999.000 );
+   }
+   if ( (dist < 32.000) ) {
+      return ( 9999.000 );
+   }
+
+   // Throttle
+   throttle = (0.200 - (self.skil * 0.010));
+   if ( (throttle < 0.100) ) {
+      throttle = 0.100;
+   }
+   if ( (self.shadow_next_time > time) ) {
+      return ( 9999.000 );
+   }
+   self.shadow_next_time = (time + throttle);
+
+   debug = cvar ("shadow_nav_debug");
+   if ( (cvar ("shadow_debug") > FALSE) ) {
+      debug = TRUE;
+   }
+   depth_override = cvar ("shadow_nav_depth");
+   beam_override = cvar ("shadow_nav_beam");
+   hazard_bias = cvar ("shadow_nav_hazard_bias");
+   water_bias = cvar ("shadow_nav_water_bias");
+   if ( (hazard_bias == FALSE) ) hazard_bias = TRUE;
+   if ( (water_bias == FALSE) ) water_bias = TRUE;
+
+   // Beam and depth scaling
+   depth = (6.000 + floor (self.skil));
+   if ( (depth > SHADOW_MAX_DEPTH) ) {
+      depth = SHADOW_MAX_DEPTH;
+   }
+   if ( (depth < 6.000) ) {
+      depth = 6.000;
+   }
+
+   beam_w = (3.000 + floor (self.skil * 0.200));
+   if ( (beam_w > SHADOW_MAX_BEAM) ) {
+      beam_w = SHADOW_MAX_BEAM;
+   }
+   if ( (beam_w < 3.000) ) {
+      beam_w = 3.000;
+   }
+   if ( (depth_override > FALSE) ) {
+      depth = depth_override;
+      if ( (depth > SHADOW_MAX_DEPTH) ) depth = SHADOW_MAX_DEPTH;
+      if ( (depth < 2.000) ) depth = 2.000;
+   }
+   if ( (beam_override > FALSE) ) {
+      beam_w = beam_override;
+      if ( (beam_w > SHADOW_MAX_BEAM) ) beam_w = SHADOW_MAX_BEAM;
+      if ( (beam_w < 1.000) ) beam_w = 1.000;
+   }
+
+   // Direction basis toward goal
+   ang = '0.000 0.000 0.000';
+   ang_y = vectoyaw ((goal_pos - self.origin));
+   makevectors (ang);
+   fwd = v_forward;
+   right = v_right;
+
+   // Air time left (seconds)
+   air_left = (self.air_finished - time);
+   if ( (air_left < FALSE) ) {
+      air_left = FALSE;
+   }
+   if ( (air_left > 12.000) ) {
+      air_left = 12.000;
+   }
+
+   tr_allsolid = trace_allsolid;
+   tr_startsolid = trace_startsolid;
+   tr_fraction = trace_fraction;
+   tr_endpos = trace_endpos;
+   tr_plane_normal = trace_plane_normal;
+   tr_plane_dist = trace_plane_dist;
+   tr_ent = trace_ent;
+   tr_inopen = trace_inopen;
+   tr_inwater = trace_inwater;
+
+   // Depth 1: expand all actions with collision + hazard trace
+   ShadowResetNext ();
+   a = 0.000;
+   while ( (a < 8.000) ) {
+
+      ShadowSimStep (self.origin, self.velocity, air_left, a, fwd, right, TRUE);
+      sp_tmp_pos = sp_out_pos;
+      sp_tmp_vel = sp_out_vel;
+      sp_tmp_air = sp_out_air;
+      sp_tmp_reward = ShadowReward (sp_out_pos, sp_out_vel, sp_out_air, goal_pos, TRUE, sp_out_blocked, hazard_bias, water_bias);
+      sp_tmp_action = a;
+      ShadowConsiderCandidate ();
+      a = (a + 1.000);
+
+   }
+   ShadowPromoteNext ();
+
+   d = 2.000;
+   while ( (d <= depth) ) {
+
+      ShadowResetNext ();
+
+      if ( (beam_w >= 1.000) && (sp_c_reward1 > SHADOW_NEG) ) {
+         a = 0.000;
+         while ( (a < 8.000) ) {
+            ShadowSimStep (sp_c_pos1, sp_c_vel1, sp_c_air1, a, fwd, right, FALSE);
+            sp_tmp_pos = sp_out_pos;
+            sp_tmp_vel = sp_out_vel;
+            sp_tmp_air = sp_out_air;
+            sp_tmp_reward = (sp_c_reward1 + ShadowReward (sp_out_pos, sp_out_vel, sp_out_air, goal_pos, FALSE, FALSE, hazard_bias, water_bias));
+            sp_tmp_action = sp_c_action1;
+            ShadowConsiderCandidate ();
+            a = (a + 1.000);
+         }
+      }
+      if ( (beam_w >= 2.000) && (sp_c_reward2 > SHADOW_NEG) ) {
+         a = 0.000;
+         while ( (a < 8.000) ) {
+            ShadowSimStep (sp_c_pos2, sp_c_vel2, sp_c_air2, a, fwd, right, FALSE);
+            sp_tmp_pos = sp_out_pos;
+            sp_tmp_vel = sp_out_vel;
+            sp_tmp_air = sp_out_air;
+            sp_tmp_reward = (sp_c_reward2 + ShadowReward (sp_out_pos, sp_out_vel, sp_out_air, goal_pos, FALSE, FALSE, hazard_bias, water_bias));
+            sp_tmp_action = sp_c_action2;
+            ShadowConsiderCandidate ();
+            a = (a + 1.000);
+         }
+      }
+      if ( (beam_w >= 3.000) && (sp_c_reward3 > SHADOW_NEG) ) {
+         a = 0.000;
+         while ( (a < 8.000) ) {
+            ShadowSimStep (sp_c_pos3, sp_c_vel3, sp_c_air3, a, fwd, right, FALSE);
+            sp_tmp_pos = sp_out_pos;
+            sp_tmp_vel = sp_out_vel;
+            sp_tmp_air = sp_out_air;
+            sp_tmp_reward = (sp_c_reward3 + ShadowReward (sp_out_pos, sp_out_vel, sp_out_air, goal_pos, FALSE, FALSE, hazard_bias, water_bias));
+            sp_tmp_action = sp_c_action3;
+            ShadowConsiderCandidate ();
+            a = (a + 1.000);
+         }
+      }
+      if ( (beam_w >= 4.000) && (sp_c_reward4 > SHADOW_NEG) ) {
+         a = 0.000;
+         while ( (a < 8.000) ) {
+            ShadowSimStep (sp_c_pos4, sp_c_vel4, sp_c_air4, a, fwd, right, FALSE);
+            sp_tmp_pos = sp_out_pos;
+            sp_tmp_vel = sp_out_vel;
+            sp_tmp_air = sp_out_air;
+            sp_tmp_reward = (sp_c_reward4 + ShadowReward (sp_out_pos, sp_out_vel, sp_out_air, goal_pos, FALSE, FALSE, hazard_bias, water_bias));
+            sp_tmp_action = sp_c_action4;
+            ShadowConsiderCandidate ();
+            a = (a + 1.000);
+         }
+      }
+      if ( (beam_w >= 5.000) && (sp_c_reward5 > SHADOW_NEG) ) {
+         a = 0.000;
+         while ( (a < 8.000) ) {
+            ShadowSimStep (sp_c_pos5, sp_c_vel5, sp_c_air5, a, fwd, right, FALSE);
+            sp_tmp_pos = sp_out_pos;
+            sp_tmp_vel = sp_out_vel;
+            sp_tmp_air = sp_out_air;
+            sp_tmp_reward = (sp_c_reward5 + ShadowReward (sp_out_pos, sp_out_vel, sp_out_air, goal_pos, FALSE, FALSE, hazard_bias, water_bias));
+            sp_tmp_action = sp_c_action5;
+            ShadowConsiderCandidate ();
+            a = (a + 1.000);
+         }
+      }
+
+      ShadowPromoteNext ();
+      if ( (sp_c_reward1 <= SHADOW_NEG) ) {
+         break;
+      }
+
+      d = (d + 1.000);
+
+   }
+
+   best_action = sp_c_action1;
+
+   // Restore trace globals
+   trace_allsolid = tr_allsolid;
+   trace_startsolid = tr_startsolid;
+   trace_fraction = tr_fraction;
+   trace_endpos = tr_endpos;
+   trace_plane_normal = tr_plane_normal;
+   trace_plane_dist = tr_plane_dist;
+   trace_ent = tr_ent;
+   trace_inopen = tr_inopen;
+   trace_inwater = tr_inwater;
+
+   if ( (best_action < FALSE) ) {
+      return ( 9999.000 );
+   }
+
+   // Translate action to direction
+   dir = '0.000 0.000 0.000';
+   if ( (best_action == 0.000) ) {
+      dir = fwd;
+   } else if ( (best_action == 1.000) ) {
+      dir = (right * -1.000);
+   } else if ( (best_action == 2.000) ) {
+      dir = right;
+   } else if ( (best_action == 3.000) ) {
+      dir = (fwd * -1.000);
+   } else if ( (best_action == 4.000) ) {
+      dir = fwd;
+      self.shadow_jump_time = (time + 0.200);
+   } else if ( (best_action == 5.000) ) {
+      dir = normalize ((right * -1.000) + (fwd * 0.700));
+      self.shadow_jump_time = (time + 0.200);
+   } else if ( (best_action == 6.000) ) {
+      dir = normalize ((right * 1.000) + (fwd * 0.700));
+      self.shadow_jump_time = (time + 0.200);
+   } else if ( (best_action == 7.000) ) {
+      dir = fwd;
+   }
+
+   if ( (vlen (dir) < 0.100) ) {
+      return ( 9999.000 );
+   }
+
+   if ( debug && cvar("developer") && (time > self.shadow_nav_debug_time) ) {
+      dprint ("[");
+      dprint (self.netname);
+      dprint ("] NAV_PUPPET: depth=");
+      dprint (ftos (depth));
+      dprint (" beam=");
+      dprint (ftos (beam_w));
+      dprint (" hazard=");
+      dprint (ftos (hazard_bias));
+      dprint (" water=");
+      dprint (ftos (water_bias));
+      dprint ("\n");
+      self.shadow_nav_debug_time = (time + 0.500);
+   }
+
+   return ( vectoyaw (dir) );
+
+};
+
+// =============================================================================
+// Combat Crucible: Dual-rollout combat oracle
+// =============================================================================
+
+void () ShadowCombatResetNext = {
+
+   cbn_reward1 = SHADOW_COMBAT_NEG; cbn_action1 = -1.000;
+   cbn_reward2 = SHADOW_COMBAT_NEG; cbn_action2 = -1.000;
+   cbn_reward3 = SHADOW_COMBAT_NEG; cbn_action3 = -1.000;
+   cbn_reward4 = SHADOW_COMBAT_NEG; cbn_action4 = -1.000;
+
+};
+
+void () ShadowCombatPromoteNext = {
+
+   cb_bpos1 = cbn_bpos1; cb_bvel1 = cbn_bvel1; cb_bair1 = cbn_bair1; cb_bhp1 = cbn_bhp1; cb_bammo1 = cbn_bammo1; cb_reward1 = cbn_reward1; cb_action1 = cbn_action1;
+   cb_bpos2 = cbn_bpos2; cb_bvel2 = cbn_bvel2; cb_bair2 = cbn_bair2; cb_bhp2 = cbn_bhp2; cb_bammo2 = cbn_bammo2; cb_reward2 = cbn_reward2; cb_action2 = cbn_action2;
+   cb_bpos3 = cbn_bpos3; cb_bvel3 = cbn_bvel3; cb_bair3 = cbn_bair3; cb_bhp3 = cbn_bhp3; cb_bammo3 = cbn_bammo3; cb_reward3 = cbn_reward3; cb_action3 = cbn_action3;
+   cb_bpos4 = cbn_bpos4; cb_bvel4 = cbn_bvel4; cb_bair4 = cbn_bair4; cb_bhp4 = cbn_bhp4; cb_bammo4 = cbn_bammo4; cb_reward4 = cbn_reward4; cb_action4 = cbn_action4;
+
+   cb_epos1 = cbn_epos1; cb_evel1 = cbn_evel1; cb_eair1 = cbn_eair1; cb_ehp1 = cbn_ehp1; cb_eammo1 = cbn_eammo1;
+   cb_epos2 = cbn_epos2; cb_evel2 = cbn_evel2; cb_eair2 = cbn_eair2; cb_ehp2 = cbn_ehp2; cb_eammo2 = cbn_eammo2;
+   cb_epos3 = cbn_epos3; cb_evel3 = cbn_evel3; cb_eair3 = cbn_eair3; cb_ehp3 = cbn_ehp3; cb_eammo3 = cbn_eammo3;
+   cb_epos4 = cbn_epos4; cb_evel4 = cbn_evel4; cb_eair4 = cbn_eair4; cb_ehp4 = cbn_ehp4; cb_eammo4 = cbn_eammo4;
+
+};
+
+void () ShadowCombatConsiderCandidate = {
+
+   if ( (cb_tmp_reward > cbn_reward1) ) {
+
+      cbn_bpos4 = cbn_bpos3; cbn_bvel4 = cbn_bvel3; cbn_bair4 = cbn_bair3; cbn_bhp4 = cbn_bhp3; cbn_bammo4 = cbn_bammo3; cbn_reward4 = cbn_reward3; cbn_action4 = cbn_action3;
+      cbn_bpos3 = cbn_bpos2; cbn_bvel3 = cbn_bvel2; cbn_bair3 = cbn_bair2; cbn_bhp3 = cbn_bhp2; cbn_bammo3 = cbn_bammo2; cbn_reward3 = cbn_reward2; cbn_action3 = cbn_action2;
+      cbn_bpos2 = cbn_bpos1; cbn_bvel2 = cbn_bvel1; cbn_bair2 = cbn_bair1; cbn_bhp2 = cbn_bhp1; cbn_bammo2 = cbn_bammo1; cbn_reward2 = cbn_reward1; cbn_action2 = cbn_action1;
+
+      cbn_bpos1 = cb_tmp_bpos; cbn_bvel1 = cb_tmp_bvel; cbn_bair1 = cb_tmp_bair; cbn_bhp1 = cb_tmp_bhp; cbn_bammo1 = cb_tmp_bammo; cbn_reward1 = cb_tmp_reward; cbn_action1 = cb_tmp_action;
+
+      cbn_epos4 = cbn_epos3; cbn_evel4 = cbn_evel3; cbn_eair4 = cbn_eair3; cbn_ehp4 = cbn_ehp3; cbn_eammo4 = cbn_eammo3;
+      cbn_epos3 = cbn_epos2; cbn_evel3 = cbn_evel2; cbn_eair3 = cbn_eair2; cbn_ehp3 = cbn_ehp2; cbn_eammo3 = cbn_eammo2;
+      cbn_epos2 = cbn_epos1; cbn_evel2 = cbn_evel1; cbn_eair2 = cbn_eair1; cbn_ehp2 = cbn_ehp1; cbn_eammo2 = cbn_eammo1;
+
+      cbn_epos1 = cb_tmp_epos; cbn_evel1 = cb_tmp_evel; cbn_eair1 = cb_tmp_eair; cbn_ehp1 = cb_tmp_ehp; cbn_eammo1 = cb_tmp_eammo;
+      return;
+
+   }
+   if ( (cb_tmp_reward > cbn_reward2) ) {
+
+      cbn_bpos4 = cbn_bpos3; cbn_bvel4 = cbn_bvel3; cbn_bair4 = cbn_bair3; cbn_bhp4 = cbn_bhp3; cbn_bammo4 = cbn_bammo3; cbn_reward4 = cbn_reward3; cbn_action4 = cbn_action3;
+      cbn_bpos3 = cbn_bpos2; cbn_bvel3 = cbn_bvel2; cbn_bair3 = cbn_bair2; cbn_bhp3 = cbn_bhp2; cbn_bammo3 = cbn_bammo2; cbn_reward3 = cbn_reward2; cbn_action3 = cbn_action2;
+
+      cbn_bpos2 = cb_tmp_bpos; cbn_bvel2 = cb_tmp_bvel; cbn_bair2 = cb_tmp_bair; cbn_bhp2 = cb_tmp_bhp; cbn_bammo2 = cb_tmp_bammo; cbn_reward2 = cb_tmp_reward; cbn_action2 = cb_tmp_action;
+
+      cbn_epos4 = cbn_epos3; cbn_evel4 = cbn_evel3; cbn_eair4 = cbn_eair3; cbn_ehp4 = cbn_ehp3; cbn_eammo4 = cbn_eammo3;
+      cbn_epos3 = cbn_epos2; cbn_evel3 = cbn_evel2; cbn_eair3 = cbn_eair2; cbn_ehp3 = cbn_ehp2; cbn_eammo3 = cbn_eammo2;
+
+      cbn_epos2 = cb_tmp_epos; cbn_evel2 = cb_tmp_evel; cbn_eair2 = cb_tmp_eair; cbn_ehp2 = cb_tmp_ehp; cbn_eammo2 = cb_tmp_eammo;
+      return;
+
+   }
+   if ( (cb_tmp_reward > cbn_reward3) ) {
+
+      cbn_bpos4 = cbn_bpos3; cbn_bvel4 = cbn_bvel3; cbn_bair4 = cbn_bair3; cbn_bhp4 = cbn_bhp3; cbn_bammo4 = cbn_bammo3; cbn_reward4 = cbn_reward3; cbn_action4 = cbn_action3;
+
+      cbn_bpos3 = cb_tmp_bpos; cbn_bvel3 = cb_tmp_bvel; cbn_bair3 = cb_tmp_bair; cbn_bhp3 = cb_tmp_bhp; cbn_bammo3 = cb_tmp_bammo; cbn_reward3 = cb_tmp_reward; cbn_action3 = cb_tmp_action;
+
+      cbn_epos4 = cbn_epos3; cbn_evel4 = cbn_evel3; cbn_eair4 = cbn_eair3; cbn_ehp4 = cbn_ehp3; cbn_eammo4 = cbn_eammo3;
+
+      cbn_epos3 = cb_tmp_epos; cbn_evel3 = cb_tmp_evel; cbn_eair3 = cb_tmp_eair; cbn_ehp3 = cb_tmp_ehp; cbn_eammo3 = cb_tmp_eammo;
+      return;
+
+   }
+   if ( (cb_tmp_reward > cbn_reward4) ) {
+
+      cbn_bpos4 = cb_tmp_bpos; cbn_bvel4 = cb_tmp_bvel; cbn_bair4 = cb_tmp_bair; cbn_bhp4 = cb_tmp_bhp; cbn_bammo4 = cb_tmp_bammo; cbn_reward4 = cb_tmp_reward; cbn_action4 = cb_tmp_action;
+      cbn_epos4 = cb_tmp_epos; cbn_evel4 = cb_tmp_evel; cbn_eair4 = cb_tmp_eair; cbn_ehp4 = cb_tmp_ehp; cbn_eammo4 = cb_tmp_eammo;
+      return;
+
+   }
+
+};
+
+float () ShadowCombatEnemyAction = {
+
+   local float eprob0;
+   local float eprob1;
+   local float eprob2;
+   local float eprob3;
+   local float roll;
+   local float eskil;
+
+   eskil = self.skil;
+   if ( self.enemy && (self.enemy.classname == "dmbot") ) {
+      eskil = self.enemy.skil;
+   }
+   if ( (eskil < FALSE) ) {
+      eskil = FALSE;
+   }
+   if ( (eskil > 10.000) ) {
+      eskil = 10.000;
+   }
+
+   // Low skill: 40/20/20/20, High skill: 30/20/30/20
+   if ( (eskil >= 5.000) ) {
+      eprob0 = 30.000; // strafe toward / circle
+      eprob1 = 20.000; // away
+      eprob2 = 30.000; // mirror
+      eprob3 = 20.000; // charge/fire
+   } else {
+      eprob0 = 40.000;
+      eprob1 = 20.000;
+      eprob2 = 20.000;
+      eprob3 = 20.000;
+   }
+
+   roll = (random () * 100.000);
+   if ( (roll < eprob0) ) return ( 0.000 ); // toward
+   roll = (roll - eprob0);
+   if ( (roll < eprob1) ) return ( 1.000 ); // away
+   roll = (roll - eprob1);
+   if ( (roll < eprob2) ) return ( 2.000 ); // mirror
+   return ( 3.000 ); // fire + forward
+
+};
+
+float (float weapon, float dist, float in_water) ShadowCombatWeaponDamage = {
+
+   if ( (weapon == IT_ROCKET_LAUNCHER) ) {
+      if ( (dist < 800.000) ) return ( 100.000 - (dist * 0.050) );
+      return ( FALSE );
+   }
+   if ( (weapon == IT_LIGHTNING) ) {
+      if ( in_water ) return ( FALSE );
+      if ( (dist < 600.000) ) return ( 30.000 );
+      return ( FALSE );
+   }
+   if ( (weapon == IT_SUPER_SHOTGUN) ) {
+      if ( (dist < 400.000) ) return ( 40.000 - (dist * 0.050) );
+      return ( FALSE );
+   }
+   if ( (weapon == IT_SHOTGUN) ) {
+      if ( (dist < 500.000) ) return ( 20.000 - (dist * 0.030) );
+      return ( FALSE );
+   }
+   if ( (weapon == IT_SUPER_NAILGUN) ) {
+      if ( (dist < 700.000) ) return ( 18.000 );
+      return ( FALSE );
+   }
+   if ( (weapon == IT_NAILGUN) ) {
+      if ( (dist < 700.000) ) return ( 12.000 );
+      return ( FALSE );
+   }
+   return ( FALSE );
+
+};
+
+float (float weapon) ShadowCombatWeaponUsable = {
+
+   if ( (weapon == IT_ROCKET_LAUNCHER) ) {
+      return ( (self.items & IT_ROCKET_LAUNCHER) && (self.ammo_rockets >= TRUE) );
+   }
+   if ( (weapon == IT_LIGHTNING) ) {
+      return ( (self.items & IT_LIGHTNING) && (self.ammo_cells >= TRUE) );
+   }
+   if ( (weapon == IT_SUPER_SHOTGUN) ) {
+      return ( (self.items & IT_SUPER_SHOTGUN) && (self.ammo_shells >= FL_SWIM) );
+   }
+   if ( (weapon == IT_SHOTGUN) ) {
+      return ( (self.items & IT_SHOTGUN) && (self.ammo_shells >= TRUE) );
+   }
+   if ( (weapon == IT_SUPER_NAILGUN) ) {
+      return ( (self.items & IT_SUPER_NAILGUN) && (self.ammo_nails >= FL_SWIM) );
+   }
+   if ( (weapon == IT_NAILGUN) ) {
+      return ( (self.items & IT_NAILGUN) && (self.ammo_nails >= TRUE) );
+   }
+   return ( FALSE );
+
+};
+
+float (entity ent, float weapon) ShadowCombatAmmoForWeapon = {
+
+   if ( !ent ) {
+      return ( FALSE );
+   }
+   if ( (weapon == IT_ROCKET_LAUNCHER) ) {
+      return ( ent.ammo_rockets );
+   }
+   if ( (weapon == IT_LIGHTNING) ) {
+      return ( ent.ammo_cells );
+   }
+   if ( (weapon == IT_SUPER_SHOTGUN) || (weapon == IT_SHOTGUN) ) {
+      return ( ent.ammo_shells );
+   }
+   if ( (weapon == IT_SUPER_NAILGUN) || (weapon == IT_NAILGUN) ) {
+      return ( ent.ammo_nails );
+   }
+   return ( 10.000 );
+
+};
+
+float (vector bpos, vector bvel, float bair, float bhp, float bammo, vector epos, vector evel, float eair, float ehp, vector goal_pos, float use_trace, float blocked) ShadowCombatReward = {
+
+   local float r;
+   local float dist;
+   local float contents;
+
+   r = FALSE;
+   r = (r + ((cb_start_ehp - ehp) * 2.000));
+   r = (r - ((cb_start_bhp - bhp) * 3.000));
+   dist = vlen ((goal_pos - bpos));
+   r = (r + (500.000 / (dist + 1.000)));
+
+   if ( (bhp < 20.000) ) {
+      r = (r - 8000.000);
+   }
+   if ( (ehp < 20.000) ) {
+      r = (r + 4000.000);
+   }
+   if ( blocked ) {
+      r = (r - 1200.000);
+   }
+
+   contents = pointcontents (bpos);
+   if ( (contents == CONTENT_LAVA) ) {
+      r = (r - 5000.000);
+   } else if ( (contents == CONTENT_SLIME) ) {
+      r = (r - 3500.000);
+   }
+   if ( use_trace ) {
+      traceline (bpos, (bpos - '0.000 0.000 96.000'), TRUE, self);
+      if ( (trace_fraction == TRUE) ) {
+         r = (r - 1200.000);
+      } else if ( (trace_plane_normal_z < 0.700) ) {
+         r = (r - 500.000);
+      }
+   }
+
+   if ( (vlen (bvel) < 60.000) ) {
+      r = (r - 150.000);
+   }
+   if ( (bammo < 2.000) ) {
+      r = (r - 200.000);
+   }
+
+   return ( r );
+
+};
+
+void (vector bpos, vector bvel, float bair, float bhp, float bammo, vector epos, vector evel, float eair, float ehp, float eammo, float action_id, float wpn, float use_trace) ShadowCombatSimStep = {
+
+   local float move_id;
+   local float fire_bit;
+   local float enemy_act;
+   local vector ang;
+   local vector efwd;
+   local vector eright;
+   local float bot_dist;
+   local float bot_hit;
+   local float bot_dmg;
+   local float enemy_hit;
+   local float enemy_dmg;
+   local float in_water;
+   local float ein_water;
+
+   move_id = action_id;
+   fire_bit = FALSE;
+   if ( (action_id >= 8.000) ) {
+      move_id = (action_id - 8.000);
+      fire_bit = TRUE;
+   }
+
+   // Bot movement (reuse movement sim)
+   ShadowSimStep (bpos, bvel, bair, move_id, v_forward, v_right, use_trace);
+   cb_out_bpos = sp_out_pos;
+   cb_out_bvel = sp_out_vel;
+   cb_out_bair = sp_out_air;
+   cb_out_bhp = bhp;
+   cb_out_bammo = bammo;
+   cb_out_blocked = sp_out_blocked;
+
+   // Enemy movement model
+   enemy_act = ShadowCombatEnemyAction ();
+   ang = '0.000 0.000 0.000';
+   ang_y = vectoyaw ((cb_out_bpos - epos));
+   makevectors (ang);
+   efwd = v_forward;
+   eright = v_right;
+   if ( (enemy_act == 0.000) ) {
+      ShadowSimStep (epos, evel, eair, 0.000, efwd, eright, use_trace);
+   } else if ( (enemy_act == 1.000) ) {
+      ShadowSimStep (epos, evel, eair, 3.000, efwd, eright, use_trace);
+   } else if ( (enemy_act == 2.000) ) {
+      ShadowSimStep (epos, evel, eair, 1.000, efwd, eright, use_trace);
+   } else {
+      ShadowSimStep (epos, evel, eair, 2.000, efwd, eright, use_trace);
+   }
+   cb_out_epos = sp_out_pos;
+   cb_out_evel = sp_out_vel;
+   cb_out_eair = sp_out_air;
+   cb_out_ehp = ehp;
+   cb_out_eammo = eammo;
+
+   // Bot fire
+   if ( fire_bit && (cb_out_bammo > FALSE) ) {
+      bot_dist = vlen ((cb_out_epos - cb_out_bpos));
+      in_water = (pointcontents (cb_out_bpos) == CONTENT_WATER);
+      bot_dmg = ShadowCombatWeaponDamage (wpn, bot_dist, in_water);
+      if ( (bot_dmg > FALSE) ) {
+         bot_hit = (0.55 + (self.skil * 0.030)) - (bot_dist / 1200.000);
+         if ( (bot_hit < 0.100) ) bot_hit = 0.100;
+         if ( (bot_hit > 0.900) ) bot_hit = 0.900;
+         if ( (random () < bot_hit) ) {
+            cb_out_ehp = (cb_out_ehp - bot_dmg);
+            cb_out_bammo = (cb_out_bammo - TRUE);
+         }
+      }
+   }
+
+   // Enemy fire
+   if ( (enemy_act == 3.000) && (cb_out_eammo > FALSE) ) {
+      bot_dist = vlen ((cb_out_epos - cb_out_bpos));
+      ein_water = (pointcontents (cb_out_epos) == CONTENT_WATER);
+      enemy_dmg = ShadowCombatWeaponDamage (self.enemy.weapon, bot_dist, ein_water);
+      if ( (enemy_dmg > FALSE) ) {
+         enemy_hit = 0.45;
+         if ( self.enemy && (self.enemy.classname == "dmbot") ) {
+            enemy_hit = (0.45 + (self.enemy.skil * 0.020)) - (bot_dist / 1400.000);
+         } else {
+            enemy_hit = (0.45 + (self.skil * 0.010)) - (bot_dist / 1400.000);
+         }
+         if ( (enemy_hit < 0.100) ) enemy_hit = 0.100;
+         if ( (enemy_hit > 0.850) ) enemy_hit = 0.850;
+         if ( (random () < enemy_hit) ) {
+            cb_out_bhp = (cb_out_bhp - enemy_dmg);
+            cb_out_eammo = (cb_out_eammo - TRUE);
+         }
+      }
+   }
+
+};
+
+float (entity enemy, float dist, float wpn, float depth, float beam_w, float fire_bias, float act_limit) ShadowCombatRun = {
+
+   local float d;
+   local float a;
+   local float use_trace;
+   local vector ang;
+   local float start_time;
+   local float bammo;
+   local float eammo;
+   local float act_cap;
+
+   // Init
+   cb_start_bhp = self.health;
+   cb_start_ehp = enemy.health;
+   if ( (cb_start_bhp < TRUE) ) cb_start_bhp = TRUE;
+   if ( (cb_start_ehp < TRUE) ) cb_start_ehp = TRUE;
+
+   bammo = ShadowCombatAmmoForWeapon (self, wpn);
+   eammo = ShadowCombatAmmoForWeapon (enemy, enemy.weapon);
+
+   cb_bpos1 = self.origin; cb_bvel1 = self.velocity; cb_bair1 = (self.air_finished - time); cb_bhp1 = cb_start_bhp; cb_bammo1 = bammo; cb_reward1 = FALSE; cb_action1 = -1.000;
+   cb_epos1 = enemy.origin; cb_evel1 = enemy.velocity; cb_eair1 = (enemy.air_finished - time); cb_ehp1 = cb_start_ehp; cb_eammo1 = eammo;
+
+   if ( (cb_bair1 < FALSE) ) cb_bair1 = FALSE;
+   if ( (cb_eair1 < FALSE) ) cb_eair1 = FALSE;
+
+   cb_reward1 = ShadowCombatReward (cb_bpos1, cb_bvel1, cb_bair1, cb_bhp1, cb_bammo1, cb_epos1, cb_evel1, cb_eair1, cb_ehp1, enemy.origin, TRUE, FALSE);
+   cb_action1 = -1.000;
+   cb_reward2 = SHADOW_COMBAT_NEG; cb_reward3 = SHADOW_COMBAT_NEG; cb_reward4 = SHADOW_COMBAT_NEG;
+   start_time = time;
+
+   d = 1.000;
+   while ( (d <= depth) ) {
+
+      ShadowCombatResetNext ();
+      use_trace = FALSE;
+      if ( (d == 1.000) ) use_trace = TRUE;
+      act_cap = act_limit;
+      if ( (act_cap > (beam_w * 4.000)) ) {
+         act_cap = (beam_w * 4.000);
+      }
+      if ( (act_cap < 1.000) ) {
+         act_cap = 1.000;
+      }
+
+      // Expand beam 1
+      if ( (beam_w >= 1.000) && (cb_reward1 > SHADOW_COMBAT_NEG) ) {
+         a = 0.000;
+         while ( (a < act_cap) ) {
+            ang = '0.000 0.000 0.000';
+            ang_y = vectoyaw ((enemy.origin - self.origin));
+            makevectors (ang);
+            ShadowCombatSimStep (cb_bpos1, cb_bvel1, cb_bair1, cb_bhp1, cb_bammo1, cb_epos1, cb_evel1, cb_eair1, cb_ehp1, cb_eammo1, a, wpn, use_trace);
+            cb_tmp_bpos = cb_out_bpos; cb_tmp_bvel = cb_out_bvel; cb_tmp_bair = cb_out_bair; cb_tmp_bhp = cb_out_bhp;
+            cb_tmp_bammo = cb_out_bammo;
+            cb_tmp_epos = cb_out_epos; cb_tmp_evel = cb_out_evel; cb_tmp_eair = cb_out_eair; cb_tmp_ehp = cb_out_ehp;
+            cb_tmp_eammo = cb_out_eammo;
+            cb_tmp_reward = (cb_reward1 + ShadowCombatReward (cb_out_bpos, cb_out_bvel, cb_out_bair, cb_out_bhp, cb_out_bammo, cb_out_epos, cb_out_evel, cb_out_eair, cb_out_ehp, enemy.origin, use_trace, cb_out_blocked));
+            if ( (a >= 8.000) ) {
+               cb_tmp_reward = (cb_tmp_reward + fire_bias);
+            }
+            cb_tmp_action = a;
+            if ( (d > 1.000) ) cb_tmp_action = cb_action1;
+            ShadowCombatConsiderCandidate ();
+            a = (a + 1.000);
+            if ( (time > (start_time + 0.050)) ) {
+               break;
+            }
+         }
+      }
+      // Expand beam 2
+      if ( (beam_w >= 2.000) && (cb_reward2 > SHADOW_COMBAT_NEG) ) {
+         a = 0.000;
+         while ( (a < act_cap) ) {
+            ang = '0.000 0.000 0.000';
+            ang_y = vectoyaw ((enemy.origin - self.origin));
+            makevectors (ang);
+            ShadowCombatSimStep (cb_bpos2, cb_bvel2, cb_bair2, cb_bhp2, cb_bammo2, cb_epos2, cb_evel2, cb_eair2, cb_ehp2, cb_eammo2, a, wpn, use_trace);
+            cb_tmp_bpos = cb_out_bpos; cb_tmp_bvel = cb_out_bvel; cb_tmp_bair = cb_out_bair; cb_tmp_bhp = cb_out_bhp;
+            cb_tmp_bammo = cb_out_bammo;
+            cb_tmp_epos = cb_out_epos; cb_tmp_evel = cb_out_evel; cb_tmp_eair = cb_out_eair; cb_tmp_ehp = cb_out_ehp;
+            cb_tmp_eammo = cb_out_eammo;
+            cb_tmp_reward = (cb_reward2 + ShadowCombatReward (cb_out_bpos, cb_out_bvel, cb_out_bair, cb_out_bhp, cb_out_bammo, cb_out_epos, cb_out_evel, cb_out_eair, cb_out_ehp, enemy.origin, use_trace, cb_out_blocked));
+            if ( (a >= 8.000) ) {
+               cb_tmp_reward = (cb_tmp_reward + fire_bias);
+            }
+            cb_tmp_action = cb_action2;
+            if ( (d == 1.000) ) cb_tmp_action = a;
+            ShadowCombatConsiderCandidate ();
+            a = (a + 1.000);
+            if ( (time > (start_time + 0.050)) ) {
+               break;
+            }
+         }
+      }
+      // Expand beam 3
+      if ( (beam_w >= 3.000) && (cb_reward3 > SHADOW_COMBAT_NEG) ) {
+         a = 0.000;
+         while ( (a < act_cap) ) {
+            ang = '0.000 0.000 0.000';
+            ang_y = vectoyaw ((enemy.origin - self.origin));
+            makevectors (ang);
+            ShadowCombatSimStep (cb_bpos3, cb_bvel3, cb_bair3, cb_bhp3, cb_bammo3, cb_epos3, cb_evel3, cb_eair3, cb_ehp3, cb_eammo3, a, wpn, use_trace);
+            cb_tmp_bpos = cb_out_bpos; cb_tmp_bvel = cb_out_bvel; cb_tmp_bair = cb_out_bair; cb_tmp_bhp = cb_out_bhp;
+            cb_tmp_bammo = cb_out_bammo;
+            cb_tmp_epos = cb_out_epos; cb_tmp_evel = cb_out_evel; cb_tmp_eair = cb_out_eair; cb_tmp_ehp = cb_out_ehp;
+            cb_tmp_eammo = cb_out_eammo;
+            cb_tmp_reward = (cb_reward3 + ShadowCombatReward (cb_out_bpos, cb_out_bvel, cb_out_bair, cb_out_bhp, cb_out_bammo, cb_out_epos, cb_out_evel, cb_out_eair, cb_out_ehp, enemy.origin, use_trace, cb_out_blocked));
+            if ( (a >= 8.000) ) {
+               cb_tmp_reward = (cb_tmp_reward + fire_bias);
+            }
+            cb_tmp_action = cb_action3;
+            if ( (d == 1.000) ) cb_tmp_action = a;
+            ShadowCombatConsiderCandidate ();
+            a = (a + 1.000);
+            if ( (time > (start_time + 0.050)) ) {
+               break;
+            }
+         }
+      }
+      // Expand beam 4
+      if ( (beam_w >= 4.000) && (cb_reward4 > SHADOW_COMBAT_NEG) ) {
+         a = 0.000;
+         while ( (a < act_cap) ) {
+            ang = '0.000 0.000 0.000';
+            ang_y = vectoyaw ((enemy.origin - self.origin));
+            makevectors (ang);
+            ShadowCombatSimStep (cb_bpos4, cb_bvel4, cb_bair4, cb_bhp4, cb_bammo4, cb_epos4, cb_evel4, cb_eair4, cb_ehp4, cb_eammo4, a, wpn, use_trace);
+            cb_tmp_bpos = cb_out_bpos; cb_tmp_bvel = cb_out_bvel; cb_tmp_bair = cb_out_bair; cb_tmp_bhp = cb_out_bhp;
+            cb_tmp_bammo = cb_out_bammo;
+            cb_tmp_epos = cb_out_epos; cb_tmp_evel = cb_out_evel; cb_tmp_eair = cb_out_eair; cb_tmp_ehp = cb_out_ehp;
+            cb_tmp_eammo = cb_out_eammo;
+            cb_tmp_reward = (cb_reward4 + ShadowCombatReward (cb_out_bpos, cb_out_bvel, cb_out_bair, cb_out_bhp, cb_out_bammo, cb_out_epos, cb_out_evel, cb_out_eair, cb_out_ehp, enemy.origin, use_trace, cb_out_blocked));
+            if ( (a >= 8.000) ) {
+               cb_tmp_reward = (cb_tmp_reward + fire_bias);
+            }
+            cb_tmp_action = cb_action4;
+            if ( (d == 1.000) ) cb_tmp_action = a;
+            ShadowCombatConsiderCandidate ();
+            a = (a + 1.000);
+            if ( (time > (start_time + 0.050)) ) {
+               break;
+            }
+         }
+      }
+
+      ShadowCombatPromoteNext ();
+      if ( (cb_reward1 <= SHADOW_COMBAT_NEG) ) {
+         break;
+      }
+      if ( (time > (start_time + 0.050)) ) {
+         break;
+      }
+      d = (d + 1.000);
+
+   }
+
+   cb_best_action = cb_action1;
+   return ( cb_reward1 );
+
+};
+
+void (entity enemy, float dist) BotShadowCombatThink = {
+
+   local float throttle;
+   local float depth;
+   local float beam_w;
+   local float best_reward;
+   local float best_weapon;
+   local float best_action;
+   local float reward;
+   local float wpn;
+   local float depth_override;
+   local float beam_override;
+   local float fire_bias;
+   local float act_limit;
+   local float debug;
+   local vector ang;
+   local vector dir;
+
+   if ( !enemy || (enemy == world) ) {
+      return;
+   }
+   if ( enemy.deadflag != DEAD_NO ) {
+      return;
+   }
+   if ( (self.deadflag != DEAD_NO) ) {
+      return;
+   }
+   if ( (dist < 64.000) ) {
+      return;
+   }
+
+   throttle = (0.200 - (self.skil * 0.010));
+   if ( (throttle < 0.100) ) {
+      throttle = 0.100;
+   }
+   if ( (self.shadow_combat_next_time > time) ) {
+      return;
+   }
+   self.shadow_combat_next_time = (time + throttle);
+
+   debug = cvar ("shadow_combat_debug");
+   if ( (cvar ("shadow_debug") > FALSE) ) {
+      debug = TRUE;
+   }
+   depth_override = cvar ("shadow_combat_depth");
+   beam_override = cvar ("shadow_combat_beam");
+   fire_bias = cvar ("shadow_combat_fire_bias");
+
+   depth = (5.000 + floor (self.skil * 0.700));
+   if ( (depth > SHADOW_COMBAT_MAX_DEPTH) ) depth = SHADOW_COMBAT_MAX_DEPTH;
+   if ( (depth < 5.000) ) depth = 5.000;
+
+   beam_w = (2.000 + floor (self.skil * 0.200));
+   if ( (beam_w > SHADOW_COMBAT_MAX_BEAM) ) beam_w = SHADOW_COMBAT_MAX_BEAM;
+   if ( (beam_w < 2.000) ) beam_w = 2.000;
+   act_limit = (8.000 * 2.000 * (1.000 + floor (self.skil / 5.000)));
+   if ( (act_limit < 8.000) ) act_limit = 8.000;
+   if ( (act_limit > 16.000) ) act_limit = 16.000;
+   if ( (depth_override > FALSE) ) {
+      depth = depth_override;
+      if ( (depth > SHADOW_COMBAT_MAX_DEPTH) ) depth = SHADOW_COMBAT_MAX_DEPTH;
+      if ( (depth < 2.000) ) depth = 2.000;
+   }
+   if ( (beam_override > FALSE) ) {
+      beam_w = beam_override;
+      if ( (beam_w > SHADOW_COMBAT_MAX_BEAM) ) beam_w = SHADOW_COMBAT_MAX_BEAM;
+      if ( (beam_w < 1.000) ) beam_w = 1.000;
+   }
+
+   best_reward = SHADOW_COMBAT_NEG;
+   best_weapon = FALSE;
+   best_action = -1.000;
+
+   // Try prioritized weapons
+   wpn = IT_ROCKET_LAUNCHER;
+   if ( ShadowCombatWeaponUsable (wpn) ) {
+      reward = ShadowCombatRun (enemy, dist, wpn, depth, beam_w, fire_bias, act_limit);
+      if ( (reward > best_reward) ) {
+         best_reward = reward;
+         best_weapon = wpn;
+         best_action = cb_best_action;
+      }
+   }
+   wpn = IT_LIGHTNING;
+   if ( ShadowCombatWeaponUsable (wpn) ) {
+      reward = ShadowCombatRun (enemy, dist, wpn, depth, beam_w, fire_bias, act_limit);
+      if ( (reward > best_reward) ) {
+         best_reward = reward;
+         best_weapon = wpn;
+         best_action = cb_best_action;
+      }
+   }
+   wpn = IT_SUPER_SHOTGUN;
+   if ( ShadowCombatWeaponUsable (wpn) ) {
+      reward = ShadowCombatRun (enemy, dist, wpn, depth, beam_w, fire_bias, act_limit);
+      if ( (reward > best_reward) ) {
+         best_reward = reward;
+         best_weapon = wpn;
+         best_action = cb_best_action;
+      }
+   }
+
+   // Fallback: current weapon
+   if ( (best_weapon == FALSE) && ShadowCombatWeaponUsable (self.weapon) ) {
+      reward = ShadowCombatRun (enemy, dist, self.weapon, depth, beam_w, fire_bias, act_limit);
+      best_reward = reward;
+      best_weapon = self.weapon;
+      best_action = cb_best_action;
+   }
+
+   if ( (best_reward < -1500.000) ) {
+      return;
+   }
+   if ( (best_action < FALSE) ) {
+      return;
+   }
+
+   // Map action to yaw + fire flag
+   ang = '0.000 0.000 0.000';
+   ang_y = vectoyaw ((enemy.origin - self.origin));
+   makevectors (ang);
+   dir = '0.000 0.000 0.000';
+   if ( (best_action >= 8.000) ) {
+      self.shadow_combat_fire = TRUE;
+   } else {
+      self.shadow_combat_fire = FALSE;
+   }
+
+   if ( (best_action >= 8.000) ) {
+      best_action = (best_action - 8.000);
+   }
+   if ( (best_action == 0.000) ) {
+      dir = v_forward;
+   } else if ( (best_action == 1.000) ) {
+      dir = (v_right * -1.000);
+   } else if ( (best_action == 2.000) ) {
+      dir = v_right;
+   } else if ( (best_action == 3.000) ) {
+      dir = (v_forward * -1.000);
+   } else if ( (best_action == 4.000) ) {
+      dir = v_forward;
+   } else if ( (best_action == 5.000) ) {
+      dir = normalize ((v_right * -1.000) + (v_forward * 0.700));
+   } else if ( (best_action == 6.000) ) {
+      dir = normalize ((v_right * 1.000) + (v_forward * 0.700));
+   } else if ( (best_action == 7.000) ) {
+      dir = v_forward;
+   }
+
+   if ( (vlen (dir) < 0.100) ) {
+      return;
+   }
+
+   self.shadow_combat_yaw = vectoyaw (dir);
+   self.shadow_combat_weapon = best_weapon;
+   self.shadow_combat_time = (time + 0.250);
+   if ( debug && cvar("developer") ) {
+      dprint ("[");
+      dprint (self.netname);
+      dprint ("] COMBAT_PUPPET: reward=");
+      dprint (ftos (floor (best_reward)));
+      dprint (" depth=");
+      dprint (ftos (depth));
+      dprint (" beam=");
+      dprint (ftos (beam_w));
+      dprint (" fire=");
+      if ( (self.shadow_combat_fire > FALSE) ) {
+         dprint ("1");
+      } else {
+         dprint ("0");
+      }
+      dprint (" wpn=");
+      dprint (ftos (best_weapon));
+      dprint ("\n");
+   }
+
+};
+
+float () BotShadowCombatWeapon = {
+
+   if ( (self.shadow_combat_time > time) && (self.shadow_combat_weapon > FALSE) ) {
+      if ( ShadowCombatWeaponUsable (self.shadow_combat_weapon) ) {
+         return ( self.shadow_combat_weapon );
+      }
+   }
+   return ( FALSE );
+
+};

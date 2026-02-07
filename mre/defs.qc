@@ -145,8 +145,18 @@ void end_sys_fields;
 .float is_mandatory;
 .float mandatory_until;
 .entity bot_next;
+.float bot;                 // Spec compatibility: 1 = bot entity
 .float last_ai_state;
 .float last_ai_state_time;  // FIX: Time when AI state last changed (hysteresis)
+.float timing_debug_time;   // Debug throttle for powerup timing logs
+.float shadow_next_time;    // Shadow Puppets throttle timer
+.float shadow_jump_time;    // Shadow Puppets jump hint (short-lived)
+.float shadow_combat_time;  // Shadow Puppets combat hint expiry
+.float shadow_combat_yaw;   // Shadow Puppets combat steer
+.float shadow_combat_fire;  // Shadow Puppets combat fire hint
+.float shadow_combat_weapon;// Shadow Puppets combat weapon hint
+.float shadow_combat_next_time; // Shadow Puppets combat throttle timer
+.float shadow_nav_debug_time;   // Shadow Puppets nav debug throttle
 float FALSE    = 0.000;
 float TRUE    = 1.000;
 float FL_FLY    = 1.000;

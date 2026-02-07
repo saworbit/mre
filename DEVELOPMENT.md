@@ -9,6 +9,8 @@ https://github.com/saworbit/mre/tree/master/mre
 Everything under `archive/` is legacy reference material. Do not edit or build
 from `archive/`.
 
+Design and implementation spec: `REAPER_BOT_REBOOT_SPEC.md`
+
 ## Layout
 - `mre/` - Clean baseline QuakeC sources.
 - `launch/quake-spasm/mre/` - Local runtime folder (progs.dat deploy target).
@@ -33,6 +35,20 @@ Copy it to the runtime folder:
 ```
 copy c:\reaperai\progs.dat c:\reaperai\launch\quake-spasm\mre\progs.dat /Y
 ```
+Spec-aligned strict compile flags:
+```
+$env:FTEQCC_FLAGS = "-O2 -Werror"
+powershell -ExecutionPolicy Bypass -File ci\build_mre.ps1
+```
+
+Known build warnings (FTEQCC, non-bot):
+- `mre/ai.qc`: sounds used without direct precache
+  - `ogre/ogdrag.wav`
+  - `ogre/ogwake.wav`
+  - `wizard/wsight.wav`
+  - `zombie/z_idle.wav`
+  - `blob/sight1.wav`
+  - `vomitus/v_sight1.wav`
 
 ## Deploy
 The build script copies to:
@@ -46,9 +62,12 @@ c:\reaperai\launch\quake-spasm\launch_reapbot_v2.bat 8 dm4
 ## Test (full command + logging)
 From `c:\reaperai\launch\quake-spasm`:
 ```
-quakespasm.exe -game mre -condebug +developer 1 -listen 8 +maxplayers 8 +deathmatch 1 +map dm4
+quakespasm-sdl12.exe -game mre -condebug +developer 1 -listen 8 +maxplayers 8 +deathmatch 1 +map dm4
 ```
 Log output: `c:\reaperai\launch\quake-spasm\qconsole.log`
+
+Note: If `quakespasm.exe` is missing or zero bytes, use `quakespasm-sdl12.exe`
+or copy/rename it to `quakespasm.exe`.
 
 ## Logging notes
 If `+developer 1` is enabled and `sv_aim` is not `0.93`, the bot spawner prints
@@ -74,6 +93,21 @@ Auditory inference uses virtual noise events (NOISE_ITEM/WATER/STEP/WEAPON);
 combat hearing still logs `[BotName] HEARD: Combat at ...` when `developer` is on.
 Teacher Mode visualization uses `impulse 102` to show BotPath nodes and
 `impulse 103` to hide them.
+
+## Shadow Puppets tuning (cvars)
+These are runtime knobs for the combat rollout system:
+- `shadow_debug` (0/1): master debug switch (enables both nav + combat logs)
+- `shadow_combat_debug` (0/1): print rollout decisions (requires `+developer 1`)
+- `shadow_combat_depth` (>0): override combat rollout depth (ticks)
+- `shadow_combat_beam` (>0): override combat beam width
+- `shadow_combat_fire_bias` (float): reward bias for fire actions (positive = more aggressive)
+
+Navigation rollout knobs:
+- `shadow_nav_debug` (0/1): print nav rollout decisions (requires `+developer 1`)
+- `shadow_nav_depth` (>0): override nav rollout depth (ticks)
+- `shadow_nav_beam` (>0): override nav beam width
+- `shadow_nav_hazard_bias` (float): scales hazard penalties (lava/slime/cliffs)
+- `shadow_nav_water_bias` (float): scales water penalties
 
 ## CI
 ```
