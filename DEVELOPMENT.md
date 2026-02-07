@@ -109,6 +109,10 @@ Navigation rollout knobs:
 - `shadow_nav_hazard_bias` (float): scales hazard penalties (lava/slime/cliffs)
 - `shadow_nav_water_bias` (float): scales water penalties
 
+Notes:
+- Combat rollout uses a capped action sample per depth (skill-scaled) and beam search.
+- Navigation rollout uses a beam search with hazard/water penalties and a 5Hz throttle.
+
 ## CI
 ```
 powershell -ExecutionPolicy Bypass -File c:\reaperai\ci\build_mre.ps1

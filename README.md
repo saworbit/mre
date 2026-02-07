@@ -108,3 +108,12 @@ Automated tests check for: edict overflow, runaway loops, route recursion, score
 - [mre/CHANGELOG.md](mre/CHANGELOG.md) - Detailed changes
 - [mre/SOURCES.md](mre/SOURCES.md) - Research sources
 - [KNOWN_ISSUES.md](KNOWN_ISSUES.md) - Current regressions (bots clipping, logging gaps) and reproduction notes
+
+## Shadow Puppets (Predictive Rollouts)
+The reboot now includes predictive rollout systems for navigation and combat:
+- **Navigation Shadow Puppets**: short-horizon beam search to avoid hazards and dead-ends.
+- **Combat Crucible**: dual-rollout combat oracle that selects a first action using beam search.
+
+Runtime cvars (see `DEVELOPMENT.md` for full details):
+- `shadow_debug` (0/1) master debug
+- `shadow_nav_*` and `shadow_combat_*` tuning knobs

@@ -44,6 +44,7 @@ and `BotAI_Main` (combat), which implement the decision layer.
 - Seeking/pathfinding: `mre/botgoal.qc`, `mre/botroute.qc`
 - Movement/hazards/water: `mre/botmove.qc`, `mre/botthink.qc`
 - Combat/prediction/displacement: `mre/botfight.qc`
+- Rollout prediction: `mre/ai_predict.qc` (Shadow Puppets + Combat Crucible)
 - Weapons selection: `mre/botfight.qc` (`W_BestWeapon`, `W_BestHeldWeapon`)
 - Utilities and signals:
   - Visibility/FOV: `mre/botvis.qc`
@@ -82,6 +83,9 @@ Relevant functions:
 - Predictive aiming: `leadtarget`, `BotPredictPosition`
 - Tactical behaviors: ambush, blind fire, displacement kills
 - Dodge and evasive movement integrated with combat loop
+- **Combat Crucible**: dual-rollout combat oracle in `mre/ai_predict.qc`
+  - Beam search over short horizons to choose first action
+  - Skill-scaled depth/beam; hazard-aware and ammo-sensitive
 
 ### 5. Weapons (mre/botfight.qc)
 
