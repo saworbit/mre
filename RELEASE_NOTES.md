@@ -61,6 +61,10 @@ Standard convention from Frogbot and other bots. Type `impulse 100` in console t
 impulse 100    // Add one bot immediately
 ```
 
+### Vortex Telechains + Apex Lifts (Reboot Extensions)
+- **Telechains**: bots detect teleporter warps and fuse one-way tele edges, enabling safe multi-tele flanks while avoiding cursed exits.
+- **Apex Lifts**: timed platform nodes add wait-cost biasing and low-cost lift portals for smoother lift routing and chaining.
+
 ---
 
 ## Investigated Issues (Not Found / Already Working)

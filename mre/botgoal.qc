@@ -19,6 +19,7 @@ float (float dist) BotAI_Strategic;
 void (entity node, float amount) ModulateNodeWeight;
 vector () SilentUnstuck;
 void (vector pos) CurseNode;
+float () Vortex_ApplyGoal;
 
 void () shoottarget = {
 
@@ -184,6 +185,9 @@ void (float dist) ai_botseek = {
 
       }
       if ( (botTarget.goalentity.solid != SOLID_NOT) ) {
+
+         // Vortex Navmesh: apply dynamic mesh steering when goal is obstructed
+         Vortex_ApplyGoal ();
 
          oldrng = vlen ((botTarget.origin - self.origin));
          Botmovetogoal (dist);

@@ -62,7 +62,10 @@ For visual/behavioral verification:
 - [ ] **Unstuck**: Bots don't run in place indefinitely
 - [ ] **Silent Unstuck**: Bots escape with strafe/pause; jumps stay rare near enemies
 - [ ] **Cursed Nodes**: Repeated stuck corners are avoided after a few failures
+- [ ] **Vortex Navmesh**: After ~30-60s, bots route around blocked LOS using dynamic mesh nodes
+- [ ] **Vortex Telechains**: Teleporter chains are detected (dm2/dm4), exits are predictable, and bots avoid cursed exits
 - [ ] **Lift Riding**: Bots wait on platforms, don't walk off mid-ride
+- [ ] **Apex Lifts**: Bots time lifts, chain lift paths, and don't spam jump on platforms
 - [ ] **Door Opening**: Bots trigger doors and wait for them to open
 - [ ] **Hazard Avoidance**: Bots refuse to walk into lava/slime
 - [ ] **Wall Flow**: Bots curve smoothly around corners (no stop-turn-go)
@@ -98,6 +101,7 @@ For visual/behavioral verification:
 
 ## Test Maps
 - `dm4` - The Bad Place (standard DM, good for combat testing)
+- `dm2` - Claustrophobopolis (teleporters + lava platforms, good for telechains/lifts)
 - `dm3` - The Abandoned Base (tight corridors, good for wall-flow steering)
 - `dm6` - The Dark Zone (has water, good for water/flash tests)
 - `e1m1` - Slipgate Complex (SP map, good for edict limit testing)

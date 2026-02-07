@@ -33,6 +33,9 @@ from `archive/`.
 - Silent Specters (stealth unstuck rollouts; jump noise minimized, enemy-aware penalty)
 - Cursed Nodes (adaptive stuck-learning mesh with decay, biases rollouts + routing)
 - Phantom Apprenticeship (spectral episodes with rollout validation, soft A* bias, decay; no teleport shortcuts or golden locks)
+- **Vortex Navmesh + Apex HPA\*** (incremental dynamic navmesh seeded from spawns/items, phantom-validated edges, cursed/glory-biased costs, hierarchical clustering for large maps; no pre-bake)
+- **Vortex Telechains** (teleporter warp detection and one-way quantum edges; chain-safe, hazard-aware, low-cost path fusion)
+- **Apex Lifts** (lift sampling with wait-cost biasing and HPA* portal weighting for timed platforms)
 - Mirage Minds (persona-driven humanization with entropy, micro-goals, heatmap denial, and feint pauses)
 - Teacher Mode debug impulses (102 show / 103 hide bot learning nodes, 104 dump spectral episodes)
 - Speed Demon update (bunny hopping on straight runs and reflex projectile dodging)
@@ -120,3 +123,18 @@ Runtime cvars (see `DEVELOPMENT.md` for full details):
 ## Mirage Minds (Persona Layer)
 - `sv_mirage` (0/1) master enable
 - `mirage_debug` (0/1) developer logs
+
+## Vortex Navmesh (Dynamic Learning Mesh)
+- Incremental mesh: flood-fill from spawns/items builds nodes and edges over time (no pre-bake).
+- Phantom episodes validate edges; cursed nodes add cost; glory usage attracts paths.
+- Apex HPA* clusters the mesh on larger maps for faster queries.
+- Mesh only takes over when a direct line to the goal is blocked; normal BotPath routing remains the baseline.
+## Vortex Telechains (Teleport Fusion)
+- Detects large teleporter warps and fuses one-way "quantum" edges between entry/exit nodes.
+- Chaining is permitted with loop limits; hazard exits are cursed, powerups boost usage.
+- Tele edges are low-cost in Vortex A* and low-cost portals in Apex HPA*.
+
+## Apex Lifts (Timed Platforms)
+- Lift nodes are sampled from world geometry and tagged in Vortex.
+- A* adds a wait penalty based on lift cycle timing and bot skill (impatience).
+- Apex HPA* marks lift portals for cheaper abstraction of multi-hop lift paths.

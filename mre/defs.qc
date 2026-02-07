@@ -343,9 +343,16 @@ float () Bot_CheckReaction; // Forward declaration
 .entity phantom_owner;     // Phantom's owner bot
 .vector episode_start;     // Episode start position
 .float episode_time;       // Episode end time
-.float last_sim_time;      // Last rollout time
-.float sim_maneuver;       // 0=walk,1=jump,2=tele,3=swim
-.float last_phantom;       // Cooldown for spawning a phantom
+  .float last_sim_time;      // Last rollout time
+  .float sim_maneuver;       // 0=walk,1=jump,2=tele,3=swim
+  .vector tele_entry;        // Phantom-detected tele entry
+  .vector tele_exit;         // Phantom-detected tele exit
+  .float tele_chain_time;    // Time of last tele detect
+  .float last_phantom;       // Cooldown for spawning a phantom
+  // Vortex navmesh steering cache
+  .vector vortex_path_goal;  // Cached goal for Vortex pathing
+  .vector vortex_path_next;  // Next Vortex waypoint
+  .float vortex_path_time;   // Last Vortex path compute time
 // Mirage Minds (persona/entropy humanization)
 .float mood_entropy;       // 0..1 persona variance
 .float persona_state;      // Persona enum

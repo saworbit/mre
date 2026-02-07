@@ -94,6 +94,7 @@ Quad debug logs appear as `[QuadSpawn]` when the item respawns and
 `[QuadTouch] accept/blocked/reject` when a player or bot tries to pick it up.
 Teleport traces appear as `[Teleport]` for bot teleporter use, and large
 position jumps log as `[BotWarp]`.
+Telechain fusions log as `Tele chain: entry <id> exit <id>` when `developer` is on.
 Auditory inference uses virtual noise events (NOISE_ITEM/WATER/STEP/WEAPON);
 combat hearing still logs `[BotName] HEARD: Combat at ...` when `developer` is on.
 Teacher Mode visualization uses `impulse 102` to show BotPath nodes and
@@ -138,6 +139,31 @@ Cursed Nodes are a compact stuck-learning mesh in `mre/ai_mirage.qc`:
 - `CURSED_MAX`, `CURSED_GRID`, `CURSED_MAX_PENALTY`, `CURSED_DECAY`
 - Decay runs via `StartFrame` (`world.qc`), reset on map load (`worldspawn`)
 - Penalties bias both rollouts (`ShadowReward`) and route cost (`botroute.qc`)
+
+## Vortex Navmesh + Apex HPA* (dynamic path mesh)
+Vortex is a lightweight, incremental navmesh built at runtime and validated by
+phantom episodes. Apex adds a small HPA* abstraction layer for large maps.
+
+Key integration points:
+- `mre/ai_vortex.qc`: mesh nodes/edges, flood build, A* cost bias (cursed + usage)
+- `mre/ai_apex.qc`: cluster graph over Vortex, used by `Apex_VortexNext`
+- `mre/world.qc`: `Vortex_Reset`/`Apex_Reset` on map load, `Vortex_Frame`/`Apex_Frame` each `StartFrame`
+- `mre/bot_learn.qc`: `Vortex_RecordEpisode` when a phantom episode succeeds
+- `mre/botgoal.qc`: `Vortex_ApplyGoal` injects a mesh waypoint only when the goal is obstructed
+
+Compile-time tuning knobs:
+- `VORTEX_MAX_NODES`, `VORTEX_MAX_CONN`, `VORTEX_TRACE_BUDGET`, `VORTEX_BUILD_THROTTLE`
+- `VORTEX_MIN_READY`, `VORTEX_DECAY_THROTTLE`
+- `VORTEX_TELE_CHAIN_MAX`, `VORTEX_TELE_WARP_DIST`, `VORTEX_TELE_COST`
+- `VORTEX_LIFT_SAMPLE_THROTTLE`
+- `APEX_BUILD_THROTTLE`, `APEX_MIN_NODES`
+
+## Vortex Telechains + Apex Lifts (teleport + platform fusion)
+- Telechains: large warps (>500u) are detected via phantom tele events and fused
+  into one-way tele edges; chain depth is limited to prevent loops.
+- Lifts: nodes are sampled against `func_plat`/`func_train`, with a wait penalty
+  based on the lift cycle; Apex clusters mark lift portals as low-cost edges.
+- Rollout sim grants a small reward when riding lifts to encourage stable platform usage.
 
 ## Mirage Minds tuning (cvars)
 - `sv_mirage` (0/1): master enable for persona-driven humanization

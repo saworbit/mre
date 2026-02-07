@@ -26,7 +26,7 @@ and control-flow reference.
 
 | Function | File | Called For | Purpose |
 |----------|------|------------|---------|
-| `StartFrame()` | `world.qc:232` | Once per frame | Global frame setup (cvars, framecount) |
+| `StartFrame()` | `world.qc:232` | Once per frame | Global frame setup (cvars, framecount, graph + learning decay, Vortex/Apex frames) |
 | `PlayerPreThink()` | `client.qc:1120` | Players only | Pre-physics player logic |
 | `PlayerPostThink()` | `client.qc:1339` | Players only | Post-physics player logic |
 | `self.think()` | (per entity) | All entities | Entity-specific behavior |
@@ -134,6 +134,18 @@ Frame Function (bot_run, bot_chase, etc.)
 **Silent Specters (unstuck)** lives inside `ai_botseek` (`mre/botgoal.qc`):
 when a bot stalls for ~2s, it runs a short, quiet rollout (`SilentUnstuck`) and
 marks a local cursed node (`CurseNode`). Cursed decay is global in `StartFrame`.
+
+**Vortex Navmesh (dynamic mesh)** lives across `ai_vortex.qc` and `ai_apex.qc`:
+- `Vortex_Frame()` incrementally floods nodes/edges each `StartFrame`.
+- `Apex_Frame()` rebuilds hierarchical clusters when the mesh grows.
+- `ai_botseek` calls `Vortex_ApplyGoal()` only when the current goal is obstructed,
+  inserting a short-lived mesh waypoint while keeping normal BotPath routing as baseline.
+- Phantom episodes validate mesh edges via `Vortex_RecordEpisode()` in `bot_learn.qc`.
+
+**Vortex Telechains + Apex Lifts** extend the mesh with teleport and platform logic:
+- Telechains fuse one-way tele edges when a phantom observes a large warp (>500u).
+- Tele edges are low-cost in Vortex A* and tagged as cheap portals in Apex.
+- Lift nodes are sampled from `func_plat`/`func_train` and add a wait-cost based on cycle timing.
 
 ### Reflex Dodge
 
@@ -607,6 +619,7 @@ The phantom tracks the target and validates maneuvers via rollout sims:
 PhantomThink()                           [bot_learn.qc]
   |
   |-> Detect maneuver (jump/tele/swim/walk)
+  |-> If large warp (>500u) and teleport_time active, fuse tele edge
   |-> [every 0.5s]
       |-> EtherealRollout(start, goal, maneuver)
           |-> ShadowSimStep()           [ai_predict.qc]
@@ -812,6 +825,7 @@ W_BestBotWeapon()                          [botfight.qc]
 |------|--------|
 | 2026-02-07 | Added Mirage Minds (persona/entropy humanization and heatmap bias) |
 | 2026-02-07 | Added Phantom Apprenticeship (spectral episodes with rollout validation and soft A* bias) |
+| 2026-02-07 | Added Vortex Telechains (teleport fusion) and Apex Lifts (timed platform routing) |
 | 2026-01-18 | Added Darwin Update (adaptive learning, weapon confidence, decay) |
 | 2026-01-18 | Added Mastermind Update (pre-fire, ambush, displacement) |
 | 2026-01-18 | Added Smooth Steering, Sixth Sense, and High-Value Item Focus |

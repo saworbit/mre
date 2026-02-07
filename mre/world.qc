@@ -2,6 +2,10 @@
 void () InitBodyQue;
 void () DecayCursed;
 void () Cursed_Reset;
+void () Vortex_Reset;
+void () Vortex_Frame;
+void () Apex_Reset;
+void () Apex_Frame;
 
 void () main = {
 
@@ -127,6 +131,8 @@ void () worldspawn =
    lastspawn = world;
    InitBodyQue ();
    Cursed_Reset ();
+   Vortex_Reset ();
+   Apex_Reset ();
    if ( (self.model == "maps/e1m8.bsp") ) {
 
       cvar_set ("sv_gravity","100");
@@ -240,6 +246,8 @@ void () StartFrame = {
    MaintainGraph ();
    DecayEpisodes ();
    DecayCursed ();
+   Vortex_Frame ();
+   Apex_Frame ();
 
 };
 

@@ -17,6 +17,19 @@
 - Feature: Cursed Nodes adaptive stuck-learning mesh (`ai_mirage.qc`, `botgoal.qc`,
   `ai_predict.qc`, `botroute.qc`, `world.qc`). Quantized grid penalties decay over
   time and bias both rollouts and route cost away from repeated stuck zones.
+- Feature: **Vortex Navmesh + Apex HPA\*** (`ai_vortex.qc`, `ai_apex.qc`,
+  `bot_learn.qc`, `botgoal.qc`, `world.qc`, `defs.qc`). Incremental dynamic mesh
+  seeded from spawns/items with phantom-validated edges, cursed/glory-biased costs,
+  and decay culling; Apex builds lightweight hierarchical clusters for faster
+  queries on large maps (no pre-bake).
+- Feature: **Vortex Telechains** (`ai_vortex.qc`, `bot_learn.qc`, `ai_apex.qc`).
+  Detects teleporter warps (>500u), fuses one-way quantum edges between entry/exit
+  nodes, and allows chain-limited low-cost tele routing. Hazard exits are cursed;
+  strong exits gain usage/glory boosts. Apex portals favor tele links.
+- Feature: **Apex Lifts** (`ai_vortex.qc`, `ai_predict.qc`, `ai_apex.qc`).
+  Samples lift nodes (func_plat/func_train), adds wait-cost biasing in Vortex A*,
+  rewards lift rides in rollouts, and tags lift portals for low-cost abstraction
+  in Apex clusters.
 - Removed: Legacy episodic learning (golden locks, teleport shortcuts, LOS shortcutting, trail rewards).
 - Removed: Broken map-control timing rushes (auto-drop BotPath at powerup spawns,
   spawn-time beelines, and hard lock boosts).

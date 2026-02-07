@@ -6,6 +6,10 @@ float (vector pos, vector vel, float air_left, vector goal_pos, float use_trace,
 void () PhantomThink;
 void (entity ph) Spectral_EndEpisode;
 void () Spectral_AbortEpisode;
+void (vector start, vector end) Vortex_RecordEpisode;
+void (vector entry, vector exit) Vortex_FuseTeleChain;
+float (vector pos) Vortex_FindNode;
+void (float idx, float amt) Vortex_BoostUsage;
 
 #define MAX_EPISODES 50
 #define EPISODE_DURATION 10.000
@@ -166,6 +170,9 @@ float (vector start, vector goal, float maneuver) EtherealRollout = {
    local float sum;
 
    if ( (maneuver == 2.000) ) {
+      if ( vlen (goal - start) > 500.000 ) {
+         return 100.000;
+      }
       traceline (start, goal, TRUE, world);
       if ( (trace_fraction == 1.000) ) {
          return 100.000;
@@ -196,6 +203,7 @@ float (vector start, vector goal, float maneuver) EtherealRollout = {
    er_pos[0] = start;
    er_vel[0] = '0 0 0';
    er_air[0] = 12.000;
+   sp_out_onlift = FALSE;
    er_reward[0] = ShadowReward (start, er_vel[0], er_air[0], goal, 0.000, 0.000, 1.000, 1.000);
    er_count = TRUE;
 
@@ -418,6 +426,9 @@ entity (entity target) SpawnPhantom = {
    ph.episode_start = target.origin;
    ph.last_sim_time = FALSE;
    ph.sim_maneuver = 0.000;
+   ph.tele_entry = '0 0 0';
+   ph.tele_exit = '0 0 0';
+   ph.tele_chain_time = 0.000;
    ph.think = PhantomThink;
    ph.nextthink = (time + 0.100);
 
@@ -443,6 +454,7 @@ void (entity ph) Spectral_EndEpisode = {
    local float maneuver;
    local float hash;
    local float i;
+   local float lidx;
 
    owner = ph.phantom_owner;
    if ( owner ) {
@@ -476,11 +488,21 @@ void (entity ph) Spectral_EndEpisode = {
    }
 
    maneuver = ph.sim_maneuver;
+   if ( maneuver == 2.000 ) {
+      if ( (ph.tele_chain_time > 0.000) && (vlen (ph.tele_exit - ph.tele_entry) > 500.000) ) {
+         Vortex_FuseTeleChain (ph.tele_entry, ph.tele_exit);
+      }
+      remove (ph);
+      return ;
+   }
    viability = EtherealRollout (ph.episode_start, ph.origin, maneuver);
    if ( (viability < REWARD_THRESH) ) {
       remove (ph);
       return ;
    }
+
+   // Vortex Navmesh: phantom trail validates a dynamic edge
+   Vortex_RecordEpisode (ph.episode_start, ph.origin);
 
    hash = Spectral_HashPair (ph.episode_start, ph.origin);
    i = 0.000;
@@ -493,12 +515,23 @@ void (entity ph) Spectral_EndEpisode = {
    }
 
    Spectral_AddEpisode (ph.episode_start, ph.origin, reward, viability, maneuver);
+
+   // Lift ride glory
+   traceline (ph.origin + '0 0 32', ph.origin - '0 0 64', TRUE, world);
+   if ( trace_ent && ((trace_ent.classname == "func_plat") || (trace_ent.classname == "plat") || (trace_ent.classname == "func_train") || (trace_ent.classname == "train")) ) {
+      lidx = Vortex_FindNode (ph.origin);
+      if ( lidx >= 0.000 ) {
+         Vortex_BoostUsage (lidx, 30.000);
+      }
+   }
+
    remove (ph);
 };
 
 void () PhantomThink = {
    local float dist_delta;
    local float viability;
+   local vector prev_pos;
 
    if ( !self.phantom_target ) {
       Spectral_AbortEpisode ();
@@ -513,7 +546,14 @@ void () PhantomThink = {
       return ;
    }
 
-   dist_delta = vlen (self.phantom_target.origin - self.origin);
+   prev_pos = self.origin;
+   dist_delta = vlen (self.phantom_target.origin - prev_pos);
+   if ( (dist_delta > 500.000) && (self.phantom_target.teleport_time > time) ) {
+      self.tele_entry = prev_pos;
+      self.tele_exit = self.phantom_target.origin;
+      self.tele_chain_time = time;
+      Vortex_FuseTeleChain (prev_pos, self.phantom_target.origin);
+   }
    if ( (dist_delta > 500.000) ) {
       self.sim_maneuver = 2.000;
    } else if ( (self.phantom_target.velocity_z > 200.000) ) {

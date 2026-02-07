@@ -30,6 +30,10 @@ The bot AI follows a layered architecture with a single per-bot think loop:
 - Learning layer
   - Route caching and reinforcement (danger/glory, usage weighting) in
     `mre/botroute.qc`
+  - Vortex Navmesh + Apex HPA* (dynamic mesh, phantom-validated edges,
+    hierarchical abstraction) in `mre/ai_vortex.qc` and `mre/ai_apex.qc`
+  - Vortex Telechains + Apex Lifts (teleport fusion and timed platform routing)
+    in `mre/ai_vortex.qc`, `mre/bot_learn.qc`, and `mre/ai_apex.qc`
   - Weapon confidence adaptation in `mre/botfight.qc`
   - Cursed Nodes stuck-learning mesh and decay in `mre/ai_mirage.qc`
   - Silent Specters unstuck rollouts in `mre/ai_predict.qc` and `mre/botgoal.qc`
@@ -44,6 +48,10 @@ and `BotAI_Main` (combat), which implement the decision layer.
   - Sets `.bot = 1` and `.skil` for bot skill (spec `.skill` maps to `.skil`)
 - AI core: `mre/bot_ai.qc`, `mre/botgoal.qc`, `mre/dmbot.qc`
 - Seeking/pathfinding: `mre/botgoal.qc`, `mre/botroute.qc`
+- Dynamic navmesh: `mre/ai_vortex.qc`, `mre/ai_apex.qc` (with hooks in
+  `mre/bot_learn.qc`, `mre/botgoal.qc`, `mre/world.qc`)
+- Telechains + lift sampling: `mre/ai_vortex.qc`, `mre/ai_predict.qc`,
+  `mre/bot_learn.qc`, `mre/ai_apex.qc`
 - Movement/hazards/water: `mre/botmove.qc`, `mre/botthink.qc`
 - Combat/prediction/displacement: `mre/botfight.qc`
 - Rollout prediction: `mre/ai_predict.qc` (Shadow Puppets + Combat Crucible)
@@ -75,6 +83,12 @@ Relevant functions:
 - Dynamic waypoints are created and linked in `mre/botroute.qc` (`botpath`,
   `DropBotPath`, `LinkNodes`, `FindAPath`).
 - Route weighting incorporates node priority, link usage, and danger cost.
+- Vortex Navmesh injects a temporary mesh waypoint when the current goal is
+  obstructed (`Vortex_ApplyGoal` in `mre/ai_vortex.qc`), and phantom episodes
+  validate mesh edges (`Vortex_RecordEpisode` in `mre/bot_learn.qc`).
+- Telechains detect large warps (>500u) during phantom tracking and fuse
+  one-way tele edges (`Vortex_FuseTeleChain` in `mre/ai_vortex.qc`), while
+  lift nodes are sampled and given wait-cost biasing in Vortex A*.
 
 ### 3. Movement and Hazards (mre/botmove.qc)
 
