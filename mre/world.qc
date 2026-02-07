@@ -81,6 +81,13 @@ void () main = {
    precache_sound ("misc/menu3.wav");
    precache_sound ("ambience/water1.wav");
    precache_sound ("ambience/wind2.wav");
+   // Precache AI-only sounds to silence FTEQCC warnings
+   precache_sound ("ogre/ogdrag.wav");
+   precache_sound ("ogre/ogwake.wav");
+   precache_sound ("wizard/wsight.wav");
+   precache_sound ("zombie/z_idle.wav");
+   precache_sound ("blob/sight1.wav");
+   precache_sound ("vomitus/v_sight1.wav");
    precache_file ("maps/start.bsp");
    precache_file ("maps/e1m1.bsp");
    precache_file ("maps/e1m2.bsp");

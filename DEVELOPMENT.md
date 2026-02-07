@@ -41,14 +41,7 @@ $env:FTEQCC_FLAGS = "-O2 -Werror"
 powershell -ExecutionPolicy Bypass -File ci\build_mre.ps1
 ```
 
-Known build warnings (FTEQCC, non-bot):
-- `mre/ai.qc`: sounds used without direct precache
-  - `ogre/ogdrag.wav`
-  - `ogre/ogwake.wav`
-  - `wizard/wsight.wav`
-  - `zombie/z_idle.wav`
-  - `blob/sight1.wav`
-  - `vomitus/v_sight1.wav`
+Known build warnings (FTEQCC, non-bot): none currently.
 
 ## Deploy
 The build script copies to:

@@ -17,6 +17,7 @@ void (float c1, float c2, float ptype) Apex_AddPortalTyped;
 #define APEX_PORTAL_NORMAL 0.000
 #define APEX_PORTAL_LIFT 1.000
 #define APEX_PORTAL_TELE 2.000
+#define APEX_PORTAL_STRIDE 128.000
 
 vector apex_center[APEX_MAX_CLUSTERS];
 float apex_radius[APEX_MAX_CLUSTERS];
@@ -24,7 +25,6 @@ float apex_cluster_count;
 float apex_cluster_of_node[VORTEX_MAX_NODES];
 float apex_portals[APEX_MAX_CLUSTERS * APEX_MAX_PORTALS];
 float apex_portal_count[APEX_MAX_CLUSTERS];
-float apex_portal_type[APEX_MAX_CLUSTERS * APEX_MAX_PORTALS];
 float apex_last_build;
 float apex_last_vnode_count;
 
@@ -81,6 +81,9 @@ void (float c1, float c2, float ptype) Apex_AddPortalTyped = {
    local float i;
    local float base1;
    local float base2;
+   local float stored;
+   local float neigh;
+   local float exptype;
 
    if ( (c1 < 0.000) || (c2 < 0.000) ) {
       return;
@@ -92,34 +95,38 @@ void (float c1, float c2, float ptype) Apex_AddPortalTyped = {
    base1 = (c1 * APEX_MAX_PORTALS);
    i = 0.000;
    while ( i < apex_portal_count[c1] ) {
-      if ( apex_portals[base1 + i] == c2 ) {
-         if ( ptype > apex_portal_type[base1 + i] ) {
-            apex_portal_type[base1 + i] = ptype;
+      stored = apex_portals[base1 + i];
+      exptype = floor (stored / APEX_PORTAL_STRIDE);
+      neigh = (stored - (exptype * APEX_PORTAL_STRIDE));
+      if ( neigh == c2 ) {
+         if ( ptype > exptype ) {
+            apex_portals[base1 + i] = (c2 + (ptype * APEX_PORTAL_STRIDE));
          }
          return;
       }
       i = (i + TRUE);
    }
    if ( apex_portal_count[c1] < APEX_MAX_PORTALS ) {
-      apex_portals[base1 + apex_portal_count[c1]] = c2;
-      apex_portal_type[base1 + apex_portal_count[c1]] = ptype;
+      apex_portals[base1 + apex_portal_count[c1]] = (c2 + (ptype * APEX_PORTAL_STRIDE));
       apex_portal_count[c1] = (apex_portal_count[c1] + TRUE);
    }
 
    base2 = (c2 * APEX_MAX_PORTALS);
    i = 0.000;
    while ( i < apex_portal_count[c2] ) {
-      if ( apex_portals[base2 + i] == c1 ) {
-         if ( ptype > apex_portal_type[base2 + i] ) {
-            apex_portal_type[base2 + i] = ptype;
+      stored = apex_portals[base2 + i];
+      exptype = floor (stored / APEX_PORTAL_STRIDE);
+      neigh = (stored - (exptype * APEX_PORTAL_STRIDE));
+      if ( neigh == c1 ) {
+         if ( ptype > exptype ) {
+            apex_portals[base2 + i] = (c1 + (ptype * APEX_PORTAL_STRIDE));
          }
          return;
       }
       i = (i + TRUE);
    }
    if ( apex_portal_count[c2] < APEX_MAX_PORTALS ) {
-      apex_portals[base2 + apex_portal_count[c2]] = c1;
-      apex_portal_type[base2 + apex_portal_count[c2]] = ptype;
+      apex_portals[base2 + apex_portal_count[c2]] = (c1 + (ptype * APEX_PORTAL_STRIDE));
       apex_portal_count[c2] = (apex_portal_count[c2] + TRUE);
    }
 
@@ -225,6 +232,7 @@ float (float start_c, float goal_c) Apex_NextCluster = {
    local float neigh;
    local float tentative;
    local float ptype;
+   local float stored;
    local float iter;
 
    if ( (start_c < 0.000) || (goal_c < 0.000) ) {
@@ -282,12 +290,13 @@ float (float start_c, float goal_c) Apex_NextCluster = {
       base = (cur * APEX_MAX_PORTALS);
       p = 0.000;
       while ( p < apex_portal_count[cur] ) {
-         neigh = apex_portals[base + p];
+         stored = apex_portals[base + p];
+         ptype = floor (stored / APEX_PORTAL_STRIDE);
+         neigh = (stored - (ptype * APEX_PORTAL_STRIDE));
          if ( apex_state[neigh] == 2.000 ) {
             p = (p + TRUE);
             continue;
          }
-         ptype = apex_portal_type[base + p];
          tentative = (apex_g[cur] + vlen (apex_center[neigh] - apex_center[cur]));
          if ( ptype == APEX_PORTAL_TELE ) {
             tentative = (apex_g[cur] + 20.000);
