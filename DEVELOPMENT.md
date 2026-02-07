@@ -66,6 +66,13 @@ quakespasm-sdl12.exe -game mre -condebug +developer 1 -listen 8 +maxplayers 8 +d
 ```
 Log output: `c:\reaperai\launch\quake-spasm\qconsole.log`
 
+### Stability suite (cmd-safe)
+Run the batch via `cmd` (the quick-mode message uses an `if (...)` block):
+```
+cmd /c c:\reaperai\ci\test_stability.bat --quick
+cmd /c c:\reaperai\ci\test_stability.bat
+```
+
 Note: If `quakespasm.exe` is missing or zero bytes, use `quakespasm-sdl12.exe`
 or copy/rename it to `quakespasm.exe`.
 
