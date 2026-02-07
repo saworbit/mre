@@ -131,6 +131,10 @@ Frame Function (bot_run, bot_chase, etc.)
         └─> th_melee()
 ```
 
+**Silent Specters (unstuck)** lives inside `ai_botseek` (`mre/botgoal.qc`):
+when a bot stalls for ~2s, it runs a short, quiet rollout (`SilentUnstuck`) and
+marks a local cursed node (`CurseNode`). Cursed decay is global in `StartFrame`.
+
 ### Reflex Dodge
 
 - `BotReflexDodge` runs at the top of `BotAI_Main` to evade incoming rockets/grenades with a short cooldown.
@@ -198,6 +202,9 @@ BotDetectHazard(spot)                  [botmove.qc:197]
 ```
 
 ### Botmovetogoal (Primary Movement)
+
+`Botmovetogoal` now includes a 1‑tick lookahead nudge (`BotProactiveNudge`) to
+avoid dead-ends before committing to movement.
 
 ```
 Botmovetogoal(dist)                    [botmove.qc:1304]

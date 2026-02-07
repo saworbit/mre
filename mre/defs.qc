@@ -330,6 +330,7 @@ float () Bot_CheckReaction; // Forward declaration
 
 // Stuck detection
 .float stuck_time;           // Time when bot became stuck (0 = not stuck)
+.float stuck_count;          // Count of consecutive stuck recovery attempts
 .vector obstruction_normal;  // Wall normal when stuck (for velocity decomposition)
 // Feeler steering / breadcrumbs
 .float feeler_mode_active;   // TRUE when using feeler navigation

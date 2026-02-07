@@ -366,3 +366,143 @@ void () MirageTick = {
    }
 
 };
+
+// ============================================================================
+// Cursed Nodes: Adaptive Stuck-Learning Mesh
+// ============================================================================
+
+#define CURSED_MAX 256
+#define CURSED_GRID 32.000
+#define CURSED_MAX_PENALTY 20.000
+#define CURSED_DECAY 0.950
+
+float cursed_count;
+float cursed_decay_next;
+float cursed_hash[CURSED_MAX];
+float cursed_penalty[CURSED_MAX];
+float cursed_time[CURSED_MAX];
+
+float (vector pos) Cursed_NodeHash = {
+
+   local float hx;
+   local float hy;
+   local float hz;
+   local float h;
+
+   hx = floor (pos_x / CURSED_GRID);
+   hy = floor (pos_y / CURSED_GRID);
+   hz = floor (pos_z / 64.000);
+   h = (hx * 37.000) + (hy * 37.000) + (hz * 17.000);
+   if ( (h < 0.000) ) {
+      h = -h;
+   }
+   return ( h );
+
+};
+
+float (vector pos) Cursed_Find = {
+
+   local float i;
+   local float h;
+
+   h = Cursed_NodeHash (pos);
+   i = 0.000;
+   while ( i < cursed_count ) {
+      if ( cursed_hash[i] == h ) {
+         return ( i );
+      }
+      i = (i + TRUE);
+   }
+   return ( -1.000 );
+
+};
+
+void () Cursed_Reset = {
+
+   cursed_count = 0.000;
+   cursed_decay_next = FALSE;
+
+};
+
+void (vector pos) CurseNode = {
+
+   local float idx;
+   local float i;
+   local float oldest_time;
+   local float oldest_idx;
+
+   idx = Cursed_Find (pos);
+   if ( idx < FALSE ) {
+      if ( cursed_count < CURSED_MAX ) {
+         idx = cursed_count;
+         cursed_count = (cursed_count + TRUE);
+      } else {
+         oldest_time = cursed_time[0];
+         oldest_idx = 0.000;
+         i = TRUE;
+         while ( i < cursed_count ) {
+            if ( cursed_time[i] < oldest_time ) {
+               oldest_time = cursed_time[i];
+               oldest_idx = i;
+            }
+            i = (i + TRUE);
+         }
+         idx = oldest_idx;
+      }
+      cursed_penalty[idx] = 0.000;
+   }
+
+   cursed_hash[idx] = Cursed_NodeHash (pos);
+   cursed_penalty[idx] = (cursed_penalty[idx] + 2.000);
+   if ( cursed_penalty[idx] > CURSED_MAX_PENALTY ) {
+      cursed_penalty[idx] = CURSED_MAX_PENALTY;
+   }
+   cursed_time[idx] = time;
+
+};
+
+float (vector pos) GetCursePenalty = {
+
+   local float idx;
+   local float scale;
+
+   idx = Cursed_Find (pos);
+   if ( idx < FALSE ) {
+      return ( 0.000 );
+   }
+
+   scale = 1.000;
+   if ( self && (self.classname == "dmbot") ) {
+      scale = (self.skil / 10.000);
+   } else if ( skill > FALSE ) {
+      scale = (skill / 10.000);
+   }
+   return (cursed_penalty[idx] * scale);
+
+};
+
+void () DecayCursed = {
+
+   local float i;
+
+   if ( time < cursed_decay_next ) {
+      return;
+   }
+   cursed_decay_next = (time + 60.000);
+
+   i = 0.000;
+   while ( i < cursed_count ) {
+      if ( time > (cursed_time[i] + 60.000) ) {
+         cursed_penalty[i] = (cursed_penalty[i] * CURSED_DECAY);
+         if ( cursed_penalty[i] < 1.000 ) {
+            cursed_hash[i] = cursed_hash[cursed_count - TRUE];
+            cursed_penalty[i] = cursed_penalty[cursed_count - TRUE];
+            cursed_time[i] = cursed_time[cursed_count - TRUE];
+            cursed_count = (cursed_count - TRUE);
+            continue;
+         }
+      }
+      i = (i + TRUE);
+   }
+
+};

@@ -14,6 +14,7 @@ float (float vz, float dist, float imagine) Bot_tryjump;
 float (vector jmpv) Botwaterjump;
 float (vector goal_pos, float dist) BotShadowPuppetYaw;
 float (float base_yaw, float target_yaw, float strength) Mirage_BlendYaw;
+float (vector pos, vector vel, float air_left, vector goal_pos, vector fwd, vector right, float use_trace) ShadowLookaheadReward;
 
 // FIX: Platform riding - handles func_train (DM2 lava platforms) and func_plat
 // Returns TRUE if bot should wait/ride, FALSE to continue with normal movement
@@ -273,6 +274,54 @@ void () BotCheckCuriosity = {
       }
       return;
 
+   }
+
+};
+
+// Proactive: 1-tick lookahead to nudge away from dead-ends
+void () BotProactiveNudge = {
+
+   local float air_left;
+   local float reward;
+   local vector fwd;
+   local vector rgt;
+   local vector goal_pos;
+   local float nudged;
+
+   if ( !self.goalentity || (self.goalentity == world) ) {
+      return;
+   }
+   if ( self.feeler_mode_active ) {
+      return;
+   }
+
+   goal_pos = self.goalentity.origin;
+   makevectors ('0 1 0' * self.ideal_yaw);
+   fwd = v_forward;
+   rgt = v_right;
+
+   air_left = (self.air_finished - time);
+   if ( (air_left < FALSE) ) {
+      air_left = FALSE;
+   }
+   if ( (air_left > 12.000) ) {
+      air_left = 12.000;
+   }
+
+   reward = ShadowLookaheadReward (self.origin, self.velocity, air_left, goal_pos, fwd, rgt, TRUE);
+   if ( reward < 0.000 ) {
+      nudged = 15.000;
+      if ( (random () < 0.500) ) {
+         self.ideal_yaw = (self.ideal_yaw + nudged);
+      } else {
+         self.ideal_yaw = (self.ideal_yaw - nudged);
+      }
+      while ( self.ideal_yaw < FALSE ) {
+         self.ideal_yaw = (self.ideal_yaw + 360.000);
+      }
+      while ( self.ideal_yaw >= 360.000 ) {
+         self.ideal_yaw = (self.ideal_yaw - 360.000);
+      }
    }
 
 };
@@ -2228,6 +2277,7 @@ void (float dist) Botmovetogoal = {
    if ( (self.mirage_yaw_time > time) ) {
       self.ideal_yaw = Mirage_BlendYaw (self.ideal_yaw, (self.ideal_yaw + self.mirage_yaw_bias), 0.600);
    }
+   BotProactiveNudge ();
    ChangeYaw ();
    self.whiskers_allowed = TRUE;
    if ( Botgoal.goalentity && (Botgoal.goalentity.classname == "BotPath") ) {

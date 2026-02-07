@@ -125,6 +125,20 @@ Notes:
 - Combat rollout uses a capped action sample per depth (skill-scaled) and beam search.
 - Navigation rollout uses a beam search with hazard/water penalties and a 5Hz throttle.
 
+## Silent Specters + Cursed Nodes (unstuck + learning)
+Silent unstuck rollouts are implemented in `mre/ai_predict.qc` as `SilentUnstuck`.
+They use a short beam search (depth 4, beam 3) over quiet actions, with a jump
+penalty when enemies are nearby. Proactive 1-tick lookahead nudges live in
+`mre/botmove.qc` (`BotProactiveNudge`).
+
+Compile-time tuning knobs:
+- `SILENT_UNSTUCK_DEPTH`, `SILENT_UNSTUCK_BEAM`, `SILENT_NOISE_PENALTY` in `mre/ai_predict.qc`
+
+Cursed Nodes are a compact stuck-learning mesh in `mre/ai_mirage.qc`:
+- `CURSED_MAX`, `CURSED_GRID`, `CURSED_MAX_PENALTY`, `CURSED_DECAY`
+- Decay runs via `StartFrame` (`world.qc`), reset on map load (`worldspawn`)
+- Penalties bias both rollouts (`ShadowReward`) and route cost (`botroute.qc`)
+
 ## Mirage Minds tuning (cvars)
 - `sv_mirage` (0/1): master enable for persona-driven humanization
 - `mirage_debug` (0/1): log persona/entropy (requires `+developer 1`)

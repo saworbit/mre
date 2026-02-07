@@ -31,6 +31,8 @@ The bot AI follows a layered architecture with a single per-bot think loop:
   - Route caching and reinforcement (danger/glory, usage weighting) in
     `mre/botroute.qc`
   - Weapon confidence adaptation in `mre/botfight.qc`
+  - Cursed Nodes stuck-learning mesh and decay in `mre/ai_mirage.qc`
+  - Silent Specters unstuck rollouts in `mre/ai_predict.qc` and `mre/botgoal.qc`
 
 The engine calls the current `self.think` function for each bot entity at
 ~10Hz. Frame functions in `mre/dmbot.qc` delegate to `ai_botseek` (seek/roam)
@@ -67,7 +69,9 @@ Relevant functions:
 ### 2. Seeking and Pathfinding (mre/botgoal.qc, mre/botroute.qc)
 
 - Stuck detection is implemented in `ai_botseek` (time + distance checks) with
-  feeler mode and Darwin learning on failure.
+  Silent Specters rollouts, feeler mode, and Darwin learning on failure.
+- Cursed Nodes apply a decaying penalty to repeated stuck zones and bias both
+  rollouts and route cost.
 - Dynamic waypoints are created and linked in `mre/botroute.qc` (`botpath`,
   `DropBotPath`, `LinkNodes`, `FindAPath`).
 - Route weighting incorporates node priority, link usage, and danger cost.
@@ -77,6 +81,7 @@ Relevant functions:
 - Steering and obstacle avoidance: `BotSteer`, `BotTraceWhisker`
 - Hazard repulsion: `BotDetectHazard`
 - Water control: `BotUnderwaterMove`, `Botwaterjump`, `waterupdown`
+- Proactive 1-tick lookahead nudge: `BotProactiveNudge`
 
 ### 4. Combat (mre/botfight.qc)
 

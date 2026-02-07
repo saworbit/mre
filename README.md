@@ -30,6 +30,8 @@ from `archive/`.
 - Velocity-based 3D swimming (oxygen-aware surfacing and pitch steering)
 - Feeler steering + breadcrumbs (escape scans and dropped BotPath waypoints)
 - Navigation learning (link types, usage weighting, danger/decay, rocket jumps)
+- Silent Specters (stealth unstuck rollouts; jump noise minimized, enemy-aware penalty)
+- Cursed Nodes (adaptive stuck-learning mesh with decay, biases rollouts + routing)
 - Phantom Apprenticeship (spectral episodes with rollout validation, soft A* bias, decay; no teleport shortcuts or golden locks)
 - Mirage Minds (persona-driven humanization with entropy, micro-goals, heatmap denial, and feint pauses)
 - Teacher Mode debug impulses (102 show / 103 hide bot learning nodes, 104 dump spectral episodes)
@@ -40,6 +42,7 @@ from `archive/`.
 - **Smooth Steering**: 3-frame angle averaging prevents jitter from pathfinder/whisker oscillation
 - **Sixth Sense**: 360-degree awareness for items within 300 units (no facing check needed)
 - **High-Value Item Focus**: Direct drive to powerups when close (<200 units) prevents strafing past
+- **Proactive Lookahead**: 1-tick movement sim nudges bots away from dead-ends
 - **Mastermind Update**: Proactive tactical combat
   - Pre-Fire: Bots shoot rockets at corners where you just disappeared
   - The Trap: Low-health bots stop running and ambush chasers with SSG/RL

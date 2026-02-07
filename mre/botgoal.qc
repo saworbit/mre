@@ -17,6 +17,8 @@ float (float dist) BotAI_Strategic;
 
 // Forward declaration for Darwin Update (defined in botroute.qc)
 void (entity node, float amount) ModulateNodeWeight;
+vector () SilentUnstuck;
+void (vector pos) CurseNode;
 
 void () shoottarget = {
 
@@ -85,63 +87,82 @@ void (float dist) ai_botseek = {
       return;
    }
 
-   // FIX: Improved stuck detection
-   // Check if bot hasn't moved much (threshold raised to catch more cases)
+   // Silent Specters: Stealthy stuck recovery with quiet rollouts
    stuck_dist = vlen (self.origin - self.oldorigin);
-   if ( (stuck_dist < 3.000) ) {
+   if ( (stuck_dist < 5.000) ) {
 
       // Track how long we've been stuck
       if ( self.stuck_time == 0 ) {
          self.stuck_time = time;  // Start stuck timer
+         self.stuck_count = 0;
       }
 
       local float stuck_duration;
+      local vector escape;
       stuck_duration = time - self.stuck_time;
 
-      // Aggressive timeout after 1.5 seconds stuck
-      if ( stuck_duration > 1.5 ) {
-         // Force immediate goal change
-         self.search_time = time - 1;
+      // Silent recovery after 2s of low movement
+      if ( stuck_duration > 2.000 ) {
+         self.stuck_count = (self.stuck_count + TRUE);
 
-         // Log stuck event (developer mode only)
-         if ( cvar("developer") ) {
-            dprint("[");
-            dprint(self.netname);
-            dprint("] STUCK: forcing goal change after ");
-            dprint(ftos(stuck_duration));
-            dprint("s\n");
+         // Learn the local stuck zone
+         CurseNode (self.origin);
+
+         escape = SilentUnstuck ();
+         if ( escape != '0 0 0' ) {
+            self.velocity = escape;
+            self.stuck_time = time;  // Reset timer after a nudge
+         } else {
+            // Ultra-fallback: micro-pause + strafe
+            makevectors (self.angles);
+            if ( (random () < 0.500) ) {
+               self.velocity = (v_right * 200.000);
+            } else {
+               self.velocity = (v_right * -200.000);
+            }
+            self.nextthink = (time + 0.300);
          }
 
-         // ============================================================
-         // DARWIN UPDATE: Learn from navigation failure
-         // Mark the current area as difficult/dangerous
-         // ============================================================
-         if ( self.last_waypoint && self.last_waypoint != world ) {
-            // "I cannot navigate through here easily"
-            ModulateNodeWeight (self.last_waypoint, -100);
+         // If we're still stuck after a few attempts, force a goal change
+         if ( self.stuck_count > 2 ) {
+            self.search_time = time - 1;
+
             if ( cvar("developer") ) {
                dprint("[");
                dprint(self.netname);
-               dprint("] DARWIN: Learned BROKEN LINK\n");
+               dprint("] STUCK: forcing goal change after ");
+               dprint(ftos(stuck_duration));
+               dprint("s\n");
             }
-         }
 
-         self.stuck_time = 0;  // Reset for next cycle
+            // DARWIN: Learn from navigation failure
+            if ( self.last_waypoint && self.last_waypoint != world ) {
+               ModulateNodeWeight (self.last_waypoint, -100);
+               if ( cvar("developer") ) {
+                  dprint("[");
+                  dprint(self.netname);
+                  dprint("] DARWIN: Learned BROKEN LINK\n");
+               }
+            }
 
-         // Activate feeler mode to search for an exit
-         if ( !self.feeler_mode_active ) {
-            self.feeler_mode_active = TRUE;
-            self.feeler_start_time = time;
-            if ( cvar("developer") ) {
-               dprint("Activating FEELER mode\n");
+            self.stuck_time = 0;
+            self.stuck_count = 0;
+
+            // Activate feeler mode to search for an exit
+            if ( !self.feeler_mode_active ) {
+               self.feeler_mode_active = TRUE;
+               self.feeler_start_time = time;
+               if ( cvar("developer") ) {
+                  dprint("Activating FEELER mode\n");
+               }
             }
          }
       } else {
          // Normal stuck handling - reduce search time faster
          self.search_time = (self.search_time - 0.150);
 
-         // Try to jump more often when stuck (20% chance)
-         if ( (random () < 0.200) ) {
+         // Rare jump when stuck (<5%)
+         if ( (random () < 0.050) ) {
             Bot_tryjump (270.000, dist, FALSE);
          }
       }
@@ -149,6 +170,7 @@ void (float dist) ai_botseek = {
    } else {
       // Moving normally - clear stuck timer
       self.stuck_time = 0;
+      self.stuck_count = 0;
    }
 
    botTarget = self.goalentity;

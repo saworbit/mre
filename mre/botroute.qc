@@ -1,5 +1,6 @@
 
 float (entity node, entity targ) ApplySpectralBoost;
+float (vector pos) GetCursePenalty;
 
 void () t_botpath = {
 
@@ -995,6 +996,9 @@ void (entity node, entity targ, float len, entity item) cacheRouteTarget = {
 
    // DARWIN: Danger avoidance - dangerous nodes effectively add distance
    rng = (rng + targ.danger_cost);
+
+   // Cursed nodes: avoid recently stuck areas
+   rng = (rng + (GetCursePenalty (targ.origin) * 10.000));
 
    // DARWIN: Glory seeking - killzones reduce effective cost (attract bots)
    // Up to 30% cost reduction for high-glory nodes

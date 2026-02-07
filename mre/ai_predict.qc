@@ -2,6 +2,7 @@
 // Lightweight lookahead to reduce hazards and dead-ends
 
 float (vector pos) Spectral_AllureBias;
+float (vector pos) GetCursePenalty;
 
 float SHADOW_MAX_DEPTH = 12.000;
 float SHADOW_MAX_BEAM = 5.000;
@@ -13,6 +14,25 @@ float SHADOW_NEG = -999999.000;
 float SHADOW_COMBAT_MAX_DEPTH = 10.000;
 float SHADOW_COMBAT_MAX_BEAM = 4.000;
 float SHADOW_COMBAT_NEG = -999999.000;
+
+// Silent Specters: stealthy unstuck rollouts
+#define SILENT_UNSTUCK_DEPTH 4
+#define SILENT_UNSTUCK_BEAM 3
+#define SILENT_VISIT_HASH 256
+float SILENT_NOISE_PENALTY = 200.000;
+
+float silent_visit[SILENT_VISIT_HASH];
+vector su_pos[SILENT_UNSTUCK_BEAM];
+vector su_vel[SILENT_UNSTUCK_BEAM];
+float su_air[SILENT_UNSTUCK_BEAM];
+float su_reward[SILENT_UNSTUCK_BEAM];
+float su_count;
+
+vector su_next_pos[SILENT_UNSTUCK_BEAM];
+vector su_next_vel[SILENT_UNSTUCK_BEAM];
+float su_next_air[SILENT_UNSTUCK_BEAM];
+float su_next_reward[SILENT_UNSTUCK_BEAM];
+float su_next_count;
 
 // Current beam states
 vector sp_c_pos1; vector sp_c_vel1; float sp_c_air1; float sp_c_reward1; float sp_c_action1;
@@ -243,12 +263,300 @@ float (vector pos, vector vel, float air_left, vector goal_pos, float use_trace,
    // Spectral learning bias
    r = (r + Spectral_AllureBias (pos));
 
+   // Cursed nodes: repel known stuck spots
+   r = (r - (GetCursePenalty (pos) * 50.000));
+
    // Stagnation penalty
    if ( (vlen (vel) < 60.000) ) {
       r = (r - 200.000);
    }
 
    return ( r );
+
+};
+
+float (vector pos, vector vel, float air_left, vector goal_pos, vector fwd, vector right, float use_trace) ShadowLookaheadReward = {
+
+   local float tr_allsolid;
+   local float tr_startsolid;
+   local float tr_fraction;
+   local vector tr_endpos;
+   local vector tr_plane_normal;
+   local float tr_plane_dist;
+   local entity tr_ent;
+   local float tr_inopen;
+   local float tr_inwater;
+   local float reward;
+
+   tr_allsolid = trace_allsolid;
+   tr_startsolid = trace_startsolid;
+   tr_fraction = trace_fraction;
+   tr_endpos = trace_endpos;
+   tr_plane_normal = trace_plane_normal;
+   tr_plane_dist = trace_plane_dist;
+   tr_ent = trace_ent;
+   tr_inopen = trace_inopen;
+   tr_inwater = trace_inwater;
+
+   ShadowSimStep (pos, vel, air_left, 0.000, fwd, right, use_trace);
+   reward = ShadowReward (sp_out_pos, sp_out_vel, sp_out_air, goal_pos, use_trace, sp_out_blocked, 1.000, 1.000);
+
+   trace_allsolid = tr_allsolid;
+   trace_startsolid = tr_startsolid;
+   trace_fraction = tr_fraction;
+   trace_endpos = tr_endpos;
+   trace_plane_normal = tr_plane_normal;
+   trace_plane_dist = tr_plane_dist;
+   trace_ent = tr_ent;
+   trace_inopen = tr_inopen;
+   trace_inwater = tr_inwater;
+
+   return ( reward );
+
+};
+
+float () EnemiesNear = {
+
+   local entity scan;
+
+   scan = findradius (self.origin, 800.000);
+   while ( scan ) {
+      if ( (scan != self) && (scan.health > 0.000) ) {
+         if ( (scan.classname == "player") || (scan.classname == "dmbot") ) {
+            if ( visible (scan) ) {
+               return ( TRUE );
+            }
+         }
+      }
+      scan = scan.chain;
+   }
+   return ( FALSE );
+
+};
+
+float (float v) Silent_WrapIndex = {
+
+   local float wrap;
+   wrap = floor (v / SILENT_VISIT_HASH);
+   return (v - (wrap * SILENT_VISIT_HASH));
+
+};
+
+float (vector v) Silent_HashVec = {
+
+   local float hx;
+   local float hy;
+   local float hz;
+   local float h;
+
+   hx = floor (v_x / 32.000);
+   hy = floor (v_y / 32.000);
+   hz = floor (v_z / 32.000);
+   h = (hx * 37.000) + (hy * 57.000) + (hz * 17.000);
+   if ( (h < 0.000) ) {
+      h = -h;
+   }
+   return Silent_WrapIndex (h);
+
+};
+
+void () Silent_ResetNext = {
+
+   local float i;
+
+   i = 0.000;
+   while ( i < SILENT_UNSTUCK_BEAM ) {
+      su_next_reward[i] = SHADOW_NEG;
+      i = (i + TRUE);
+   }
+   su_next_count = 0.000;
+
+};
+
+void (vector pos, vector vel, float air, float reward, float beam_w) Silent_ConsiderCandidate = {
+
+   local float i;
+   local float j;
+   local float last;
+
+   last = (beam_w - TRUE);
+   if ( (su_next_count >= beam_w) && (reward <= su_next_reward[last]) ) {
+      return ;
+   }
+
+   i = 0.000;
+   while ( i < beam_w ) {
+      if ( (reward > su_next_reward[i]) ) {
+         j = last;
+         while ( j > i ) {
+            su_next_pos[j] = su_next_pos[j - TRUE];
+            su_next_vel[j] = su_next_vel[j - TRUE];
+            su_next_air[j] = su_next_air[j - TRUE];
+            su_next_reward[j] = su_next_reward[j - TRUE];
+            j = (j - TRUE);
+         }
+         su_next_pos[i] = pos;
+         su_next_vel[i] = vel;
+         su_next_air[i] = air;
+         su_next_reward[i] = reward;
+         if ( (su_next_count < beam_w) ) {
+            su_next_count = (su_next_count + TRUE);
+         }
+         return ;
+      }
+      i = (i + TRUE);
+   }
+
+   if ( (su_next_count < beam_w) ) {
+      su_next_pos[su_next_count] = pos;
+      su_next_vel[su_next_count] = vel;
+      su_next_air[su_next_count] = air;
+      su_next_reward[su_next_count] = reward;
+      su_next_count = (su_next_count + TRUE);
+   }
+
+};
+
+vector () SilentUnstuck = {
+
+   local float d;
+   local float b;
+   local float a;
+   local float reward;
+   local float hash;
+   local float air_left;
+   local float quiet_penalty;
+   local float use_trace;
+   local float escape_bias;
+   local vector fwd;
+   local vector rgt;
+   local vector goal_pos;
+   local vector escape;
+   local float tr_allsolid;
+   local float tr_startsolid;
+   local float tr_fraction;
+   local vector tr_endpos;
+   local vector tr_plane_normal;
+   local float tr_plane_dist;
+   local entity tr_ent;
+   local float tr_inopen;
+   local float tr_inwater;
+
+   if ( (self.deadflag != DEAD_NO) ) {
+      return '0 0 0';
+   }
+
+   makevectors (self.angles);
+   fwd = v_forward;
+   rgt = v_right;
+
+   // Air time left (seconds)
+   air_left = (self.air_finished - time);
+   if ( (air_left < FALSE) ) {
+      air_left = FALSE;
+   }
+   if ( (air_left > 12.000) ) {
+      air_left = 12.000;
+   }
+
+   goal_pos = self.oldorigin;
+   if ( (vlen (goal_pos - self.origin) < 1.000) ) {
+      goal_pos = (self.origin - (fwd * 64.000));
+   }
+
+   escape_bias = vlen (self.origin - self.oldorigin);
+   if ( (escape_bias < 1.000) ) {
+      escape_bias = 1.000;
+   }
+
+   quiet_penalty = FALSE;
+   if ( EnemiesNear () ) {
+      quiet_penalty = SILENT_NOISE_PENALTY;
+   }
+
+   su_pos[0] = self.origin;
+   su_vel[0] = self.velocity;
+   su_air[0] = air_left;
+   su_reward[0] = ((100.000 / escape_bias) + TRUE);
+   su_count = TRUE;
+
+   tr_allsolid = trace_allsolid;
+   tr_startsolid = trace_startsolid;
+   tr_fraction = trace_fraction;
+   tr_endpos = trace_endpos;
+   tr_plane_normal = trace_plane_normal;
+   tr_plane_dist = trace_plane_dist;
+   tr_ent = trace_ent;
+   tr_inopen = trace_inopen;
+   tr_inwater = trace_inwater;
+
+   d = TRUE;
+   while ( d <= SILENT_UNSTUCK_DEPTH ) {
+      Silent_ResetNext ();
+      b = 0.000;
+      while ( b < su_count ) {
+         hash = Silent_HashVec (su_pos[b]);
+         if ( (silent_visit[hash] > (time - 0.500)) ) {
+            b = (b + TRUE);
+            continue ;
+         }
+         silent_visit[hash] = time;
+
+         a = 0.000;
+         while ( a < 8.000 ) {
+            use_trace = (d == TRUE);
+            ShadowSimStep (su_pos[b], su_vel[b], su_air[b], a, fwd, rgt, use_trace);
+            reward = ShadowReward (sp_out_pos, sp_out_vel, sp_out_air, goal_pos, use_trace, sp_out_blocked, 1.000, 1.000);
+            if ( (a >= 4.000) ) {
+               reward = (reward - quiet_penalty);
+            }
+            Silent_ConsiderCandidate (sp_out_pos, sp_out_vel, sp_out_air, reward, SILENT_UNSTUCK_BEAM);
+            a = (a + TRUE);
+         }
+         b = (b + TRUE);
+      }
+
+      su_count = su_next_count;
+      if ( (su_count <= FALSE) ) {
+         // Restore trace globals
+         trace_allsolid = tr_allsolid;
+         trace_startsolid = tr_startsolid;
+         trace_fraction = tr_fraction;
+         trace_endpos = tr_endpos;
+         trace_plane_normal = tr_plane_normal;
+         trace_plane_dist = tr_plane_dist;
+         trace_ent = tr_ent;
+         trace_inopen = tr_inopen;
+         trace_inwater = tr_inwater;
+         return '0 0 0';
+      }
+      b = 0.000;
+      while ( b < su_count ) {
+         su_pos[b] = su_next_pos[b];
+         su_vel[b] = su_next_vel[b];
+         su_air[b] = su_next_air[b];
+         su_reward[b] = su_next_reward[b];
+         b = (b + TRUE);
+      }
+      d = (d + TRUE);
+   }
+
+   // Restore trace globals
+   trace_allsolid = tr_allsolid;
+   trace_startsolid = tr_startsolid;
+   trace_fraction = tr_fraction;
+   trace_endpos = tr_endpos;
+   trace_plane_normal = tr_plane_normal;
+   trace_plane_dist = tr_plane_dist;
+   trace_ent = tr_ent;
+   trace_inopen = tr_inopen;
+   trace_inwater = tr_inwater;
+
+   escape = su_vel[0];
+   if ( (vlen (escape) < 1.000) ) {
+      return '0 0 0';
+   }
+   return (normalize (escape) * 300.000);
 
 };
 

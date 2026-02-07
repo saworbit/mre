@@ -11,6 +11,12 @@
 - Feature: Mirage Minds persona layer (`ai_mirage.qc`, `bot_ai.qc`, `botmove.qc`,
   `botfight.qc`, `items.qc`, `client.qc`, `defs.qc`). Adds entropy-driven personas,
   micro-goal drift, heatmap denial, and feint pauses without overriding core AI.
+- Feature: Silent Specters unstuck rollouts (`ai_predict.qc`, `botgoal.qc`,
+  `botmove.qc`). Quiet 12-action beam search for unsticking with enemy-aware
+  jump penalties; fallback ladder prefers strafe/pause and keeps jumps rare.
+- Feature: Cursed Nodes adaptive stuck-learning mesh (`ai_mirage.qc`, `botgoal.qc`,
+  `ai_predict.qc`, `botroute.qc`, `world.qc`). Quantized grid penalties decay over
+  time and bias both rollouts and route cost away from repeated stuck zones.
 - Removed: Legacy episodic learning (golden locks, teleport shortcuts, LOS shortcutting, trail rewards).
 - Removed: Broken map-control timing rushes (auto-drop BotPath at powerup spawns,
   spawn-time beelines, and hard lock boosts).

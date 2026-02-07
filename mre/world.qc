@@ -1,5 +1,7 @@
 
 void () InitBodyQue;
+void () DecayCursed;
+void () Cursed_Reset;
 
 void () main = {
 
@@ -124,6 +126,7 @@ void () worldspawn =
 
    lastspawn = world;
    InitBodyQue ();
+   Cursed_Reset ();
    if ( (self.model == "maps/e1m8.bsp") ) {
 
       cvar_set ("sv_gravity","100");
@@ -236,6 +239,7 @@ void () StartFrame = {
    framecount = (framecount + TRUE);
    MaintainGraph ();
    DecayEpisodes ();
+   DecayCursed ();
 
 };
 

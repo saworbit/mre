@@ -341,6 +341,7 @@ void () PutBotInServer = {
    self.last_ai_state = FALSE;
    self.last_ai_state_time = FALSE;
    self.stuck_time = FALSE;
+   self.stuck_count = FALSE;
    self.shadow_next_time = FALSE;
    self.shadow_jump_time = FALSE;
    self.shadow_combat_time = FALSE;

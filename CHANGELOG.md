@@ -15,6 +15,8 @@
 - Velocity-based 3D swimming (oxygen-aware surfacing, pitch steering, direct velocity control).
 - Feeler steering + breadcrumbs (8-way scan escape + dropped BotPath waypoints).
 - Navigation learning + link types (player-learned links with usage weighting, danger scents, decay, and rocket-jump traversal).
+- Silent Specters (stealth unstuck rollouts: quiet maneuvers, jump penalty when enemies are near, minimal jump noise).
+- Cursed Nodes (adaptive stuck-learning mesh with decay; integrated into rollouts and route cost).
 - Phantom Apprenticeship (spectral episodes with rollout validation, soft A* bias, decay; no teleport shortcuts or golden locks).
 - Mirage Minds (persona-driven humanization with entropy, micro-goals, heatmap denial, and feint pauses).
 - Teacher Mode debugging (impulse 102 show / 103 hide BotPath nodes with particles).
@@ -73,6 +75,7 @@
 - Movement smoothing (Z-axis ground glue, zero velocity on collision, consistent 0.1s think timing).
 - Sensor fusion steering V2 (step-over obstacles and water-safe hazard detection).
 - Predictive aiming (capped lead time to 0.5s to prevent over-leading).
+- Proactive 1-tick lookahead nudges away from dead-ends during Botmovetogoal.
 - sv_aim warning now prints the current value and expected baseline.
 - Pain reflex triggers immediate bot reaction when taking damage from a player/bot.
 - Added a developer-only `KNOCKBACK_END` log when bots return to step movement.

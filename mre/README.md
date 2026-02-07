@@ -60,6 +60,8 @@ For visual/behavioral verification:
 - [ ] **Smooth Strafing**: Watch bots strafe - no teleporting/jitter
 - [ ] **No Flashing**: Fight bots near water - no flickering in/out
 - [ ] **Unstuck**: Bots don't run in place indefinitely
+- [ ] **Silent Unstuck**: Bots escape with strafe/pause; jumps stay rare near enemies
+- [ ] **Cursed Nodes**: Repeated stuck corners are avoided after a few failures
 - [ ] **Lift Riding**: Bots wait on platforms, don't walk off mid-ride
 - [ ] **Door Opening**: Bots trigger doors and wait for them to open
 - [ ] **Hazard Avoidance**: Bots refuse to walk into lava/slime
