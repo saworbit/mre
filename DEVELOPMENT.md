@@ -51,6 +51,10 @@ The build script copies to:
 ```
 c:\reaperai\launch\quake-spasm\launch_reapbot_v2.bat 8 dm4
 ```
+Verified working (QuakeSpasm):
+```
+c:\reaperai\launch\quake-spasm>quakespasm.exe -game mre -condebug +developer 1 -listen 8 +maxplayers 8 +deathmatch 1 +map dm2
+```
 
 ## Test (full command + logging)
 From `c:\reaperai\launch\quake-spasm`:
