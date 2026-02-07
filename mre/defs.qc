@@ -345,6 +345,16 @@ float () Bot_CheckReaction; // Forward declaration
 .float last_sim_time;      // Last rollout time
 .float sim_maneuver;       // 0=walk,1=jump,2=tele,3=swim
 .float last_phantom;       // Cooldown for spawning a phantom
+// Mirage Minds (persona/entropy humanization)
+.float mood_entropy;       // 0..1 persona variance
+.float persona_state;      // Persona enum
+.vector mirage_goal;       // Short-lived bias goal
+.float mirage_goal_time;   // Goal expiry time
+.float mirage_yaw_bias;    // Temporary yaw bias (degrees)
+.float mirage_yaw_time;    // Yaw bias expiry time
+.float mirage_next_time;   // Throttle timer
+.float mirage_persona_time;// Persona change throttle
+.float mirage_hold_fire_time; // Feint: pause firing
 // Advanced movement mechanics
 .float strafe_state;         // 0=None, 1=Left, 2=Right
 .float strafe_timer;         // Rhythm keeper

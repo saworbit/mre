@@ -643,6 +643,40 @@ StartFrame()                             [world.qc]
 
 ---
 
+## Call Graph: Mirage Minds (Persona Layer)
+
+Mirage adds a lightweight persona/entropy layer that biases movement and combat
+without replacing existing AI states.
+
+```
+BotAI_Main(dist)                         [bot_ai.qc]
+  |
+  |-> MirageTick()                       [ai_mirage.qc]
+      |-> update mood_entropy + persona_state
+      |-> set mirage_goal / mirage_yaw_bias / mirage_hold_fire_time
+```
+
+```
+Botmovetogoal(dist)                      [botmove.qc]
+  |
+  |-> Mirage_BlendYaw()                  [ai_mirage.qc]
+      |-> blend ideal_yaw toward mirage_goal/yaw bias
+```
+
+Heatmap updates feed Mirage's tactical persona:
+
+```
+powerup_touch / weapon_touch             [items.qc]
+  |
+  |-> Mirage_AddHeat(origin, value)      [ai_mirage.qc]
+
+ClientObituary()                         [client.qc]
+  |
+  |-> Mirage_AddHeat(kill_origin, value) [ai_mirage.qc]
+```
+
+---
+
 ## Call Graph: Darwin Update (Adaptive Learning)
 
 ### Negative Reinforcement (Death Learning)
@@ -769,6 +803,7 @@ W_BestBotWeapon()                          [botfight.qc]
 
 | Date | Change |
 |------|--------|
+| 2026-02-07 | Added Mirage Minds (persona/entropy humanization and heatmap bias) |
 | 2026-02-07 | Added Phantom Apprenticeship (spectral episodes with rollout validation and soft A* bias) |
 | 2026-01-18 | Added Darwin Update (adaptive learning, weapon confidence, decay) |
 | 2026-01-18 | Added Mastermind Update (pre-fire, ambush, displacement) |

@@ -16,6 +16,7 @@
 - Feeler steering + breadcrumbs (8-way scan escape + dropped BotPath waypoints).
 - Navigation learning + link types (player-learned links with usage weighting, danger scents, decay, and rocket-jump traversal).
 - Phantom Apprenticeship (spectral episodes with rollout validation, soft A* bias, decay; no teleport shortcuts or golden locks).
+- Mirage Minds (persona-driven humanization with entropy, micro-goals, heatmap denial, and feint pauses).
 - Teacher Mode debugging (impulse 102 show / 103 hide BotPath nodes with particles).
 - Speed Demon update (bunny hopping on straight runs and reflex projectile dodging).
 - Humanized idle behavior (BotRoam makes bots wander and scavenge instead of freezing).
@@ -79,6 +80,7 @@
 - KNOCKBACK log now filters zero-velocity entries and debounces duplicates (0.05s) to reduce console spam.
 - Range-based weapon selection with close-quarters combat logic (< 150 units: SNG > SSG > LG > NG > SG, explosives only with Quad; standard range: LG > RL > SNG > GL mid-range only > SSG; long range: prefer nails over shotguns).
 - Removed legacy episodic learning (golden path locks, teleport shortcuts, LOS shortcutting, trail rewards).
+- Removed broken map-control timing rushes (auto-drop BotPath at powerup spawns, spawn-time beelines, and golden lock boosts).
 
 ### Refactors and Optimization
 - Centralized run logic via `BotAI_Main` during shot/axe frames to reduce tunnel vision.

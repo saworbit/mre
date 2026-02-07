@@ -118,6 +118,12 @@ Notes:
 - Combat rollout uses a capped action sample per depth (skill-scaled) and beam search.
 - Navigation rollout uses a beam search with hazard/water penalties and a 5Hz throttle.
 
+## Mirage Minds tuning (cvars)
+- `sv_mirage` (0/1): master enable for persona-driven humanization
+- `mirage_debug` (0/1): log persona/entropy (requires `+developer 1`)
+
+Defaults for `sv_mirage` and `mirage_debug` are set in `mre/Autoexec.cfg`.
+
 ## CI
 ```
 powershell -ExecutionPolicy Bypass -File c:\reaperai\ci\build_mre.ps1

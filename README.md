@@ -31,6 +31,7 @@ from `archive/`.
 - Feeler steering + breadcrumbs (escape scans and dropped BotPath waypoints)
 - Navigation learning (link types, usage weighting, danger/decay, rocket jumps)
 - Phantom Apprenticeship (spectral episodes with rollout validation, soft A* bias, decay; no teleport shortcuts or golden locks)
+- Mirage Minds (persona-driven humanization with entropy, micro-goals, heatmap denial, and feint pauses)
 - Teacher Mode debug impulses (102 show / 103 hide bot learning nodes, 104 dump spectral episodes)
 - Speed Demon update (bunny hopping on straight runs and reflex projectile dodging)
 - **Predator Update**: Strategic intelligence upgrade
@@ -112,3 +113,7 @@ The reboot now includes predictive rollout systems for navigation and combat:
 Runtime cvars (see `DEVELOPMENT.md` for full details):
 - `shadow_debug` (0/1) master debug
 - `shadow_nav_*` and `shadow_combat_*` tuning knobs
+
+## Mirage Minds (Persona Layer)
+- `sv_mirage` (0/1) master enable
+- `mirage_debug` (0/1) developer logs

@@ -786,6 +786,9 @@ void () W_BotAttack = {
       return ;
 
    }
+   if ( (self.mirage_hold_fire_time > time) ) {
+      return ;
+   }
 
    // FIX: Splash Damage Safety - don't fire explosives at close range
    // Rockets/grenades at <150 units will likely kill or heavily damage self

@@ -11,6 +11,7 @@ void (entity source, vector org, float volume, float type) Bot_BroadcastNoise;
 void () Bot_AnalyzeSound;
 entity () Spectral_FindPlayer;
 entity (entity target) SpawnPhantom;
+void () MirageTick;
 
 // =============================================================================
 // SENSORY AWARENESS: Sound-based alerting system
@@ -1374,6 +1375,9 @@ void (float dist) BotAI_Main = {
    if ( self.deadflag != DEAD_NO ) {
       return;
    }
+
+   // Mirage Minds: persona/entropy biasing
+   MirageTick ();
 
    // Phantom Apprenticeship: occasionally shadow a player
    if ( !self.phantom && (random () < 0.030) && (time > (self.last_phantom + 30.000)) ) {

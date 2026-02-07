@@ -60,11 +60,13 @@ For visual/behavioral verification:
 - [ ] **Hazard Avoidance**: Bots refuse to walk into lava/slime
 - [ ] **Wall Flow**: Bots curve smoothly around corners (no stop-turn-go)
 - [ ] **Cliff Awareness**: Bots steer away from ledges before reaching them
+- [ ] **Mirage Arcs**: Bots show slight yaw arcs and micro-goal drift (persona layer)
 
 ### Combat Fairness
 - [ ] **Aim Jitter**: Skill 0 bots miss noticeably (~25° error)
 - [ ] **Reaction Time**: Skill 0 bots have ~200ms delay before engaging (surprise attacks work)
 - [ ] **Object Permanence**: Bots continue firing at doorways briefly after you break LOS
+- [ ] **Feints**: Bots occasionally pause fire briefly at close range (mirage persona)
 - [ ] **Knockback**: Bots get pushed by rockets/explosions (not rooted in place)
 - [ ] **Retreat**: Low-health bots without nearby goodies back off to break LOS
 - [ ] **No Vacuum Pickup**: Items don't vanish until bot reaches them

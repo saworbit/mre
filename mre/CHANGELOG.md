@@ -8,7 +8,12 @@
   - Ethereal rollouts validate episodes using ShadowSimStep/ShadowReward.
   - A* cost bias uses soft allure with decay (no hard locks or teleport shortcuts).
   - Impulse 104 prints episode count for quick debugging.
+- Feature: Mirage Minds persona layer (`ai_mirage.qc`, `bot_ai.qc`, `botmove.qc`,
+  `botfight.qc`, `items.qc`, `client.qc`, `defs.qc`). Adds entropy-driven personas,
+  micro-goal drift, heatmap denial, and feint pauses without overriding core AI.
 - Removed: Legacy episodic learning (golden locks, teleport shortcuts, LOS shortcutting, trail rewards).
+- Removed: Broken map-control timing rushes (auto-drop BotPath at powerup spawns,
+  spawn-time beelines, and hard lock boosts).
 - Updated: Shadow Puppets Nexus (shared nav/combat throttle, cvar gates, per-bot beam/depth overrides, spectral reward bias).
 - Feature: Smooth steering anti-jitter (`botmove.qc`, `defs.qc`). Bots now average
   steering decisions over 3 frames (0.3s at 10Hz) to prevent oscillation between

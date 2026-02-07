@@ -67,8 +67,8 @@ void (float dist) ai_botseek = {
 
    }
 
-   // STRATEGIC AI: Check for powerup timing and sound investigation
-   // This runs when we have no enemy, making bots proactive
+   // STRATEGIC AI: Sound investigation and proactive behavior
+   // This runs when we have no enemy, keeping bots active
    if ( BotAI_Strategic (dist) ) {
       return;
    }

@@ -13,6 +13,7 @@ float (entity next_node, float dist) BotExecuteLink;
 float (float vz, float dist, float imagine) Bot_tryjump;
 float (vector jmpv) Botwaterjump;
 float (vector goal_pos, float dist) BotShadowPuppetYaw;
+float (float base_yaw, float target_yaw, float strength) Mirage_BlendYaw;
 
 // FIX: Platform riding - handles func_train (DM2 lava platforms) and func_plat
 // Returns TRUE if bot should wait/ride, FALSE to continue with normal movement
@@ -2204,6 +2205,8 @@ void (float dist) Botmovetogoal = {
    local entity Botgoal;
    local float wlevel;
    local float shadow_yaw;
+   local float mirage_yaw;
+   local float mirage_blend;
 
    self.oldorigin = self.origin;
    Botgoal = self.goalentity;
@@ -2216,6 +2219,14 @@ void (float dist) Botmovetogoal = {
       }
    } else {
       self.ideal_yaw = vectoyaw ((Botgoal.origin - self.origin));
+   }
+   if ( (self.mirage_goal_time > time) ) {
+      mirage_yaw = vectoyaw ((self.mirage_goal - self.origin));
+      mirage_blend = (0.250 + (self.mood_entropy * 0.250));
+      self.ideal_yaw = Mirage_BlendYaw (self.ideal_yaw, mirage_yaw, mirage_blend);
+   }
+   if ( (self.mirage_yaw_time > time) ) {
+      self.ideal_yaw = Mirage_BlendYaw (self.ideal_yaw, (self.ideal_yaw + self.mirage_yaw_bias), 0.600);
    }
    ChangeYaw ();
    self.whiskers_allowed = TRUE;

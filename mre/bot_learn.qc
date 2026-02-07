@@ -360,6 +360,26 @@ void () DecayEpisodes = {
    }
 };
 
+vector () Spectral_PickEndpoint = {
+
+   local float idx;
+
+   if ( (spectral_count <= 0.000) ) {
+      return '0 0 0';
+   }
+
+   idx = floor (random () * spectral_count);
+   if ( (idx < FALSE) ) {
+      idx = FALSE;
+   }
+   if ( (idx >= spectral_count) ) {
+      idx = (spectral_count - TRUE);
+   }
+
+   return spectral_end[idx];
+
+};
+
 entity () Spectral_FindPlayer = {
    local entity p;
    local entity pick;
