@@ -349,6 +349,9 @@ void () PutBotInServer = {
    self.shadow_combat_weapon = FALSE;
    self.shadow_combat_next_time = FALSE;
    self.shadow_nav_debug_time = FALSE;
+   self.last_predict = FALSE;
+   self.shadow_depth = (6.000 + floor (self.skil));
+   self.shadow_beam = (3.000 + (self.skil * 0.200));
    self.walkframe = FALSE;  // Reset animation frame counter
    // Reset tactical intelligence state (Mastermind Update)
    self.ambush_ready = FALSE;

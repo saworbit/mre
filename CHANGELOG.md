@@ -15,23 +15,18 @@
 - Velocity-based 3D swimming (oxygen-aware surfacing, pitch steering, direct velocity control).
 - Feeler steering + breadcrumbs (8-way scan escape + dropped BotPath waypoints).
 - Navigation learning + link types (player-learned links with usage weighting, danger scents, decay, and rocket-jump traversal).
-- Retrospective learning (trail buffer, node priority rewards, shortcut optimization).
+- Phantom Apprenticeship (spectral episodes with rollout validation, soft A* bias, decay; no teleport shortcuts or golden locks).
 - Teacher Mode debugging (impulse 102 show / 103 hide BotPath nodes with particles).
 - Speed Demon update (bunny hopping on straight runs and reflex projectile dodging).
 - Humanized idle behavior (BotRoam makes bots wander and scavenge instead of freezing).
 - Unlocked high skill levels (skill 0-10, was 0-3).
 - Added impulse 100 quick-add bot (standard convention).
 - Added tactical retreat fallback when running away and no goodies are found.
-- **Predator Update**: Map Control, Sound Navigation, and Curiosity
-  - Map Control (Timing): Bots track powerup respawn times (Quad, Pent, Ring) and rush to spawns.
+- **Predator Update**: Sound Navigation and Curiosity
   - Sensory Awareness (Hearing): Bots hear combat sounds and investigate (rockets, grenades, explosions).
   - Curiosity (Solving): Bots shoot shootable buttons, doors, and walls to discover secrets.
 - Auditory system: Virtual sound events for item pickups, water splashes, and footsteps with occlusion; bots infer and investigate.
-- **Episodic Learning**: Teach bots by demonstration
-  - Teleport detection: >500 unit instant travel creates LINK_TELE shortcuts with explicit destination.
-  - Golden path locking: Quad/Pent/Ring pickups boost trail priority by +500; RL/LG pickups boost by +200.
-  - Link usage boost: Golden path links get +100 usage weight so A* strongly favors proven powerup routes.
-  - Path optimization: After locking a path, shortcuts are created via line-of-sight checks.
+- Shadow Puppets Nexus: Shared nav/combat throttle, cvar gates (`sv_shadow_nav`, `sv_shadow_combat`, `shadow_throttle`), per-bot beam/depth overrides, spectral reward bias.
 - **Darwin Update**: Adaptive reinforcement learning
   - Natural Selection: Death locations get danger penalty (+500), kill locations get glory boost (+10).
   - Weapon Specialization: Bots develop personal weapon preferences (-10 to +10 confidence per weapon).
@@ -59,7 +54,6 @@
 - "Vacuum pickup" where items vanished before bot reached them (added distance check).
 - Bots "stealing" powerups from players waiting at spawn points (only Direct drive when item exists).
 - Powerups could be picked through walls/adjacent rooms (added line-of-sight check on touch).
-- Quad/Pent timing rushes could beeline when spawn areas lacked waypoints (auto-drop BotPath at powerup spawns).
 - Button-triggered paths can now be enforced via mandatory waypoints when players press buttons (prevents A* from skipping required detours).
 - Low-skill bots felt like cheaters (increased aim jitter from ~10?? to ~25?? max at skill 0).
 - Bots attacking observers/spectators (added MOVETYPE_NOCLIP and deadflag checks).
@@ -84,6 +78,7 @@
 - Added developer-only AI state logging in `BotAI_Main` (logs only on state changes).
 - KNOCKBACK log now filters zero-velocity entries and debounces duplicates (0.05s) to reduce console spam.
 - Range-based weapon selection with close-quarters combat logic (< 150 units: SNG > SSG > LG > NG > SG, explosives only with Quad; standard range: LG > RL > SNG > GL mid-range only > SSG; long range: prefer nails over shotguns).
+- Removed legacy episodic learning (golden path locks, teleport shortcuts, LOS shortcutting, trail rewards).
 
 ### Refactors and Optimization
 - Centralized run logic via `BotAI_Main` during shot/axe frames to reduce tunnel vision.

@@ -9,6 +9,8 @@ float () BotCheckEnvironmentKill;  // Tactical: Displacement kills (defined in b
 void (entity enemy, float dist) BotShadowCombatThink; // Shadow Puppets combat (ai_predict.qc)
 void (entity source, vector org, float volume, float type) Bot_BroadcastNoise;
 void () Bot_AnalyzeSound;
+entity () Spectral_FindPlayer;
+entity (entity target) SpawnPhantom;
 
 // =============================================================================
 // SENSORY AWARENESS: Sound-based alerting system
@@ -1277,205 +1279,8 @@ void (float state, string label) BotLogAI = {
 };
 
 // =============================================================================
-// STRATEGIC AI: Map Control (Timing) and Sound Investigation
-// This is what elevates bots from "skilled mover" to "intelligent strategist"
+// STRATEGIC AI: Sound Investigation
 // =============================================================================
-
-// Check if bot should rush to an upcoming powerup spawn
-// Returns TRUE if bot is now rushing to a powerup, FALSE otherwise
-float () BotAI_CheckPowerupTiming = {
-
-   local float time_until_spawn;
-   local float dist_to_spawn;
-   local entity route;
-   local float debug_ready;
-
-   debug_ready = (cvar("developer") && (time >= self.timing_debug_time));
-
-   // Don't rush if we're badly hurt
-   if ( (self.health < 40) ) {
-      if ( debug_ready ) {
-         if ( (next_quad_time > 0) && quad_spawn_ent ) {
-            time_until_spawn = next_quad_time - time;
-            if ( (time_until_spawn > 0) && (time_until_spawn < 10) ) {
-               dprint ("[");
-               dprint (self.netname);
-               dprint ("] TIMING: Quad skip low health (");
-               dprint (ftos(floor(self.health)));
-               dprint (")\n");
-               self.timing_debug_time = time + 0.5;
-               debug_ready = FALSE;
-            }
-         }
-         if ( debug_ready && (next_pent_time > 0) && pent_spawn_ent ) {
-            time_until_spawn = next_pent_time - time;
-            if ( (time_until_spawn > 0) && (time_until_spawn < 15) ) {
-               dprint ("[");
-               dprint (self.netname);
-               dprint ("] TIMING: Pent skip low health (");
-               dprint (ftos(floor(self.health)));
-               dprint (")\n");
-               self.timing_debug_time = time + 0.5;
-            }
-         }
-      }
-      return ( FALSE );
-   }
-
-   // Don't rush if we have invulnerability (no need for more powerups)
-   if ( (self.items & IT_INVULNERABILITY) ) {
-      if ( debug_ready ) {
-         if ( (next_quad_time > 0) && quad_spawn_ent ) {
-            time_until_spawn = next_quad_time - time;
-            if ( (time_until_spawn > 0) && (time_until_spawn < 10) ) {
-               dprint ("[");
-               dprint (self.netname);
-               dprint ("] TIMING: Quad skip invuln\n");
-               self.timing_debug_time = time + 0.5;
-               debug_ready = FALSE;
-            }
-         }
-         if ( debug_ready && (next_pent_time > 0) && pent_spawn_ent ) {
-            time_until_spawn = next_pent_time - time;
-            if ( (time_until_spawn > 0) && (time_until_spawn < 15) ) {
-               dprint ("[");
-               dprint (self.netname);
-               dprint ("] TIMING: Pent skip invuln\n");
-               self.timing_debug_time = time + 0.5;
-            }
-         }
-      }
-      return ( FALSE );
-   }
-
-   // QUAD DAMAGE - highest priority, rush 10s before spawn
-   if ( (next_quad_time > 0) && quad_spawn_ent ) {
-      time_until_spawn = next_quad_time - time;
-      if ( (time_until_spawn > 0) && (time_until_spawn < 10) ) {
-         // Check if we can reasonably get there
-         dist_to_spawn = vlen (quad_spawn_ent.origin - self.origin);
-         // Bots move ~320 units/sec, so 10s = 3200 units max
-         if ( (dist_to_spawn < 3000) ) {
-            // Rush to Quad!
-            if ( (self.goalentity.classname == "BotTarget") ) {
-               route = BestChaseRoute (self, quad_spawn_ent);
-               if ( (route == world) ) {
-                  if ( debug_ready ) {
-                     dprint ("[");
-                     dprint (self.netname);
-                  dprint ("] TIMING: Quad skip no route\n");
-                  self.timing_debug_time = time + 0.5;
-                  debug_ready = FALSE;
-                  }
-                  return ( FALSE );
-               }
-               if ( (route == quad_spawn_ent) && !Spotvisible (quad_spawn_ent) ) {
-                  if ( debug_ready ) {
-                     dprint ("[");
-                     dprint (self.netname);
-                     dprint ("] TIMING: Quad skip no LOS\n");
-                     self.timing_debug_time = time + 0.5;
-                     debug_ready = FALSE;
-                  }
-                  return ( FALSE );
-               }
-               setorigin (self.goalentity, route.origin);
-               self.goalentity.goalentity = route;
-            } else if ( debug_ready ) {
-               dprint ("[");
-               dprint (self.netname);
-               dprint ("] TIMING: Quad skip goalentity=");
-               dprint (self.goalentity.classname);
-               dprint ("\n");
-               self.timing_debug_time = time + 0.5;
-               debug_ready = FALSE;
-            }
-            self.movetarget = quad_spawn_ent;
-            BotLogAI (AI_STATE_TIMING, "QUAD_RUSH");
-            // Only log at 5-second intervals to reduce spam
-            if ( cvar("developer") && (floor(time_until_spawn) != floor(time_until_spawn + 0.1)) ) {
-               dprint ("[");
-               dprint (self.netname);
-               dprint ("] TIMING: Rushing to Quad! (");
-               dprint (ftos(floor(time_until_spawn)));
-               dprint ("s)\n");
-            }
-            return ( TRUE );
-         } else if ( debug_ready ) {
-            dprint ("[");
-            dprint (self.netname);
-            dprint ("] TIMING: Quad skip dist=");
-            dprint (ftos(floor(dist_to_spawn)));
-            dprint ("\n");
-            self.timing_debug_time = time + 0.5;
-            debug_ready = FALSE;
-         }
-      }
-   }
-
-   // PENTAGRAM - rush 15s before (it's more valuable)
-   if ( (next_pent_time > 0) && pent_spawn_ent ) {
-      time_until_spawn = next_pent_time - time;
-      if ( (time_until_spawn > 0) && (time_until_spawn < 15) ) {
-         dist_to_spawn = vlen (pent_spawn_ent.origin - self.origin);
-         if ( (dist_to_spawn < 4000) ) {
-            if ( (self.goalentity.classname == "BotTarget") ) {
-               route = BestChaseRoute (self, pent_spawn_ent);
-               if ( (route == world) ) {
-                  if ( debug_ready ) {
-                     dprint ("[");
-                     dprint (self.netname);
-                  dprint ("] TIMING: Pent skip no route\n");
-                  self.timing_debug_time = time + 0.5;
-                  debug_ready = FALSE;
-                  }
-                  return ( FALSE );
-               }
-               if ( (route == pent_spawn_ent) && !Spotvisible (pent_spawn_ent) ) {
-                  if ( debug_ready ) {
-                     dprint ("[");
-                     dprint (self.netname);
-                     dprint ("] TIMING: Pent skip no LOS\n");
-                     self.timing_debug_time = time + 0.5;
-                     debug_ready = FALSE;
-                  }
-                  return ( FALSE );
-               }
-               setorigin (self.goalentity, route.origin);
-               self.goalentity.goalentity = route;
-            } else if ( debug_ready ) {
-               dprint ("[");
-               dprint (self.netname);
-               dprint ("] TIMING: Pent skip goalentity=");
-               dprint (self.goalentity.classname);
-               dprint ("\n");
-               self.timing_debug_time = time + 0.5;
-               debug_ready = FALSE;
-            }
-            self.movetarget = pent_spawn_ent;
-            BotLogAI (AI_STATE_TIMING, "PENT_RUSH");
-            // Only log once when rush starts
-            if ( cvar("developer") && (self.last_ai_state != AI_STATE_TIMING) ) {
-               dprint ("[");
-               dprint (self.netname);
-               dprint ("] TIMING: Rushing to Pent!\n");
-            }
-            return ( TRUE );
-         } else if ( debug_ready ) {
-            dprint ("[");
-            dprint (self.netname);
-            dprint ("] TIMING: Pent skip dist=");
-            dprint (ftos(floor(dist_to_spawn)));
-            dprint ("\n");
-            self.timing_debug_time = time + 0.5;
-            debug_ready = FALSE;
-         }
-      }
-   }
-
-   return ( FALSE );
-
-};
 
 // Check if bot should investigate a sound they heard
 // Returns TRUE if bot is now investigating, FALSE otherwise
@@ -1550,17 +1355,10 @@ float (float dist) BotAI_CheckSoundInvestigation = {
 // Returns TRUE if strategic behavior took over, FALSE to continue normal AI
 float (float dist) BotAI_Strategic = {
 
-   // 1. MAP CONTROL: Powerup timing takes highest priority
-   //    A skilled player will time quad and rush to it
-   if ( BotAI_CheckPowerupTiming () ) {
-      Botmovetogoal (dist);
-      return ( TRUE );
-   }
-
-   // 2. AUDITORY INFERENCE: React to item/water/step sounds
+   // 1. AUDITORY INFERENCE: React to item/water/step sounds
    Bot_AnalyzeSound ();
 
-   // 3. AUDITORY INVESTIGATION: If idle, go check out sounds
+   // 2. AUDITORY INVESTIGATION: If idle, go check out sounds
    //    This makes bots hunt players based on weapon fire
    if ( BotAI_CheckSoundInvestigation (dist) ) {
       return ( TRUE );
@@ -1575,6 +1373,16 @@ void (float dist) BotAI_Main = {
    // FIX: Stop AI if dead - prevents overriding death animation frames
    if ( self.deadflag != DEAD_NO ) {
       return;
+   }
+
+   // Phantom Apprenticeship: occasionally shadow a player
+   if ( !self.phantom && (random () < 0.030) && (time > (self.last_phantom + 30.000)) ) {
+      local entity ply;
+      ply = Spectral_FindPlayer ();
+      if ( ply ) {
+         self.phantom = SpawnPhantom (ply);
+         self.last_phantom = time;
+      }
    }
 
    local float rng;

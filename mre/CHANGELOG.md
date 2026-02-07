@@ -2,21 +2,14 @@
 
 ## Unreleased
 - Clean baseline restored in `mre/`.
-- Feature: Episodic Learning / One-Shot Learning (`botroute.qc`, `items.qc`, `defs.qc`,
-  `botit_th.qc`). Bots learn optimal routes by watching the player:
-  - **Teleport detection**: When `Player_AutoWaypoint()` detects movement >500 units
-    in a single frame, it marks the link as `LINK_TELE` and stores the explicit
-    destination in `tele_dest` field. Bots can later use these learned teleport
-    shortcuts without bumbling around the teleporter entrance.
-  - **Golden path locking**: `LockInPowerupPath()` is called when the player picks
-    up high-value items (Quad, Pent, Ring, RL, LG). It marks the last 5 trail nodes
-    as `is_powerup_path = TRUE` and boosts their priority (+500 for powerups, +200
-    for weapons) with decay (90%→60%) so nodes closer to the item are preferred.
-  - **Link usage boost**: Golden path links get +100 usage weight so A* routing
-    strongly favors these proven paths to important pickups.
-  - **Path optimization**: After locking in a path, `OptimizePathSegment()` is
-    called on the trail to create shortcut links where line-of-sight exists.
-  - Developer logging: "Learned TELEPORT shortcut!" and "EPISODIC: Locking in X path!"
+- Feature: Phantom Apprenticeship / Spectral Learning (`bot_learn.qc`, `bot_ai.qc`,
+  `botroute.qc`, `defs.qc`). Bots shadow players with low-cost phantoms:
+  - Spectral episodes capture short maneuver segments (jump/tele/swim/walk).
+  - Ethereal rollouts validate episodes using ShadowSimStep/ShadowReward.
+  - A* cost bias uses soft allure with decay (no hard locks or teleport shortcuts).
+  - Impulse 104 prints episode count for quick debugging.
+- Removed: Legacy episodic learning (golden locks, teleport shortcuts, LOS shortcutting, trail rewards).
+- Updated: Shadow Puppets Nexus (shared nav/combat throttle, cvar gates, per-bot beam/depth overrides, spectral reward bias).
 - Feature: Smooth steering anti-jitter (`botmove.qc`, `defs.qc`). Bots now average
   steering decisions over 3 frames (0.3s at 10Hz) to prevent oscillation between
   pathfinder and whisker steering. `BotSmoothSteer()` uses a circular buffer with
@@ -34,8 +27,6 @@
   or major weapon (RL, LG, Quad, Pent, Mega Health, Red Armor), bots enter "direct
   drive" mode - they stop complex steering and walk straight toward the item. This
   prevents bots from strafing past valuable items due to whisker deflection.
-- Improved: Reduced TIMING log spam (`bot_ai.qc`). Quad rush logging now only fires
-  at 1-second intervals instead of every frame. Pent rush logs only on state change.
 - Improved: Reduced INVESTIGATING log spam (`bot_ai.qc`). Sound investigation logging
   now only fires on first frame of investigation instead of continuously.
 - Feature: Mastermind Update - Tactical Intelligence (`botfight.qc`, `bot_ai.qc`,
@@ -137,15 +128,11 @@
 - Feature: Navigation learning + link types (`botroute.qc`, `client.qc`,
   `items.qc`, `defs.qc`, `botmove.qc`, `world.qc`). Players auto-drop/attach
   waypoints with link types (walk/jump/drop/platform/rocket jump), link usage
-  weighting and node priority bias A* routing, danger scents steer bots away
-  from lethal nodes, and graph decay lets paths be forgotten over time.
-- Feature: Retrospective learning + path optimization (`botroute.qc`, `items.qc`,
-  `defs.qc`). Tracks a 5-node trail, rewards winning paths via `node_priority`,
-  and creates shortcut links when line-of-sight exists.
+  weighting biases A* routing, danger scents steer bots away from lethal nodes,
+  and graph decay lets paths be forgotten over time.
 - Feature: Teacher Mode debugging (`weapons.qc`). `impulse 102` shows `BotPath`
-  nodes with bubble sprites/particles; `impulse 103` hides them.
-- Fixed: Timing rushes to Quad/Pent could beeline without nearby waypoints. Auto-drop
-  a BotPath node at powerup spawns so routing stays on breadcrumbs.
+  nodes with bubble sprites/particles; `impulse 103` hides them; `impulse 104`
+  prints spectral episode count.
 - Feature: Mandatory action nodes for buttons (`buttons.qc`, `botroute.qc`). Player
   button presses mark the nearest waypoint as mandatory for a short window so bots
   don't skip required detours (e.g., DM2 gate button).

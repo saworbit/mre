@@ -81,9 +81,7 @@ Logs emit `[BotName] AI: <STATE>` only when the bot's high-level state changes
 Feeler exploration logs are developer-only: `Activating FEELER mode` and
 `[BotName] BREADCRUMB: Dropped at ...` appear when feeler mode triggers and
 bots drop breadcrumbs. Player learning logs appear as
-`[Player] BREADCRUMB: Learned waypoint at ...`. Retrospective learning prints
-`AI Optimized: Created shortcut!` and reward logs like
-`Learned path to Power Weapon!` / `Learned CRITICAL path to Powerup!`.
+`[Player] BREADCRUMB: Learned waypoint at ...`.
 Reflex dodge logs appear as `Bot attempting DODGE!`.
 Quad debug logs appear as `[QuadSpawn]` when the item respawns and
 `[QuadTouch] accept/blocked/reject` when a player or bot tries to pick it up.
@@ -92,10 +90,14 @@ position jumps log as `[BotWarp]`.
 Auditory inference uses virtual noise events (NOISE_ITEM/WATER/STEP/WEAPON);
 combat hearing still logs `[BotName] HEARD: Combat at ...` when `developer` is on.
 Teacher Mode visualization uses `impulse 102` to show BotPath nodes and
-`impulse 103` to hide them.
+`impulse 103` to hide them. Spectral learning uses `impulse 104` to print the
+current episode count.
 
 ## Shadow Puppets tuning (cvars)
 These are runtime knobs for the combat rollout system:
+- `sv_shadow_nav` (0/1): master enable for navigation rollouts
+- `sv_shadow_combat` (0/1): master enable for combat rollouts
+- `shadow_throttle` (float): shared rollout throttle in seconds (default 0.2)
 - `shadow_debug` (0/1): master debug switch (enables both nav + combat logs)
 - `shadow_combat_debug` (0/1): print rollout decisions (requires `+developer 1`)
 - `shadow_combat_depth` (>0): override combat rollout depth (ticks)
@@ -108,6 +110,9 @@ Navigation rollout knobs:
 - `shadow_nav_beam` (>0): override nav beam width
 - `shadow_nav_hazard_bias` (float): scales hazard penalties (lava/slime/cliffs)
 - `shadow_nav_water_bias` (float): scales water penalties
+
+Defaults for `sv_shadow_nav`, `sv_shadow_combat`, `shadow_throttle`, and `shadow_debug`
+are set in `mre/Autoexec.cfg`.
 
 Notes:
 - Combat rollout uses a capped action sample per depth (skill-scaled) and beam search.

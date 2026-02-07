@@ -1,6 +1,8 @@
 // Shadow Puppets: Predictive rollout beam search for movement steering
 // Lightweight lookahead to reduce hazards and dead-ends
 
+float (vector pos) Spectral_AllureBias;
+
 float SHADOW_MAX_DEPTH = 12.000;
 float SHADOW_MAX_BEAM = 5.000;
 float SHADOW_DT = 0.100;
@@ -238,6 +240,9 @@ float (vector pos, vector vel, float air_left, vector goal_pos, float use_trace,
       }
    }
 
+   // Spectral learning bias
+   r = (r + Spectral_AllureBias (pos));
+
    // Stagnation penalty
    if ( (vlen (vel) < 60.000) ) {
       r = (r - 200.000);
@@ -277,6 +282,9 @@ float (vector goal_pos, float dist) BotShadowPuppetYaw = {
    local float tr_inwater;
 
    // Fast exits
+   if ( (cvar ("sv_shadow_nav") <= FALSE) ) {
+      return ( 9999.000 );
+   }
    if ( (self.deadflag != DEAD_NO) ) {
       return ( 9999.000 );
    }
@@ -287,15 +295,22 @@ float (vector goal_pos, float dist) BotShadowPuppetYaw = {
       return ( 9999.000 );
    }
 
-   // Throttle
-   throttle = (0.200 - (self.skil * 0.010));
-   if ( (throttle < 0.100) ) {
-      throttle = 0.100;
+   // Throttle (shared for nav/combat)
+   throttle = cvar ("shadow_throttle");
+   if ( (throttle <= FALSE) ) {
+      throttle = (0.200 - (self.skil * 0.010));
+      if ( (throttle < 0.100) ) {
+         throttle = 0.100;
+      }
+   } else {
+      if ( (throttle < 0.050) ) {
+         throttle = 0.050;
+      }
    }
-   if ( (self.shadow_next_time > time) ) {
+   if ( ((self.last_predict + throttle) > time) ) {
       return ( 9999.000 );
    }
-   self.shadow_next_time = (time + throttle);
+   self.last_predict = time;
 
    debug = cvar ("shadow_nav_debug");
    if ( (cvar ("shadow_debug") > FALSE) ) {
@@ -309,7 +324,11 @@ float (vector goal_pos, float dist) BotShadowPuppetYaw = {
    if ( (water_bias == FALSE) ) water_bias = TRUE;
 
    // Beam and depth scaling
-   depth = (6.000 + floor (self.skil));
+   if ( (self.shadow_depth > FALSE) ) {
+      depth = self.shadow_depth;
+   } else {
+      depth = (6.000 + floor (self.skil));
+   }
    if ( (depth > SHADOW_MAX_DEPTH) ) {
       depth = SHADOW_MAX_DEPTH;
    }
@@ -317,7 +336,11 @@ float (vector goal_pos, float dist) BotShadowPuppetYaw = {
       depth = 6.000;
    }
 
-   beam_w = (3.000 + floor (self.skil * 0.200));
+   if ( (self.shadow_beam > FALSE) ) {
+      beam_w = self.shadow_beam;
+   } else {
+      beam_w = (3.000 + floor (self.skil * 0.200));
+   }
    if ( (beam_w > SHADOW_MAX_BEAM) ) {
       beam_w = SHADOW_MAX_BEAM;
    }
@@ -1042,6 +1065,9 @@ void (entity enemy, float dist) BotShadowCombatThink = {
    local vector ang;
    local vector dir;
 
+   if ( (cvar ("sv_shadow_combat") <= FALSE) ) {
+      return;
+   }
    if ( !enemy || (enemy == world) ) {
       return;
    }
@@ -1055,14 +1081,21 @@ void (entity enemy, float dist) BotShadowCombatThink = {
       return;
    }
 
-   throttle = (0.200 - (self.skil * 0.010));
-   if ( (throttle < 0.100) ) {
-      throttle = 0.100;
+   throttle = cvar ("shadow_throttle");
+   if ( (throttle <= FALSE) ) {
+      throttle = (0.200 - (self.skil * 0.010));
+      if ( (throttle < 0.100) ) {
+         throttle = 0.100;
+      }
+   } else {
+      if ( (throttle < 0.050) ) {
+         throttle = 0.050;
+      }
    }
-   if ( (self.shadow_combat_next_time > time) ) {
+   if ( ((self.last_predict + throttle) > time) ) {
       return;
    }
-   self.shadow_combat_next_time = (time + throttle);
+   self.last_predict = time;
 
    debug = cvar ("shadow_combat_debug");
    if ( (cvar ("shadow_debug") > FALSE) ) {
@@ -1072,11 +1105,19 @@ void (entity enemy, float dist) BotShadowCombatThink = {
    beam_override = cvar ("shadow_combat_beam");
    fire_bias = cvar ("shadow_combat_fire_bias");
 
-   depth = (5.000 + floor (self.skil * 0.700));
+   if ( (self.shadow_depth > FALSE) ) {
+      depth = self.shadow_depth;
+   } else {
+      depth = (5.000 + floor (self.skil * 0.700));
+   }
    if ( (depth > SHADOW_COMBAT_MAX_DEPTH) ) depth = SHADOW_COMBAT_MAX_DEPTH;
    if ( (depth < 5.000) ) depth = 5.000;
 
-   beam_w = (2.000 + floor (self.skil * 0.200));
+   if ( (self.shadow_beam > FALSE) ) {
+      beam_w = self.shadow_beam;
+   } else {
+      beam_w = (2.000 + floor (self.skil * 0.200));
+   }
    if ( (beam_w > SHADOW_COMBAT_MAX_BEAM) ) beam_w = SHADOW_COMBAT_MAX_BEAM;
    if ( (beam_w < 2.000) ) beam_w = 2.000;
    act_limit = (8.000 * 2.000 * (1.000 + floor (self.skil / 5.000)));

@@ -1319,6 +1319,7 @@ void () QuadCheat = {
 };
 
 void () botImpulseCommand;
+void () Spectral_DebugDump;
 
 void () ImpulseCommands = {
 
@@ -1332,9 +1333,7 @@ void () ImpulseCommands = {
       node = find (world,classname,"BotPath");
       while ( node ) {
          setmodel (node,"progs/s_bubble.spr");
-         if ( (node.node_priority > 50.000) ) {
-            particle (node.origin,'0 0 50',244.000,10.000);
-         } else if ( (node.link_type1 == LINK_JUMP) || (node.link_type1 == LINK_ROCKETJUMP) ) {
+         if ( (node.link_type1 == LINK_JUMP) || (node.link_type1 == LINK_ROCKETJUMP) ) {
             particle (node.origin,'0 0 30',225.000,10.000);
          }
          count = (count + TRUE);
@@ -1356,6 +1355,12 @@ void () ImpulseCommands = {
          node = find (node,classname,"BotPath");
       }
       bprint ("Hidden waypoints.\n");
+      self.impulse = FALSE;
+      return ;
+   }
+
+   if ( (self.impulse == 104.000) && (self.classname == "player") ) {
+      Spectral_DebugDump ();
       self.impulse = FALSE;
       return ;
    }

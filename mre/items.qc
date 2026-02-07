@@ -448,51 +448,6 @@ void (float old, float new) Deathmatch_Weapon = {
 };
 float () W_BestWeapon;
 
-void (entity picker, entity item) BoostLinkUsageForPickup = {
-
-   local entity wp;
-   local entity best;
-   local float best_dist;
-   local float dist;
-
-   if ( !picker.last_waypoint || (picker.last_waypoint == world) ) {
-      return ;
-   }
-
-   best = world;
-   best_dist = 99999.000;
-   wp = findradius (item.origin,100.000);
-   while ( wp ) {
-      if ( (wp.classname == "BotPath") ) {
-         dist = vlen ((wp.origin - item.origin));
-         if ( (dist < best_dist) ) {
-            best_dist = dist;
-            best = wp;
-         }
-      }
-      wp = wp.chain;
-   }
-
-   if ( !best || (best == world) ) {
-      return ;
-   }
-
-   if ( (picker.last_waypoint.movetarget == best) ) {
-      picker.last_waypoint.link_usage1 = (picker.last_waypoint.link_usage1 + 10.000);
-   } else if ( (picker.last_waypoint.movetarget2 == best) ) {
-      picker.last_waypoint.link_usage2 = (picker.last_waypoint.link_usage2 + 10.000);
-   } else if ( (picker.last_waypoint.movetarget3 == best) ) {
-      picker.last_waypoint.link_usage3 = (picker.last_waypoint.link_usage3 + 10.000);
-   } else if ( (picker.last_waypoint.movetarget4 == best) ) {
-      picker.last_waypoint.link_usage4 = (picker.last_waypoint.link_usage4 + 10.000);
-   } else if ( (picker.last_waypoint.movetarget5 == best) ) {
-      picker.last_waypoint.link_usage5 = (picker.last_waypoint.link_usage5 + 10.000);
-   } else if ( (picker.last_waypoint.movetarget6 == best) ) {
-      picker.last_waypoint.link_usage6 = (picker.last_waypoint.link_usage6 + 10.000);
-   }
-
-};
-
 void () weapon_touch = {
 
    local float hadammo;
@@ -592,11 +547,6 @@ void () weapon_touch = {
                   cacheRoute (other.movetarget,other.movetarget.movetarget,FALSE,self);
 
                }
-               // EPISODIC LEARNING: RL is a major weapon
-               if ( other.classname == "player" && !hadammo ) {
-                  LockInPowerupPath (other, "Weapon");
-               }
-
             } else {
 
                if ( (self.classname == "weapon_grenadelauncher") ) {
@@ -632,11 +582,6 @@ void () weapon_touch = {
                         cacheRoute (other.movetarget,other.movetarget.movetarget,FALSE,self);
 
                      }
-                     // EPISODIC LEARNING: LG is a major weapon
-                     if ( other.classname == "player" && !hadammo ) {
-                        LockInPowerupPath (other, "Weapon");
-                     }
-
                   } else {
 
                      objerror ("weapon_touch: unknown classname");
@@ -684,17 +629,6 @@ void () weapon_touch = {
    }
    W_SetCurrentAmmo ();
    self = stemp;
-   if ( (other.classname == "player") ) {
-      BoostLinkUsageForPickup (other,self);
-      if ( (new == IT_ROCKET_LAUNCHER) || (new == IT_LIGHTNING) ) {
-         BackPropagateReward (other, 100.000);
-         if ( cvar("developer") ) {
-            dprint ("Learned path to Power Weapon!\n");
-         }
-      } else {
-         BackPropagateReward (other, 20.000);
-      }
-   }
    if ( leave ) {
 
       return ;
@@ -894,13 +828,6 @@ void () ammo_touch = {
    self = other;
    W_SetCurrentAmmo ();
    self = stemp;
-   if ( (other.classname == "player") ) {
-      BoostLinkUsageForPickup (other,self);
-      BackPropagateReward (other, 500.000);
-      if ( cvar("developer") ) {
-         dprint ("Learned CRITICAL path to Powerup!\n");
-      }
-   }
    self.model = string_null;
    self.solid = SOLID_NOT;
    if ( (deathmatch == TRUE) ) {
@@ -1421,16 +1348,11 @@ void () powerup_touch = {
    }
    self.solid = SOLID_NOT;
    other.items = (other.items | self.items);
-   if ( (other.classname == "player") ) {
-      BoostLinkUsageForPickup (other,self);
-   }
    self.model = string_null;
    if ( (self.classname == "item_artifact_envirosuit") ) {
 
       other.rad_time = TRUE;
       other.radsuit_finished = (time + SVC_INTERMISSION);
-      // MAP CONTROL: Track biosuit respawn (60s)
-      next_suit_time = time + 60;
 
    }
    if ( (self.classname == "item_artifact_invulnerability") ) {
@@ -1442,17 +1364,6 @@ void () powerup_touch = {
          cacheRoute (other.movetarget,other.movetarget.movetarget,FALSE,self);
 
       }
-      // MAP CONTROL: Track Pentagram respawn (5 minutes)
-      next_pent_time = time + 300;
-      pent_spawn_ent = self;
-      if ( cvar("developer") ) {
-         bprint("Bots learned: Pent spawns in 300s\n");
-      }
-      // EPISODIC LEARNING: Lock in the path used to get here
-      if ( other.classname == "player" ) {
-         LockInPowerupPath (other, "Pent");
-      }
-
    }
    if ( (self.classname == "item_artifact_invisibility") ) {
 
@@ -1463,17 +1374,6 @@ void () powerup_touch = {
          cacheRoute (other.movetarget,other.movetarget.movetarget,FALSE,self);
 
       }
-      // MAP CONTROL: Track Ring respawn (5 minutes)
-      next_ring_time = time + 300;
-      ring_spawn_ent = self;
-      if ( cvar("developer") ) {
-         bprint("Bots learned: Ring spawns in 300s\n");
-      }
-      // EPISODIC LEARNING: Lock in the path used to get here
-      if ( other.classname == "player" ) {
-         LockInPowerupPath (other, "Ring");
-      }
-
    }
    if ( (self.classname == "item_artifact_super_damage") ) {
 
@@ -1485,17 +1385,6 @@ void () powerup_touch = {
          cacheRoute (other.movetarget,other.movetarget.movetarget,FALSE,self);
 
       }
-      // MAP CONTROL: Track Quad respawn (60s)
-      next_quad_time = time + 60;
-      quad_spawn_ent = self;
-      if ( cvar("developer") ) {
-         bprint("Bots learned: Quad spawns in 60s\n");
-      }
-      // EPISODIC LEARNING: Lock in the path used to get here
-      if ( other.classname == "player" ) {
-         LockInPowerupPath (other, "Quad");
-      }
-
    }
    activator = other;
    SUB_UseTargets ();
@@ -1517,7 +1406,6 @@ void () item_artifact_invulnerability = {
    self.th_weight = artifactweight;
    self.th_cache = cachepowerup;
    self.th_update = updatepowerup;
-   BotEnsureWaypoint (self.origin);
    StartItem ();
 
 };
@@ -1572,7 +1460,6 @@ void () item_artifact_super_damage = {
    self.th_weight = artifactweight;
    self.th_cache = cachepowerup;
    self.th_update = updatepowerup;
-   BotEnsureWaypoint (self.origin);
    StartItem ();
 
 };

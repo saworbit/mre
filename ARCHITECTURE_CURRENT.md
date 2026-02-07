@@ -229,18 +229,18 @@ Botmovetogoal(dist)                    [botmove.qc:1304]
 - Breadcrumbs: `Bot_DropBreadcrumb` calls `SpawnSavedWaypoint` (pathtype `DROPPED`) every ~48 units while exploring.
 
 
-### Navigation Learning + Retrospective Learning
+### Navigation Learning + Spectral Learning
 
 - Player auto-waypoints: `Player_AutoWaypoint` drops `BotPath` nodes during movement and links them with typed edges (walk/jump/drop/platform/rocket jump).
-- Usage weighting: `cacheRouteTarget` biases A* routing toward heavily used links and high-priority nodes.
-- Retrospective rewards: `UpdateTrail` tracks last 5 nodes; `BackPropagateReward` boosts `node_priority` and `link_usage` when items are picked up.
-- Path optimization: `OptimizePathSegment` links around intermediate nodes if line-of-sight exists, creating shortcuts.
+- Usage weighting: `cacheRouteTarget` biases A* routing toward heavily used links.
 - Graph maintenance: `MaintainGraph` decays usage and danger scent over time.
+- Spectral learning: `ApplySpectralBoost` softly reduces A* cost when spectral episodes align with a link.
 
 ### Teacher Mode Debugging
 
-- `impulse 102` reveals `BotPath` nodes with bubble sprites and particles for high priority or jump links.
+- `impulse 102` reveals `BotPath` nodes with bubble sprites and particles for jump links.
 - `impulse 103` hides the debug sprites again.
+- `impulse 104` prints current spectral episode count.
 
 
 ### Smooth Steering (Anti-Jitter)
@@ -407,27 +407,6 @@ While no redundant loops exist, these areas could be simplified:
 ---
 
 ## Call Graph: Predator Update (Strategic AI)
-
-### Map Control (Timing)
-
-Bots track powerup respawn times and rush to spawns before they appear:
-
-```
-powerup_touch()                        [items.qc]
-  └─> Updates global timers:
-        ├─> next_quad_time = time + 60  (Quad Damage)
-        ├─> next_pent_time = time + 300 (Pentagram)
-        └─> next_ring_time = time + 300 (Ring of Shadows)
-
-BotAI_CheckPowerupTiming()             [bot_ai.qc]
-  │
-  ├─> [if Quad spawns in <10s]
-  │     ├─> Check distance to spawn
-  │     └─> Redirect goal to Quad spawn
-  │
-  └─> [if Pent spawns in <15s]
-        └─> Redirect goal to Pent spawn
-```
 
 ### Sensory Awareness (Hearing)
 
@@ -599,60 +578,68 @@ Called from `ai_botrun()` before normal `CheckBotAttack()`.
 
 ---
 
-## Call Graph: Episodic Learning
+## Call Graph: Phantom Apprenticeship
 
-### Teleport Detection
+### Phantom Spawn
 
-When the player uses a teleporter, the auto-waypoint system detects the >500 unit
-instant travel and creates a special LINK_TELE connection:
-
-```
-Player_AutoWaypoint()                  [botroute.qc]
-  │
-  ├─> link_dist = vlen(near_node - last_waypoint)
-  │
-  ├─> [if link_dist > 500]            [teleport threshold]
-  │     ├─> type = LINK_TELE
-  │     ├─> last_waypoint.tele_dest = near_node.origin
-  │     └─> dprint("Learned TELEPORT shortcut!")
-  │
-  └─> LinkNodes(last_waypoint, near_node, type)
-```
-
-### Golden Path Locking
-
-When the player picks up high-value items, their recent trail is marked as a
-"golden" powerup path with boosted priority:
+Bots occasionally spawn a phantom to shadow a player and capture an episode:
 
 ```
-powerup_touch() / weapon_touch()       [items.qc]
-  │
-  └─> [if picker is player]
-        └─> LockInPowerupPath(player, "Quad")  (or Pent/Ring/Weapon)
-
-LockInPowerupPath(player, type)        [botroute.qc]
-  │
-  ├─> priority_boost = (type == powerup) ? 500 : 200
-  │
-  ├─> [for each trail_node 1-5]
-  │     ├─> trail_node.is_powerup_path = TRUE
-  │     ├─> trail_node.node_priority += boost * decay
-  │     │     (decay: 1.0, 0.9, 0.8, 0.7, 0.6)
-  │     └─> trail_node.link_usage1 += 100
-  │
-  └─> OptimizePathSegment() for trail segments
-        └─> Creates shortcuts via line-of-sight
+BotAI_Main(dist)                         [bot_ai.qc]
+  |
+  |-> [random + cooldown]
+      |-> Spectral_FindPlayer()         [bot_learn.qc]
+      |-> SpawnPhantom(player)          [bot_learn.qc]
 ```
 
-### Items That Trigger Path Locking
+### Episode Capture + Ethereal Rollout
 
-| Item | Priority Boost | Trigger Location |
-|------|---------------|------------------|
-| Quad Damage | +500 | `items.qc:powerup_touch()` |
-| Pentagram | +500 | `items.qc:powerup_touch()` |
-| Ring of Shadows | +500 | `items.qc:powerup_touch()` |
-| Rocket Launcher | +200 | `items.qc:weapon_touch()` |
-| Lightning Gun | +200 | `items.qc:weapon_touch()` |
+The phantom tracks the target and validates maneuvers via rollout sims:
+
+```
+PhantomThink()                           [bot_learn.qc]
+  |
+  |-> Detect maneuver (jump/tele/swim/walk)
+  |-> [every 0.5s]
+      |-> EtherealRollout(start, goal, maneuver)
+          |-> ShadowSimStep()           [ai_predict.qc]
+          |-> ShadowReward()            [ai_predict.qc]
+      |-> [if viability < threshold] abort
+```
+
+### Episode Commit
+
+Validated episodes are compacted into the spectral buffer:
+
+```
+Spectral_EndEpisode(ph)                  [bot_learn.qc]
+  |
+  |-> Determine reward (goalentity or kill proxy)
+  |-> EtherealRollout()                  [bot_learn.qc]
+  |-> Spectral_AddEpisode()              [bot_learn.qc]
+```
+
+### A* Cost Bias (Soft Allure)
+
+Spectral episodes bias routing without hard locks or teleport shortcuts:
+
+```
+cacheRouteTarget(node, targ, ...)        [botroute.qc]
+  |
+  |-> ApplySpectralBoost(node, targ)     [bot_learn.qc]
+  |-> rng = rng - boost (clamped)
+```
+
+### Decay
+
+Episodes fade automatically to keep the graph lean:
+
+```
+StartFrame()                             [world.qc]
+  |
+  |-> DecayEpisodes()                    [bot_learn.qc]
+      |-> 60s throttle, reward/viability decay
+```
 
 ---
 
@@ -782,11 +769,11 @@ W_BestBotWeapon()                          [botfight.qc]
 
 | Date | Change |
 |------|--------|
+| 2026-02-07 | Added Phantom Apprenticeship (spectral episodes with rollout validation and soft A* bias) |
 | 2026-01-18 | Added Darwin Update (adaptive learning, weapon confidence, decay) |
-| 2026-01-18 | Added Episodic Learning (teleport detection, golden path locking) |
 | 2026-01-18 | Added Mastermind Update (pre-fire, ambush, displacement) |
 | 2026-01-18 | Added Smooth Steering, Sixth Sense, and High-Value Item Focus |
-| 2026-01-18 | Added Predator Update (map timing, sound navigation, curiosity) |
+| 2026-01-18 | Added Predator Update (sound navigation, curiosity) |
 | 2026-01-22 | Added reflex dodge and bunny hop mechanics |
 | 2026-01-21 | Added navigation learning, retrospective rewards, and Teacher Mode debugging |
 | 2026-01-21 | Updated swim control to velocity-based oxygen-aware swimming |

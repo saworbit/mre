@@ -148,7 +148,6 @@ void end_sys_fields;
 .float bot;                 // Spec compatibility: 1 = bot entity
 .float last_ai_state;
 .float last_ai_state_time;  // FIX: Time when AI state last changed (hysteresis)
-.float timing_debug_time;   // Debug throttle for powerup timing logs
 .float shadow_next_time;    // Shadow Puppets throttle timer
 .float shadow_jump_time;    // Shadow Puppets jump hint (short-lived)
 .float shadow_combat_time;  // Shadow Puppets combat hint expiry
@@ -157,6 +156,9 @@ void end_sys_fields;
 .float shadow_combat_weapon;// Shadow Puppets combat weapon hint
 .float shadow_combat_next_time; // Shadow Puppets combat throttle timer
 .float shadow_nav_debug_time;   // Shadow Puppets nav debug throttle
+.float last_predict;        // Shared rollout throttle timestamp
+.float shadow_beam;         // Per-bot beam override
+.float shadow_depth;        // Per-bot depth override
 float FALSE    = 0.000;
 float TRUE    = 1.000;
 float FL_FLY    = 1.000;
@@ -334,16 +336,15 @@ float () Bot_CheckReaction; // Forward declaration
 .float feeler_start_time;    // When feeler mode was activated
 .vector last_breadcrumb_pos; // Position of last dropped breadcrumb
 .float last_breadcrumb_yaw;  // Yaw at last breadcrumb drop
-// Retrospective learning trail (most recent -> oldest)
-.entity trail_node1;
-.entity trail_node2;
-.entity trail_node3;
-.entity trail_node4;
-.entity trail_node5;
-// Node value
-.float node_priority;        // Base importance (0 = hallway, 100 = near Quad)
-.float is_powerup_path;      // TRUE if this node is part of a learned "golden" powerup route
-.vector tele_dest;           // Explicit teleport destination (for LINK_TELE links)
+// Spectral learning (phantom episodes)
+.entity phantom;           // Active phantom owned by this bot
+.entity phantom_target;    // Phantom's tracked target
+.entity phantom_owner;     // Phantom's owner bot
+.vector episode_start;     // Episode start position
+.float episode_time;       // Episode end time
+.float last_sim_time;      // Last rollout time
+.float sim_maneuver;       // 0=walk,1=jump,2=tele,3=swim
+.float last_phantom;       // Cooldown for spawning a phantom
 // Advanced movement mechanics
 .float strafe_state;         // 0=None, 1=Left, 2=Right
 .float strafe_timer;         // Rhythm keeper
@@ -388,18 +389,6 @@ float LINK_LADDER     = 6; // Vertical water/ladder logic
 
 // Rocket jump detection
 .float last_rj_time;         // To debounce RJ detection
-
-// --- MAP CONTROL (Global Knowledge) ---
-// These track when major powerups will return (shared knowledge among all bots)
-float next_quad_time;        // When Quad Damage will respawn
-float next_pent_time;        // When Pentagram will respawn
-float next_ring_time;        // When Ring of Shadows will respawn
-float next_suit_time;        // When Biosuit will respawn
-
-// Cached powerup spawn locations (set at map start)
-entity quad_spawn_ent;       // The Quad Damage item entity
-entity pent_spawn_ent;       // The Pentagram item entity
-entity ring_spawn_ent;       // The Ring of Shadows item entity
 
 // --- SENSORY AWARENESS (Hearing) ---
 .vector noise_target;        // Where the sound came from

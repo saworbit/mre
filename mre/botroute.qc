@@ -1,5 +1,5 @@
 
-void (entity ent, entity node) UpdateTrail;
+float (entity node, entity targ) ApplySpectralBoost;
 
 void () t_botpath = {
 
@@ -11,7 +11,6 @@ void () t_botpath = {
    if ( (other.movetarget == self) ) {
 
       other.last_waypoint = self;
-      UpdateTrail (other, self);
       return ;
 
    }
@@ -19,7 +18,6 @@ void () t_botpath = {
    addTarget (other.movetarget.movetarget,self);
    other.movetarget.movetarget = self;
    other.last_waypoint = self;
-   UpdateTrail (other, self);
 
 };
 entity () botpath = {
@@ -231,27 +229,6 @@ void (vector org, float traffic, float danger, string tgt) SpawnSavedWaypoint = 
    setorigin (node, org);
    node.pathtype = DROPPED;
    node.classname = "BotPath";
-
-};
-
-// Ensure a navigation node exists at a powerup spawn
-void (vector org) BotEnsureWaypoint = {
-
-   local entity e;
-
-   e = findradius (org, 32.000);
-   while ( e ) {
-      if ( (e.classname == "BotPath") ) {
-         return ;
-      }
-      e = e.chain;
-   }
-
-   SpawnSavedWaypoint (org, 0.000, 0.000, "");
-
-   if ( cvar("developer") ) {
-      dprint ("Auto-dropped waypoint at powerup spawn\n");
-   }
 
 };
 
@@ -483,149 +460,6 @@ void (entity src, entity dst, float type) LinkNodes = {
 
 };
 
-// --- Retrospective Learning ---
-
-// Trail tracking: shift history buffer when touching/dropping a node
-void (entity ent, entity node) UpdateTrail = {
-
-   if ( !ent || !node || (node == world) ) {
-      return ;
-   }
-   if ( (ent.trail_node1 == node) ) {
-      return ;
-   }
-
-   ent.trail_node5 = ent.trail_node4;
-   ent.trail_node4 = ent.trail_node3;
-   ent.trail_node3 = ent.trail_node2;
-   ent.trail_node2 = ent.trail_node1;
-   ent.trail_node1 = node;
-
-};
-
-// Path optimization: if we can see past the middle node, create a shortcut
-void (entity n_start, entity n_mid, entity n_end) OptimizePathSegment = {
-
-   if ( !n_start || !n_mid || !n_end ) {
-      return ;
-   }
-
-   traceline (n_start.origin, n_end.origin, TRUE, n_start);
-   if ( (trace_fraction == 1.0) ) {
-      LinkNodes (n_start, n_end, LINK_WALK);
-      if ( (n_start.movetarget == n_end) ) {
-         n_start.link_usage1 = (n_start.link_usage1 + 50.000);
-      } else if ( (n_start.movetarget2 == n_end) ) {
-         n_start.link_usage2 = (n_start.link_usage2 + 50.000);
-      } else if ( (n_start.movetarget3 == n_end) ) {
-         n_start.link_usage3 = (n_start.link_usage3 + 50.000);
-      } else if ( (n_start.movetarget4 == n_end) ) {
-         n_start.link_usage4 = (n_start.link_usage4 + 50.000);
-      } else if ( (n_start.movetarget5 == n_end) ) {
-         n_start.link_usage5 = (n_start.link_usage5 + 50.000);
-      } else if ( (n_start.movetarget6 == n_end) ) {
-         n_start.link_usage6 = (n_start.link_usage6 + 50.000);
-      }
-      if ( cvar("developer") ) {
-         dprint ("AI Optimized: Created shortcut!\n");
-      }
-   }
-
-};
-
-// Reward propagation: boost priority and optimize recent trail
-void (entity player, float reward_val) BackPropagateReward = {
-
-   local float decay;
-
-   if ( !player ) {
-      return ;
-   }
-
-   decay = 1.000;
-   if ( player.trail_node1 ) {
-      player.trail_node1.node_priority = (player.trail_node1.node_priority + (reward_val * decay));
-      player.trail_node1.link_usage1 = (player.trail_node1.link_usage1 + 10.000);
-   }
-   decay = (decay * 0.800);
-   if ( player.trail_node2 ) {
-      player.trail_node2.node_priority = (player.trail_node2.node_priority + (reward_val * decay));
-   }
-   decay = (decay * 0.800);
-   if ( player.trail_node3 ) {
-      player.trail_node3.node_priority = (player.trail_node3.node_priority + (reward_val * decay));
-   }
-   decay = (decay * 0.800);
-   if ( player.trail_node4 ) {
-      player.trail_node4.node_priority = (player.trail_node4.node_priority + (reward_val * decay));
-   }
-   decay = (decay * 0.800);
-   if ( player.trail_node5 ) {
-      player.trail_node5.node_priority = (player.trail_node5.node_priority + (reward_val * decay));
-   }
-
-   OptimizePathSegment (player.trail_node3, player.trail_node2, player.trail_node1);
-   OptimizePathSegment (player.trail_node4, player.trail_node3, player.trail_node2);
-   OptimizePathSegment (player.trail_node5, player.trail_node4, player.trail_node3);
-
-};
-
-// =============================================================================
-// EPISODIC LEARNING: Lock in "Golden" powerup paths
-// When a player grabs a major powerup, mark their recent trail as THE path to
-// that powerup. Bots will then heavily favor this route.
-// =============================================================================
-void (entity player, string powerup_type) LockInPowerupPath = {
-
-   local float priority_boost;
-
-   if ( !player ) {
-      return;
-   }
-
-   // Quad/Pent get massive boost, weapons get moderate boost
-   if ( powerup_type == "Quad" || powerup_type == "Pent" || powerup_type == "Ring" ) {
-      priority_boost = 500;
-   } else {
-      priority_boost = 200;  // Weapons, armor
-   }
-
-   if ( cvar("developer") ) {
-      dprint ("EPISODIC: Locking in ");
-      dprint (powerup_type);
-      dprint (" path!\n");
-   }
-
-   // Mark entire trail as "golden" path with decaying priority
-   if ( player.trail_node1 ) {
-      player.trail_node1.is_powerup_path = TRUE;
-      player.trail_node1.node_priority = player.trail_node1.node_priority + priority_boost;
-      player.trail_node1.link_usage1 = player.trail_node1.link_usage1 + 100;
-   }
-   if ( player.trail_node2 ) {
-      player.trail_node2.is_powerup_path = TRUE;
-      player.trail_node2.node_priority = player.trail_node2.node_priority + (priority_boost * 0.9);
-   }
-   if ( player.trail_node3 ) {
-      player.trail_node3.is_powerup_path = TRUE;
-      player.trail_node3.node_priority = player.trail_node3.node_priority + (priority_boost * 0.8);
-   }
-   if ( player.trail_node4 ) {
-      player.trail_node4.is_powerup_path = TRUE;
-      player.trail_node4.node_priority = player.trail_node4.node_priority + (priority_boost * 0.7);
-   }
-   if ( player.trail_node5 ) {
-      player.trail_node5.is_powerup_path = TRUE;
-      player.trail_node5.node_priority = player.trail_node5.node_priority + (priority_boost * 0.6);
-   }
-
-   // Optimize the path - create shortcuts between trail nodes
-   OptimizePathSegment (player.trail_node3, player.trail_node2, player.trail_node1);
-   OptimizePathSegment (player.trail_node4, player.trail_node3, player.trail_node2);
-   OptimizePathSegment (player.trail_node5, player.trail_node4, player.trail_node3);
-
-};
-
 // Call this in PlayerPostThink to learn from humans
 void () Player_AutoWaypoint = {
 
@@ -713,45 +547,29 @@ void () Player_AutoWaypoint = {
 
    // 3. Link logic
    if ( self.last_waypoint && near_node && (self.last_waypoint != near_node) ) {
-      local float link_dist;
-      link_dist = vlen (near_node.origin - self.last_waypoint.origin);
+      type = LINK_WALK;
 
-      // EPISODIC LEARNING: Teleport detection
-      // If we moved >500 units instantly, we probably teleported
-      if ( link_dist > 500 ) {
-         type = LINK_TELE;
-         // Store explicit destination for this teleport link
-         self.last_waypoint.tele_dest = near_node.origin;
-         if ( cvar("developer") ) {
-            dprint ("Learned TELEPORT shortcut! (");
-            dprint (ftos(floor(link_dist)));
-            dprint (" units)\n");
-         }
-      } else {
-         type = LINK_WALK;
-
-         if ( self.is_jumping ) {
-            type = LINK_JUMP;
-            if ( (self.origin_z < (self.jump_origin_z - 64.000)) ) {
-               type = LINK_DROP;
-            }
-         } else if ( (self.origin_z < (self.last_waypoint.origin_z - 64.000)) ) {
+      if ( self.is_jumping ) {
+         type = LINK_JUMP;
+         if ( (self.origin_z < (self.jump_origin_z - 64.000)) ) {
             type = LINK_DROP;
-         } else if ( self.groundentity ) {
-            if ( (self.groundentity.classname == "func_plat") || (self.groundentity.classname == "func_train") ) {
-               type = LINK_PLAT;
-            }
          }
-         // Rocket jump detection (heuristic)
-         if ( (self.weapon == IT_ROCKET_LAUNCHER) ) {
-            if ( (!(self.flags & FL_ONGROUND)) && (self.waterlevel == 0) ) {
-               if ( (self.velocity_z > 250.000) && (self.v_angle_x > 45.000) ) {
-                  if ( (time > (self.last_rj_time + 1.000)) ) {
-                     type = LINK_ROCKETJUMP;
-                     self.last_rj_time = time;
-                     if ( cvar("developer") ) {
-                        dprint ("Learned ROCKET JUMP path!\n");
-                     }
+      } else if ( (self.origin_z < (self.last_waypoint.origin_z - 64.000)) ) {
+         type = LINK_DROP;
+      } else if ( self.groundentity ) {
+         if ( (self.groundentity.classname == "func_plat") || (self.groundentity.classname == "func_train") ) {
+            type = LINK_PLAT;
+         }
+      }
+      // Rocket jump detection (heuristic)
+      if ( (self.weapon == IT_ROCKET_LAUNCHER) ) {
+         if ( (!(self.flags & FL_ONGROUND)) && (self.waterlevel == 0) ) {
+            if ( (self.velocity_z > 250.000) && (self.v_angle_x > 45.000) ) {
+               if ( (time > (self.last_rj_time + 1.000)) ) {
+                  type = LINK_ROCKETJUMP;
+                  self.last_rj_time = time;
+                  if ( cvar("developer") ) {
+                     dprint ("Learned ROCKET JUMP path!\n");
                   }
                }
             }
@@ -761,16 +579,7 @@ void () Player_AutoWaypoint = {
       LinkNodes (self.last_waypoint, near_node, type);
    }
 
-   // 4. Update trail if we touched/dropped a node
-   if ( near_node ) {
-      UpdateTrail (self, near_node);
-      if ( (self.last_breadcrumb_pos == '0 0 0') ) {
-         self.last_breadcrumb_pos = self.origin;
-         self.last_breadcrumb_yaw = self.v_angle_y;
-      }
-   }
-
-   // 5. Update state
+   // 4. Update state
    if ( near_node ) {
       near_node.node_traffic = (near_node.node_traffic + TRUE);
       self.last_waypoint = near_node;
@@ -1148,6 +957,7 @@ void (entity node, entity targ, float len, entity item) cacheRouteTarget = {
 
    local float rng;
    local float weight;
+   local float spectral_boost;
 
    // Cycle detection: skip if already visited in this search
    if ( (targ.visited_id == route_search_id) ) {
@@ -1178,10 +988,6 @@ void (entity node, entity targ, float len, entity item) cacheRouteTarget = {
    } else if ( (node.movetarget6 == targ) ) {
       weight = (1.000 + (node.link_usage6 * 0.100));
    }
-   // Priority weighting: high-value nodes become "shorter"
-   if ( (targ.node_priority > 0.000) ) {
-      weight = (weight + (targ.node_priority * 0.050));
-   }
    if ( (weight > 10.000) ) {
       weight = 10.000;
    }
@@ -1196,6 +1002,15 @@ void (entity node, entity targ, float len, entity item) cacheRouteTarget = {
       rng = rng * (1.0 - (targ.glory_level * 0.01));
       if ( rng < 10 ) {
          rng = 10;  // Minimum path cost
+      }
+   }
+
+   // Spectral learning: phantom episodes reduce edge cost
+   spectral_boost = ApplySpectralBoost (node, targ);
+   if ( (spectral_boost > 0.000) ) {
+      rng = (rng - spectral_boost);
+      if ( rng < 10.000 ) {
+         rng = 10.000;
       }
    }
 

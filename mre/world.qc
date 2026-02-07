@@ -235,6 +235,7 @@ void () StartFrame = {
    skill = cvar ("skill");
    framecount = (framecount + TRUE);
    MaintainGraph ();
+   DecayEpisodes ();
 
 };
 

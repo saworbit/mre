@@ -30,11 +30,10 @@ from `archive/`.
 - Velocity-based 3D swimming (oxygen-aware surfacing and pitch steering)
 - Feeler steering + breadcrumbs (escape scans and dropped BotPath waypoints)
 - Navigation learning (link types, usage weighting, danger/decay, rocket jumps)
-- Retrospective learning + path optimization (trail rewards and shortcut links)
-- Teacher Mode debug impulses (102 show / 103 hide bot learning nodes)
+- Phantom Apprenticeship (spectral episodes with rollout validation, soft A* bias, decay; no teleport shortcuts or golden locks)
+- Teacher Mode debug impulses (102 show / 103 hide bot learning nodes, 104 dump spectral episodes)
 - Speed Demon update (bunny hopping on straight runs and reflex projectile dodging)
 - **Predator Update**: Strategic intelligence upgrade
-  - Map Control: Bots time powerups (Quad/Pent/Ring) and rush to spawns before they appear
   - Sound Navigation: Bots hear combat, item pickups, water splashes, and footsteps (with occlusion) and investigate
   - Curiosity: Bots shoot shootable buttons/doors/walls to discover secrets
 - **Smooth Steering**: 3-frame angle averaging prevents jitter from pathfinder/whisker oscillation
@@ -44,10 +43,6 @@ from `archive/`.
   - Pre-Fire: Bots shoot rockets at corners where you just disappeared
   - The Trap: Low-health bots stop running and ambush chasers with SSG/RL
   - Displacement: Bots knock enemies into lava/slime using splash damage
-- **Episodic Learning**: Teach bots by demonstration
-  - Teleport detection: >500 unit instant travel creates LINK_TELE shortcuts
-  - Golden paths: Routes to powerups (Quad/Pent/Ring) and weapons (RL/LG) are marked and prioritized
-  - Path locking: Player trail nodes get boosted priority when picking up high-value items
 - **Darwin Update**: Adaptive self-learning through reinforcement
   - Natural Selection: Bots mark death locations as dangerous (avoided) and kill locations as glorious (attractive)
   - Weapon Specialization: Bots develop personal weapon preferences based on success/failure history
