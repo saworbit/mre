@@ -41,6 +41,9 @@
   - A* Integration: Glory reduces path cost (up to 30%), danger increases path cost.
 
 ### Fixes
+- Combat rollout action cap now hard-limited to 16 to prevent overflowed action IDs.
+- Monte Carlo lead now respects LOS and falls back to a simple lead when obstructed.
+- Rival powerup rush now gates on health > 50 and visible powerups to avoid short-circuiting combat.
 - Single player crash to DOS caused by edict overflow (waypoint cap reduced to 50 in SP).
 - Multiplayer lockups from exponential route cache recursion (added cycle detection).
 - Potential hang from infinite jump simulation into void (added safety counter).
@@ -75,6 +78,8 @@
 - Reverted: BotDead frame reset removed to preserve death animations (gibbed head frame warnings are cosmetic).
 
 ### Improvements
+- God mode now forces `shadow_throttle` to `0.1` for consistent rollout cadence.
+- Reduced per-user strafe bias hash scale to 32 to trim global usage.
 - Movement smoothing (Z-axis ground glue, zero velocity on collision, consistent 0.1s think timing).
 - Sensor fusion steering V2 (step-over obstacles and water-safe hazard detection).
 - Predictive aiming (capped lead time to 0.5s to prevent over-leading).

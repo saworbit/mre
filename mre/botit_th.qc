@@ -176,7 +176,7 @@ float TELEFRAGFLAG;
 entity NOISEQUEUE;
 float HELPING;
 float NAMEBOTS;
-float user_strafe_bias[64];  // Slayer Eclipse: per-user strafe bias
+float user_strafe_bias[32];  // Slayer Eclipse: per-user strafe bias
 
 // --- AUDITORY SYSTEM ---
 float NOISE_GENERIC = 0.000;

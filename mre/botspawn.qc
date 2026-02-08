@@ -356,6 +356,7 @@ void () PutBotInServer = {
    if ( (cvar ("sv_slayer_god") > FALSE) ) {
       self.shadow_depth = 15.000;
       self.shadow_beam = 20.000;
+      cvar_set ("shadow_throttle", "0.1");
    }
    // Mirage Minds: persona + entropy
    self.mood_entropy = 0.500;

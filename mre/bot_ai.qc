@@ -1403,17 +1403,22 @@ float () BotRivalPowerupRush = {
    if ( !Slayer_GodMode () && (self.skil < 8.000) ) {
       return ( FALSE );
    }
+   if ( (self.health <= 50.000) ) {
+      return ( FALSE );
+   }
 
    best = world;
    best_eta = 999999.000;
    scan = findradius (self.enemy.origin, 600.000);
    while ( scan ) {
       if ( (scan.classname == "item_artifact_super_damage") || (scan.classname == "item_artifact_invulnerability") ) {
-         eta_self = (vlen (scan.origin - self.origin) / 350.000);
-         eta_enemy = (vlen (scan.origin - self.enemy.origin) / 350.000);
-         if ( (eta_self < (eta_enemy + 2.000)) && (eta_self < best_eta) ) {
-            best_eta = eta_self;
-            best = scan;
+         if ( visible (scan) ) {
+            eta_self = (vlen (scan.origin - self.origin) / 350.000);
+            eta_enemy = (vlen (scan.origin - self.enemy.origin) / 350.000);
+            if ( (eta_self < (eta_enemy + 2.000)) && (eta_self < best_eta) ) {
+               best_eta = eta_self;
+               best = scan;
+            }
          }
       }
       scan = scan.chain;

@@ -12,7 +12,7 @@ float SHADOW_NEG = -999999.000;
 
 // Combat Crucible (dual-rollout)
 #define SHADOW_COMBAT_BEAM_MAX 20
-#define USER_HASH_SCALE 64
+#define USER_HASH_SCALE 32
 float SHADOW_COMBAT_MAX_DEPTH = 15.000;
 float SHADOW_COMBAT_MAX_BEAM = SHADOW_COMBAT_BEAM_MAX;
 float SHADOW_COMBAT_NEG = -999999.000;
@@ -1167,6 +1167,16 @@ vector (entity foe) MonteLead = {
    local float bias;
    local float in_water;
    local float dmg;
+   local float tr_allsolid;
+   local float tr_startsolid;
+   local float tr_fraction;
+   local vector tr_endpos;
+   local vector tr_plane_normal;
+   local float tr_plane_dist;
+   local entity tr_ent;
+   local float tr_inopen;
+   local float tr_inwater;
+   local vector fallback;
 
    if ( !foe ) {
       return ( self.origin );
@@ -1211,6 +1221,42 @@ vector (entity foe) MonteLead = {
       }
       sam = (sam + TRUE);
    }
+
+   fallback = (foe.origin + (foe.velocity * t));
+
+   tr_allsolid = trace_allsolid;
+   tr_startsolid = trace_startsolid;
+   tr_fraction = trace_fraction;
+   tr_endpos = trace_endpos;
+   tr_plane_normal = trace_plane_normal;
+   tr_plane_dist = trace_plane_dist;
+   tr_ent = trace_ent;
+   tr_inopen = trace_inopen;
+   tr_inwater = trace_inwater;
+
+   traceline (self.origin, best_lead, TRUE, self);
+   if ( (trace_fraction < TRUE) ) {
+      trace_allsolid = tr_allsolid;
+      trace_startsolid = tr_startsolid;
+      trace_fraction = tr_fraction;
+      trace_endpos = tr_endpos;
+      trace_plane_normal = tr_plane_normal;
+      trace_plane_dist = tr_plane_dist;
+      trace_ent = tr_ent;
+      trace_inopen = tr_inopen;
+      trace_inwater = tr_inwater;
+      return ( fallback );
+   }
+
+   trace_allsolid = tr_allsolid;
+   trace_startsolid = tr_startsolid;
+   trace_fraction = tr_fraction;
+   trace_endpos = tr_endpos;
+   trace_plane_normal = tr_plane_normal;
+   trace_plane_dist = tr_plane_dist;
+   trace_ent = tr_ent;
+   trace_inopen = tr_inopen;
+   trace_inwater = tr_inwater;
 
    return ( best_lead );
 
@@ -1426,6 +1472,9 @@ float (entity enemy, float dist, float wpn, float depth, float beam_w, float fir
    if ( (beam_w > SHADOW_COMBAT_BEAM_MAX) ) {
       beam_w = SHADOW_COMBAT_BEAM_MAX;
    }
+   if ( (act_limit > 16.000) ) {
+      act_limit = 16.000;
+   }
 
    // Init
    cb_start_bhp = self.health;
@@ -1605,7 +1654,7 @@ void (entity enemy, float dist) BotShadowCombatThink = {
       act_limit = (8.000 * 2.000 * (1.000 + floor (self.skil / 5.000)));
    }
    if ( (act_limit < 8.000) ) act_limit = 8.000;
-   if ( (act_limit > 20.000) ) act_limit = 20.000;
+   if ( (act_limit > 16.000) ) act_limit = 16.000;
    if ( (depth_override > FALSE) ) {
       depth = depth_override;
       if ( (depth > SHADOW_COMBAT_MAX_DEPTH) ) depth = SHADOW_COMBAT_MAX_DEPTH;

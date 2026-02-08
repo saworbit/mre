@@ -120,7 +120,7 @@ Defaults for `sv_shadow_nav`, `sv_shadow_combat`, `shadow_throttle`, and `shadow
 are set in `mre/Autoexec.cfg`.
 
 Notes:
-- Combat rollout uses a capped action sample per depth (skill-scaled) and beam search.
+- Combat rollout uses a capped action sample per depth (skill-scaled, capped at 16) and beam search.
 - Navigation rollout uses a beam search with hazard/water penalties and a 5Hz throttle.
 
 ## Slayer Eclipse (combat escalation)
@@ -132,7 +132,9 @@ Runtime knobs for high-skill combat escalation:
 Notes:
 - God mode expands combat rollout depth/beam and removes aim randomness.
 - User strafe bias feeds enemy action modeling and dodge direction bias.
-- Rival powerup ETA rush triggers at skill 8+ when a preempt is possible.
+- Rival powerup ETA rush triggers at skill 8+ (or god mode) when health > 50, the powerup is visible, and a preempt is possible.
+- God mode forces `shadow_throttle` to `0.1`.
+- Monte Carlo lead checks LOS and falls back to a simple lead if obstructed.
 
 ## Silent Specters + Cursed Nodes (unstuck + learning)
 Silent unstuck rollouts are implemented in `mre/ai_predict.qc` as `SilentUnstuck`.
@@ -195,6 +197,7 @@ CI publishes: `c:\reaperai\ci\mre\progs.dat`
 2) **Impulse scope**: guard global toggles with `self.classname == "player"`.
 3) **Trace globals**: `traceline()` overwrites `trace_*` globally; save/restore in helpers.
 4) **Bitmask clears**: use masked subtraction (`var = var - (var & FLAG)`).
+5) **Globals size**: `progs.dat` currently exceeds the 32k global limit; an enhanced QCVM/engine is required at runtime.
 
 ## Legacy docs
 The previous MRE development guide is archived at `archive/legacy/v1/DEVELOPMENT_MRE.md`.

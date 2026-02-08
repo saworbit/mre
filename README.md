@@ -79,6 +79,7 @@ cd c:\reaperai\mre
 ..\tools\fteqcc_win64\fteqcc64.exe -O3 progs.src
 copy c:\reaperai\progs.dat c:\reaperai\launch\quake-spasm\mre\progs.dat /Y
 ```
+Note: `progs.dat` currently exceeds the 32k global limit, so an enhanced QCVM/engine is required at runtime.
 
 ## Run
 ```batch
