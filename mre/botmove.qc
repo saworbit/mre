@@ -291,6 +291,7 @@ void () BotProactiveNudge = {
    local vector rgt;
    local vector goal_pos;
    local float nudged;
+   local float nudge_throttle;
 
    if ( !self.goalentity || (self.goalentity == world) ) {
       return;
@@ -299,10 +300,14 @@ void () BotProactiveNudge = {
       return;
    }
    // Throttle to reduce per-frame lookahead cost
+   nudge_throttle = cvar ("bot_nudge_throttle");
+   if ( (nudge_throttle <= FALSE) ) {
+      nudge_throttle = 0.200;
+   }
    if ( time < self.nudge_time ) {
       return;
    }
-   self.nudge_time = (time + 0.200);
+   self.nudge_time = (time + nudge_throttle);
 
    // Skip if shadow nav already ran this frame
    if ( (cvar ("sv_shadow_nav") > FALSE) && (self.nav_predict_time > (time - 0.050)) ) {
@@ -421,10 +426,17 @@ float (float ideal_yaw, float speed_factor) BotSteer = {
    local vector fwd, rt;
    local float dist;
    local float hazard_check;
+   local float min_speed;
+   local vector down;
+   local float content;
 
    // Look ahead based on speed
    dist = 50 + (speed_factor * 25);
-   hazard_check = (dist > 60) && (vlen (self.velocity) > 60.000);
+   min_speed = cvar ("bot_hazard_min_speed");
+   if ( (min_speed <= FALSE) ) {
+      min_speed = 60.000;
+   }
+   hazard_check = (dist > 60) && (vlen (self.velocity) > min_speed);
    start = self.origin + '0 0 16';  // Waist height sensor origin
 
    // 1. PRIMARY FORCE: The Desire to reach the goal
@@ -447,6 +459,21 @@ float (float ideal_yaw, float speed_factor) BotSteer = {
       // CLIFF/LAVA ahead -> Brake & Turn
       steer_dir = steer_dir + (fwd * -4.0);
       steer_dir_x = steer_dir_x + (random () * 2 - 1);  // Slight noise to help turn
+   } else if ( !hazard_check ) {
+      // Slow-move safeguard: do a cheap hazard check on the center whisker only
+      content = pointcontents (end_pos);
+      if ( (content == CONTENT_LAVA) || (content == CONTENT_SLIME) || (content == CONTENT_SKY) ) {
+         steer_dir = steer_dir + (fwd * -4.0);
+         steer_dir_x = steer_dir_x + (random () * 2 - 1);
+      } else {
+         down = end_pos;
+         down_z = (down_z - 256);
+         traceline (end_pos, down, TRUE, self);
+         if ( trace_fraction == 1.0 ) {
+            steer_dir = steer_dir + (fwd * -4.0);
+            steer_dir_x = steer_dir_x + (random () * 2 - 1);
+         }
+      }
    }
 
    // 3. SENSOR 2: Left Whisker (-45 degrees)

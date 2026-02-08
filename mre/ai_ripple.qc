@@ -2055,10 +2055,16 @@ float () Ripple_TryInteract = {
    local float cur;
    local float i;
    local vector rpos;
+   local float ripple_throttle;
 
    cur = -1.000;
+   if ( self.ripple_near_count != vortex_count ) {
+      self.ripple_near_idx = -1.000;
+   }
    if ( Vortex_IndexValid (self.ripple_near_idx) ) {
-      if ( (vortex_ripple_type[self.ripple_near_idx] > 0.000) && (vortex_ripple_pos[self.ripple_near_idx] != '0 0 0') ) {
+      if ( vlen (vortex_ripple_pos[self.ripple_near_idx] - self.ripple_near_pos) > 1.000 ) {
+         self.ripple_near_idx = -1.000;
+      } else if ( (vortex_ripple_type[self.ripple_near_idx] > 0.000) && (vortex_ripple_pos[self.ripple_near_idx] != '0 0 0') ) {
          if ( (vlen (vortex_ripple_pos[self.ripple_near_idx] - self.origin) < 128.000) ) {
             cur = self.ripple_near_idx;
          }
@@ -2078,10 +2084,14 @@ float () Ripple_TryInteract = {
    }
    if ( cur < 0.000 ) {
       // Throttle full ripple scans when no nearby node is cached
+      ripple_throttle = cvar ("bot_ripple_throttle");
+      if ( (ripple_throttle <= FALSE) ) {
+         ripple_throttle = 0.200;
+      }
       if ( time < self.ripple_interact_time ) {
          return ( FALSE );
       }
-      self.ripple_interact_time = (time + 0.200);
+      self.ripple_interact_time = (time + ripple_throttle);
 
       i = 0.000;
       while ( (i < vortex_count) && (i < VORTEX_MAX_NODES) ) {
@@ -2098,6 +2108,8 @@ float () Ripple_TryInteract = {
       return ( FALSE );
    }
    self.ripple_near_idx = cur;
+   self.ripple_near_pos = vortex_ripple_pos[cur];
+   self.ripple_near_count = vortex_count;
    rpos = vortex_ripple_pos[cur];
    if ( (vlen (rpos - self.origin) > 96.000) ) {
       return ( FALSE );

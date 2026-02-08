@@ -122,6 +122,18 @@ Performance throttles (behavior-neutral, CPU-focused):
 - Ripple interact scans are throttled when no nearby ripple node is cached, and cached nodes are reused when close.
 - Hazard checks in steering are skipped at very low movement speeds to cut redundant traces.
 
+Optional tuning cvars for these throttles:
+- `bot_target_throttle` (float): override target scan throttle (seconds).
+- `bot_goodies_throttle` (float): override item scan throttle (seconds).
+- `bot_goodies_combat_radius` (float): item scan radius when fighting (units).
+- `bot_nudge_throttle` (float): override proactive nudge throttle (seconds).
+- `bot_ripple_throttle` (float): override ripple interact scan throttle (seconds).
+- `bot_hazard_min_speed` (float): minimum speed for full hazard checks (units/sec).
+
+Gameplay tuning notes:
+- Reaction delay is distance-aware (closer targets = faster reactions), with a brief tighten after recent combat noise.
+- Close-range RL/GL handling biases a backpedal/strafe to reduce self-splash.
+
 ## Shadow Puppets tuning (cvars)
 These are runtime knobs for the combat rollout system:
 - `sv_shadow_nav` (0/1): master enable for navigation rollouts

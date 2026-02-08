@@ -357,6 +357,8 @@ void () PutBotInServer = {
    self.ripple_interact_time = FALSE;
    self.nudge_time = FALSE;
    self.ripple_near_idx = -1.000;
+   self.ripple_near_pos = '0 0 0';
+   self.ripple_near_count = FALSE;
    self.shadow_depth = (6.000 + floor (self.skil));
    self.shadow_beam = (3.000 + (self.skil * 0.200));
    if ( (cvar ("sv_slayer_god") > FALSE) ) {

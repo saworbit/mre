@@ -85,6 +85,8 @@
 - Sensor fusion steering V2 (step-over obstacles and water-safe hazard detection).
 - Predictive aiming (capped lead time to 0.5s to prevent over-leading).
 - Proactive 1-tick lookahead nudges away from dead-ends during Botmovetogoal.
+- Distance-aware reaction delay for closer targets to reduce sluggishness.
+- Splash-safe spacing bias for RL/GL at close range.
 - sv_aim warning now prints the current value and expected baseline.
 - Pain reflex triggers immediate bot reaction when taking damage from a player/bot.
 - Added a developer-only `KNOCKBACK_END` log when bots return to step movement.
@@ -102,6 +104,7 @@
 - Steering hazard checks reduced at low speed to cut redundant hazard traces.
 - Nav rollout throttling decoupled from combat; target scan throttle now skill-scaled with recent-contact bypass.
 - Ripple interact now reuses a cached nearby node when possible; combat item scans use a smaller radius.
+- Optional cvars added to tune bot scan/steer throttles without rebuilds.
 
 ### Investigated (Not Found)
 - "Extra SNG ammo" complaint (not found in baseline - bots use same ammo as players).

@@ -359,6 +359,7 @@ void () BotHuntTarget = {
 float () Bot_CheckReaction = {
 
    local float delay;
+   local float dist;
 
    if ( !self.pending_enemy ) {
 
@@ -380,6 +381,19 @@ float () Bot_CheckReaction = {
 
       delay = FALSE;
 
+   }
+
+   // Distance-aware response: react faster when the target is close
+   dist = vlen (self.pending_enemy.origin - self.origin);
+   if ( dist < 150.000 ) {
+      delay = (delay * 0.250);
+   } else if ( dist < 300.000 ) {
+      delay = (delay * 0.500);
+   }
+
+   // Recent noise: tighten reaction window slightly
+   if ( (self.noise_priority >= 50.000) && (time < (self.noise_time + 0.300)) ) {
+      delay = (delay * 0.500);
    }
 
    // Check if reaction time has passed
@@ -543,6 +557,8 @@ float () BotfindBot = {
 // Encapsulates all the checks from original BotFindTarget
 float (entity targ) BotValidTarget = {
 
+   local float dist;
+
    // Can't target self
    if ( targ == self ) {
 
@@ -603,6 +619,14 @@ float (entity targ) BotValidTarget = {
 
    }
 
+   // Early distance cull before expensive visibility checks
+   dist = vlen (targ.origin - self.origin);
+   if ( (dist > 1200.000) && !hearnoise (targ) ) {
+
+      return ( FALSE );
+
+   }
+
    // Must be visible
    if ( !enemyvisible (targ) ) {
 
@@ -653,13 +677,22 @@ float /* Warning: Could not determine return type */ () BotFindTarget = {
    local float limit;
    local float scan_cap;
    local float throttle;
+   local float throttle_override;
 
    // Throttle redundant scans in the same frame/tick (skill-scaled)
-   throttle = (0.050 - (self.skil * 0.005));
+   throttle_override = cvar ("bot_target_throttle");
+   if ( (throttle_override > 0.000) ) {
+      throttle = throttle_override;
+   } else {
+      throttle = (0.050 - (self.skil * 0.005));
+   }
    if ( (throttle < 0.020) ) throttle = 0.020;
    if ( (throttle > 0.050) ) throttle = 0.050;
    if ( (self.enemy == world) && (self.last_seen_time > 0.000) && (time < (self.last_seen_time + 0.600)) ) {
       throttle = FALSE; // recent contact: don't delay reacquire
+   }
+   if ( (self.noise_priority >= 50.000) && (time < (self.noise_time + 0.300)) ) {
+      throttle = FALSE; // recent noise: tighten reacquire window
    }
    if ( (throttle > FALSE) && (time < self.target_scan_time) ) {
       return ( FALSE );
@@ -895,6 +928,17 @@ void (float dist, float turn) aibot_run_slide = {
    }
    rdir = (random () * MOVETYPE_WALK);
    rng = botrange (self.enemy);
+   weap = W_BestHeldWeapon ();
+
+   // Splash-safe spacing: bias to backpedal/strafe before firing RL/GL at close range
+   if ( ((weap == IT_ROCKET_LAUNCHER) || (weap == IT_GRENADE_LAUNCHER)) && enemyvisible (self.enemy) ) {
+      if ( (dist < 180.000) ) {
+         if ( botwalkmove ((self.ideal_yaw + 180.000),dis) ) {
+            return ;
+         }
+         rdir = (rdir + 1.000);
+      }
+   }
 
    // Slayer Eclipse: dodge matrix bias for learned user strafes
    if ( self.enemy && Slayer_IsUser (self.enemy) && (cvar ("user_learn") > FALSE) ) {
@@ -1895,6 +1939,8 @@ float (float minweight) aibot_checkforGoodies = {
    local float weight;
    local float minimum;
    local float scan_radius;
+   local float goodies_throttle;
+   local float combat_radius;
 
    // FIX: Do not forage for items if drowning
    if ( (self.air_finished < (time + 5.000)) && (self.waterlevel >= 3.000) ) {
@@ -1913,15 +1959,29 @@ float (float minweight) aibot_checkforGoodies = {
 
    // Throttle expensive item scans when not panicking
    if ( !AFRAID ) {
+      goodies_throttle = cvar ("bot_goodies_throttle");
+      if ( (goodies_throttle <= FALSE) ) {
+         goodies_throttle = 0.200;
+      }
       if ( time < self.goodies_scan_time ) {
          return ( FALSE );
       }
-      self.goodies_scan_time = (time + 0.200);
+      self.goodies_scan_time = (time + goodies_throttle);
    }
 
    scan_radius = SEARCH_RADIUS;
    if ( self.enemy && (self.enemy != world) && enemyvisible (self.enemy) ) {
-      scan_radius = 400.000;
+      combat_radius = cvar ("bot_goodies_combat_radius");
+      if ( (combat_radius <= FALSE) ) {
+         combat_radius = 400.000;
+      }
+      scan_radius = (combat_radius + (self.skil * 20.000));
+      if ( self.health < 40.000 ) {
+         scan_radius = SEARCH_RADIUS;
+      }
+      if ( scan_radius > SEARCH_RADIUS ) {
+         scan_radius = SEARCH_RADIUS;
+      }
    }
 
    botTarget = self.goalentity;

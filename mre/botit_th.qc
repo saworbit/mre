@@ -104,6 +104,8 @@ float (entity targ, entity inflictor) CanDamage;
 .float nudge_time;          // Throttle: proactive nudge checks
 .float nav_predict_time;    // Throttle: nav rollouts (decoupled from combat)
 .float ripple_near_idx;     // Cached nearby ripple node index
+.vector ripple_near_pos;    // Cached ripple node position
+.float ripple_near_count;   // Cached vortex_count at time of cache
 .float pather;
 .float pathtype;
 .float visited_id;  // cycle detection for route caching
