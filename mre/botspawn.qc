@@ -353,6 +353,10 @@ void () PutBotInServer = {
    self.last_predict = FALSE;
    self.shadow_depth = (6.000 + floor (self.skil));
    self.shadow_beam = (3.000 + (self.skil * 0.200));
+   if ( (cvar ("sv_slayer_god") > FALSE) ) {
+      self.shadow_depth = 15.000;
+      self.shadow_beam = 20.000;
+   }
    // Mirage Minds: persona + entropy
    self.mood_entropy = 0.500;
    self.persona_state = 0.000;
@@ -473,6 +477,9 @@ entity () AddBot = {
 
       }
 
+   }
+   if ( (cvar ("sv_slayer_god") > FALSE) ) {
+      self.skil = 10.000;
    }
    self.bot = TRUE;
    initscore ();

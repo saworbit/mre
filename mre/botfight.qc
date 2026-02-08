@@ -1,4 +1,6 @@
 float (entity targ) botrange;
+vector (entity foe) MonteLead;
+float () Slayer_GodMode;
 
 // Reflex dodge: evade incoming rockets/grenades
 void () BotReflexDodge = {
@@ -333,7 +335,11 @@ vector () botaim = {
 
                if ( ((self.weapon & IT_SUPER_NAILGUN) || (self.weapon & IT_NAILGUN)) ) {
 
-                  rnd = (random () * 0.002);
+                  if ( Slayer_GodMode () ) {
+                     rnd = FALSE;
+                  } else {
+                     rnd = (random () * 0.002);
+                  }
                   tg = leadtarget (src,tg,rnd);
 
                }
@@ -342,6 +348,15 @@ vector () botaim = {
 
          }
 
+      }
+
+      // Slayer Eclipse: Monte Carlo lead for projectile weapons
+      if ( (self.enemy) && enemyvisible (self.enemy) ) {
+         if ( Slayer_GodMode () || (self.skil >= 8.000) ) {
+            if ( (self.weapon & (IT_ROCKET_LAUNCHER + IT_GRENADE_LAUNCHER + IT_SUPER_NAILGUN + IT_NAILGUN)) ) {
+               tg = MonteLead (self.enemy);
+            }
+         }
       }
 
    }
@@ -353,14 +368,14 @@ vector () botaim = {
    sk = self.skil;
    if ( (self.weapon == IT_LIGHTNING) ) {
 
-      if ( (sk > 2.500) ) {
+      if ( !Slayer_GodMode () && (sk > 2.500) ) {
 
          sk = 2.500;
 
       }
 
    }
-   if ( (sk < MOVETYPE_WALK) ) {
+   if ( (sk < MOVETYPE_WALK) && !Slayer_GodMode () ) {
 
       lead = (self.enemy.origin - self.enemy.oldorigin);
       lead = (((lead * (MOVETYPE_WALK - sk)) * 3.500) * (random () - 0.500));
@@ -372,7 +387,7 @@ vector () botaim = {
    // FIX: Skill-based Aim Jitter - low-skill bots should miss more
    // Skill 3+ = perfect aim, Skill 0 = ~25 degree max error
    // Previous code used 0.06 multiplier (~10 deg max) which was barely noticeable
-   if ( (sk < MOVETYPE_WALK) ) {
+   if ( (sk < MOVETYPE_WALK) && !Slayer_GodMode () ) {
 
       dir = (dir + (((MOVETYPE_WALK - sk) * crandom ()) * '0.150 0.000 0.000'));
       dir = (dir + (((MOVETYPE_WALK - sk) * crandom ()) * '0.000 0.150 0.000'));

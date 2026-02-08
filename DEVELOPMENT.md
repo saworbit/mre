@@ -123,6 +123,17 @@ Notes:
 - Combat rollout uses a capped action sample per depth (skill-scaled) and beam search.
 - Navigation rollout uses a beam search with hazard/water penalties and a 5Hz throttle.
 
+## Slayer Eclipse (combat escalation)
+Runtime knobs for high-skill combat escalation:
+- `sv_slayer_god` (0/1): force skill 10, max combat depth/beam, and perfect aim
+- `mc_samples` (int): Monte Carlo lead samples for projectile aim (default 20)
+- `user_learn` (0/1): enable per-user strafe bias learning (targets netname `slywall` or `Shane`)
+
+Notes:
+- God mode expands combat rollout depth/beam and removes aim randomness.
+- User strafe bias feeds enemy action modeling and dodge direction bias.
+- Rival powerup ETA rush triggers at skill 8+ when a preempt is possible.
+
 ## Silent Specters + Cursed Nodes (unstuck + learning)
 Silent unstuck rollouts are implemented in `mre/ai_predict.qc` as `SilentUnstuck`.
 They use a short beam search (depth 4, beam 3) over quiet actions, with a jump

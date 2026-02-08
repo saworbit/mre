@@ -12,6 +12,9 @@ void () Bot_AnalyzeSound;
 entity () Spectral_FindPlayer;
 entity (entity target) SpawnPhantom;
 void () MirageTick;
+float (entity foe) Slayer_UserBias;
+float (entity foe) Slayer_IsUser;
+float () Slayer_GodMode;
 
 // =============================================================================
 // SENSORY AWARENESS: Sound-based alerting system
@@ -819,6 +822,7 @@ void (float dist, float turn) aibot_run_slide = {
    local float cover_thresh;
    local float left_frac;
    local float right_frac;
+   local float user_bias;
 
    trn = turn;
    self.ideal_yaw = vectoyaw ((self.enemy.origin - self.origin));
@@ -861,6 +865,18 @@ void (float dist, float turn) aibot_run_slide = {
    }
    rdir = (random () * MOVETYPE_WALK);
    rng = botrange (self.enemy);
+
+   // Slayer Eclipse: dodge matrix bias for learned user strafes
+   if ( self.enemy && Slayer_IsUser (self.enemy) && (cvar ("user_learn") > FALSE) ) {
+      user_bias = Slayer_UserBias (self.enemy);
+      if ( (user_bias > 0.200) ) {
+         self.lefty = (self.lefty | STRAFE_DIR);
+         rdir = (rdir + 0.300);
+      } else if ( (user_bias < -0.200) ) {
+         self.lefty = (self.lefty - (self.lefty & STRAFE_DIR));
+         rdir = (rdir + 0.300);
+      }
+   }
    if ( (rng == RANGE_NEAR) ) {
 
       rdir = (rdir + 0.800);
@@ -1369,6 +1385,55 @@ float (float dist) BotAI_Strategic = {
 
 };
 
+// Slayer Eclipse: rush contested powerups when we can preempt enemy ETA
+float () BotRivalPowerupRush = {
+
+   local entity scan;
+   local entity best;
+   local float eta_self;
+   local float eta_enemy;
+   local float best_eta;
+
+   if ( !self.enemy ) {
+      return ( FALSE );
+   }
+   if ( (self.lefty & GETGOODY) ) {
+      return ( FALSE );
+   }
+   if ( !Slayer_GodMode () && (self.skil < 8.000) ) {
+      return ( FALSE );
+   }
+
+   best = world;
+   best_eta = 999999.000;
+   scan = findradius (self.enemy.origin, 600.000);
+   while ( scan ) {
+      if ( (scan.classname == "item_artifact_super_damage") || (scan.classname == "item_artifact_invulnerability") ) {
+         eta_self = (vlen (scan.origin - self.origin) / 350.000);
+         eta_enemy = (vlen (scan.origin - self.enemy.origin) / 350.000);
+         if ( (eta_self < (eta_enemy + 2.000)) && (eta_self < best_eta) ) {
+            best_eta = eta_self;
+            best = scan;
+         }
+      }
+      scan = scan.chain;
+   }
+
+   if ( best != world ) {
+      if ( (self.goalentity.classname != "BotTarget") ) {
+         objerror ("bad bot target in bot_ai! 9\n");
+      }
+      self.goalentity.goalentity = best;
+      setorigin (self.goalentity,best.origin);
+      self.lefty = (self.lefty | GETGOODY);
+      self.goody_time = (time + 1.500);
+      return ( TRUE );
+   }
+
+   return ( FALSE );
+
+};
+
 void (float dist) BotAI_Main = {
 
    // FIX: Stop AI if dead - prevents overriding death animation frames
@@ -1378,6 +1443,9 @@ void (float dist) BotAI_Main = {
 
    // Mirage Minds: persona/entropy biasing
    MirageTick ();
+   if ( Slayer_GodMode () && (self.skil > 8.000) && (random () < 0.200) ) {
+      self.persona_state = floor (random () * 5.000);
+   }
 
    // Phantom Apprenticeship: occasionally shadow a player
    if ( !self.phantom && (random () < 0.030) && (time > (self.last_phantom + 30.000)) ) {
@@ -1449,6 +1517,12 @@ void (float dist) BotAI_Main = {
       self.ambush_ready = FALSE;
       // Shadow Puppets: combat rollout guidance
       BotShadowCombatThink (self.enemy, rng);
+      // Slayer Eclipse: preempt contested powerups
+      if ( BotRivalPowerupRush () ) {
+         BotLogAI (AI_STATE_GOODY, "GOODY");
+         ai_botgetGoody (dist);
+         return ;
+      }
 
    }
    if ( (self.search_time < time) ) {
@@ -1592,6 +1666,9 @@ void (float dist) BotAI_Main = {
       memory_duration = (0.500 + (self.skil * 0.250));
       if ( (memory_duration > 1.500) )
          memory_duration = 1.500;
+      if ( Slayer_GodMode () ) {
+         memory_duration = 5.000;
+      }
 
       if ( (time < (self.last_seen_time + memory_duration)) ) {
 

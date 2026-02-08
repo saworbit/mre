@@ -2,6 +2,8 @@
 
 void (vector pos, vector vel, float air_left, float action_id, vector fwd, vector right, float use_trace) ShadowSimStep;
 float (vector pos, vector vel, float air_left, vector goal_pos, float use_trace, float blocked, float hazard_bias, float water_bias) ShadowReward;
+float (entity foe) Slayer_IsUser;
+float (entity foe) Slayer_UserHash;
 
 void () PhantomThink;
 void (entity ph) Spectral_EndEpisode;
@@ -424,6 +426,9 @@ entity (entity target) SpawnPhantom = {
    ph.origin = target.origin;
    ph.phantom_target = target;
    ph.episode_time = (time + EPISODE_DURATION);
+   if ( (cvar ("user_learn") > FALSE) && Slayer_IsUser (target) ) {
+      ph.episode_time = (ph.episode_time + 5.000);
+   }
    ph.episode_start = target.origin;
    ph.last_sim_time = FALSE;
    ph.sim_maneuver = 0.000;
@@ -456,6 +461,10 @@ void (entity ph) Spectral_EndEpisode = {
    local float hash;
    local float i;
    local float lidx;
+   local float h;
+   local float lateral;
+   local vector vel;
+   local vector rgt;
 
    owner = ph.phantom_owner;
    if ( owner ) {
@@ -524,6 +533,22 @@ void (entity ph) Spectral_EndEpisode = {
       if ( lidx >= 0.000 ) {
          Vortex_RefineLiftPhase (ph.origin);
          Vortex_BoostUsage (lidx, 30.000);
+      }
+   }
+
+   // Slayer Eclipse: distill user strafe bias from phantom target
+   if ( (cvar ("user_learn") > FALSE) && Slayer_IsUser (ph.phantom_target) ) {
+      vel = ph.phantom_target.velocity;
+      if ( (vlen (vel) > 10.000) ) {
+         makevectors (ph.phantom_target.angles);
+         rgt = v_right;
+         lateral = (normalize (vel) * rgt);
+         h = Slayer_UserHash (ph.phantom_target);
+         if ( (h >= 0.000) && (h < 64.000) ) {
+            user_strafe_bias[h] = (user_strafe_bias[h] + (lateral * 0.200));
+            if ( (user_strafe_bias[h] > 1.000) ) user_strafe_bias[h] = 1.000;
+            if ( (user_strafe_bias[h] < -1.000) ) user_strafe_bias[h] = -1.000;
+         }
       }
    }
 

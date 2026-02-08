@@ -35,6 +35,10 @@
 - Removed: Broken map-control timing rushes (auto-drop BotPath at powerup spawns,
   spawn-time beelines, and hard lock boosts).
 - Updated: Shadow Puppets Nexus (shared nav/combat throttle, cvar gates, per-bot beam/depth overrides, spectral reward bias).
+- Feature: Slayer Eclipse combat escalation (`ai_predict.qc`, `botfight.qc`, `bot_ai.qc`,
+  `bot_learn.qc`, `botspawn.qc`, `botit_th.qc`). Adds 20-wide combat beams,
+  Monte Carlo lead, per-user strafe bias learning + dodge biasing, rival powerup
+  ETA rush, and god-mode toggles (`sv_slayer_god`, `mc_samples`, `user_learn`).
 - Feature: Smooth steering anti-jitter (`botmove.qc`, `defs.qc`). Bots now average
   steering decisions over 3 frames (0.3s at 10Hz) to prevent oscillation between
   pathfinder and whisker steering. `BotSmoothSteer()` uses a circular buffer with
