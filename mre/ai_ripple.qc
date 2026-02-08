@@ -2056,7 +2056,18 @@ float () Ripple_TryInteract = {
    local float i;
    local vector rpos;
 
-   cur = Vortex_FindNode (self.origin);
+   cur = -1.000;
+   if ( Vortex_IndexValid (self.ripple_near_idx) ) {
+      if ( (vortex_ripple_type[self.ripple_near_idx] > 0.000) && (vortex_ripple_pos[self.ripple_near_idx] != '0 0 0') ) {
+         if ( (vlen (vortex_ripple_pos[self.ripple_near_idx] - self.origin) < 128.000) ) {
+            cur = self.ripple_near_idx;
+         }
+      }
+   }
+
+   if ( cur < 0.000 ) {
+      cur = Vortex_FindNode (self.origin);
+   }
    if ( !Vortex_IndexValid (cur) ) {
       cur = -1.000;
    }
@@ -2086,6 +2097,7 @@ float () Ripple_TryInteract = {
    if ( cur < 0.000 ) {
       return ( FALSE );
    }
+   self.ripple_near_idx = cur;
    rpos = vortex_ripple_pos[cur];
    if ( (vlen (rpos - self.origin) > 96.000) ) {
       return ( FALSE );

@@ -102,6 +102,8 @@ float (entity targ, entity inflictor) CanDamage;
 .float goodies_scan_time;   // Throttle: item scan loops
 .float ripple_interact_time;// Throttle: ripple interact scans
 .float nudge_time;          // Throttle: proactive nudge checks
+.float nav_predict_time;    // Throttle: nav rollouts (decoupled from combat)
+.float ripple_near_idx;     // Cached nearby ripple node index
 .float pather;
 .float pathtype;
 .float visited_id;  // cycle detection for route caching

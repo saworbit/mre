@@ -351,6 +351,12 @@ void () PutBotInServer = {
    self.shadow_combat_next_time = FALSE;
    self.shadow_nav_debug_time = FALSE;
    self.last_predict = FALSE;
+   self.nav_predict_time = FALSE;
+   self.target_scan_time = FALSE;
+   self.goodies_scan_time = FALSE;
+   self.ripple_interact_time = FALSE;
+   self.nudge_time = FALSE;
+   self.ripple_near_idx = -1.000;
    self.shadow_depth = (6.000 + floor (self.skil));
    self.shadow_beam = (3.000 + (self.skil * 0.200));
    if ( (cvar ("sv_slayer_god") > FALSE) ) {

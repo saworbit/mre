@@ -100,6 +100,8 @@
 - Time-sliced target acquisition and throttled item/ripple/nudge scans to reduce per-frame trace load.
 - Noise alerts skip LOS traces for out-of-range bots; Vortex node lookup uses squared distance.
 - Steering hazard checks reduced at low speed to cut redundant hazard traces.
+- Nav rollout throttling decoupled from combat; target scan throttle now skill-scaled with recent-contact bypass.
+- Ripple interact now reuses a cached nearby node when possible; combat item scans use a smaller radius.
 
 ### Investigated (Not Found)
 - "Extra SNG ammo" complaint (not found in baseline - bots use same ammo as players).

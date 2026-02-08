@@ -116,10 +116,11 @@ Debug logging defaults (set in `mre/Autoexec.cfg`):
 Set these to `1` as needed for diagnostics.
 
 Performance throttles (behavior-neutral, CPU-focused):
-- Target acquisition scans are time-sliced per bot.
-- Item scans (`aibot_checkforGoodies`) are throttled when not panicking.
-- Proactive nudge lookahead is throttled and skips when shadow nav already ran.
-- Ripple interact scans are throttled when no nearby ripple node is cached.
+- Target acquisition scans are time-sliced per bot (skill-scaled) and bypassed briefly after recent contact.
+- Item scans (`aibot_checkforGoodies`) are throttled when not panicking and use a smaller radius during active combat.
+- Proactive nudge lookahead is throttled and skips when shadow nav already ran (nav-only timestamp).
+- Ripple interact scans are throttled when no nearby ripple node is cached, and cached nodes are reused when close.
+- Hazard checks in steering are skipped at very low movement speeds to cut redundant traces.
 
 ## Shadow Puppets tuning (cvars)
 These are runtime knobs for the combat rollout system:

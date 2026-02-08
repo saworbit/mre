@@ -652,12 +652,23 @@ float /* Warning: Could not determine return type */ () BotFindTarget = {
    local float best_dist;
    local float limit;
    local float scan_cap;
+   local float throttle;
 
-   // Throttle redundant scans in the same frame/tick
-   if ( time < self.target_scan_time ) {
+   // Throttle redundant scans in the same frame/tick (skill-scaled)
+   throttle = (0.050 - (self.skil * 0.005));
+   if ( (throttle < 0.020) ) throttle = 0.020;
+   if ( (throttle > 0.050) ) throttle = 0.050;
+   if ( (self.enemy == world) && (self.last_seen_time > 0.000) && (time < (self.last_seen_time + 0.600)) ) {
+      throttle = FALSE; // recent contact: don't delay reacquire
+   }
+   if ( (throttle > FALSE) && (time < self.target_scan_time) ) {
       return ( FALSE );
    }
-   self.target_scan_time = (time + 0.050);
+   if ( throttle > FALSE ) {
+      self.target_scan_time = (time + throttle);
+   } else {
+      self.target_scan_time = time;
+   }
 
    best = world;
    best_dist = 100000;
@@ -1883,6 +1894,7 @@ float (float minweight) aibot_checkforGoodies = {
    local float best;
    local float weight;
    local float minimum;
+   local float scan_radius;
 
    // FIX: Do not forage for items if drowning
    if ( (self.air_finished < (time + 5.000)) && (self.waterlevel >= 3.000) ) {
@@ -1907,8 +1919,13 @@ float (float minweight) aibot_checkforGoodies = {
       self.goodies_scan_time = (time + 0.200);
    }
 
+   scan_radius = SEARCH_RADIUS;
+   if ( self.enemy && (self.enemy != world) && enemyvisible (self.enemy) ) {
+      scan_radius = 400.000;
+   }
+
    botTarget = self.goalentity;
-   e = findradius (self.origin,SEARCH_RADIUS);
+   e = findradius (self.origin,scan_radius);
    best = DONT_WANT;
    while ( e ) {
 

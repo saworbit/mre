@@ -717,7 +717,7 @@ float (vector goal_pos, float dist) BotShadowPuppetYaw = {
       return ( 9999.000 );
    }
 
-   // Throttle (shared for nav/combat)
+   // Throttle (nav-only)
    throttle = cvar ("shadow_throttle");
    if ( (throttle <= FALSE) ) {
       if ( Slayer_GodMode () ) {
@@ -733,10 +733,10 @@ float (vector goal_pos, float dist) BotShadowPuppetYaw = {
          throttle = 0.050;
       }
    }
-   if ( ((self.last_predict + throttle) > time) ) {
+   if ( ((self.nav_predict_time + throttle) > time) ) {
       return ( 9999.000 );
    }
-   self.last_predict = time;
+   self.nav_predict_time = time;
 
    debug = cvar ("shadow_nav_debug");
    if ( (cvar ("shadow_debug") > FALSE) ) {

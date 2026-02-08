@@ -305,7 +305,7 @@ void () BotProactiveNudge = {
    self.nudge_time = (time + 0.200);
 
    // Skip if shadow nav already ran this frame
-   if ( (cvar ("sv_shadow_nav") > FALSE) && (self.last_predict > (time - 0.050)) ) {
+   if ( (cvar ("sv_shadow_nav") > FALSE) && (self.nav_predict_time > (time - 0.050)) ) {
       return;
    }
 
@@ -424,7 +424,7 @@ float (float ideal_yaw, float speed_factor) BotSteer = {
 
    // Look ahead based on speed
    dist = 50 + (speed_factor * 25);
-   hazard_check = (dist > 60);
+   hazard_check = (dist > 60) && (vlen (self.velocity) > 60.000);
    start = self.origin + '0 0 16';  // Waist height sensor origin
 
    // 1. PRIMARY FORCE: The Desire to reach the goal
