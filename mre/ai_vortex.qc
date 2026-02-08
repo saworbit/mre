@@ -7,6 +7,7 @@ vector (vector start, vector goal) Apex_VortexNext;
 float (vector spot) BotDetectHazard;
 void (vector pos) CurseNode;
 float (float idx, float at_time) Vortex_LiftWaitAt;
+void () Vortex_Seed;
 
 #define VORTEX_MAX_NODES 512
 #define VORTEX_MAX_CONN 8

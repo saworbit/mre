@@ -35,6 +35,8 @@ ci/mre/
 launch/quake-spasm/reaper_mre/
 launch/quake-spasm/mre/
 ci/stability-results.json
+ci/_smoke_run_dm2.bat
+launch/quake-spasm/stdout.txt
 
 # Legacy decompiled source (use src/ for reference only)
 reaper/
