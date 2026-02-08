@@ -28,7 +28,7 @@ powershell -ExecutionPolicy Bypass -File ci\build_mre.ps1
 Manual compile (if you already have fteqcc):
 ```
 cd c:\reaperai\mre
-..\tools\fteqcc_win64\fteqcc64.exe -O3 progs.src
+..\tools\fteqcc_win64\fteqcc64.exe -O3 -Tq1 -DQS_V6 progs.src
 ```
 Manual builds write `c:\reaperai\progs.dat` (the parent folder).
 Copy it to the runtime folder:
@@ -37,7 +37,7 @@ copy c:\reaperai\progs.dat c:\reaperai\launch\quake-spasm\mre\progs.dat /Y
 ```
 Spec-aligned strict compile flags:
 ```
-$env:FTEQCC_FLAGS = "-O2 -Werror"
+$env:FTEQCC_FLAGS = "-O2 -Werror -Tq1 -DQS_V6"
 powershell -ExecutionPolicy Bypass -File ci\build_mre.ps1
 ```
 
@@ -54,6 +54,16 @@ c:\reaperai\launch\quake-spasm\launch_reapbot_v2.bat 8 dm4
 Verified working (QuakeSpasm):
 ```
 c:\reaperai\launch\quake-spasm>quakespasm.exe -game mre -condebug +developer 1 -listen 8 +maxplayers 8 +deathmatch 1 +map dm2
+```
+
+Note: QuakeSpasm requires `progs.dat` version 6. The build script defaults to
+`-Tq1 -DQS_V6` to produce a version 6 binary. If you see:
+`Host_Error: progs.dat has wrong version number (7 should be 6)`,
+you built without `-DQS_V6` or exceeded QS limits. Rebuild with the QS_V6
+flags or use FTEQW (included) or another enhanced QCVM instead:
+```
+cd c:\reaperai\launch\fteqw_win64
+fteqw64.exe -basedir c:\reaperai\launch\quake-spasm -game mre -condebug +developer 1 -listen 8 +maxplayers 8 +deathmatch 1 +map dm2
 ```
 
 ## Test (full command + logging)
@@ -167,6 +177,61 @@ Compile-time tuning knobs:
 - `VORTEX_TELE_CHAIN_MAX`, `VORTEX_TELE_WARP_DIST`, `VORTEX_TELE_COST`
 - `VORTEX_LIFT_SAMPLE_THROTTLE`, `VORTEX_LIFT_UP_START`, `VORTEX_LIFT_UP_END`
 - `APEX_BUILD_THROTTLE`, `APEX_MIN_NODES`
+
+## Ripple Oracles + Maelstrom MCTS (causal interactables)
+Ripple Oracles predicts button/door/plat sequences when a goal is blocked, using
+an MCTS rollout tree and a beam-search fallback. Successful cascades are fused
+into the Vortex graph as one-way ripple edges with explicit interact positions.
+
+Key integration points:
+- `mre/ai_ripple.qc`: MCTS tree search (`Ripple_MaelstromMCTS`) + beam fallback
+  (`Ripple_MaelstromSim`), probe pulses, rollout mutation, and ripple fusing.
+- `mre/ai_vortex.qc`: ripple fields on nodes, A* cost bias for ripple edges, and
+  path reconstruction redirect to the interactable position.
+- `mre/botmove.qc`: `Ripple_TryInteract()` fires/touches when near a ripple node.
+- `mre/bot_learn.qc`: phantom episodes can fuse ripple chains from player actions.
+- `mre/defs.qc`: per-bot `ripple_probe_time` throttle.
+
+Behavior summary:
+- When LOS to the goal is blocked, `RippleDetect()` pulses around the block to
+  find interactables and runs MCTS to simulate shoot/touch/wait sequences.
+- MCTS mutates ghost flags (door open / plat raised), scores rollouts with
+  `ShadowReward`, and backprops to select a best cascade.
+- The best cascade fuses a ripple edge: `ripple_pos` is the interact waypoint,
+  `ripple_target` is the post-effect node, and A* adds a cost penalty for the
+  interaction delay.
+- If MCTS fails to find a viable cascade, beam-search Maelstrom is used as a
+  fallback.
+
+Compile-time tuning knobs (ai_ripple.qc):
+- MCTS: `MCTS_NODES`, `MCTS_CHILDREN`, `MCTS_ITER_BASE`, `MCTS_ITER_PER_SKILL`,
+  `MCTS_ITER_MAX`, `MCTS_ROLL_DEPTH`, `MCTS_UCT_C`
+- Early stop: `MCTS_EARLY_VISITS`, `MCTS_EARLY_REWARD`
+- Probe/throttle: `RIPPLE_PROBE_THROTTLE`, `MCTS_THROTTLE`,
+  `RIPPLE_PULSE_DIRS`, `RIPPLE_PULSE_DIST`, `RIPPLE_GOAL_RANGE`,
+  `RIPPLE_ACTION_RANGE`
+
+Decay:
+- Deep ripple edges are pruned when usage is low (see `Vortex_Decay`).
+
+## Grenade Vortex (GJ/GLJ Leap Oracle)
+Grenade Vortex extends Quantum Leaps with grenade-jump (GJ) and grenade-launch
+bounce jump (GLJ) actions when rockets are scarce or the purpose demands a
+softer arc. GJ/GLJ are simulated inside the same MCTS rollout tree used for
+rocket jumps, with bounce-aware fuse timing and purpose-tuned launch vectors.
+
+Key integration points:
+- `mre/ai_ripple.qc`: GJ/GLJ actions (24-39), bounce sim, and mixed RJ/GJ/GLJ
+  priors in `Quantum_MCTSExpand`/`Quantum_MCTSRollout`.
+- `mre/botmove.qc`: unchanged call sites (`Quantum_RJDetect`, `Quantum_TryLeap`)
+  now select RJ/GJ/GLJ based on ammo/health/purpose.
+- `mre/bot_learn.qc`: phantom episodes tune GJ horiz/vert coeffs and GLJ launch
+  angles, and fuse grenade leap edges into Vortex.
+
+Notes:
+- GJ/GLJ use grenade launcher ammo (`ammo_rockets`) and are disabled if the
+  bot lacks `IT_GRENADE_LAUNCHER`.
+- Health gating: RJ >= `RJ_MIN_HEALTH`, GJ/GLJ >= `GJ_MIN_HEALTH`.
 
 ## Vortex Telechains + Apex Lifts (teleport + platform fusion)
 - Telechains: large warps (>500u) are detected via phantom tele events and fused

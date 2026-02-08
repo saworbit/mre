@@ -13,8 +13,18 @@ void (vector entry, vector exit) Vortex_FuseTeleChain;
 float (vector pos) Vortex_FindNode;
 void (float idx, float amt) Vortex_BoostUsage;
 void (vector pos) Vortex_RefineLiftPhase;
+float (entity e) Ripple_InteractType;
+void (vector start, vector end, vector ripple_pos, float rtype) Ripple_FuseChain;
+float (float armor) Quantum_RJDamage;
+float (float armor) Quantum_GJDamage;
+float (float armor) Quantum_GLJDamage;
+void (vector start, vector end, vector leap_pos, float risk) Quantum_FuseLeap;
 
+#ifdef QS_V6
+#define MAX_EPISODES 32
+#else
 #define MAX_EPISODES 50
+#endif
 #define EPISODE_DURATION 10.000
 #define DECAY_RATE 0.100
 #define ALLURE_BASE 50.000
@@ -23,6 +33,11 @@ void (vector pos) Vortex_RefineLiftPhase;
 #define REWARD_THRESH 20.000
 #define VISIT_HASH_SCALE 256
 #define SPECTRAL_NEG -999999.000
+
+#define RJ_PURPOSE_LAVA 0.000
+#define RJ_PURPOSE_VAULT 1.000
+#define RJ_PURPOSE_HIGH 2.000
+#define RJ_PURPOSE_FLAT 3.000
 
 vector spectral_start[MAX_EPISODES];
 vector spectral_end[MAX_EPISODES];
@@ -465,6 +480,14 @@ void (entity ph) Spectral_EndEpisode = {
    local float lateral;
    local vector vel;
    local vector rgt;
+   local float rtype;
+   local vector delta;
+   local vector flat;
+   local vector mid;
+   local float vert;
+   local float horiz;
+   local float purpose;
+   local float is_glj;
 
    owner = ph.phantom_owner;
    if ( owner ) {
@@ -513,6 +536,53 @@ void (entity ph) Spectral_EndEpisode = {
 
    // Vortex Navmesh: phantom trail validates a dynamic edge
    Vortex_RecordEpisode (ph.episode_start, ph.origin);
+
+   // Ripple Oracles: learn interactable chains from phantom episodes
+   makevectors (ph.phantom_target.angles);
+   traceline (ph.episode_start - (v_forward * 64.000), ph.episode_start + (v_forward * 64.000), TRUE, ph);
+   if ( trace_ent ) {
+      rtype = Ripple_InteractType (trace_ent);
+      if ( (rtype > 0.000) ) {
+         Ripple_FuseChain (ph.episode_start, ph.origin, trace_ent.origin, rtype);
+      }
+   }
+
+   // Quantum Leaps: distill rocket/grenade jump arcs from phantoms
+   delta = (ph.origin - ph.episode_start);
+   if ( (fabs (delta_z) > 128.000) && (vlen (delta) > 256.000) ) {
+      if ( (ph.phantom_target.weapon == IT_ROCKET_LAUNCHER) && ph.phantom_target.button0 && ph.phantom_target.button2 ) {
+         Quantum_FuseLeap (ph.episode_start, ph.origin, ph.episode_start, Quantum_RJDamage (ph.phantom_target.armorvalue));
+      } else if ( (ph.phantom_target.weapon == IT_GRENADE_LAUNCHER) && ph.phantom_target.button0 && ph.phantom_target.button2 ) {
+         vert = fabs (delta_z);
+         flat = delta;
+         flat_z = 0.000;
+         horiz = vlen (flat);
+         mid = ph.episode_start;
+         if ( vlen (delta) > 0.010 ) {
+            mid = (ph.episode_start + (normalize (delta) * 128.000));
+         }
+         purpose = RJ_PURPOSE_FLAT;
+         if ( (pointcontents (mid) == CONTENT_LAVA) || (pointcontents (mid) == CONTENT_SLIME) ) {
+            purpose = RJ_PURPOSE_LAVA;
+         } else if ( vert > (horiz * 0.500) ) {
+            purpose = RJ_PURPOSE_VAULT;
+         } else if ( vert > 256.000 ) {
+            purpose = RJ_PURPOSE_HIGH;
+         }
+         is_glj = (vert > (horiz * 0.600));
+         if ( is_glj ) {
+            glj_angle_tune[purpose] = (glj_angle_tune[purpose] + 0.030);
+            if ( glj_angle_tune[purpose] > 0.300 ) glj_angle_tune[purpose] = 0.300;
+            Quantum_FuseLeap (ph.episode_start, ph.origin, ph.episode_start, Quantum_GLJDamage (ph.phantom_target.armorvalue));
+         } else {
+            gj_horiz_tune[purpose] = (gj_horiz_tune[purpose] + 0.040);
+            gj_vert_tune[purpose] = (gj_vert_tune[purpose] + 0.040);
+            if ( gj_horiz_tune[purpose] > 0.400 ) gj_horiz_tune[purpose] = 0.400;
+            if ( gj_vert_tune[purpose] > 0.500 ) gj_vert_tune[purpose] = 0.500;
+            Quantum_FuseLeap (ph.episode_start, ph.origin, ph.episode_start, Quantum_GJDamage (ph.phantom_target.armorvalue));
+         }
+      }
+   }
 
    hash = Spectral_HashPair (ph.episode_start, ph.origin);
    i = 0.000;

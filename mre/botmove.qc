@@ -16,6 +16,9 @@ float (vector goal_pos, float dist) BotShadowPuppetYaw;
 float (float base_yaw, float target_yaw, float strength) Mirage_BlendYaw;
 float (vector pos, vector vel, float air_left, vector goal_pos, vector fwd, vector right, float use_trace) ShadowLookaheadReward;
 float (vector from, vector to, float base_dist) Vortex_LiftSyncDist;
+float () Ripple_TryInteract;
+float () Quantum_RJDetect;
+float () Quantum_TryLeap;
 
 // FIX: Platform riding - handles func_train (DM2 lava platforms) and func_plat
 // Returns TRUE if bot should wait/ride, FALSE to continue with normal movement
@@ -2265,6 +2268,9 @@ void (float dist) Botmovetogoal = {
 
    self.oldorigin = self.origin;
    Botgoal = self.goalentity;
+   Ripple_TryInteract ();
+   Quantum_RJDetect ();
+   Quantum_TryLeap ();
    shadow_yaw = BotShadowPuppetYaw (Botgoal.origin, dist);
    if ( (shadow_yaw != 9999.000) ) {
       self.ideal_yaw = shadow_yaw;

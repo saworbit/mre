@@ -5,12 +5,17 @@ vector (vector start, vector goal) Vortex_NextStep;
 float () Vortex_Ready;
 void (float c1, float c2, float ptype) Apex_AddPortalTyped;
 
+#ifdef QS_V6
+#define VORTEX_MAX_NODES 256
+#define APEX_MAX_CLUSTERS 32
+#define APEX_MAX_PORTALS 128
+#else
 #define VORTEX_MAX_NODES 512
-#define VORTEX_MAX_CONN 8
-#define VORTEX_NODE_LIFT 3.000
-
 #define APEX_MAX_CLUSTERS 64
 #define APEX_MAX_PORTALS 256
+#endif
+#define VORTEX_MAX_CONN 8
+#define VORTEX_NODE_LIFT 3.000
 #define APEX_BUILD_THROTTLE 10.000
 #define APEX_MIN_NODES 100.000
 

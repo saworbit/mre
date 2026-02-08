@@ -1365,6 +1365,24 @@ void () ImpulseCommands = {
       return ;
    }
 
+   if ( (self.impulse == 105.000) && (self.classname == "player") ) {
+      Specter_Toggle ();
+      self.impulse = FALSE;
+      return ;
+   }
+
+   if ( (self.impulse == 106.000) && (self.classname == "player") ) {
+      Specter_CycleFocus ();
+      self.impulse = FALSE;
+      return ;
+   }
+
+   if ( (self.impulse == 107.000) && (self.classname == "player") ) {
+      Specter_Replay ();
+      self.impulse = FALSE;
+      return ;
+   }
+
       if ( (self.impulse == 16) ) {
 
      CCamUp (2);

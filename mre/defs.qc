@@ -327,6 +327,10 @@ float () Bot_CheckReaction; // Forward declaration
 // Button solving (door puzzles)
 .entity blocking_door;       // Door blocking our path
 .entity target_button;       // Button to press/shoot
+// Rocket jump oracle
+.float last_rj;              // Last rocket jump time (cooldown)
+.float rj_purpose;           // Purpose enum for RJ tuning (lava/vault/high/flat)
+.float rj_probe_time;        // Cooldown for RJ probes
 
 // Stuck detection
 .float stuck_time;           // Time when bot became stuck (0 = not stuck)
@@ -363,6 +367,24 @@ float () Bot_CheckReaction; // Forward declaration
 .float mirage_next_time;   // Throttle timer
 .float mirage_persona_time;// Persona change throttle
 .float mirage_hold_fire_time; // Feint: pause firing
+// Specter Gaze (cinematic spectator)
+.vector old_vel;           // Velocity from prior think (for Specter prediction)
+.vector replay_pos0;
+.vector replay_pos1;
+.vector replay_pos2;
+.vector replay_pos3;
+.vector replay_pos4;
+.vector replay_pos5;
+.vector replay_pos6;
+.vector replay_pos7;
+.vector replay_pos8;
+.vector replay_pos9;
+.float replay_next_time;   // Next time to sample replay buffer
+.float specter_prev_movetype;
+.float specter_prev_solid;
+.float specter_prev_takedamage;
+.float specter_prev_flags;
+.float specter_marked;
 // Advanced movement mechanics
 .float strafe_state;         // 0=None, 1=Left, 2=Right
 .float strafe_timer;         // Rhythm keeper
@@ -419,6 +441,8 @@ float LINK_LADDER     = 6; // Vertical water/ladder logic
 
 // --- CURIOSITY (Solving) ---
 .float  button_search_time;  // Cooldown for looking for buttons
+// --- RIPPLE ORACLES (Causal interactables) ---
+.float  ripple_probe_time;   // Cooldown for ripple probe scans
 
 // Turn speed limiting (inspired by FrikBot mouse emulation)
 .float last_yaw;             // Previous frame's yaw for delta calculation

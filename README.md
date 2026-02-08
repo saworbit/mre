@@ -36,6 +36,8 @@ from `archive/`.
 - **Vortex Navmesh + Apex HPA\*** (incremental dynamic navmesh seeded from spawns/items, phantom-validated edges, cursed/glory-biased costs, hierarchical clustering for large maps; no pre-bake)
 - **Vortex Telechains** (teleporter warp detection and one-way quantum edges; chain-safe, hazard-aware, low-cost path fusion)
 - **Apex Lifts** (lift sampling with wait-cost biasing and HPA* portal weighting for timed platforms)
+- **Ripple Oracles + Maelstrom MCTS** (UCT-style causal interactable prediction; fuses button/plat/door cascades as ripple edges)
+- **Grenade Vortex (GJ/GLJ)**: Grenade jumps and bounce-jumps integrated into Quantum Leaps with ammo-aware priors, purpose-tuned arcs, and phantom auto-tuning
 - Mirage Minds (persona-driven humanization with entropy, micro-goals, heatmap denial, and feint pauses)
 - Teacher Mode debug impulses (102 show / 103 hide bot learning nodes, 104 dump spectral episodes)
 - Speed Demon update (bunny hopping on straight runs and reflex projectile dodging)
@@ -76,7 +78,7 @@ This compiles `mre/`, writes `progs.dat` into `ci/mre/progs.dat`, and deploys th
 Manual build (fteqcc) + deploy:
 ```powershell
 cd c:\reaperai\mre
-..\tools\fteqcc_win64\fteqcc64.exe -O3 progs.src
+..\tools\fteqcc_win64\fteqcc64.exe -O3 -Tq1 -DQS_V6 progs.src
 copy c:\reaperai\progs.dat c:\reaperai\launch\quake-spasm\mre\progs.dat /Y
 ```
 Note: `progs.dat` currently exceeds the 32k global limit, so an enhanced QCVM/engine is required at runtime.
@@ -89,6 +91,13 @@ launch_reapbot_v2.bat 8 dm4
 Manual command with logging:
 ```batch
 quakespasm-sdl12.exe -game mre -condebug +developer 1 -listen 8 +maxplayers 8 +deathmatch 1 +map dm4
+```
+
+If QuakeSpasm reports `progs.dat has wrong version number (7 should be 6)`,
+run via the bundled FTEQW engine instead:
+```batch
+cd c:\reaperai\launch\fteqw_win64
+fteqw64.exe -basedir c:\reaperai\launch\quake-spasm -game mre -condebug +developer 1 -listen 8 +maxplayers 8 +deathmatch 1 +map dm4
 ```
 
 ## Test
@@ -139,3 +148,13 @@ Runtime cvars (see `DEVELOPMENT.md` for full details):
 - Lift nodes are sampled from world geometry and tagged in Vortex.
 - A* adds a wait penalty based on lift cycle timing and bot skill (impatience).
 - Apex HPA* marks lift portals for cheaper abstraction of multi-hop lift paths.
+
+## Ripple Oracles (Causal Interactables)
+- When goals are blocked, Ripple probes nearby interactables (buttons/doors/plats).
+- MCTS rollouts simulate shoot/touch/wait cascades and fuse one-way ripple edges.
+- Vortex pathing can redirect to the interactable position before resuming the goal.
+
+## Grenade Vortex (GJ/GLJ Leaps)
+- Extends Quantum Leaps with grenade jumps (GJ) and bounce-aware GLJ actions.
+- MCTS rollouts sample RJ/GJ/GLJ based on ammo, health, and purpose (lava/vault/high).
+- Phantom episodes auto-tune GJ horiz/vert coeffs and GLJ launch angles.

@@ -44,6 +44,8 @@ botsignl.qc
 botmove.qc
 ai_predict.qc
 ai_vortex.qc
+ai_ripple.qc
+ai_specter.qc
 ai_apex.qc
 botnoise.qc
 botvis.qc

@@ -48,6 +48,11 @@ void () botImpulseCommand;
 void () setBotGravity;
 void (entity player, entity button) BotMarkMandatoryWaypoint;
 entity (entity chaser) FindMandatoryWaypoint;
+void () Specter_Toggle;
+void () Specter_CycleFocus;
+void () Specter_Replay;
+void () Specter_Reset;
+void (entity bot) Specter_ReplayRecord;
 
 void (vector tdest, float tspeed, void() func) SUB_CalcMove;
 
@@ -177,6 +182,20 @@ entity NOISEQUEUE;
 float HELPING;
 float NAMEBOTS;
 float user_strafe_bias[32];  // Slayer Eclipse: per-user strafe bias
+float gj_horiz_tune[4];      // Grenade jump horizontal tuning per purpose
+float gj_vert_tune[4];       // Grenade jump vertical tuning per purpose
+float glj_angle_tune[4];     // GLJ launch angle tuning per purpose
+
+// --- SPECTER GAZE (cinematic spectator) ---
+float specter_active;
+float specter_focus;
+float specter_last_focus;
+float specter_force_until;
+float specter_last_switch;
+entity specter_owner;
+entity specter_cams[4];
+entity specter_targets[4];
+float specter_scores[4];
 
 // --- AUDITORY SYSTEM ---
 float NOISE_GENERIC = 0.000;

@@ -1457,6 +1457,9 @@ void () ClientDisconnect = {
       return ;
 
    }
+   if ( specter_active && (specter_owner == self) ) {
+      Specter_Reset ();
+   }
    bprint (self.teamname);
    bprint (self.netname);
    bprint (" left the game with ");

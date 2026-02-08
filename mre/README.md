@@ -68,6 +68,7 @@ For visual/behavioral verification:
 - [ ] **Apex Lifts**: Bots time lifts, chain lift paths, and don't spam jump on platforms
 - [ ] **Oracle Rides**: Bots sync approach speed to catch lift up-phases (reduced wait)
 - [ ] **Door Opening**: Bots trigger doors and wait for them to open
+- [ ] **Ripple Oracles**: Bots probe blocked goals, shoot/touch buttons or plats, and chain cascades
 - [ ] **Hazard Avoidance**: Bots refuse to walk into lava/slime
 - [ ] **Wall Flow**: Bots curve smoothly around corners (no stop-turn-go)
 - [ ] **Cliff Awareness**: Bots steer away from ledges before reaching them

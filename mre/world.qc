@@ -140,6 +140,7 @@ void () worldspawn =
    Cursed_Reset ();
    Vortex_Reset ();
    Apex_Reset ();
+   Specter_Reset ();
    if ( (self.model == "maps/e1m8.bsp") ) {
 
       cvar_set ("sv_gravity","100");

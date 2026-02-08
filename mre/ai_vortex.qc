@@ -8,10 +8,17 @@ float (vector spot) BotDetectHazard;
 void (vector pos) CurseNode;
 float (float idx, float at_time) Vortex_LiftWaitAt;
 void () Vortex_Seed;
+float () RippleDetect;
+float (float idx) Vortex_IndexValid;
 
+#ifdef QS_V6
+#define VORTEX_MAX_NODES 256
+#define VORTEX_MAX_EDGES 2048
+#else
 #define VORTEX_MAX_NODES 512
-#define VORTEX_MAX_CONN 8
 #define VORTEX_MAX_EDGES 4096
+#endif
+#define VORTEX_MAX_CONN 8
 #define VORTEX_BUILD_THROTTLE 1.000
 #define VORTEX_TRACE_BUDGET 20.000
 #define VORTEX_NODE_RADIUS 32.000
@@ -41,6 +48,16 @@ float vortex_lift_cycle[VORTEX_MAX_NODES];
 float vortex_lift_phase[VORTEX_MAX_NODES];
 float vortex_lift_up_start[VORTEX_MAX_NODES];
 float vortex_lift_up_end[VORTEX_MAX_NODES];
+float vortex_ripple_type[VORTEX_MAX_NODES];
+float vortex_ripple_target[VORTEX_MAX_NODES];
+float vortex_ripple_cost[VORTEX_MAX_NODES];
+float vortex_ripple_steps[VORTEX_MAX_NODES];
+float vortex_ripple_flags[VORTEX_MAX_NODES];
+vector vortex_ripple_pos[VORTEX_MAX_NODES];
+float vortex_leap_target[VORTEX_MAX_NODES];
+float vortex_leap_cost[VORTEX_MAX_NODES];
+float vortex_leap_risk[VORTEX_MAX_NODES];
+vector vortex_leap_pos[VORTEX_MAX_NODES];
 float vortex_count;
 float vortex_last_build;
 float vortex_last_decay;
@@ -56,6 +73,12 @@ float vortex_came[VORTEX_MAX_NODES];
 float vortex_state[VORTEX_MAX_NODES];
 float vortex_open[VORTEX_MAX_NODES];
 float vortex_open_count;
+
+float (float idx) Vortex_IndexValid = {
+   if ( idx < 0.000 ) return ( FALSE );
+   if ( idx >= VORTEX_MAX_NODES ) return ( FALSE );
+   return ( TRUE );
+};
 
 vector (float idx) Vortex_Dir = {
 
@@ -112,7 +135,7 @@ float (vector pos) Vortex_FindNode = {
 
 void (float idx, float amt) Vortex_BoostUsage = {
 
-   if ( idx < 0.000 ) {
+   if ( !Vortex_IndexValid (idx) ) {
       return;
    }
    vortex_usage[idx] = (vortex_usage[idx] + amt);
@@ -140,6 +163,16 @@ float (vector pos, float ntype) Vortex_AddNode = {
    vortex_lift_phase[idx] = 0.000;
    vortex_lift_up_start[idx] = VORTEX_LIFT_UP_START;
    vortex_lift_up_end[idx] = VORTEX_LIFT_UP_END;
+   vortex_ripple_type[idx] = 0.000;
+   vortex_ripple_target[idx] = -1.000;
+   vortex_ripple_cost[idx] = 0.000;
+   vortex_ripple_steps[idx] = 0.000;
+   vortex_ripple_flags[idx] = 0.000;
+   vortex_ripple_pos[idx] = '0 0 0';
+   vortex_leap_target[idx] = -1.000;
+   vortex_leap_cost[idx] = 0.000;
+   vortex_leap_risk[idx] = 0.000;
+   vortex_leap_pos[idx] = '0 0 0';
    if ( ntype == VORTEX_NODE_ITEM ) {
       vortex_usage[idx] = 2.000;
    } else if ( ntype == VORTEX_NODE_TELE ) {
@@ -690,6 +723,10 @@ float (float cur, float next) Vortex_EdgeCost = {
    local float chain;
    local float impatience;
 
+   if ( !Vortex_IndexValid (cur) || !Vortex_IndexValid (next) ) {
+      return ( 999999.000 );
+   }
+
    if ( vortex_tele_exit[cur] == next ) {
       cost = VORTEX_TELE_COST;
       cost = (cost + GetCursePenalty (vortex_pos[next]));
@@ -702,6 +739,18 @@ float (float cur, float next) Vortex_EdgeCost = {
 
    cost = vlen (vortex_pos[next] - vortex_pos[cur]);
    cost = (cost + GetCursePenalty (vortex_pos[next]));
+
+   if ( (vortex_ripple_type[cur] > 0.000) && (vortex_ripple_target[cur] == next) ) {
+      cost = (cost + (vortex_ripple_cost[cur] * vortex_ripple_steps[cur] * 20.000));
+   }
+   if ( (vortex_leap_target[cur] >= 0.000) && (vortex_leap_target[cur] == next) ) {
+      cost = (cost + (vortex_leap_cost[cur] * 20.000));
+      if ( self.health < (vortex_leap_risk[cur] * 1.200) ) {
+         cost = (cost + 500.000);
+      } else {
+         cost = (cost - 200.000);
+      }
+   }
 
    if ( vortex_type[next] == VORTEX_NODE_LIFT ) {
       wait = Vortex_LiftWaitETA (cur, next);
@@ -791,6 +840,10 @@ float (float start, float goal) Vortex_AStar = {
             n = (n + TRUE);
             continue;
          }
+         if ( !Vortex_IndexValid (neighbor) ) {
+            n = (n + TRUE);
+            continue;
+         }
          if ( vortex_state[neighbor] == 2.000 ) {
             n = (n + TRUE);
             continue;
@@ -827,6 +880,9 @@ vector (float start, float goal) Vortex_Reconstruct = {
    }
 
    cur = goal;
+   if ( !Vortex_IndexValid (cur) ) {
+      return ( '0 0 0' );
+   }
    prev = vortex_came[cur];
    if ( prev < 0.000 ) {
       return ( '0 0 0' );
@@ -835,6 +891,23 @@ vector (float start, float goal) Vortex_Reconstruct = {
    while ( (prev != start) && (prev >= 0.000) ) {
       cur = prev;
       prev = vortex_came[cur];
+   }
+
+   if ( Vortex_IndexValid (vortex_leap_target[cur]) ) {
+      if ( vortex_came[vortex_leap_target[cur]] == cur ) {
+         if ( vortex_leap_pos[cur] != '0 0 0' ) {
+            return ( vortex_leap_pos[cur] );
+         }
+      }
+   }
+   if ( vortex_ripple_type[cur] > 0.000 ) {
+      if ( Vortex_IndexValid (vortex_ripple_target[cur]) ) {
+         if ( vortex_came[vortex_ripple_target[cur]] == cur ) {
+            if ( vortex_ripple_pos[cur] != '0 0 0' ) {
+               return ( vortex_ripple_pos[cur] );
+            }
+         }
+      }
    }
 
    return ( vortex_pos[cur] );
@@ -949,6 +1022,7 @@ float () Vortex_ApplyGoal = {
    if ( trace_fraction == 1.000 ) {
       return ( FALSE );
    }
+   RippleDetect ();
 
    if ( (time < (self.vortex_path_time + 0.500)) && (vlen (self.vortex_path_goal - goal_pos) < 64.000) ) {
       next = self.vortex_path_next;
@@ -996,6 +1070,16 @@ void (float idx) Vortex_RemoveNode = {
       vortex_lift_phase[idx] = vortex_lift_phase[last];
       vortex_lift_up_start[idx] = vortex_lift_up_start[last];
       vortex_lift_up_end[idx] = vortex_lift_up_end[last];
+      vortex_ripple_type[idx] = vortex_ripple_type[last];
+      vortex_ripple_target[idx] = vortex_ripple_target[last];
+      vortex_ripple_cost[idx] = vortex_ripple_cost[last];
+      vortex_ripple_steps[idx] = vortex_ripple_steps[last];
+      vortex_ripple_flags[idx] = vortex_ripple_flags[last];
+      vortex_ripple_pos[idx] = vortex_ripple_pos[last];
+      vortex_leap_target[idx] = vortex_leap_target[last];
+      vortex_leap_cost[idx] = vortex_leap_cost[last];
+      vortex_leap_risk[idx] = vortex_leap_risk[last];
+      vortex_leap_pos[idx] = vortex_leap_pos[last];
 
       base = (idx * VORTEX_MAX_CONN);
       c = 0.000;
@@ -1021,8 +1105,64 @@ void (float idx) Vortex_RemoveNode = {
             vortex_tele_exit[i] = -1.000;
          }
       }
+      if ( vortex_ripple_target[i] >= 0.000 ) {
+         if ( moved >= 0.000 ) {
+            if ( vortex_ripple_target[i] == moved ) {
+               vortex_ripple_target[i] = idx;
+            } else if ( vortex_ripple_target[i] == idx ) {
+               vortex_ripple_target[i] = -1.000;
+               vortex_ripple_type[i] = 0.000;
+               vortex_ripple_steps[i] = 0.000;
+               vortex_ripple_cost[i] = 0.000;
+               vortex_ripple_flags[i] = 0.000;
+               vortex_ripple_pos[i] = '0 0 0';
+            }
+         } else {
+            if ( vortex_ripple_target[i] == idx ) {
+               vortex_ripple_target[i] = -1.000;
+               vortex_ripple_type[i] = 0.000;
+               vortex_ripple_steps[i] = 0.000;
+               vortex_ripple_cost[i] = 0.000;
+               vortex_ripple_flags[i] = 0.000;
+               vortex_ripple_pos[i] = '0 0 0';
+            }
+         }
+      }
+      if ( vortex_leap_target[i] >= 0.000 ) {
+         if ( moved >= 0.000 ) {
+            if ( vortex_leap_target[i] == moved ) {
+               vortex_leap_target[i] = idx;
+            } else if ( vortex_leap_target[i] == idx ) {
+               vortex_leap_target[i] = -1.000;
+               vortex_leap_cost[i] = 0.000;
+               vortex_leap_risk[i] = 0.000;
+               vortex_leap_pos[i] = '0 0 0';
+            }
+         } else {
+            if ( vortex_leap_target[i] == idx ) {
+               vortex_leap_target[i] = -1.000;
+               vortex_leap_cost[i] = 0.000;
+               vortex_leap_risk[i] = 0.000;
+               vortex_leap_pos[i] = '0 0 0';
+            }
+         }
+      }
       if ( vortex_tele_exit[i] == i ) {
          vortex_tele_exit[i] = -1.000;
+      }
+      if ( vortex_ripple_target[i] == i ) {
+         vortex_ripple_target[i] = -1.000;
+         vortex_ripple_type[i] = 0.000;
+         vortex_ripple_steps[i] = 0.000;
+         vortex_ripple_cost[i] = 0.000;
+         vortex_ripple_flags[i] = 0.000;
+         vortex_ripple_pos[i] = '0 0 0';
+      }
+      if ( vortex_leap_target[i] == i ) {
+         vortex_leap_target[i] = -1.000;
+         vortex_leap_cost[i] = 0.000;
+         vortex_leap_risk[i] = 0.000;
+         vortex_leap_pos[i] = '0 0 0';
       }
       base = (i * VORTEX_MAX_CONN);
       c = 0.000;
@@ -1058,6 +1198,28 @@ void () Vortex_Decay = {
       vortex_usage[i] = (vortex_usage[i] * 0.990);
       if ( (vortex_type[i] == VORTEX_NODE_TELE) && (vortex_tele_exit[i] >= 0.000) && (vortex_usage[i] < 0.500) ) {
          vortex_tele_exit[i] = -1.000;
+      }
+      if ( (vortex_leap_target[i] >= 0.000) && (vortex_usage[i] < 0.200) ) {
+         vortex_leap_target[i] = -1.000;
+         vortex_leap_cost[i] = 0.000;
+         vortex_leap_risk[i] = 0.000;
+         vortex_leap_pos[i] = '0 0 0';
+      }
+      if ( (vortex_ripple_type[i] > 0.000) && (vortex_ripple_steps[i] > 5.000) && (vortex_usage[i] < 0.500) ) {
+         vortex_ripple_type[i] = 0.000;
+         vortex_ripple_target[i] = -1.000;
+         vortex_ripple_cost[i] = 0.000;
+         vortex_ripple_steps[i] = 0.000;
+         vortex_ripple_flags[i] = 0.000;
+         vortex_ripple_pos[i] = '0 0 0';
+      }
+      if ( (vortex_ripple_type[i] > 0.000) && (vortex_usage[i] < 0.050) ) {
+         vortex_ripple_type[i] = 0.000;
+         vortex_ripple_target[i] = -1.000;
+         vortex_ripple_cost[i] = 0.000;
+         vortex_ripple_steps[i] = 0.000;
+         vortex_ripple_flags[i] = 0.000;
+         vortex_ripple_pos[i] = '0 0 0';
       }
       if ( (vortex_usage[i] < 0.100) && (vortex_conn_count[i] < 2.000) && (vortex_count > VORTEX_MIN_READY) ) {
          Vortex_RemoveNode (i);

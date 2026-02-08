@@ -31,6 +31,12 @@
   ETA-based wait-cost biasing in Vortex A*, rewards lift rides (upward bias) in
   rollouts, syncs approach speed to lift phases, refines lift phase timing from
   successful rides, and tags lift portals for low-cost abstraction in Apex clusters.
+- Feature: **Ripple Oracles + Maelstrom MCTS** (`ai_ripple.qc`, `ai_vortex.qc`,
+  `botmove.qc`, `bot_learn.qc`, `defs.qc`). When LOS to a goal is blocked, probes
+  nearby interactables (buttons/doors/plats), runs an adaptive MCTS rollout to
+  simulate shoot/touch/wait cascades, and fuses ripple edges into Vortex with
+  explicit interact positions. Falls back to beam-search Maelstrom when MCTS
+  fails and decays deep, unused ripple edges.
 - Removed: Legacy episodic learning (golden locks, teleport shortcuts, LOS shortcutting, trail rewards).
 - Removed: Broken map-control timing rushes (auto-drop BotPath at powerup spawns,
   spawn-time beelines, and hard lock boosts).

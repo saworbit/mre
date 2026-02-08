@@ -11,7 +11,11 @@ float SHADOW_GRAVITY = 80.000;   // Approx 800 * 0.1s
 float SHADOW_NEG = -999999.000;
 
 // Combat Crucible (dual-rollout)
+#ifdef QS_V6
+#define SHADOW_COMBAT_BEAM_MAX 12
+#else
 #define SHADOW_COMBAT_BEAM_MAX 20
+#endif
 #define USER_HASH_SCALE 32
 float SHADOW_COMBAT_MAX_DEPTH = 15.000;
 float SHADOW_COMBAT_MAX_BEAM = SHADOW_COMBAT_BEAM_MAX;

@@ -407,6 +407,9 @@ void () BotPostThink = {
       self.nextthink = (time + 0.100);
    }
 
+   Specter_ReplayRecord (self);
+   self.old_vel = self.velocity;
+
    fraglimit = cvar ("fraglimit");
    if ( (fraglimit && (self.frags >= fraglimit)) ) {
 

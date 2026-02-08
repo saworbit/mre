@@ -21,6 +21,7 @@
 - **Vortex Navmesh + Apex HPA\***: incremental dynamic mesh seeded from spawns/items, phantom-validated edges, cursed/glory-biased costs, decay culling, and hierarchical clustering for large maps (no pre-bake).
 - **Vortex Telechains**: teleporter warp detection + one-way quantum edges, chain-limited A* fusion, hazard cursing, and glory boosts for strong exits.
 - **Apex Lifts**: lift detection/sampling with wait-cost biasing in Vortex and low-cost lift portals in Apex HPA*.
+- **Ripple Oracles + Maelstrom MCTS**: causal interactable prediction for buttons/doors/plats using MCTS rollouts with adaptive iterations, ripple edge fusion into Vortex, and beam-search fallback.
 - Mirage Minds (persona-driven humanization with entropy, micro-goals, heatmap denial, and feint pauses).
 - Teacher Mode debugging (impulse 102 show / 103 hide BotPath nodes with particles).
 - Speed Demon update (bunny hopping on straight runs and reflex projectile dodging).

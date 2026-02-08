@@ -73,9 +73,10 @@ Push-Location $srcDir
 try {
     $flags = $env:FTEQCC_FLAGS
     if ([string]::IsNullOrWhiteSpace($flags)) {
-        $flags = "-O3"
+        $flagArgs = @("-O3", "-Tq1", "-DQS_V6")
+    } else {
+        $flagArgs = $flags -split "\\s+"
     }
-    $flagArgs = $flags -split "\\s+"
     & $compiler @flagArgs progs.src
     if ($LASTEXITCODE -ne 0) {
         throw "Compiler failed with exit code $LASTEXITCODE"
