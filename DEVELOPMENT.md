@@ -108,6 +108,19 @@ Teacher Mode visualization uses `impulse 102` to show BotPath nodes and
 `impulse 103` to hide them. Spectral learning uses `impulse 104` to print the
 current episode count.
 
+Debug logging defaults (set in `mre/Autoexec.cfg`):
+- `developer 0`
+- `shadow_debug 0`
+- `shadow_nav_debug 0`
+- `shadow_combat_debug 0`
+Set these to `1` as needed for diagnostics.
+
+Performance throttles (behavior-neutral, CPU-focused):
+- Target acquisition scans are time-sliced per bot.
+- Item scans (`aibot_checkforGoodies`) are throttled when not panicking.
+- Proactive nudge lookahead is throttled and skips when shadow nav already ran.
+- Ripple interact scans are throttled when no nearby ripple node is cached.
+
 ## Shadow Puppets tuning (cvars)
 These are runtime knobs for the combat rollout system:
 - `sv_shadow_nav` (0/1): master enable for navigation rollouts

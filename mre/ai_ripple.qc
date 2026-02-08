@@ -2066,6 +2066,12 @@ float () Ripple_TryInteract = {
       }
    }
    if ( cur < 0.000 ) {
+      // Throttle full ripple scans when no nearby node is cached
+      if ( time < self.ripple_interact_time ) {
+         return ( FALSE );
+      }
+      self.ripple_interact_time = (time + 0.200);
+
       i = 0.000;
       while ( (i < vortex_count) && (i < VORTEX_MAX_NODES) ) {
          if ( (vortex_ripple_type[i] > 0.000) && (vortex_ripple_pos[i] != '0 0 0') ) {

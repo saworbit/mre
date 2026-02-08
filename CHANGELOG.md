@@ -97,6 +97,9 @@
 ### Refactors and Optimization
 - Centralized run logic via `BotAI_Main` during shot/axe frames to reduce tunnel vision.
 - BotFindTarget scans players via checkclient and bots via cached bot list to avoid full entity walks.
+- Time-sliced target acquisition and throttled item/ripple/nudge scans to reduce per-frame trace load.
+- Noise alerts skip LOS traces for out-of-range bots; Vortex node lookup uses squared distance.
+- Steering hazard checks reduced at low speed to cut redundant hazard traces.
 
 ### Investigated (Not Found)
 - "Extra SNG ammo" complaint (not found in baseline - bots use same ammo as players).

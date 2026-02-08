@@ -37,8 +37,12 @@ void (vector source_loc, float volume, float priority) Bot_AlertNoise = {
    bot = find (world, classname, "dmbot");
    while ( bot ) {
       if ( (bot.health > FALSE) ) {
-         // Calculate distance
+         // Calculate distance (cheap cull before LOS trace)
          dist = vlen (source_loc - bot.origin);
+         if ( dist > volume ) {
+            bot = find (bot, classname, "dmbot");
+            continue ;
+         }
 
          // Simple wall attenuation: sounds through walls are harder to hear
          traceline (bot.origin + bot.view_ofs, source_loc, TRUE, bot);
@@ -647,6 +651,13 @@ float /* Warning: Could not determine return type */ () BotFindTarget = {
    local float dist;
    local float best_dist;
    local float limit;
+   local float scan_cap;
+
+   // Throttle redundant scans in the same frame/tick
+   if ( time < self.target_scan_time ) {
+      return ( FALSE );
+   }
+   self.target_scan_time = (time + 0.050);
 
    best = world;
    best_dist = 100000;
@@ -658,9 +669,17 @@ float /* Warning: Could not determine return type */ () BotFindTarget = {
       limit = 16.000;
 
    }
-   while ( (limit > FALSE) ) {
+   // Time-slice checkclient: scan a capped subset each call
+   scan_cap = (4.000 + floor (self.skil));
+   if ( (scan_cap > 8.000) ) {
+      scan_cap = 8.000;
+   }
+   if ( (scan_cap > limit) ) {
+      scan_cap = limit;
+   }
+   while ( (scan_cap > FALSE) ) {
 
-      limit = (limit - TRUE);
+      scan_cap = (scan_cap - TRUE);
       head = checkclient ();
       if ( head ) {
 
@@ -1879,6 +1898,15 @@ float (float minweight) aibot_checkforGoodies = {
 
    }
    AFRAID = RunAway ();
+
+   // Throttle expensive item scans when not panicking
+   if ( !AFRAID ) {
+      if ( time < self.goodies_scan_time ) {
+         return ( FALSE );
+      }
+      self.goodies_scan_time = (time + 0.200);
+   }
+
    botTarget = self.goalentity;
    e = findradius (self.origin,SEARCH_RADIUS);
    best = DONT_WANT;

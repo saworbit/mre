@@ -490,19 +490,28 @@ void () Player_AutoWaypoint = {
    // 1. Find nearest existing waypoint
    near_node = world;
    best_dist = 99999.000;
-   e = findradius (self.origin,96.000);
-   while ( e ) {
-      if ( (e.classname == "BotPath") ) {
-         dist = vlen ((e.origin - self.origin));
-         if ( (dist < best_dist) ) {
-            traceline (self.origin + self.view_ofs, e.origin, TRUE, self);
-            if ( (trace_fraction == 1.0) ) {
-               best_dist = dist;
-               near_node = e;
+   if ( self.last_waypoint ) {
+      dist = vlen ((self.last_waypoint.origin - self.origin));
+      if ( (dist < 96.000) && (time < (self.last_waypoint_time + 0.200)) ) {
+         near_node = self.last_waypoint;
+         best_dist = dist;
+      }
+   }
+   if ( near_node == world ) {
+      e = findradius (self.origin,96.000);
+      while ( e ) {
+         if ( (e.classname == "BotPath") ) {
+            dist = vlen ((e.origin - self.origin));
+            if ( (dist < best_dist) ) {
+               traceline (self.origin + self.view_ofs, e.origin, TRUE, self);
+               if ( (trace_fraction == 1.0) ) {
+                  best_dist = dist;
+                  near_node = e;
+               }
             }
          }
-   }
-   e = e.chain;
+         e = e.chain;
+      }
    }
 
    // 2. Improved drop logic (distance/turn based)

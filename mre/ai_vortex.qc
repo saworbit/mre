@@ -121,10 +121,14 @@ void () Vortex_Reset = {
 float (vector pos) Vortex_FindNode = {
 
    local float i;
+   local vector delta;
+   local float radius2;
 
    i = 0.000;
+   radius2 = (VORTEX_NODE_RADIUS * VORTEX_NODE_RADIUS);
    while ( i < vortex_count ) {
-      if ( (vlen (vortex_pos[i] - pos) < VORTEX_NODE_RADIUS) ) {
+      delta = (vortex_pos[i] - pos);
+      if ( ((delta * delta) < radius2) ) {
          return ( i );
       }
       i = (i + TRUE);

@@ -98,6 +98,10 @@ float (entity targ, entity inflictor) CanDamage;
 .entity movetarget6;
 .entity lastbot;
 .float lasttime;
+.float target_scan_time;    // Throttle: target acquisition scans
+.float goodies_scan_time;   // Throttle: item scan loops
+.float ripple_interact_time;// Throttle: ripple interact scans
+.float nudge_time;          // Throttle: proactive nudge checks
 .float pather;
 .float pathtype;
 .float visited_id;  // cycle detection for route caching

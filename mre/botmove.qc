@@ -298,6 +298,16 @@ void () BotProactiveNudge = {
    if ( self.feeler_mode_active ) {
       return;
    }
+   // Throttle to reduce per-frame lookahead cost
+   if ( time < self.nudge_time ) {
+      return;
+   }
+   self.nudge_time = (time + 0.200);
+
+   // Skip if shadow nav already ran this frame
+   if ( (cvar ("sv_shadow_nav") > FALSE) && (self.last_predict > (time - 0.050)) ) {
+      return;
+   }
 
    goal_pos = self.goalentity.origin;
    makevectors ('0 1 0' * self.ideal_yaw);
@@ -410,9 +420,11 @@ float (float ideal_yaw, float speed_factor) BotSteer = {
    local vector start, end_pos;
    local vector fwd, rt;
    local float dist;
+   local float hazard_check;
 
    // Look ahead based on speed
    dist = 50 + (speed_factor * 25);
+   hazard_check = (dist > 60);
    start = self.origin + '0 0 16';  // Waist height sensor origin
 
    // 1. PRIMARY FORCE: The Desire to reach the goal
@@ -431,7 +443,7 @@ float (float ideal_yaw, float speed_factor) BotSteer = {
          // Real wall -> Add strong repulsion perpendicular to wall
          steer_dir = steer_dir + (trace_plane_normal * 3.0);
       }
-   } else if ( BotDetectHazard (end_pos) ) {
+   } else if ( hazard_check && BotDetectHazard (end_pos) ) {
       // CLIFF/LAVA ahead -> Brake & Turn
       steer_dir = steer_dir + (fwd * -4.0);
       steer_dir_x = steer_dir_x + (random () * 2 - 1);  // Slight noise to help turn
@@ -447,7 +459,7 @@ float (float ideal_yaw, float speed_factor) BotSteer = {
          // Real wall -> Push right (along normal)
          steer_dir = steer_dir + (trace_plane_normal * 1.5);
       }
-   } else if ( BotDetectHazard (end_pos) ) {
+   } else if ( hazard_check && BotDetectHazard (end_pos) ) {
       // Hazard left -> Push right hard
       steer_dir = steer_dir + (rt * 2.0);
    }
@@ -462,7 +474,7 @@ float (float ideal_yaw, float speed_factor) BotSteer = {
          // Real wall -> Push left (along normal)
          steer_dir = steer_dir + (trace_plane_normal * 1.5);
       }
-   } else if ( BotDetectHazard (end_pos) ) {
+   } else if ( hazard_check && BotDetectHazard (end_pos) ) {
       // Hazard right -> Push left hard
       steer_dir = steer_dir + (rt * -2.0);
    }
