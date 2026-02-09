@@ -819,10 +819,81 @@ W_BestBotWeapon()                          [botfight.qc]
 
 ---
 
+## Call Graph: Specter Gaze (Cinematic Spectator)
+
+Two-layer spectator camera: heavy Think computes targets, lightweight ViewUpdate
+interpolates every server frame.
+
+### Layer 1: Think (50-200ms, heavy math)
+
+```
+Specter_Think()                          [ai_specter.qc]
+  │
+  ├─> Specter_AssignTargets()            [rank bots by drama score]
+  │     ├─> Find all "dmbot" entities
+  │     ├─> Specter_Drama(bot) per bot
+  │     └─> Sort top 4 into specter_targets[] + specter_scores[]
+  │
+  ├─> [for each camera]
+  │     ├─> Specter_EventType(tgt)       [0=idle, 1=combat, 2=rj, 3=flag, 4=death]
+  │     └─> Specter_UpdateCam(cam, tgt, score, event)
+  │           ├─> Orbital + velocity prediction + trace for safe position
+  │           └─> Store: cam.pos1, cam.pos2, cam.speed, cam.enemy, cam.cnt
+  │
+  ├─> [Auto-switch focus]
+  │     ├─> Drama differential: switch if rival > focus + 5 points
+  │     ├─> Boredom: switch if idle > 5 seconds
+  │     └─> Cooldown: 1.5s minimum between switches
+  │
+  └─> Set specter_view_ent for ViewUpdate
+```
+
+### Layer 2: ViewUpdate (every server frame ~72fps, lightweight)
+
+```
+PlayerPreThink()                         [client.qc]
+  │
+  └─> Specter_ViewUpdate()               [ai_specter.qc]
+        │
+        ├─> [if not specter_cam] → Specter_SetView + setorigin → return
+        │
+        ├─> Frame-rate independent damp: cam.speed * frametime * 10.0
+        │
+        ├─> Smooth lerp: cam.origin toward cam.pos1
+        │
+        ├─> Position validation (solid/sky, distance > 1024)
+        │
+        ├─> setorigin(cam, cam.origin)   [BSP area links]
+        │
+        ├─> Angles from geometry: vectoangles(target - camera)
+        │     └─> Combat tilt: -10 pitch during fights
+        │
+        ├─> Specter_SetView(self, cam)   [SVC_SETVIEW + SVC_SETANGLE]
+        │
+        └─> setorigin(self, cam.origin)  [PVS relocation]
+```
+
+### Toggle / Cycle
+
+```
+impulse 105  →  Specter_Toggle()         [ai_specter.qc]
+                  ├─> Specter_Spawn()    [create 4 cameras, save player origin]
+                  └─> Specter_Kill()     [remove cameras, restore player origin]
+
+impulse 106  →  Specter_CycleFocus()     [ai_specter.qc]
+                  ├─> Advance specter_focus
+                  ├─> Snap camera to target + '0 0 48'
+                  └─> Force-lock for 5 seconds
+```
+
+---
+
 ## Version History
 
 | Date | Change |
 |------|--------|
+| 2026-02-09 | Added Specter Gaze cinematic spectator camera system |
+| 2026-02-09 | Enabled -Wall -Wno-mundane, fixed 3 uninitialised variable bugs |
 | 2026-02-07 | Added Mirage Minds (persona/entropy humanization and heatmap bias) |
 | 2026-02-07 | Added Phantom Apprenticeship (spectral episodes with rollout validation and soft A* bias) |
 | 2026-02-07 | Added Vortex Telechains (teleport fusion) and Apex Lifts (timed platform routing) |

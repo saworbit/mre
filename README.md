@@ -57,6 +57,11 @@ from `archive/`.
   - Weapon Specialization: Bots develop personal weapon preferences based on success/failure history
   - Stuck Learning: Navigation failures mark problematic nodes as difficult
   - Decay System: Danger fades fast (courage) while glory fades slow (nostalgia)
+- **Specter Gaze**: Cinematic spectator camera system
+  - Two-layer architecture: heavy math at Think rate, smooth interpolation every server frame (~72fps)
+  - Drama-driven auto-switching (no random cuts — cameras follow the action)
+  - Chase mode for first-person through bot's eyes
+  - Toggle: `impulse 105`, cycle focus: `impulse 106`, chase: `specter_chase 1`
 
 ### Investigated (Likely Fixed / Not Found)
 - "Bot frags not shown" - MSG_UPDATEFRAGS sent correctly, likely fixed by 0-index fix

@@ -23,6 +23,10 @@ Arguments: `[maxplayers] [map]` (defaults: 8, dm4)
 - `impulse 205` - Add a bot (original Reaper command)
 - `impulse 102` - Remove a bot
 - `impulse 104` - Dump spectral episode count
+- `impulse 105` - Toggle Specter Gaze (cinematic spectator camera)
+- `impulse 106` - Cycle Specter camera focus to next bot
+- `specter_chase 1` - First-person chase mode (through bot's eyes)
+- `specter_chase 0` - Cinematic third-person mode (default)
 - `skill 0-10` - Set bot difficulty (0=easy, 3=nightmare, 4+=god mode)
 
 ## Testing
@@ -73,6 +77,10 @@ For visual/behavioral verification:
 - [ ] **Wall Flow**: Bots curve smoothly around corners (no stop-turn-go)
 - [ ] **Cliff Awareness**: Bots steer away from ledges before reaching them
 - [ ] **Mirage Arcs**: Bots show slight yaw arcs and micro-goal drift (persona layer)
+- [ ] **Specter Gaze**: `impulse 105` toggles cinematic camera, smooth tracking, auto-switching on action
+- [ ] **Specter Chase**: `specter_chase 1` gives first-person through bot's eyes
+- [ ] **Specter Cycle**: `impulse 106` cycles focus, camera snaps then smoothly settles
+- [ ] **Specter Off**: `impulse 105` again returns player to original position
 
 ### Combat Fairness
 - [ ] **Aim Jitter**: Skill 0 bots miss noticeably (~25° error)

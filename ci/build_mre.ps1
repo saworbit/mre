@@ -73,7 +73,7 @@ Push-Location $srcDir
 try {
     $flags = $env:FTEQCC_FLAGS
     if ([string]::IsNullOrWhiteSpace($flags)) {
-        $flagArgs = @("-O3", "-Tq1", "-DQS_V6")
+        $flagArgs = @("-O3", "-Tq1", "-DQS_V6", "-Wall", "-Wno-mundane")
     } else {
         $flagArgs = $flags -split "\\s+"
     }

@@ -28,7 +28,7 @@ powershell -ExecutionPolicy Bypass -File ci\build_mre.ps1
 Manual compile (if you already have fteqcc):
 ```
 cd c:\reaperai\mre
-..\tools\fteqcc_win64\fteqcc64.exe -O3 -Tq1 -DQS_V6 progs.src
+..\tools\fteqcc_win64\fteqcc64.exe -O3 -Tq1 -DQS_V6 -Wall -Wno-mundane progs.src
 ```
 Manual builds write `c:\reaperai\progs.dat` (the parent folder).
 Copy it to the runtime folder:
@@ -37,11 +37,16 @@ copy c:\reaperai\progs.dat c:\reaperai\launch\quake-spasm\mre\progs.dat /Y
 ```
 Spec-aligned strict compile flags:
 ```
-$env:FTEQCC_FLAGS = "-O2 -Werror -Tq1 -DQS_V6"
+$env:FTEQCC_FLAGS = "-O2 -Werror -Tq1 -DQS_V6 -Wall -Wno-mundane"
 powershell -ExecutionPolicy Bypass -File ci\build_mre.ps1
 ```
 
-Known build warnings (FTEQCC, non-bot): none currently.
+Known build warnings (FTEQCC, `-Wall -Wno-mundane`): 35 total.
+- **F302 (uninitialised variable)**: 10 unique warnings — all false positives from guarded
+  branches the compiler cannot correlate (e.g., variable set inside `if (dmbot)`, used
+  inside a separate `if (dmbot)` block). No real bugs remain.
+- **F322 (if-string tests null)**: 12 warnings — standard Quake idiom `if(self.target)`,
+  intentional null checks. Suppress with `-Wno-F322` if desired.
 
 ## Deploy
 The build script copies to:
@@ -273,6 +278,70 @@ Notes:
 - `mirage_debug` (0/1): log persona/entropy (requires `+developer 1`)
 
 Defaults for `sv_mirage` and `mirage_debug` are set in `mre/Autoexec.cfg`.
+
+## Specter Gaze (cinematic spectator camera)
+Two-layer spectator camera system in `mre/ai_specter.qc`, hooked into `PlayerPreThink`
+via `mre/client.qc`.
+
+### Usage
+- `impulse 105` — Toggle Specter Gaze on/off
+- `impulse 106` — Cycle camera focus to next bot (5s force-lock)
+- `specter_chase 1` — First-person chase mode (through bot's eyes)
+- `specter_chase 0` — Cinematic third-person mode (default)
+
+### Architecture
+- **Think** (50-200ms): Heavy math in `Specter_UpdateCam`. Computes ideal camera
+  position, stores results on camera entity fields (`pos1`=position target,
+  `pos2`=look-at fallback, `speed`=damp rate, `enemy`=tracked bot, `cnt`=event type).
+- **ViewUpdate** (every server frame ~72fps): Lightweight per-frame interpolation in
+  `Specter_ViewUpdate`, called from `PlayerPreThink`. Frame-rate-independent damping,
+  geometry-based angles via `vectoangles`, position validation, BSP link updates via
+  `setorigin`, PVS player relocation, and `SVC_SETVIEW` + `SVC_SETANGLE` every frame.
+
+### Auto-switching
+- **Drama-driven**: Switches when another bot's drama score exceeds the focused bot by 5+ points.
+- **Boredom**: Switches after 5 seconds of idle focus (drama < 2).
+- **Cooldown**: 1.5s minimum between auto-switches.
+- **No random switching** — purely event-driven.
+
+### Key fields (repurposed on `specter_cam` entities)
+| Field | Camera use |
+|-------|------------|
+| `.pos1` | Ideal camera position (lerp target) |
+| `.pos2` | Predicted look-at fallback |
+| `.enemy` | Tracked bot entity |
+| `.speed` | Base damping rate |
+| `.cnt` | Event type (0=idle, 1=combat, 2=rocket jump, 3=flag, 4=death) |
+
+### Globals (in `botit_th.qc`)
+- `specter_view_ent` — Current view entity (camera or bot for chase mode)
+- `specter_idle_since` — When focused bot last had meaningful drama
+- `specter_focus_drama` — Cached drama score for differential switching
+
+## Linting and static analysis
+The default build flags include `-Wall -Wno-mundane` for compile-time warnings.
+
+### FTEQCC flags (current compiler)
+| Flag | Purpose |
+|------|---------|
+| `-Wall` | Enable all standard warnings |
+| `-Wno-mundane` | Suppress trivial noise |
+| `-Werror` | Treat warnings as errors (CI gate) |
+| `-Wno-F322` | Suppress `if(string)` null-vs-empty warnings |
+
+### Strictness flags (optional)
+| Flag | Purpose |
+|------|---------|
+| `-Ftypeexplicit` | Require explicit type casts |
+| `-Fsubscope` | Variables scoped to blocks |
+| `-Fifstring` | Warn on `if(string)` without comparison |
+| `-Fifvector` | Warn on `if(vector)` without comparison |
+| `-Fvectorlogic` | Warn on logic operators applied to vectors |
+
+### GMQCC (alternative compiler, optional second-pass linter)
+GMQCC provides richer diagnostics: `-Wunused-variable`, `-Wunreachable-code`,
+`-Wlocal-shadows`, `-Wmissing-return-values`, `-Weffectless-statement`. Can be
+run as a check-only pass without replacing FTEQCC for the actual build.
 
 ## CI
 ```

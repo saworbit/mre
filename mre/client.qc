@@ -1139,6 +1139,8 @@ void () PlayerPreThink = {
 
    }
 
+   Specter_ViewUpdate ();
+
    makevectors (self.v_angle);
    CheckRules ();
    WaterMove ();
@@ -1651,6 +1653,8 @@ void (entity targ, entity attacker) ClientObituary = {
             }
 
             rnum = attacker.weapon;
+            deathstring = " was killed by ";
+            deathstring2 = "\n";
             if ( (rnum == IT_AXE) ) {
 
                deathstring = " was ax-murdered by ";

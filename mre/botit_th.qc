@@ -195,15 +195,19 @@ float gj_vert_tune[4];       // Grenade jump vertical tuning per purpose
 float glj_angle_tune[4];     // GLJ launch angle tuning per purpose
 
 // --- SPECTER GAZE (cinematic spectator) ---
+void () Specter_ViewUpdate;
 float specter_active;
 float specter_focus;
 float specter_last_focus;
 float specter_force_until;
 float specter_last_switch;
 entity specter_owner;
+entity specter_view_ent;
 entity specter_cams[4];
 entity specter_targets[4];
 float specter_scores[4];
+float specter_idle_since;
+float specter_focus_drama;
 
 // --- AUDITORY SYSTEM ---
 float NOISE_GENERIC = 0.000;

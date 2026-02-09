@@ -384,6 +384,7 @@ float () Bot_CheckReaction; // Forward declaration
 .float specter_prev_solid;
 .float specter_prev_takedamage;
 .float specter_prev_flags;
+.vector specter_prev_origin;
 .float specter_marked;
 // Advanced movement mechanics
 .float strafe_state;         // 0=None, 1=Left, 2=Right

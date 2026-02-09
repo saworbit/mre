@@ -7,6 +7,15 @@
 - Focusing first on community-reported issues.
 
 ### Features
+- **Specter Gaze** cinematic spectator camera (`ai_specter.qc`, `client.qc`, `botit_th.qc`, `defs.qc`).
+  - Toggle with `impulse 105`, cycle focus with `impulse 106`.
+  - Two-layer architecture: Think (50-200ms) computes ideal camera positions; ViewUpdate (every server frame ~72fps) interpolates smoothly with frame-rate-independent damping.
+  - Geometry-based angles (`vectoangles`) eliminate angle-wrapping bugs entirely.
+  - Drama-driven auto-switching: cameras cut to the most exciting bot (5+ drama differential) or switch on boredom (5s idle). No random switching.
+  - Chase mode (`specter_chase 1`) for first-person through bot's eyes.
+  - Camera entities use `progs/eyes.mdl` + `setorigin` for proper BSP/PVS visibility.
+  - Player entity relocated to camera position each frame for correct PVS computation.
+  - `SVC_SETVIEW` + `SVC_SETANGLE` sent every server frame from `PlayerPreThink` (same pattern as working CCam).
 - Platform riding for func_train (DM2 lava fix - bots inherit platform velocity).
 - Platform wait logic (bots wait for approaching platforms over lava).
 - Intelligent button interaction (bots find and shoot/touch buttons to open doors).
@@ -42,6 +51,11 @@
   - A* Integration: Glory reduces path cost (up to 30%), danger increases path cost.
 
 ### Fixes
+- **Specter Gaze camera fixes**: Added `setmodel` on camera entities (engine requires `modelindex` to transmit entity data). Added `setorigin` for BSP area link updates. Relocated player entity to camera position for PVS. Moved `SVC_SETVIEW`/`SVC_SETANGLE` to per-frame `PlayerPreThink` hook (was only sent on focus change, causing player mouse to override view angles between updates).
+- **Uninitialised variable bugs** (found via `-Wall`):
+  - `botgoal.qc:pathweight` computed distance to world origin `'0 0 0'` instead of target entity (missing `org = e.origin`).
+  - `botgoal.qc:RunAwayWeight` used uninitialised `weight` when enemy had clear LOS (added `weight = 0` default).
+  - `client.qc:ClientObituary` could print garbage death messages for unknown weapon types (added fallback strings).
 - Combat rollout action cap now hard-limited to 16 to prevent overflowed action IDs.
 - Monte Carlo lead now respects LOS and falls back to a simple lead when obstructed.
 - Rival powerup rush now gates on health > 50 and visible powerups to avoid short-circuiting combat.
@@ -115,4 +129,5 @@
 ### Docs and CI
 - Updated development and launch docs for the `mre/` layout.
 - CI now builds from `mre/` via `ci/build_mre.ps1`.
+- Enabled `-Wall -Wno-mundane` in default build flags for static analysis (43 -> 35 warnings after bug fixes; remaining are false positives from guarded branches).
 - Archived legacy docs/tools/launch assets and old logs under `archive/legacy/clean_slate/`.

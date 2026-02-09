@@ -61,6 +61,15 @@ Standard convention from Frogbot and other bots. Type `impulse 100` in console t
 impulse 100    // Add one bot immediately
 ```
 
+### Specter Gaze (Cinematic Spectator)
+Watch bot matches with a smooth, film-like camera system.
+
+- `impulse 105` to toggle, `impulse 106` to cycle focus
+- Two-layer architecture: Think computes ideal positions, ViewUpdate interpolates at ~72fps
+- Drama-driven auto-switching: cameras follow the most exciting bot (no random cuts)
+- Chase mode (`specter_chase 1`) for first-person through bot's eyes
+- Geometry-based angle computation eliminates jitter and wrapping bugs
+
 ### Vortex Telechains + Apex Lifts (Reboot Extensions)
 - **Telechains**: bots detect teleporter warps and fuse one-way tele edges, enabling safe multi-tele flanks while avoiding cursed exits.
 - **Apex Lifts**: timed platform nodes add wait-cost biasing and low-cost lift portals for smoother lift routing and chaining.
@@ -106,9 +115,12 @@ launch_reapbot_v2.bat 8 dm4
 | Command | Description |
 |---------|-------------|
 | `impulse 100` | Add one bot |
+| `impulse 105` | Toggle Specter Gaze (cinematic spectator) |
+| `impulse 106` | Cycle Specter camera focus |
 | `impulse 205` | Remove one bot |
 | `impulse 200` | Cycle observer mode |
 | `skill 0-10` | Set bot difficulty (before adding) |
+| `specter_chase 1` | First-person chase mode (use with Specter) |
 
 ---
 

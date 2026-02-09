@@ -13,6 +13,12 @@
 ## 3. "Bot should be dead!" log line
 - **Status:** Fixed. `BotPostThink` now returns immediately for deadflagged bots to avoid the noisy log line during telefrags/gibs.
 
+## 5. Build warnings (35 remaining, all benign)
+- **Status:** `-Wall -Wno-mundane` enabled in default build. 3 real bugs fixed (botgoal.qc, client.qc). 35 warnings remain.
+- **F302 (uninitialised variable)**: 10 unique. All false positives — variables are guarded by the same conditional in both assignment and use paths, but the compiler cannot correlate the guards (e.g., `bfwd` set inside `if (dmbot)`, used inside a separate `if (dmbot)` block).
+- **F322 (if-string null check)**: 12 warnings. Standard Quake idiom `if(self.target)`. Intentional. Suppress with `-Wno-F322` if desired.
+- **Action:** None required. Add `-Werror` only after suppressing F322 or when all false positives are annotated.
+
 ## 4. Quad pickup at respawn without proximity
 - **Status:** Fixed. Ensured a BotPath node is dropped at Quad/Pent spawns so timing rushes always route through breadcrumbs.
 - **Verify:** Run `dm2` with `+developer 1 +condebug 1`, time Quad, and confirm bots path normally instead of beelining.

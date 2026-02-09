@@ -678,6 +678,7 @@ float (entity e) pathweight = {
          return ( weight );
 
       }
+      org = e.origin;
       weight = vlen ((self.origin - org));
       weight = ((50.000 * SEARCH_RADIUS) - weight);
       if ( (e.lastbot == self) ) {
@@ -1176,6 +1177,7 @@ float (entity e) RunAwayWeight = {
       return ( FALSE );
 
    }
+   weight = FALSE;
    traceline ((self.enemy.origin + self.enemy.view_ofs),e.origin,TRUE,self.enemy);
    if ( (trace_fraction != TRUE) ) {
 

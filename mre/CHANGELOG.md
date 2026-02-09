@@ -2,6 +2,25 @@
 
 ## Unreleased
 - Clean baseline restored in `mre/`.
+- Feature: **Specter Gaze** cinematic spectator camera (`ai_specter.qc`, `client.qc`,
+  `botit_th.qc`, `defs.qc`). Two-layer architecture: Think (50-200ms) computes ideal
+  camera positions via orbital + velocity prediction; ViewUpdate (every server frame
+  ~72fps) interpolates with frame-rate-independent damping and geometry-based angles.
+  Drama-driven auto-switching (5+ point differential, 5s boredom timeout, 1.5s cooldown).
+  Chase mode via `specter_chase` cvar. Toggle: `impulse 105`, cycle: `impulse 106`.
+- Fixed: Specter camera entities missing `setmodel` (engine skips entities without
+  `modelindex`), missing `setorigin` (stale BSP area links), and player PVS not
+  relocated to camera position.
+- Fixed: Specter `SVC_SETANGLE` only sent on focus change — player mouse overrode view
+  angles between updates. Moved to per-frame `PlayerPreThink` hook (same pattern as CCam).
+- Fixed: `botgoal.qc:pathweight` computed distance to world origin `'0 0 0'` instead of
+  target entity (missing `org = e.origin`).
+- Fixed: `botgoal.qc:RunAwayWeight` used uninitialised `weight` when enemy had clear LOS
+  to escape route (added `weight = 0` default).
+- Fixed: `client.qc:ClientObituary` could print garbage death messages for unknown weapon
+  types (added fallback `" was killed by "` strings).
+- Build: Enabled `-Wall -Wno-mundane` in default FTEQCC flags. Reduced warnings from
+  43 to 35 after fixing 3 real bugs (remaining are false positives from guarded branches).
 - Feature: Phantom Apprenticeship / Spectral Learning (`bot_learn.qc`, `bot_ai.qc`,
   `botroute.qc`, `defs.qc`). Bots shadow players with low-cost phantoms:
   - Spectral episodes capture short maneuver segments (jump/tele/swim/walk).
