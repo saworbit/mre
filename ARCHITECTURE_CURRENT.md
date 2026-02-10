@@ -26,7 +26,7 @@ and control-flow reference.
 
 | Function | File | Called For | Purpose |
 |----------|------|------------|---------|
-| `StartFrame()` | `world.qc:232` | Once per frame | Global frame setup (cvars, framecount, graph + learning decay, Vortex/Apex frames) |
+| `StartFrame()` | `world.qc:232` | Once per frame | Global frame setup (cvars, framecount, graph + learning decay, Vortex frame) |
 | `PlayerPreThink()` | `client.qc:1120` | Players only | Pre-physics player logic |
 | `PlayerPostThink()` | `client.qc:1339` | Players only | Post-physics player logic |
 | `self.think()` | (per entity) | All entities | Entity-specific behavior |
@@ -135,16 +135,15 @@ Frame Function (bot_run, bot_chase, etc.)
 when a bot stalls for ~2s, it runs a short, quiet rollout (`SilentUnstuck`) and
 marks a local cursed node (`CurseNode`). Cursed decay is global in `StartFrame`.
 
-**Vortex Navmesh (dynamic mesh)** lives across `ai_vortex.qc` and `ai_apex.qc`:
+**Vortex Navmesh (dynamic mesh)** lives in `ai_vortex.qc`:
 - `Vortex_Frame()` incrementally floods nodes/edges each `StartFrame`.
-- `Apex_Frame()` rebuilds hierarchical clusters when the mesh grows.
 - `ai_botseek` calls `Vortex_ApplyGoal()` only when the current goal is obstructed,
   inserting a short-lived mesh waypoint while keeping normal BotPath routing as baseline.
 - Phantom episodes validate mesh edges via `Vortex_RecordEpisode()` in `bot_learn.qc`.
 
-**Vortex Telechains + Apex Lifts** extend the mesh with teleport and platform logic:
+**Vortex Telechains + Lift Routing** extend the mesh with teleport and platform logic:
 - Telechains fuse one-way tele edges when a phantom observes a large warp (>500u).
-- Tele edges are low-cost in Vortex A* and tagged as cheap portals in Apex.
+- Tele edges are low-cost in Vortex A*.
 - Lift nodes are sampled from `func_plat`/`func_train` and add a wait-cost based on cycle timing.
 
 ### Reflex Dodge
@@ -663,36 +662,34 @@ StartFrame()                             [world.qc]
 
 ---
 
-## Call Graph: Mirage Minds (Persona Layer)
+## Call Graph: Mirage Minds (Humanization Layer)
 
-Mirage adds a lightweight persona/entropy layer that biases movement and combat
+Mirage adds a lightweight entropy layer that biases movement and aiming
 without replacing existing AI states.
 
 ```
 BotAI_Main(dist)                         [bot_ai.qc]
   |
   |-> MirageTick()                       [ai_mirage.qc]
-      |-> update mood_entropy + persona_state
-      |-> set mirage_goal / mirage_yaw_bias / mirage_hold_fire_time
+      |-> update mood_entropy (drift + dampen when enemy visible)
+      |-> yaw jitter (entropy > 0.5, 15% chance)
+      |-> pitch jitter (entropy > 0.4, 12% chance, stored in mirage_pitch_bias)
+      |-> glance-away (skill 3+, entropy > 0.6, 3% chance)
+      |-> hold-fire feint (entropy > 0.7, 8% chance)
 ```
 
 ```
 Botmovetogoal(dist)                      [botmove.qc]
   |
   |-> Mirage_BlendYaw()                  [ai_mirage.qc]
-      |-> blend ideal_yaw toward mirage_goal/yaw bias
+      |-> blend ideal_yaw toward mirage yaw bias
 ```
 
-Heatmap updates feed Mirage's tactical persona:
-
 ```
-powerup_touch / weapon_touch             [items.qc]
+botaim()                                 [botfight.qc]
   |
-  |-> Mirage_AddHeat(origin, value)      [ai_mirage.qc]
-
-ClientObituary()                         [client.qc]
-  |
-  |-> Mirage_AddHeat(kill_origin, value) [ai_mirage.qc]
+  |-> [after skill jitter]
+      |-> apply mirage_pitch_bias * 0.010 to aim Z-axis
 ```
 
 ---
@@ -892,6 +889,7 @@ impulse 106  →  Specter_CycleFocus()     [ai_specter.qc]
 
 | Date | Change |
 |------|--------|
+| 2026-02-10 | Removed Apex HPA*, simplified Mirage Minds (entropy-only) and Ripple Oracles (no MCTS), 12 intelligence enhancements |
 | 2026-02-09 | Added Specter Gaze cinematic spectator camera system |
 | 2026-02-09 | Enabled -Wall -Wno-mundane, fixed 3 uninitialised variable bugs |
 | 2026-02-07 | Added Mirage Minds (persona/entropy humanization and heatmap bias) |

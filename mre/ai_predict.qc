@@ -49,10 +49,7 @@ float (entity foe) Slayer_IsUser = {
    if ( (foe.classname != "player") ) {
       return ( FALSE );
    }
-   if ( (foe.netname == "slywall") || (foe.netname == "Shane") ) {
-      return ( TRUE );
-   }
-   return ( FALSE );
+   return ( TRUE );
 
 };
 

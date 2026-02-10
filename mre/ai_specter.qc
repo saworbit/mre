@@ -66,6 +66,14 @@ float (entity bot) Specter_Drama = {
    if ( (event == 0.000) ) {
       d = (d + 0.500);
    }
+   // Low health duel: dramatic tension
+   if ( (bot.health > FALSE) && (bot.health < 30.000) && bot.enemy ) {
+      d = (d + 6.000);
+   }
+   // Recent combat: hold camera for active fighter
+   if ( (bot.frags > FALSE) && (time < (bot.last_ai_state_time + 2.000)) && (bot.last_ai_state == AI_STATE_ATTACK) ) {
+      d = (d + 4.000);
+   }
    return ( d );
 
 };

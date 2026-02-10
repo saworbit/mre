@@ -1,4 +1,4 @@
-// ai_ripple.qc: Ripple Oracles - Causal Interactable Symphony
+// ai_ripple.qc: Ripple Oracles - Simplified button solving + beam-search leaps
 
 void (vector pos, vector vel, float air_left, float action_id, vector fwd, vector right, float use_trace) ShadowSimStep;
 float (vector pos, vector vel, float air_left, vector goal_pos, float use_trace, float blocked, float hazard_bias, float water_bias) ShadowReward;
@@ -26,31 +26,9 @@ float (float idx) Vortex_IndexValid;
 #define RIPPLE_GOAL_RANGE 512.000
 #define RIPPLE_PROBE_THROTTLE 0.400
 #define RIPPLE_ACTION_RANGE 128.000
-#define RIPPLE_NEG -999999.000
-
-#define MAELSTROM_BEAM 6
-#define MAELSTROM_DEPTH_BASE 12.000
-#define MAELSTROM_DEPTH_MAX 16.000
-#define MAELSTROM_VISIT_HASH 256
 
 #define FLAG_DOOR_OPEN 1.000
 #define FLAG_PLAT_RAISED 2.000
-
-#ifdef QS_V6
-#define MCTS_NODES 256
-#else
-#define MCTS_NODES 512
-#endif
-#define MCTS_CHILDREN 4.000
-#define MCTS_UCT_C 1.400
-#define MCTS_ROLL_DEPTH 6.000
-#define MCTS_ITER_BASE 80.000
-#define MCTS_ITER_PER_SKILL 12.000
-#define MCTS_ITER_MAX 512.000
-#define MCTS_THROTTLE 0.400
-#define MCTS_EARLY_VISITS 30.000
-#define MCTS_EARLY_REWARD 120.000
-#define MCTS_SUCCESS_REWARD 50.000
 
 #define RJ_ACTION_BASE 16.000
 #define RJ_ACTIONS 8.000
@@ -89,53 +67,15 @@ float (float idx) Vortex_IndexValid;
 #define RJ_PURPOSE_HIGH 2.000
 #define RJ_PURPOSE_FLAT 3.000
 
-vector mr_pos[MAELSTROM_BEAM];
-vector mr_vel[MAELSTROM_BEAM];
-float mr_air[MAELSTROM_BEAM];
-float mr_reward[MAELSTROM_BEAM];
-float mr_flags[MAELSTROM_BEAM];
-float mr_count;
-
-vector mr_next_pos[MAELSTROM_BEAM];
-vector mr_next_vel[MAELSTROM_BEAM];
-float mr_next_air[MAELSTROM_BEAM];
-float mr_next_reward[MAELSTROM_BEAM];
-float mr_next_flags[MAELSTROM_BEAM];
-float mr_next_count;
-
-float ripple_visit[MAELSTROM_VISIT_HASH];
-
-vector mcts_pos[MCTS_NODES];
-vector mcts_vel[MCTS_NODES];
-float mcts_air[MCTS_NODES];
-float mcts_flags[MCTS_NODES];
-float mcts_reward[MCTS_NODES];
-float mcts_visits[MCTS_NODES];
-float mcts_health[MCTS_NODES];
-float mcts_armor[MCTS_NODES];
-float mcts_parent[MCTS_NODES];
-float mcts_depth[MCTS_NODES];
-float mcts_child0[MCTS_NODES];
-float mcts_child1[MCTS_NODES];
-float mcts_child2[MCTS_NODES];
-float mcts_child3[MCTS_NODES];
-
-float mcts_root;
-float mcts_next_node;
-float mcts_last_probe;
-float mcts_last_goal_node;
-float mcts_last_success;
-
-float mcts_best_reward;
-float mcts_best_flags;
-vector mcts_best_pos;
-float mcts_best_depth;
-
-vector mcts_goal_pos;
-vector mcts_probe_pos;
-float mcts_rtype;
-vector mcts_fwd;
-vector mcts_rgt;
+// Beam search state for RJ solving (4 candidates)
+#define RJ_BEAM 4
+vector rjb_pos[RJ_BEAM];
+vector rjb_vel[RJ_BEAM];
+float rjb_air[RJ_BEAM];
+float rjb_reward[RJ_BEAM];
+float rjb_health[RJ_BEAM];
+float rjb_armor[RJ_BEAM];
+float rjb_count;
 
 float rj_last_probe;
 float rj_last_goal_node;
@@ -148,33 +88,13 @@ vector rj_probe_pos;
 vector rj_fwd;
 vector rj_rgt;
 
-float (float v) Ripple_WrapIndex = {
-   local float wrap;
-   wrap = floor (v / MAELSTROM_VISIT_HASH);
-   return (v - (wrap * MAELSTROM_VISIT_HASH));
-};
+float ripple_last_probe;
+float ripple_last_goal_node;
+float ripple_last_success;
 
-float (vector v) Ripple_HashVec = {
-   local float hx;
-   local float hy;
-   local float hz;
-   local float h;
-
-   hx = floor (v_x / 32.000);
-   hy = floor (v_y / 32.000);
-   hz = floor (v_z / 32.000);
-   h = (hx * 37.000) + (hy * 57.000) + (hz * 17.000);
-   if ( (h < 0.000) ) {
-      h = -h;
-   }
-   return Ripple_WrapIndex (h);
-};
-
-float (vector pos, float flags) Ripple_HashState = {
-   local float h;
-   h = Ripple_HashVec (pos) + (flags * 19.000);
-   return Ripple_WrapIndex (h);
-};
+// ============================================================================
+// Utility functions
+// ============================================================================
 
 vector (float idx) Ripple_PulseDir = {
 
@@ -219,355 +139,67 @@ float (float rtype) Ripple_FlagForType = {
    return 0.000;
 };
 
-float (float node, float slot) Ripple_MCTSGetChild = {
-   if ( slot == 0.000 ) return mcts_child0[node];
-   if ( slot == 1.000 ) return mcts_child1[node];
-   if ( slot == 2.000 ) return mcts_child2[node];
-   return mcts_child3[node];
-};
+// ============================================================================
+// Simplified button solving: trace-and-record heuristic
+// ============================================================================
 
-void (float node, float slot, float val) Ripple_MCTSSetChild = {
-   if ( slot == 0.000 ) mcts_child0[node] = val;
-   else if ( slot == 1.000 ) mcts_child1[node] = val;
-   else if ( slot == 2.000 ) mcts_child2[node] = val;
-   else mcts_child3[node] = val;
-};
-
-void (float idx, vector pos, vector vel, float air, float flags, float parent, float depth) Ripple_MCTSInitNode = {
-   mcts_pos[idx] = pos;
-   mcts_vel[idx] = vel;
-   mcts_air[idx] = air;
-   mcts_flags[idx] = flags;
-   mcts_health[idx] = 0.000;
-   mcts_armor[idx] = 0.000;
-   mcts_parent[idx] = parent;
-   mcts_depth[idx] = depth;
-   mcts_reward[idx] = 0.000;
-   mcts_visits[idx] = 0.000;
-   mcts_child0[idx] = -1.000;
-   mcts_child1[idx] = -1.000;
-   mcts_child2[idx] = -1.000;
-   mcts_child3[idx] = -1.000;
-};
-
-float (float node) Ripple_MCTSHasUnexpanded = {
-   if ( mcts_child0[node] < 0.000 ) return ( TRUE );
-   if ( mcts_child1[node] < 0.000 ) return ( TRUE );
-   if ( mcts_child2[node] < 0.000 ) return ( TRUE );
-   if ( mcts_child3[node] < 0.000 ) return ( TRUE );
-   return ( FALSE );
-};
-
-float (float root) Ripple_MCTSSelect = {
-   local float node;
-   local float best;
-   local float best_score;
-   local float c;
-   local float child;
-   local float score;
-   local float cv;
-   local float exploit;
-   local float explore;
-   local float guard;
-
-   node = root;
-   guard = 0.000;
-   while ( guard < 64.000 ) {
-      if ( mcts_visits[node] <= 0.000 ) {
-         return node;
-      }
-      if ( (mcts_next_node < MCTS_NODES) && Ripple_MCTSHasUnexpanded (node) ) {
-         return node;
-      }
-
-      best = -1.000;
-      best_score = RIPPLE_NEG;
-      c = 0.000;
-      while ( c < MCTS_CHILDREN ) {
-         child = Ripple_MCTSGetChild (node, c);
-         if ( child >= 0.000 ) {
-            cv = mcts_visits[child];
-            if ( cv <= 0.000 ) {
-               score = 999999.000;
-            } else {
-               exploit = (mcts_reward[child] / cv);
-               explore = (MCTS_UCT_C / (cv + 1.000));
-               score = (exploit + explore);
-            }
-            if ( score > best_score ) {
-               best_score = score;
-               best = child;
-            }
-         }
-         c = (c + TRUE);
-      }
-      if ( best < 0.000 ) {
-         return node;
-      }
-      node = best;
-      guard = (guard + TRUE);
-   }
-   return node;
-};
-
-float (float node) Ripple_MCTSExpand = {
-   local float created;
-   local float a;
-   local float child;
-   local vector pos;
-   local vector vel;
-   local float air;
-   local float flags;
-   local float blocked;
-
-   created = 0.000;
-   a = 0.000;
-   while ( a < MCTS_CHILDREN ) {
-      if ( mcts_next_node >= MCTS_NODES ) {
-         return (created > 0.000);
-      }
-      child = Ripple_MCTSGetChild (node, a);
-      if ( child < 0.000 ) {
-         pos = mcts_pos[node];
-         vel = mcts_vel[node];
-         air = mcts_air[node];
-         flags = mcts_flags[node];
-         blocked = FALSE;
-
-         if ( a == 0.000 ) {
-            ShadowSimStep (pos, vel, air, 0.000, mcts_fwd, mcts_rgt, TRUE);
-            pos = sp_out_pos;
-            vel = sp_out_vel;
-            air = sp_out_air;
-            blocked = sp_out_blocked;
-         } else if ( a == 3.000 ) {
-            vel = (vel * 0.500);
-         } else {
-            vel = (vel * 0.700);
-         }
-
-         if ( (vlen (pos - mcts_probe_pos) < RIPPLE_ACTION_RANGE) ) {
-            if ( (a == 1.000) && (mcts_rtype == RIPPLE_TYPE_SHOOT) ) {
-               flags = (flags | FLAG_DOOR_OPEN);
-            } else if ( (a == 2.000) && (mcts_rtype == RIPPLE_TYPE_TOUCH) ) {
-               flags = (flags | FLAG_PLAT_RAISED);
-            }
-         }
-
-         if ( blocked ) {
-            // Mild penalty for immediately blocked expansion
-            flags = (flags + 0.000);
-         }
-
-         Ripple_MCTSInitNode (mcts_next_node, pos, vel, air, flags, node, (mcts_depth[node] + TRUE));
-         Ripple_MCTSSetChild (node, a, mcts_next_node);
-         mcts_next_node = (mcts_next_node + TRUE);
-         created = (created + TRUE);
-      }
-      a = (a + TRUE);
-   }
-
-   return (created > 0.000);
-};
-
-float (float node) Ripple_MCTSRollout = {
-   local vector pos;
-   local vector vel;
-   local float air;
-   local float flags;
-   local float reward;
-   local float step;
-   local float a;
-   local float blocked;
-   local float r;
-
-   pos = mcts_pos[node];
-   vel = mcts_vel[node];
-   air = mcts_air[node];
-   flags = mcts_flags[node];
-   reward = 0.000;
-
-   step = 0.000;
-   while ( step < MCTS_ROLL_DEPTH ) {
-      a = floor (random () * 4.000);
-      blocked = FALSE;
-
-      if ( a == 0.000 ) {
-         ShadowSimStep (pos, vel, air, 0.000, mcts_fwd, mcts_rgt, TRUE);
-         pos = sp_out_pos;
-         vel = sp_out_vel;
-         air = sp_out_air;
-         blocked = sp_out_blocked;
-      } else if ( a == 3.000 ) {
-         vel = (vel * 0.500);
-      } else {
-         vel = (vel * 0.700);
-      }
-
-      if ( (vlen (pos - mcts_probe_pos) < RIPPLE_ACTION_RANGE) ) {
-         if ( (a == 1.000) && (mcts_rtype == RIPPLE_TYPE_SHOOT) ) {
-            flags = (flags | FLAG_DOOR_OPEN);
-         } else if ( (a == 2.000) && (mcts_rtype == RIPPLE_TYPE_TOUCH) ) {
-            flags = (flags | FLAG_PLAT_RAISED);
-         }
-      }
-
-      r = ShadowReward (pos, vel, air, mcts_goal_pos, TRUE, blocked, 1.000, 1.000);
-      reward = (reward + r);
-      if ( (flags & (FLAG_DOOR_OPEN + FLAG_PLAT_RAISED)) == 0.000 ) {
-         reward = (reward - 50.000);
-      } else {
-         reward = (reward + 10.000);
-      }
-      if ( reward < -200.000 ) {
-         break;
-      }
-      step = (step + TRUE);
-   }
-
-   if ( (flags > 0.000) && (reward > mcts_best_reward) ) {
-      mcts_best_reward = reward;
-      mcts_best_flags = flags;
-      mcts_best_pos = pos;
-      mcts_best_depth = (mcts_depth[node] + step);
-   }
-
-   return reward;
-};
-
-void (float node, float reward) Ripple_MCTSBackprop = {
-   while ( node >= 0.000 ) {
-      mcts_visits[node] = (mcts_visits[node] + TRUE);
-      mcts_reward[node] = (mcts_reward[node] + reward);
-      node = mcts_parent[node];
-   }
-};
-
-float (vector probe_pos, vector goal_pos, float rtype) Ripple_MaelstromMCTS = {
-   local float iters;
-   local float iter;
-   local float node;
-   local float rollout_r;
-   local float best_child;
-   local float best_val;
-   local float c;
-   local float child;
-   local float val;
+float (vector probe_pos, vector goal_pos, float rtype) Ripple_SolveButton = {
    local float entry;
    local float post;
-   local float air_left;
-   local float goal_node;
-   local float iter_used;
+   local vector eye;
+   local vector target;
 
-   goal_node = Vortex_FindNode (goal_pos);
-   if ( (mcts_last_probe > 0.000) && (time < (mcts_last_probe + MCTS_THROTTLE)) && (goal_node == mcts_last_goal_node) && (goal_node >= 0.000) ) {
-      return ( mcts_last_success );
+   // Throttle: don't re-probe same goal too fast
+   if ( (ripple_last_probe > 0.000) && (time < (ripple_last_probe + RIPPLE_PROBE_THROTTLE)) ) {
+      return ( ripple_last_success );
+   }
+   ripple_last_probe = time;
+   ripple_last_success = FALSE;
+
+   // Check if we can see the interactable from here
+   eye = self.origin + '0 0 32';
+   traceline (eye, probe_pos, TRUE, self);
+   if ( (trace_fraction < 0.900) && (trace_ent.classname != "func_button") && (trace_ent.classname != "func_door") ) {
+      // Can't see button - not solvable from here
+      return ( FALSE );
    }
 
-   mcts_last_probe = time;
-   mcts_last_goal_node = goal_node;
-   mcts_last_success = FALSE;
-   mcts_best_reward = RIPPLE_NEG;
-   mcts_best_flags = 0.000;
-   mcts_best_pos = self.origin;
-   mcts_best_depth = 0.000;
+   // Estimate post-interaction position: goal if reachable, else offset past button
+   target = goal_pos;
 
-   mcts_goal_pos = goal_pos;
-   mcts_probe_pos = probe_pos;
-   mcts_rtype = rtype;
-
-   mcts_fwd = normalize (goal_pos - self.origin);
-   if ( (vlen (mcts_fwd) < 0.010) ) {
-      mcts_fwd = '1 0 0';
-   }
-   mcts_rgt_x = -mcts_fwd_y;
-   mcts_rgt_y = mcts_fwd_x;
-   mcts_rgt_z = 0.000;
-   mcts_rgt = normalize (mcts_rgt);
-
-   air_left = (self.air_finished - time);
-   if ( (air_left < FALSE) ) air_left = FALSE;
-   if ( (air_left > 12.000) ) air_left = 12.000;
-
-   mcts_root = 0.000;
-   mcts_next_node = 1.000;
-   Ripple_MCTSInitNode (mcts_root, self.origin, '0 0 0', air_left, 0.000, -1.000, 0.000);
-
-   iters = (MCTS_ITER_BASE + floor (self.skil * MCTS_ITER_PER_SKILL));
-   if ( (vlen (probe_pos - self.origin) > 192.000) ) {
-      iters = (iters + 50.000);
-   }
-   if ( iters > MCTS_ITER_MAX ) {
-      iters = MCTS_ITER_MAX;
-   }
-   if ( iters < 1.000 ) {
-      iters = 1.000;
-   }
-
-   iter = 0.000;
-   while ( iter < iters ) {
-      node = Ripple_MCTSSelect (mcts_root);
-      if ( Ripple_MCTSExpand (node) ) {
-         rollout_r = Ripple_MCTSRollout (node);
-         Ripple_MCTSBackprop (node, rollout_r);
-      } else {
-         rollout_r = Ripple_MCTSRollout (node);
-         Ripple_MCTSBackprop (node, rollout_r);
-      }
-      if ( (mcts_visits[mcts_root] > MCTS_EARLY_VISITS) && (mcts_best_reward > MCTS_EARLY_REWARD) ) {
-         break;
-      }
-      iter = (iter + TRUE);
-   }
-
-   best_child = -1.000;
-   best_val = RIPPLE_NEG;
-   c = 0.000;
-   while ( c < MCTS_CHILDREN ) {
-      child = Ripple_MCTSGetChild (mcts_root, c);
-      if ( (child >= 0.000) && (mcts_visits[child] > 0.000) ) {
-         val = (mcts_reward[child] / mcts_visits[child]);
-         if ( val > best_val ) {
-            best_val = val;
-            best_child = child;
-         }
-      }
-      c = (c + TRUE);
-   }
-
-   if ( (best_child >= 0.000) && (mcts_best_reward > MCTS_SUCCESS_REWARD) && (mcts_best_flags > 0.000) ) {
-      entry = Vortex_FindNode (probe_pos);
-      if ( entry < 0.000 ) {
-         if ( vortex_count < VORTEX_MAX_NODES ) {
-            entry = Vortex_AddNode (probe_pos, VORTEX_NODE_GROUND);
-            Vortex_LinkNearby (entry);
-         }
-      }
-      post = Vortex_FindNode (mcts_best_pos);
-      if ( post < 0.000 ) {
-         if ( vortex_count < VORTEX_MAX_NODES ) {
-            post = Vortex_AddNode (mcts_best_pos, VORTEX_NODE_GROUND);
-            Vortex_LinkNearby (post);
-         }
-      }
-      if ( (entry >= 0.000) && (post >= 0.000) ) {
-         iter_used = iter;
-         if ( iter_used < 1.000 ) iter_used = 1.000;
-         vortex_ripple_type[entry] = rtype;
-         vortex_ripple_target[entry] = post;
-         vortex_ripple_cost[entry] = (mcts_visits[best_child] / iter_used);
-         vortex_ripple_steps[entry] = mcts_best_depth;
-         if ( vortex_ripple_steps[entry] < 1.000 ) vortex_ripple_steps[entry] = 1.000;
-         vortex_ripple_flags[entry] = mcts_best_flags;
-         vortex_ripple_pos[entry] = probe_pos;
-         Vortex_AddEdgeOneWay (entry, post);
-         Vortex_BoostUsage (entry, 5.000);
-         mcts_last_success = TRUE;
+   // Record in Vortex navmesh
+   entry = Vortex_FindNode (probe_pos);
+   if ( entry < 0.000 ) {
+      if ( vortex_count < VORTEX_MAX_NODES ) {
+         entry = Vortex_AddNode (probe_pos, VORTEX_NODE_GROUND);
+         Vortex_LinkNearby (entry);
       }
    }
+   post = Vortex_FindNode (target);
+   if ( post < 0.000 ) {
+      if ( vortex_count < VORTEX_MAX_NODES ) {
+         post = Vortex_AddNode (target, VORTEX_NODE_GROUND);
+         Vortex_LinkNearby (post);
+      }
+   }
+   if ( (entry >= 0.000) && (post >= 0.000) ) {
+      vortex_ripple_type[entry] = rtype;
+      vortex_ripple_target[entry] = post;
+      vortex_ripple_cost[entry] = 0.500;
+      vortex_ripple_steps[entry] = 1.000;
+      vortex_ripple_flags[entry] = Ripple_FlagForType (rtype);
+      vortex_ripple_pos[entry] = probe_pos;
+      Vortex_AddEdgeOneWay (entry, post);
+      Vortex_BoostUsage (entry, 5.000);
+      ripple_last_success = TRUE;
+   }
 
-   return ( mcts_last_success );
+   return ( ripple_last_success );
 };
+
+// ============================================================================
+// Physics: armor scaling, damage calculations
+// ============================================================================
 
 float (float armor) Quantum_ArmorScale = {
    local float scale;
@@ -593,12 +225,16 @@ float (float armor) Quantum_GLJDamage = {
    return (GLJ_DAMAGE * Quantum_ArmorScale (armor));
 };
 
+// ============================================================================
+// Physics: RJ/GJ/GLJ coefficient tables and simulation
+// ============================================================================
+
 float (float purpose, float vtype) Quantum_HorizCoeff = {
    if ( purpose == RJ_PURPOSE_LAVA ) {
-      if ( vtype == 0.000 ) return 1.400; // Fwd
-      if ( vtype == 1.000 ) return 1.000; // Strafe
-      if ( vtype == 2.000 ) return 0.800; // Back
-      return 1.100; // Wait
+      if ( vtype == 0.000 ) return 1.400;
+      if ( vtype == 1.000 ) return 1.000;
+      if ( vtype == 2.000 ) return 0.800;
+      return 1.100;
    }
    if ( purpose == RJ_PURPOSE_VAULT ) {
       if ( vtype == 0.000 ) return 1.100;
@@ -612,7 +248,6 @@ float (float purpose, float vtype) Quantum_HorizCoeff = {
       if ( vtype == 2.000 ) return 1.200;
       return 1.000;
    }
-   // Flat default
    if ( vtype == 0.000 ) return 1.200;
    if ( vtype == 1.000 ) return 1.100;
    if ( vtype == 2.000 ) return 0.900;
@@ -625,11 +260,11 @@ float (float purpose, float vtype) Quantum_VertCoeff = {
       return 1.000;
    }
    if ( purpose == RJ_PURPOSE_VAULT ) {
-      if ( vtype == 1.000 ) return 1.500; // Strafe vault
+      if ( vtype == 1.000 ) return 1.500;
       return 1.200;
    }
    if ( purpose == RJ_PURPOSE_HIGH ) {
-      if ( vtype == 2.000 ) return 1.400; // Back climb
+      if ( vtype == 2.000 ) return 1.400;
       return 1.300;
    }
    return 1.100;
@@ -654,10 +289,10 @@ float (float purpose, float vtype) Quantum_GJHorizCoeff = {
    local float base;
    base = 1.000;
    if ( purpose == RJ_PURPOSE_LAVA ) {
-      if ( vtype == 0.000 ) base = 1.500; // Fwd
-      else if ( vtype == 1.000 ) base = 1.100; // Str
-      else if ( vtype == 2.000 ) base = 0.900; // Back
-      else base = 1.000; // Up
+      if ( vtype == 0.000 ) base = 1.500;
+      else if ( vtype == 1.000 ) base = 1.100;
+      else if ( vtype == 2.000 ) base = 0.900;
+      else base = 1.000;
    } else if ( purpose == RJ_PURPOSE_VAULT ) {
       if ( vtype == 0.000 ) base = 1.200;
       else if ( vtype == 1.000 ) base = 1.000;
@@ -732,7 +367,6 @@ float (float purpose) Quantum_GJBounceMult = {
 
 float (float purpose, float vtype) Quantum_GLHorizCoeff = {
    local float base;
-   // Approx cos for 42/48/35/68 degrees
    if ( vtype == 0.000 ) base = 0.743;
    else if ( vtype == 1.000 ) base = 0.669;
    else if ( vtype == 2.000 ) base = 0.819;
@@ -748,7 +382,6 @@ float (float purpose, float vtype) Quantum_GLHorizCoeff = {
 
 float (float purpose, float vtype) Quantum_GLVertCoeff = {
    local float base;
-   // Approx sin for 42/48/35/68 degrees
    if ( vtype == 0.000 ) base = 0.669;
    else if ( vtype == 1.000 ) base = 0.743;
    else if ( vtype == 2.000 ) base = 0.574;
@@ -774,19 +407,19 @@ float (float slot, float node) Quantum_RJActionForSlot = {
    local float parity;
    parity = (node - (floor (node / 2.000) * 2.000));
    if ( slot == 0.000 ) {
-      if ( parity == 0.000 ) return RJ_ACTION_BASE;      // FwdL
-      return (RJ_ACTION_BASE + 1.000);                                // FwdR
+      if ( parity == 0.000 ) return RJ_ACTION_BASE;
+      return (RJ_ACTION_BASE + 1.000);
    }
    if ( slot == 1.000 ) {
-      if ( parity == 0.000 ) return (RJ_ACTION_BASE + 4.000); // StrL
-      return (RJ_ACTION_BASE + 5.000);                                   // StrR
+      if ( parity == 0.000 ) return (RJ_ACTION_BASE + 4.000);
+      return (RJ_ACTION_BASE + 5.000);
    }
    if ( slot == 2.000 ) {
-      if ( parity == 0.000 ) return (RJ_ACTION_BASE + 2.000); // BkL
-      return (RJ_ACTION_BASE + 3.000);                                   // BkR
+      if ( parity == 0.000 ) return (RJ_ACTION_BASE + 2.000);
+      return (RJ_ACTION_BASE + 3.000);
    }
-   if ( parity == 0.000 ) return (RJ_ACTION_BASE + 6.000); // WaitL
-   return (RJ_ACTION_BASE + 7.000);                                     // WaitR
+   if ( parity == 0.000 ) return (RJ_ACTION_BASE + 6.000);
+   return (RJ_ACTION_BASE + 7.000);
 };
 
 float (float slot, float node) Quantum_GJActionForSlot = {
@@ -844,11 +477,9 @@ void (vector pos, vector vel, float air_left, float action_id, vector fwd, vecto
       vel = (vel + (impulse * RJ_IMPULSE * wait_scale));
       vel_z = (vel_z + 272.000);
 
-      // Small post-RJ air-strafe bias
       vel = (vel + (strafe_dir * (80.000 * air_mult)));
    }
 
-   // Basic accel + gravity (mirrors ShadowSimStep style)
    vel = (vel * 0.900);
    vel_z = (vel_z - SHADOW_GRAVITY);
 
@@ -1122,6 +753,10 @@ void (vector pos, vector vel, float air_left, float action_id, vector fwd, vecto
    sp_out_air = air_left;
 };
 
+// ============================================================================
+// Leap type selection and dispatch
+// ============================================================================
+
 float (float action_id) Quantum_LeapMinHealth = {
    if ( action_id >= GLJ_ACTION_BASE ) return GLJ_MIN_HEALTH;
    if ( action_id >= GJ_ACTION_BASE ) return GJ_MIN_HEALTH;
@@ -1245,14 +880,6 @@ float (float purpose) Quantum_LeapBestType = {
    return best_type;
 };
 
-float (float slot, float node, float purpose) Quantum_LeapActionForSlot = {
-   local float ltype;
-   ltype = Quantum_LeapPickType (purpose);
-   if ( ltype == LEAP_TYPE_GJ ) return Quantum_GJActionForSlot (slot, node);
-   if ( ltype == LEAP_TYPE_GLJ ) return Quantum_GLJActionForSlot (slot, node);
-   return Quantum_RJActionForSlot (slot, node);
-};
-
 float (float purpose) Quantum_LeapPickAction = {
    local float ltype;
    local float action_id;
@@ -1300,139 +927,32 @@ float (vector start_pos, vector goal_pos) Quantum_LeapPurpose = {
    return purpose;
 };
 
-float (float node) Quantum_MCTSSelect = {
-   return Ripple_MCTSSelect (node);
-};
+// ============================================================================
+// Flat beam search for rocket/grenade jumps (replaces MCTS)
+// ============================================================================
 
-float (float node, float purpose) Quantum_MCTSExpand = {
-   local float created;
-   local float a;
+float (vector probe_pos, vector goal_pos, float purpose) Quantum_RJBeam = {
+   local float b;
+   local float step;
    local float action_id;
-   local vector pos;
-   local vector vel;
-   local float air;
-   local float flags;
-   local float health;
-   local float armor;
-   local float dmg;
-
-   created = 0.000;
-   a = 0.000;
-   while ( a < MCTS_CHILDREN ) {
-      if ( mcts_next_node >= MCTS_NODES ) {
-         return (created > 0.000);
-      }
-      if ( Ripple_MCTSGetChild (node, a) < 0.000 ) {
-         action_id = Quantum_LeapActionForSlot (a, node, purpose);
-         pos = mcts_pos[node];
-         vel = mcts_vel[node];
-         air = mcts_air[node];
-         flags = mcts_flags[node];
-         health = mcts_health[node];
-         armor = mcts_armor[node];
-
-         dmg = Quantum_LeapDamage (armor, action_id);
-         health = (health - dmg);
-         armor = (armor - (dmg * 0.500));
-         if ( armor < 0.000 ) armor = 0.000;
-
-         Quantum_LeapSimStep (pos, vel, air, action_id, rj_fwd, rj_rgt, purpose);
-         pos = sp_out_pos;
-         vel = sp_out_vel;
-         air = sp_out_air;
-
-         Ripple_MCTSInitNode (mcts_next_node, pos, vel, air, flags, node, (mcts_depth[node] + TRUE));
-         mcts_health[mcts_next_node] = health;
-         mcts_armor[mcts_next_node] = armor;
-         Ripple_MCTSSetChild (node, a, mcts_next_node);
-
-         if ( health < Quantum_LeapMinHealth (action_id) ) {
-            mcts_reward[mcts_next_node] = -500.000;
-            mcts_visits[mcts_next_node] = 1.000;
-         }
-
-         mcts_next_node = (mcts_next_node + TRUE);
-         created = (created + TRUE);
-      }
-      a = (a + TRUE);
-   }
-
-   return (created > 0.000);
-};
-
-float (float node, float purpose, float start_dist) Quantum_MCTSRollout = {
    local vector pos;
    local vector vel;
    local float air;
    local float reward;
-   local float step;
-   local float action_id;
-   local float health;
+   local float hp;
    local float armor;
    local float dmg;
    local float dist;
-
-   pos = mcts_pos[node];
-   vel = mcts_vel[node];
-   air = mcts_air[node];
-   health = mcts_health[node];
-   armor = mcts_armor[node];
-   reward = 0.000;
-
-   step = 0.000;
-   while ( step < MCTS_ROLL_DEPTH ) {
-      action_id = Quantum_LeapPickAction (purpose);
-      dmg = Quantum_LeapDamage (armor, action_id);
-      health = (health - dmg);
-      armor = (armor - (dmg * 0.500));
-      if ( armor < 0.000 ) armor = 0.000;
-      if ( health < Quantum_LeapMinHealth (action_id) ) {
-         reward = (reward - 300.000);
-         break;
-      }
-
-      Quantum_LeapSimStep (pos, vel, air, action_id, rj_fwd, rj_rgt, purpose);
-      pos = sp_out_pos;
-      vel = sp_out_vel;
-      air = sp_out_air;
-
-      dist = vlen (rj_goal_pos - pos);
-      reward = (reward + ShadowReward (pos, vel, air, rj_goal_pos, TRUE, sp_out_blocked, 1.000, 1.000));
-      reward = (reward + ((start_dist - dist) * 0.250));
-
-      step = (step + TRUE);
-   }
-
-   if ( reward > rj_best_reward ) {
-      rj_best_reward = reward;
-      rj_best_pos = pos;
-      rj_best_depth = (mcts_depth[node] + step);
-   }
-   return reward;
-};
-
-void (float node, float reward) Quantum_MCTSBackprop = {
-   Ripple_MCTSBackprop (node, reward);
-};
-
-float (vector probe_pos, vector goal_pos, float purpose) Quantum_RJMCTS = {
-   local float iters;
-   local float iter;
-   local float node;
-   local float rollout_r;
-   local float best_child;
-   local float best_val;
-   local float child;
-   local float c;
-   local float val;
+   local float start_dist;
+   local float best_b;
+   local float best_reward;
    local float entry;
    local float post;
-   local float air_left;
-   local float start_dist;
    local float goal_node;
    local float leap_type;
    local float leap_risk;
 
+   // Throttle
    goal_node = Vortex_FindNode (goal_pos);
    if ( (rj_last_probe > 0.000) && (time < (rj_last_probe + RJ_PROBE_THROTTLE)) && (goal_node == rj_last_goal_node) && (goal_node >= 0.000) ) {
       return ( rj_last_success );
@@ -1443,9 +963,8 @@ float (vector probe_pos, vector goal_pos, float purpose) Quantum_RJMCTS = {
 
    rj_goal_pos = goal_pos;
    rj_probe_pos = probe_pos;
-   rj_best_reward = RIPPLE_NEG;
+   rj_best_reward = -999999.000;
    rj_best_pos = self.origin;
-   rj_best_depth = 0.000;
 
    rj_fwd = normalize (goal_pos - self.origin);
    if ( (vlen (rj_fwd) < 0.010) ) {
@@ -1456,53 +975,78 @@ float (vector probe_pos, vector goal_pos, float purpose) Quantum_RJMCTS = {
    rj_rgt_z = 0.000;
    rj_rgt = normalize (rj_rgt);
 
-   air_left = (self.air_finished - time);
-   if ( (air_left < FALSE) ) air_left = FALSE;
-   if ( (air_left > 12.000) ) air_left = 12.000;
-
-   mcts_root = 0.000;
-   mcts_next_node = 1.000;
-   Ripple_MCTSInitNode (mcts_root, self.origin, self.velocity, air_left, 0.000, -1.000, 0.000);
-   mcts_health[mcts_root] = self.health;
-   mcts_armor[mcts_root] = self.armorvalue;
-
-   iters = 120.000;
-   iters = (iters + floor (self.skil * 12.000));
-   if ( iters > 240.000 ) iters = 240.000;
-
    start_dist = vlen (goal_pos - self.origin);
-   iter = 0.000;
-   while ( iter < iters ) {
-      node = Quantum_MCTSSelect (mcts_root);
-      if ( Quantum_MCTSExpand (node, purpose) ) {
-         rollout_r = Quantum_MCTSRollout (node, purpose, start_dist);
-         Quantum_MCTSBackprop (node, rollout_r);
-      } else {
-         rollout_r = Quantum_MCTSRollout (node, purpose, start_dist);
-         Quantum_MCTSBackprop (node, rollout_r);
-      }
-      if ( (mcts_visits[mcts_root] > 30.000) && (rj_best_reward > 120.000) ) {
-         break;
-      }
-      iter = (iter + TRUE);
-   }
 
-   best_child = -1.000;
-   best_val = RIPPLE_NEG;
-   c = 0.000;
-   while ( c < MCTS_CHILDREN ) {
-      child = Ripple_MCTSGetChild (mcts_root, c);
-      if ( (child >= 0.000) && (mcts_visits[child] > 0.000) ) {
-         val = (mcts_reward[child] / mcts_visits[child]);
-         if ( val > best_val ) {
-            best_val = val;
-            best_child = child;
+   // Evaluate RJ_BEAM candidates, each with a different action
+   b = 0.000;
+   while ( b < RJ_BEAM ) {
+      action_id = Quantum_LeapPickAction (purpose);
+      pos = self.origin;
+      vel = self.velocity;
+      air = (self.air_finished - time);
+      if ( air < FALSE ) air = FALSE;
+      if ( air > 12.000 ) air = 12.000;
+      hp = self.health;
+      armor = self.armorvalue;
+      reward = 0.000;
+
+      // Apply leap damage
+      dmg = Quantum_LeapDamage (armor, action_id);
+      hp = (hp - dmg);
+      armor = (armor - (dmg * 0.500));
+      if ( armor < 0.000 ) armor = 0.000;
+      if ( hp < Quantum_LeapMinHealth (action_id) ) {
+         rjb_reward[b] = -500.000;
+         b = (b + TRUE);
+         continue;
+      }
+
+      // Simulate flight steps (skill-scaled: 6 at skill 0, 12 at skill 10)
+      local float max_steps;
+      max_steps = (6.000 + floor (self.skil * 0.600));
+      step = 0.000;
+      while ( step < max_steps ) {
+         if ( step == 0.000 ) {
+            Quantum_LeapSimStep (pos, vel, air, action_id, rj_fwd, rj_rgt, purpose);
+         } else {
+            // After initial impulse, just coast with gravity
+            Quantum_LeapSimStep (pos, vel, air, 0.000, rj_fwd, rj_rgt, purpose);
          }
+         pos = sp_out_pos;
+         vel = sp_out_vel;
+         air = sp_out_air;
+
+         dist = vlen (rj_goal_pos - pos);
+         reward = (reward + ShadowReward (pos, vel, air, rj_goal_pos, TRUE, sp_out_blocked, 1.000, 1.000));
+         reward = (reward + ((start_dist - dist) * 0.250));
+
+         if ( sp_out_blocked && (step > 0.000) ) {
+            break;
+         }
+         step = (step + TRUE);
       }
-      c = (c + TRUE);
+
+      rjb_pos[b] = pos;
+      rjb_reward[b] = reward;
+      b = (b + TRUE);
    }
 
-   if ( (best_child >= 0.000) && (rj_best_reward > 50.000) ) {
+   // Find best candidate
+   best_b = -1.000;
+   best_reward = -999999.000;
+   b = 0.000;
+   while ( b < RJ_BEAM ) {
+      if ( rjb_reward[b] > best_reward ) {
+         best_reward = rjb_reward[b];
+         best_b = b;
+      }
+      b = (b + TRUE);
+   }
+
+   if ( (best_b >= 0.000) && (best_reward > 50.000) ) {
+      rj_best_reward = best_reward;
+      rj_best_pos = rjb_pos[best_b];
+
       entry = Vortex_FindNode (probe_pos);
       if ( entry < 0.000 ) {
          if ( vortex_count < VORTEX_MAX_NODES ) {
@@ -1537,6 +1081,10 @@ float (vector probe_pos, vector goal_pos, float purpose) Quantum_RJMCTS = {
 
    return ( rj_last_success );
 };
+
+// ============================================================================
+// Detection and execution entry points (unchanged signatures)
+// ============================================================================
 
 float () Quantum_RJDetect = {
    local entity goal;
@@ -1599,7 +1147,7 @@ float () Quantum_RJDetect = {
    purpose = Quantum_LeapPurpose (self.origin, goal_pos);
    self.rj_purpose = purpose;
 
-   return Quantum_RJMCTS (self.origin, goal_pos, purpose);
+   return Quantum_RJBeam (self.origin, goal_pos, purpose);
 };
 
 float () Quantum_TryLeap = {
@@ -1746,235 +1294,9 @@ float () Quantum_TryLeap = {
    return ( TRUE );
 };
 
-void () Ripple_ResetNext = {
-   local float i;
-
-   i = 0.000;
-   while ( i < MAELSTROM_BEAM ) {
-      mr_next_reward[i] = RIPPLE_NEG;
-      i = (i + TRUE);
-   }
-   mr_next_count = 0.000;
-};
-
-void (vector pos, vector vel, float air, float reward, float flags, float beam_w) Ripple_ConsiderCandidate = {
-   local float i;
-   local float j;
-   local float last;
-
-   last = (beam_w - TRUE);
-   if ( (mr_next_count >= beam_w) && (reward <= mr_next_reward[last]) ) {
-      return ;
-   }
-
-   i = 0.000;
-   while ( i < beam_w ) {
-      if ( (reward > mr_next_reward[i]) ) {
-         j = last;
-         while ( j > i ) {
-            mr_next_pos[j] = mr_next_pos[j - TRUE];
-            mr_next_vel[j] = mr_next_vel[j - TRUE];
-            mr_next_air[j] = mr_next_air[j - TRUE];
-            mr_next_reward[j] = mr_next_reward[j - TRUE];
-            mr_next_flags[j] = mr_next_flags[j - TRUE];
-            j = (j - TRUE);
-         }
-         mr_next_pos[i] = pos;
-         mr_next_vel[i] = vel;
-         mr_next_air[i] = air;
-         mr_next_reward[i] = reward;
-         mr_next_flags[i] = flags;
-         if ( (mr_next_count < beam_w) ) {
-            mr_next_count = (mr_next_count + TRUE);
-         }
-         return ;
-      }
-      i = (i + TRUE);
-   }
-
-   if ( (mr_next_count < beam_w) ) {
-      mr_next_pos[mr_next_count] = pos;
-      mr_next_vel[mr_next_count] = vel;
-      mr_next_air[mr_next_count] = air;
-      mr_next_reward[mr_next_count] = reward;
-      mr_next_flags[mr_next_count] = flags;
-      mr_next_count = (mr_next_count + TRUE);
-   }
-};
-
-float (vector probe_pos, vector goal_pos, float rtype) Ripple_MaelstromSim = {
-   local float depth;
-   local float beam_w;
-   local float d;
-   local float b;
-   local float a;
-   local float action;
-   local float reward;
-   local float flags;
-   local float hash;
-   local float air_left;
-   local vector fwd;
-   local vector rgt;
-   local vector pos;
-   local vector vel;
-   local float air;
-   local float blocked;
-   local float entry;
-   local float post;
-   local float i;
-   local float best_idx;
-   local float best_reward;
-
-   depth = MAELSTROM_DEPTH_BASE + floor (self.skil * 0.330);
-   if ( (depth > MAELSTROM_DEPTH_MAX) ) {
-      depth = MAELSTROM_DEPTH_MAX;
-   }
-
-   beam_w = MAELSTROM_BEAM;
-   if ( (beam_w < TRUE) ) {
-      beam_w = TRUE;
-   }
-
-   fwd = normalize (goal_pos - self.origin);
-   if ( (vlen (fwd) < 0.010) ) {
-      fwd = '1 0 0';
-   }
-   rgt_x = -fwd_y;
-   rgt_y = fwd_x;
-   rgt_z = 0.000;
-   rgt = normalize (rgt);
-
-   air_left = (self.air_finished - time);
-   if ( (air_left < FALSE) ) {
-      air_left = FALSE;
-   }
-   if ( (air_left > 12.000) ) {
-      air_left = 12.000;
-   }
-
-   mr_pos[0] = self.origin;
-   mr_vel[0] = '0 0 0';
-   mr_air[0] = air_left;
-   mr_reward[0] = ShadowReward (mr_pos[0], mr_vel[0], mr_air[0], goal_pos, TRUE, FALSE, 1.000, 1.000);
-   mr_flags[0] = 0.000;
-   mr_count = TRUE;
-
-   d = TRUE;
-   while ( d <= depth ) {
-      Ripple_ResetNext ();
-      b = 0.000;
-      while ( b < mr_count ) {
-         hash = Ripple_HashState (mr_pos[b], mr_flags[b]);
-         if ( (ripple_visit[hash] > (time - TRUE)) ) {
-            b = (b + TRUE);
-            continue ;
-         }
-         ripple_visit[hash] = time;
-
-         a = 0.000;
-         while ( a < 4.000 ) {
-            action = a;
-
-            pos = mr_pos[b];
-            vel = mr_vel[b];
-            air = mr_air[b];
-            blocked = FALSE;
-
-            if ( action == 3.000 ) {
-               vel = (vel * 0.500);
-            } else {
-               ShadowSimStep (pos, vel, air, 0.000, fwd, rgt, TRUE);
-               pos = sp_out_pos;
-               vel = sp_out_vel;
-               air = sp_out_air;
-               blocked = sp_out_blocked;
-            }
-
-            reward = mr_reward[b];
-            flags = mr_flags[b];
-
-            if ( (vlen (pos - probe_pos) < RIPPLE_ACTION_RANGE) ) {
-               if ( (rtype == RIPPLE_TYPE_SHOOT) && (action == 1.000) ) {
-                  flags = (flags | FLAG_DOOR_OPEN);
-                  reward = (reward + 150.000);
-                  pos_z = (pos_z + 32.000);
-               } else if ( (rtype == RIPPLE_TYPE_TOUCH) && (action == 2.000) ) {
-                  flags = (flags | FLAG_PLAT_RAISED);
-                  reward = (reward + 200.000);
-                  pos_z = (pos_z + 64.000);
-               }
-            }
-
-            reward = (reward + ShadowReward (pos, vel, air, goal_pos, TRUE, blocked, 1.000, 1.000));
-            if ( (flags & (FLAG_DOOR_OPEN + FLAG_PLAT_RAISED)) == 0.000 ) {
-               reward = (reward - (100.000 * d));
-            }
-
-            Ripple_ConsiderCandidate (pos, vel, air, reward, flags, beam_w);
-            a = (a + TRUE);
-         }
-         b = (b + TRUE);
-      }
-
-      mr_count = mr_next_count;
-      if ( (mr_count <= FALSE) ) {
-         return ( FALSE );
-      }
-      i = 0.000;
-      while ( i < mr_count ) {
-         mr_pos[i] = mr_next_pos[i];
-         mr_vel[i] = mr_next_vel[i];
-         mr_air[i] = mr_next_air[i];
-         mr_reward[i] = mr_next_reward[i];
-         mr_flags[i] = mr_next_flags[i];
-         i = (i + TRUE);
-      }
-
-      d = (d + TRUE);
-   }
-
-   best_idx = -1.000;
-   best_reward = RIPPLE_NEG;
-   i = 0.000;
-   while ( i < mr_count ) {
-      if ( (mr_flags[i] > 0.000) && (mr_reward[i] > best_reward) ) {
-         best_reward = mr_reward[i];
-         best_idx = i;
-      }
-      i = (i + TRUE);
-   }
-
-   if ( (best_idx >= 0.000) && (best_reward > 100.000) ) {
-      entry = Vortex_FindNode (probe_pos);
-      if ( entry < 0.000 ) {
-         if ( vortex_count < VORTEX_MAX_NODES ) {
-            entry = Vortex_AddNode (probe_pos, VORTEX_NODE_GROUND);
-            Vortex_LinkNearby (entry);
-         }
-      }
-      post = Vortex_FindNode (mr_pos[best_idx]);
-      if ( post < 0.000 ) {
-         if ( vortex_count < VORTEX_MAX_NODES ) {
-            post = Vortex_AddNode (mr_pos[best_idx], VORTEX_NODE_GROUND);
-            Vortex_LinkNearby (post);
-         }
-      }
-
-      if ( (entry >= 0.000) && (post >= 0.000) ) {
-         vortex_ripple_type[entry] = rtype;
-         vortex_ripple_target[entry] = post;
-         vortex_ripple_cost[entry] = (depth * 0.100);
-         vortex_ripple_steps[entry] = depth;
-         vortex_ripple_flags[entry] = mr_flags[best_idx];
-         vortex_ripple_pos[entry] = probe_pos;
-         Vortex_AddEdgeOneWay (entry, post);
-         Vortex_BoostUsage (entry, 5.000);
-         return ( TRUE );
-      }
-   }
-
-   return ( FALSE );
-};
+// ============================================================================
+// Button detection: simplified (replaces Maelstrom MCTS + beam search)
+// ============================================================================
 
 float () RippleDetect = {
    local entity goal;
@@ -2022,10 +1344,7 @@ float () RippleDetect = {
    if ( trace_ent ) {
       rtype = Ripple_InteractType (trace_ent);
       if ( (rtype > 0.000) ) {
-         if ( Ripple_MaelstromMCTS (trace_ent.origin, goal_pos, rtype) ) {
-            return ( TRUE );
-         }
-         if ( Ripple_MaelstromSim (trace_ent.origin, goal_pos, rtype) ) {
+         if ( Ripple_SolveButton (trace_ent.origin, goal_pos, rtype) ) {
             return ( TRUE );
          }
       }
@@ -2038,10 +1357,7 @@ float () RippleDetect = {
       traceline (block_pos, (block_pos + (dir * (RIPPLE_PULSE_DIST / 64.000))), TRUE, self);
       rtype = Ripple_InteractType (trace_ent);
       if ( (rtype > 0.000) ) {
-         if ( Ripple_MaelstromMCTS (trace_ent.origin, goal_pos, rtype) ) {
-            return ( TRUE );
-         }
-         if ( Ripple_MaelstromSim (trace_ent.origin, goal_pos, rtype) ) {
+         if ( Ripple_SolveButton (trace_ent.origin, goal_pos, rtype) ) {
             return ( TRUE );
          }
       }
@@ -2050,6 +1366,10 @@ float () RippleDetect = {
 
    return ( FALSE );
 };
+
+// ============================================================================
+// Button interaction execution (unchanged)
+// ============================================================================
 
 float () Ripple_TryInteract = {
    local float cur;
@@ -2083,7 +1403,6 @@ float () Ripple_TryInteract = {
       }
    }
    if ( cur < 0.000 ) {
-      // Throttle full ripple scans when no nearby node is cached
       ripple_throttle = cvar ("bot_ripple_throttle");
       if ( (ripple_throttle <= FALSE) ) {
          ripple_throttle = 0.200;
@@ -2125,6 +1444,10 @@ float () Ripple_TryInteract = {
    }
    return ( FALSE );
 };
+
+// ============================================================================
+// Fuse functions: record discoveries into Vortex navmesh (unchanged)
+// ============================================================================
 
 void (vector start, vector end, vector ripple_pos, float rtype) Ripple_FuseChain = {
    local float sidx;

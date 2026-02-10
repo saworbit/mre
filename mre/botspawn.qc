@@ -359,8 +359,8 @@ void () PutBotInServer = {
    self.ripple_near_idx = -1.000;
    self.ripple_near_pos = '0 0 0';
    self.ripple_near_count = FALSE;
-   self.shadow_depth = (6.000 + floor (self.skil));
-   self.shadow_beam = (3.000 + (self.skil * 0.200));
+   self.shadow_depth = (3.000 + floor (self.skil * self.skil * 0.130));
+   self.shadow_beam = (2.000 + (self.skil * 0.300));
    if ( (cvar ("sv_slayer_god") > FALSE) ) {
       self.shadow_depth = 15.000;
       self.shadow_beam = 20.000;
@@ -368,14 +368,16 @@ void () PutBotInServer = {
    }
    // Mirage Minds: persona + entropy
    self.mood_entropy = 0.500;
-   self.persona_state = 0.000;
    self.mirage_goal = '0 0 0';
    self.mirage_goal_time = FALSE;
    self.mirage_yaw_bias = 0.000;
    self.mirage_yaw_time = FALSE;
    self.mirage_next_time = FALSE;
-   self.mirage_persona_time = FALSE;
    self.mirage_hold_fire_time = FALSE;
+   self.mirage_pitch_bias = 0.000;
+   self.mirage_glance_time = FALSE;
+   self.blind_fire_miss = FALSE;
+   self.blind_fire_spot = '0 0 0';
    self.walkframe = FALSE;  // Reset animation frame counter
    // Reset tactical intelligence state (Mastermind Update)
    self.ambush_ready = FALSE;

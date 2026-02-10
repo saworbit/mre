@@ -33,12 +33,11 @@ from `archive/`.
 - Silent Specters (stealth unstuck rollouts; jump noise minimized, enemy-aware penalty)
 - Cursed Nodes (adaptive stuck-learning mesh with decay, biases rollouts + routing)
 - Phantom Apprenticeship (spectral episodes with rollout validation, soft A* bias, decay; no teleport shortcuts or golden locks)
-- **Vortex Navmesh + Apex HPA\*** (incremental dynamic navmesh seeded from spawns/items, phantom-validated edges, cursed/glory-biased costs, hierarchical clustering for large maps; no pre-bake)
+- **Vortex Navmesh** (incremental dynamic navmesh seeded from spawns/items, phantom-validated edges, cursed/glory-biased costs; no pre-bake)
 - **Vortex Telechains** (teleporter warp detection and one-way quantum edges; chain-safe, hazard-aware, low-cost path fusion)
-- **Apex Lifts** (lift sampling with wait-cost biasing and HPA* portal weighting for timed platforms)
-- **Ripple Oracles + Maelstrom MCTS** (UCT-style causal interactable prediction; fuses button/plat/door cascades as ripple edges)
+- **Ripple Oracles** (heuristic interactable prediction with beam-search fallback; fuses button/plat/door cascades as ripple edges)
 - **Grenade Vortex (GJ/GLJ)**: Grenade jumps and bounce-jumps integrated into Quantum Leaps with ammo-aware priors, purpose-tuned arcs, and phantom auto-tuning
-- Mirage Minds (persona-driven humanization with entropy, micro-goals, heatmap denial, and feint pauses)
+- Mirage Minds (entropy-driven humanization with yaw/pitch jitter, glance-aways, and feint pauses)
 - Teacher Mode debug impulses (102 show / 103 hide bot learning nodes, 104 dump spectral episodes)
 - Speed Demon update (bunny hopping on straight runs and reflex projectile dodging)
 - **Predator Update**: Strategic intelligence upgrade
@@ -60,8 +59,22 @@ from `archive/`.
 - **Specter Gaze**: Cinematic spectator camera system
   - Two-layer architecture: heavy math at Think rate, smooth interpolation every server frame (~72fps)
   - Drama-driven auto-switching (no random cuts — cameras follow the action)
+  - Enhanced drama scoring: low-health duels and recent combat bonuses
   - Chase mode for first-person through bot's eyes
   - Toggle: `impulse 105`, cycle focus: `impulse 106`, chase: `specter_chase 1`
+- **Intelligence Update**: Skill-differentiated humanization
+  - Exponential aim jitter (skill 0 = ~30 deg, skill 5+ = perfect)
+  - Reaction fire delay gates first shot after spotting enemy (skill 0 = 300ms, skill 4+ = instant)
+  - Non-linear prediction depth (skill 0 = 3 steps, skill 5 = 6, skill 10 = 16)
+  - Gradual retreat based on effective health (health + armor), not hard cutoff
+  - Ambush uses effective health and skill-scaled patience (2-5s timeout)
+  - Adaptive strafe timing (high skill holds good directions longer)
+  - Multi-axis humanization: pitch jitter, glance-aways, variable hold-fire
+  - Ammo-aware weapon switching (preemptive switch before running dry)
+  - Combat bunny hopping (skilled bots hop while retreating mid-range)
+  - Blind fire memory (stops pre-firing corners after 2 consecutive misses)
+  - Item grab threat abort (abandons pickups when under fire at low health)
+  - Vortex slime avoidance and skill-scaled rocket jump depth
 
 ### Investigated (Likely Fixed / Not Found)
 - "Bot frags not shown" - MSG_UPDATEFRAGS sent correctly, likely fixed by 0-index fix
@@ -135,31 +148,31 @@ Runtime cvars (see `DEVELOPMENT.md` for full details):
 - `shadow_debug` (0/1) master debug
 - `shadow_nav_*` and `shadow_combat_*` tuning knobs
 
-## Mirage Minds (Persona Layer)
+## Mirage Minds (Humanization Layer)
 - `sv_mirage` (0/1) master enable
 - `mirage_debug` (0/1) developer logs
+- Entropy-driven: mood drift, yaw jitter, pitch jitter, glance-aways, hold-fire feints
+- No personas or heat maps — lightweight entropy model only
 
 ## Vortex Navmesh (Dynamic Learning Mesh)
 - Incremental mesh: flood-fill from spawns/items builds nodes and edges over time (no pre-bake).
 - Phantom episodes validate edges; cursed nodes add cost; glory usage attracts paths.
-- Apex HPA* clusters the mesh on larger maps for faster queries.
 - Mesh only takes over when a direct line to the goal is blocked; normal BotPath routing remains the baseline.
+- Slime and lava both treated as hazards in navmesh edge validation.
+
 ## Vortex Telechains (Teleport Fusion)
 - Detects large teleporter warps and fuses one-way "quantum" edges between entry/exit nodes.
 - Chaining is permitted with loop limits; hazard exits are cursed, powerups boost usage.
-- Tele edges are low-cost in Vortex A* and low-cost portals in Apex HPA*.
-
-## Apex Lifts (Timed Platforms)
-- Lift nodes are sampled from world geometry and tagged in Vortex.
-- A* adds a wait penalty based on lift cycle timing and bot skill (impatience).
-- Apex HPA* marks lift portals for cheaper abstraction of multi-hop lift paths.
+- Tele edges are low-cost in Vortex A*.
+- Lift nodes are sampled from `func_plat`/`func_train` with wait-cost biasing.
 
 ## Ripple Oracles (Causal Interactables)
 - When goals are blocked, Ripple probes nearby interactables (buttons/doors/plats).
-- MCTS rollouts simulate shoot/touch/wait cascades and fuse one-way ripple edges.
+- Heuristic trace + beam-search simulate shoot/touch/wait cascades and fuse one-way ripple edges.
 - Vortex pathing can redirect to the interactable position before resuming the goal.
+- Rocket jump beam depth scales by skill (6 steps at skill 0, 12 at skill 10).
 
 ## Grenade Vortex (GJ/GLJ Leaps)
 - Extends Quantum Leaps with grenade jumps (GJ) and bounce-aware GLJ actions.
-- MCTS rollouts sample RJ/GJ/GLJ based on ammo, health, and purpose (lava/vault/high).
+- Beam-search rollouts sample RJ/GJ/GLJ based on ammo, health, and purpose (lava/vault/high).
 - Phantom episodes auto-tune GJ horiz/vert coeffs and GLJ launch angles.

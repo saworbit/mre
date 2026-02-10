@@ -2,6 +2,61 @@
 
 ## Unreleased
 - Clean baseline restored in `mre/`.
+- Simplification: **Removed Apex HPA\*** (`ai_apex.qc` deleted, forward declarations and
+  calls removed from `world.qc`, entry removed from `progs.src`). Vortex A* handles all
+  maps without a second abstraction layer.
+- Simplification: **Mirage Minds** stripped of persona system (5 personas, persona switching,
+  heat maps, micro-goals, `Mirage_AddHeat`). Now entropy-only: mood drift, yaw jitter,
+  pitch jitter, glance-aways, and hold-fire feints. Removed forward declarations and
+  call sites from `items.qc` and `client.qc`.
+- Simplification: **Ripple Oracles** stripped of MCTS tree search (`Ripple_MaelstromMCTS`
+  removed). Now uses heuristic trace probes with flat beam-search fallback
+  (`Ripple_MaelstromSim`). Same cascade fusion, far less code and globals.
+- Simplification: **Slayer Eclipse** cleaned up. Removed hardcoded username checks
+  (`slywall`/`Shane`) from `Slayer_IsUser()`. `user_learn` cvar now applies to any
+  connected player.
+- Enhancement: **Exponential aim jitter** (`botfight.qc`). Replaced linear
+  `(3 - sk) * 0.15` with `((5 - sk)^2) * 0.012`. Skill 0 = ~30 deg, skill 3 = ~5 deg,
+  skill 5+ = 0. Also adds Z-axis (pitch) jitter at 60% of horizontal.
+- Enhancement: **Reaction fire delay** (`bot_ai.qc`). When promoting `pending_enemy` to
+  `enemy`, sets `attack_finished = time + (0.300 - skil * 0.075)`. Skill 0 = 300ms delay,
+  skill 4+ = instant. Previously only gated *seeing* the enemy, not firing.
+- Enhancement: **Non-linear shadow depth** (`botspawn.qc`). Changed from
+  `6 + floor(skill)` to `3 + floor(skill^2 * 0.13)`. Skill 0 = 3, skill 5 = 6,
+  skill 10 = 16. Shadow beam similarly rescaled.
+- Enhancement: **Gradual retreat** (`bot_ai.qc`). Replaced hard `health < 15` cutoff with
+  probability curve: `eff_hp = health + armor * armortype`, retreat chance =
+  `(60 - eff_hp) / 60`. At 60 HP: 0% retreat, at 30: 50%, at 0: 100%.
+- Enhancement: **Ambush armor awareness** (`bot_ai.qc`). Threshold now uses effective HP
+  (50) instead of raw health (40). Timeout scales by skill: `2.0 + skil * 0.3` (2-5s).
+- Enhancement: **Adaptive strafe timing** (`bot_ai.qc`). Strafe direction switch threshold
+  changed from fixed 0.4s to `0.3 + skil * 0.04` (0.3-0.7s). High-skill bots hold good
+  directions longer.
+- Enhancement: **Multi-axis MirageTick** (`ai_mirage.qc`). Added pitch jitter (vertical
+  drift when entropy > 0.4), glance-aways (skill 3+ briefly look off-target, 3% chance),
+  and variable hold-fire duration (0.2-0.3s instead of fixed 0.25s). New fields:
+  `mirage_pitch_bias`, `mirage_glance_time`.
+- Enhancement: **Mirage pitch bias** (`botfight.qc`). Pitch bias from MirageTick applied
+  to aim direction as `pitch_bias * 0.010 * '0 0 1'` for vertical tracking imperfection.
+- Enhancement: **Ammo-aware weapon switching** (`botfight.qc`). Before splash safety
+  checks, switches weapon when ammo is critically low: RL/GL <= 1 rocket, LG <= 5 cells,
+  SNG <= 5 nails. Prevents firing until empty.
+- Enhancement: **Combat bunny hopping** (`botmove.qc`). No enemy → always hop.
+  Enemy > 400u → always hop. Skill 4+, enemy > 200u, retreating (RUNAWAY flag) → hop.
+  Previously disabled all hopping when any enemy was within 200u.
+- Enhancement: **Blind fire memory** (`botfight.qc`). Tracks consecutive missed pre-fires
+  via `blind_fire_miss` and `blind_fire_spot` fields. After 2 misses at the same spot
+  (within 100u), blacklists it for 10s. Resets to 0 when enemy becomes visible again.
+- Enhancement: **GETGOODY threat abort** (`bot_ai.qc`). When grabbing items, aborts if
+  enemy is visible, within 400u, and bot health < 40. Calls `ai_endgetGoody` to
+  resume combat.
+- Enhancement: **Vortex slime avoidance** (`ai_vortex.qc`). Added `CONTENT_SLIME` to
+  navmesh edge hazard checks alongside `CONTENT_LAVA`, `CONTENT_SOLID`, `CONTENT_SKY`.
+- Enhancement: **Specter drama enhancement** (`ai_specter.qc`). Low-health duels
+  (health < 30 + has enemy) add +6 drama. Recent combat (attack state within 2s) adds
+  +4 drama. Improves camera focus on dramatic moments.
+- Enhancement: **Skill-scaled RJ depth** (`ai_ripple.qc`). Rocket jump beam simulation
+  steps changed from fixed 8 to `6 + floor(skil * 0.6)` (6 at skill 0, 12 at skill 10).
 - Feature: **Specter Gaze** cinematic spectator camera (`ai_specter.qc`, `client.qc`,
   `botit_th.qc`, `defs.qc`). Two-layer architecture: Think (50-200ms) computes ideal
   camera positions via orbital + velocity prediction; ViewUpdate (every server frame
@@ -27,35 +82,32 @@
   - Ethereal rollouts validate episodes using ShadowSimStep/ShadowReward.
   - A* cost bias uses soft allure with decay (no hard locks or teleport shortcuts).
   - Impulse 104 prints episode count for quick debugging.
-- Feature: Mirage Minds persona layer (`ai_mirage.qc`, `bot_ai.qc`, `botmove.qc`,
-  `botfight.qc`, `items.qc`, `client.qc`, `defs.qc`). Adds entropy-driven personas,
-  micro-goal drift, heatmap denial, and feint pauses without overriding core AI.
+- Feature: Mirage Minds humanization layer (`ai_mirage.qc`, `bot_ai.qc`, `botmove.qc`,
+  `botfight.qc`, `defs.qc`). Adds entropy-driven yaw/pitch jitter, glance-aways, and
+  feint pauses without overriding core AI.
 - Feature: Silent Specters unstuck rollouts (`ai_predict.qc`, `botgoal.qc`,
   `botmove.qc`). Quiet 12-action beam search for unsticking with enemy-aware
   jump penalties; fallback ladder prefers strafe/pause and keeps jumps rare.
 - Feature: Cursed Nodes adaptive stuck-learning mesh (`ai_mirage.qc`, `botgoal.qc`,
   `ai_predict.qc`, `botroute.qc`, `world.qc`). Quantized grid penalties decay over
   time and bias both rollouts and route cost away from repeated stuck zones.
-- Feature: **Vortex Navmesh + Apex HPA\*** (`ai_vortex.qc`, `ai_apex.qc`,
-  `bot_learn.qc`, `botgoal.qc`, `world.qc`, `defs.qc`). Incremental dynamic mesh
-  seeded from spawns/items with phantom-validated edges, cursed/glory-biased costs,
-  and decay culling; Apex builds lightweight hierarchical clusters for faster
-  queries on large maps (no pre-bake).
-- Feature: **Vortex Telechains** (`ai_vortex.qc`, `bot_learn.qc`, `ai_apex.qc`).
+- Feature: **Vortex Navmesh** (`ai_vortex.qc`, `bot_learn.qc`, `botgoal.qc`,
+  `world.qc`, `defs.qc`). Incremental dynamic mesh seeded from spawns/items with
+  phantom-validated edges, cursed/glory-biased costs, and decay culling (no pre-bake).
+- Feature: **Vortex Telechains** (`ai_vortex.qc`, `bot_learn.qc`).
   Detects teleporter warps (>500u), fuses one-way quantum edges between entry/exit
   nodes, and allows chain-limited low-cost tele routing. Hazard exits are cursed;
-  strong exits gain usage/glory boosts. Apex portals favor tele links.
-- Feature: **Apex Lifts + Oracle Rides** (`ai_vortex.qc`, `ai_predict.qc`, `ai_apex.qc`,
-  `botmove.qc`, `bot_learn.qc`). Samples lift nodes (func_plat/func_train), adds
-  ETA-based wait-cost biasing in Vortex A*, rewards lift rides (upward bias) in
-  rollouts, syncs approach speed to lift phases, refines lift phase timing from
-  successful rides, and tags lift portals for low-cost abstraction in Apex clusters.
-- Feature: **Ripple Oracles + Maelstrom MCTS** (`ai_ripple.qc`, `ai_vortex.qc`,
-  `botmove.qc`, `bot_learn.qc`, `defs.qc`). When LOS to a goal is blocked, probes
-  nearby interactables (buttons/doors/plats), runs an adaptive MCTS rollout to
-  simulate shoot/touch/wait cascades, and fuses ripple edges into Vortex with
-  explicit interact positions. Falls back to beam-search Maelstrom when MCTS
-  fails and decays deep, unused ripple edges.
+  strong exits gain usage/glory boosts.
+- Feature: **Lift Routing** (`ai_vortex.qc`, `ai_predict.qc`, `botmove.qc`,
+  `bot_learn.qc`). Samples lift nodes (func_plat/func_train), adds ETA-based
+  wait-cost biasing in Vortex A*, rewards lift rides (upward bias) in rollouts,
+  syncs approach speed to lift phases, and refines lift phase timing from
+  successful rides.
+- Feature: **Ripple Oracles** (`ai_ripple.qc`, `ai_vortex.qc`, `botmove.qc`,
+  `bot_learn.qc`, `defs.qc`). When LOS to a goal is blocked, probes nearby
+  interactables (buttons/doors/plats), runs heuristic trace probes with beam-search
+  fallback to simulate shoot/touch/wait cascades, and fuses ripple edges into Vortex
+  with explicit interact positions. Decays deep, unused ripple edges.
 - Removed: Legacy episodic learning (golden locks, teleport shortcuts, LOS shortcutting, trail rewards).
 - Removed: Broken map-control timing rushes (auto-drop BotPath at powerup spawns,
   spawn-time beelines, and hard lock boosts).

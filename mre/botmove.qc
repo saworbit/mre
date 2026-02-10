@@ -1188,8 +1188,18 @@ float (float s_yaw, float s_dist) botwalkmove = {
       }
    }
    if ( is_straight_path && (self.health > 50.000) && !self.feeler_mode_active && self.whiskers_allowed ) {
-      if ( !self.enemy || (self.enemy == world) || (vlen (self.enemy.origin - self.origin) > 200.000) ) {
+      if ( !self.enemy || (self.enemy == world) ) {
          BotBunnyHop (self, s_yaw);
+      } else {
+         local float edist;
+         edist = vlen (self.enemy.origin - self.origin);
+         // Always hop if enemy far away
+         if ( edist > 400.000 ) {
+            BotBunnyHop (self, s_yaw);
+         // Skilled bots hop while retreating mid-range
+         } else if ( (self.skil >= 4.000) && (edist > 200.000) && (self.lefty & RUNAWAY) ) {
+            BotBunnyHop (self, s_yaw);
+         }
       }
    }
 

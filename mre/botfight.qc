@@ -79,7 +79,7 @@ void () BotBlindFire = {
 
    // Need an enemy we recently lost sight of
    if ( !self.enemy ) return;
-   if ( enemyvisible(self.enemy) ) return;
+   if ( enemyvisible(self.enemy) ) { self.blind_fire_miss = FALSE; return; }
 
    // Only pre-fire if we saw them less than 2 seconds ago
    time_since_seen = time - self.last_seen_time;
@@ -107,6 +107,14 @@ void () BotBlindFire = {
       // 15% chance per frame to suppress fire (skill-scaled)
       // Higher skill = more likely to pre-fire
       if ( random() < (0.05 + self.skil * 0.03) ) {
+
+         // Check if same spot failed before
+         if ( (self.blind_fire_miss >= 2.000) && (vlen (aim_at - self.blind_fire_spot) < 100.000) ) {
+            self.blind_fire_time = (time + 10.000);
+            return;
+         }
+         self.blind_fire_spot = aim_at;
+         self.blind_fire_miss = (self.blind_fire_miss + TRUE);
 
          local vector aim_angles;
          aim_angles = vectoangles (aim_at - self.origin);
@@ -384,15 +392,18 @@ vector () botaim = {
    }
    dir = normalize ((tg - self.origin));
 
-   // FIX: Skill-based Aim Jitter - low-skill bots should miss more
-   // Skill 3+ = perfect aim, Skill 0 = ~25 degree max error
-   // Previous code used 0.06 multiplier (~10 deg max) which was barely noticeable
-   if ( (sk < MOVETYPE_WALK) && !Slayer_GodMode () ) {
-
-      dir = (dir + (((MOVETYPE_WALK - sk) * crandom ()) * '0.150 0.000 0.000'));
-      dir = (dir + (((MOVETYPE_WALK - sk) * crandom ()) * '0.000 0.150 0.000'));
-      dir = (dir + (((MOVETYPE_WALK - sk) * crandom ()) * '0.000 0.000 0.100'));
-
+   // Skill-based aim error: exponential scaling
+   // Skill 0 = ~30 deg max, Skill 3 = ~5 deg, Skill 5+ = perfect
+   if ( (sk < 5.000) && !Slayer_GodMode () ) {
+      local float jit;
+      jit = ((5.000 - sk) * (5.000 - sk)) * 0.012;
+      dir = (dir + ((crandom () * jit) * '1 0 0'));
+      dir = (dir + ((crandom () * jit) * '0 1 0'));
+      dir = (dir + ((crandom () * jit * 0.600) * '0 0 1'));
+   }
+   // Mirage pitch bias (human imperfection in vertical tracking)
+   if ( self.mirage_pitch_bias ) {
+      dir = (dir + ((self.mirage_pitch_bias * 0.010) * '0 0 1'));
    }
    dir = normalize (dir);
    return ( dir );
@@ -803,6 +814,21 @@ void () W_BotAttack = {
    }
    if ( (self.mirage_hold_fire_time > time) ) {
       return ;
+   }
+
+   // Ammo awareness: switch before running dry
+   if ( (self.weapon == IT_ROCKET_LAUNCHER) && (self.ammo_rockets <= 1) ) {
+      self.weapon = W_BestBotWeapon ();
+      W_SetCurrentAmmo ();
+   } else if ( (self.weapon == IT_LIGHTNING) && (self.ammo_cells <= 5) ) {
+      self.weapon = W_BestBotWeapon ();
+      W_SetCurrentAmmo ();
+   } else if ( (self.weapon == IT_GRENADE_LAUNCHER) && (self.ammo_rockets <= 1) ) {
+      self.weapon = W_BestBotWeapon ();
+      W_SetCurrentAmmo ();
+   } else if ( (self.weapon == IT_SUPER_NAILGUN) && (self.ammo_nails <= 5) ) {
+      self.weapon = W_BestBotWeapon ();
+      W_SetCurrentAmmo ();
    }
 
    // FIX: Splash Damage Safety - don't fire explosives at close range

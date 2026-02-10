@@ -4,7 +4,7 @@
 
 // Forward declaration for Darwin Update (defined in botroute.qc)
 void (entity node, float amount) ModulateNodeWeight;
-void (vector pos, float val) Mirage_AddHeat;
+
 
 
 
@@ -1582,7 +1582,6 @@ void (entity targ, entity attacker) ClientObituary = {
               }
 
             countkill (attacker,targ);
-            Mirage_AddHeat (targ.origin, 150.000);
             if ( (attacker.classname == "dmbot") ) {
                if ( !(attacker.flags & FL_ONGROUND) ) {
                   attacker.strafe_timer = (time + 2.000);

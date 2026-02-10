@@ -168,7 +168,7 @@ Notes:
 Runtime knobs for high-skill combat escalation:
 - `sv_slayer_god` (0/1): force skill 10, max combat depth/beam, and perfect aim
 - `mc_samples` (int): Monte Carlo lead samples for projectile aim (default 20)
-- `user_learn` (0/1): enable per-user strafe bias learning (targets netname `slywall` or `Shane`)
+- `user_learn` (0/1): enable per-user strafe bias learning (applies to any connected player)
 
 Notes:
 - God mode expands combat rollout depth/beam and removes aim randomness.
@@ -191,14 +191,13 @@ Cursed Nodes are a compact stuck-learning mesh in `mre/ai_mirage.qc`:
 - Decay runs via `StartFrame` (`world.qc`), reset on map load (`worldspawn`)
 - Penalties bias both rollouts (`ShadowReward`) and route cost (`botroute.qc`)
 
-## Vortex Navmesh + Apex HPA* (dynamic path mesh)
+## Vortex Navmesh (dynamic path mesh)
 Vortex is a lightweight, incremental navmesh built at runtime and validated by
-phantom episodes. Apex adds a small HPA* abstraction layer for large maps.
+phantom episodes.
 
 Key integration points:
 - `mre/ai_vortex.qc`: mesh nodes/edges, flood build, A* cost bias (cursed + usage)
-- `mre/ai_apex.qc`: cluster graph over Vortex, used by `Apex_VortexNext`
-- `mre/world.qc`: `Vortex_Reset`/`Apex_Reset` on map load, `Vortex_Frame`/`Apex_Frame` each `StartFrame`
+- `mre/world.qc`: `Vortex_Reset` on map load, `Vortex_Frame` each `StartFrame`
 - `mre/bot_learn.qc`: `Vortex_RecordEpisode` when a phantom episode succeeds
 - `mre/botgoal.qc`: `Vortex_ApplyGoal` injects a mesh waypoint only when the goal is obstructed
 
@@ -207,16 +206,15 @@ Compile-time tuning knobs:
 - `VORTEX_MIN_READY`, `VORTEX_DECAY_THROTTLE`
 - `VORTEX_TELE_CHAIN_MAX`, `VORTEX_TELE_WARP_DIST`, `VORTEX_TELE_COST`
 - `VORTEX_LIFT_SAMPLE_THROTTLE`, `VORTEX_LIFT_UP_START`, `VORTEX_LIFT_UP_END`
-- `APEX_BUILD_THROTTLE`, `APEX_MIN_NODES`
 
-## Ripple Oracles + Maelstrom MCTS (causal interactables)
+## Ripple Oracles (causal interactables)
 Ripple Oracles predicts button/door/plat sequences when a goal is blocked, using
-an MCTS rollout tree and a beam-search fallback. Successful cascades are fused
+heuristic trace probes and a beam-search fallback. Successful cascades are fused
 into the Vortex graph as one-way ripple edges with explicit interact positions.
 
 Key integration points:
-- `mre/ai_ripple.qc`: MCTS tree search (`Ripple_MaelstromMCTS`) + beam fallback
-  (`Ripple_MaelstromSim`), probe pulses, rollout mutation, and ripple fusing.
+- `mre/ai_ripple.qc`: heuristic trace probes + beam-search fallback
+  (`Ripple_MaelstromSim`), probe pulses, and ripple fusing.
 - `mre/ai_vortex.qc`: ripple fields on nodes, A* cost bias for ripple edges, and
   path reconstruction redirect to the interactable position.
 - `mre/botmove.qc`: `Ripple_TryInteract()` fires/touches when near a ripple node.
@@ -225,20 +223,15 @@ Key integration points:
 
 Behavior summary:
 - When LOS to the goal is blocked, `RippleDetect()` pulses around the block to
-  find interactables and runs MCTS to simulate shoot/touch/wait sequences.
-- MCTS mutates ghost flags (door open / plat raised), scores rollouts with
-  `ShadowReward`, and backprops to select a best cascade.
+  find interactables and runs trace probes to evaluate shoot/touch/wait sequences.
 - The best cascade fuses a ripple edge: `ripple_pos` is the interact waypoint,
   `ripple_target` is the post-effect node, and A* adds a cost penalty for the
   interaction delay.
-- If MCTS fails to find a viable cascade, beam-search Maelstrom is used as a
-  fallback.
+- Rocket jump beam depth scales by skill: `6 + floor(skil * 0.6)` (6 at skill 0,
+  12 at skill 10).
 
 Compile-time tuning knobs (ai_ripple.qc):
-- MCTS: `MCTS_NODES`, `MCTS_CHILDREN`, `MCTS_ITER_BASE`, `MCTS_ITER_PER_SKILL`,
-  `MCTS_ITER_MAX`, `MCTS_ROLL_DEPTH`, `MCTS_UCT_C`
-- Early stop: `MCTS_EARLY_VISITS`, `MCTS_EARLY_REWARD`
-- Probe/throttle: `RIPPLE_PROBE_THROTTLE`, `MCTS_THROTTLE`,
+- Probe/throttle: `RIPPLE_PROBE_THROTTLE`,
   `RIPPLE_PULSE_DIRS`, `RIPPLE_PULSE_DIST`, `RIPPLE_GOAL_RANGE`,
   `RIPPLE_ACTION_RANGE`
 
@@ -248,12 +241,12 @@ Decay:
 ## Grenade Vortex (GJ/GLJ Leap Oracle)
 Grenade Vortex extends Quantum Leaps with grenade-jump (GJ) and grenade-launch
 bounce jump (GLJ) actions when rockets are scarce or the purpose demands a
-softer arc. GJ/GLJ are simulated inside the same MCTS rollout tree used for
+softer arc. GJ/GLJ are simulated inside the same beam-search rollout used for
 rocket jumps, with bounce-aware fuse timing and purpose-tuned launch vectors.
 
 Key integration points:
 - `mre/ai_ripple.qc`: GJ/GLJ actions (24-39), bounce sim, and mixed RJ/GJ/GLJ
-  priors in `Quantum_MCTSExpand`/`Quantum_MCTSRollout`.
+  beam-search priors.
 - `mre/botmove.qc`: unchanged call sites (`Quantum_RJDetect`, `Quantum_TryLeap`)
   now select RJ/GJ/GLJ based on ammo/health/purpose.
 - `mre/bot_learn.qc`: phantom episodes tune GJ horiz/vert coeffs and GLJ launch
@@ -264,18 +257,24 @@ Notes:
   bot lacks `IT_GRENADE_LAUNCHER`.
 - Health gating: RJ >= `RJ_MIN_HEALTH`, GJ/GLJ >= `GJ_MIN_HEALTH`.
 
-## Vortex Telechains + Apex Lifts (teleport + platform fusion)
+## Vortex Telechains + Lift Routing (teleport + platform fusion)
 - Telechains: large warps (>500u) are detected via phantom tele events and fused
   into one-way tele edges; chain depth is limited to prevent loops.
 - Lifts: nodes are sampled against `func_plat`/`func_train`, with a wait penalty
-  based on the lift cycle; Apex clusters mark lift portals as low-cost edges.
+  based on the lift cycle in Vortex A*.
 - Oracle Rides: ETA-based wait cost, movement sync to catch lift up-phases, and
   phase refinement from successful lift rides.
 - Rollout sim grants a lift reward with bias for upward motion to encourage stable rides.
 
 ## Mirage Minds tuning (cvars)
-- `sv_mirage` (0/1): master enable for persona-driven humanization
-- `mirage_debug` (0/1): log persona/entropy (requires `+developer 1`)
+- `sv_mirage` (0/1): master enable for entropy-driven humanization
+- `mirage_debug` (0/1): log entropy state (requires `+developer 1`)
+
+Mirage uses an entropy model (no personas or heat maps):
+- `mood_entropy` drifts randomly, dampened when enemy is visible (focus up).
+- High entropy triggers yaw jitter, pitch jitter, glance-aways, and hold-fire feints.
+- Pitch bias is applied to aiming via `mirage_pitch_bias` field.
+- Cursed Nodes (stuck-learning mesh) remain integrated in `ai_mirage.qc`.
 
 Defaults for `sv_mirage` and `mirage_debug` are set in `mre/Autoexec.cfg`.
 

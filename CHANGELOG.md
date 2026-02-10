@@ -6,6 +6,29 @@
 - Rebooting Reaper Bot from a clean baseline.
 - Focusing first on community-reported issues.
 
+### Simplification (System Cleanup)
+- Removed **Apex HPA\*** hierarchical clustering (`ai_apex.qc` deleted, references removed from `world.qc`, `progs.src`). The Vortex A* mesh handles all maps without a second abstraction layer.
+- Simplified **Mirage Minds**: removed persona system (5 personas, persona switching, heat maps, micro-goals). Now entropy-only with yaw/pitch jitter, glance-aways, and hold-fire feints.
+- Simplified **Ripple Oracles**: removed MCTS tree search. Now uses heuristic trace probes with flat beam-search fallback. Same cascade fusion, far less code.
+- Cleaned up **Slayer Eclipse**: removed hardcoded username checks (`slywall`/`Shane`). `user_learn` now applies to any connected player.
+
+### Intelligence Update (12 Enhancements)
+- **Exponential aim jitter** (`botfight.qc`): skill 0 = ~30 deg max error, skill 3 = ~5 deg, skill 5+ = perfect. Was linear ~8 deg max. Also adds Z-axis (pitch) jitter.
+- **Reaction fire delay** (`bot_ai.qc`): first shot delayed after spotting enemy (skill 0 = 300ms, skill 4+ = instant). Previously only gated seeing, not firing.
+- **Non-linear shadow depth** (`botspawn.qc`): prediction depth now `3 + floor(skill^2 * 0.13)` — skill 0 = 3 steps, skill 5 = 6, skill 10 = 16. Was linear `6 + skill`.
+- **Gradual retreat** (`bot_ai.qc`): probability curve using effective health (health + armor * armortype). At 60 eff HP: 0% retreat, at 30: 50%, at 0: 100%. Was hard cutoff at health < 15.
+- **Ambush armor awareness** (`bot_ai.qc`): threshold uses effective HP (50), timeout scales by skill (2-5s). Was health < 40 with fixed 4s timeout.
+- **Adaptive strafe timing** (`bot_ai.qc`): high-skill bots hold good strafe directions longer (0.3-0.7s vs fixed 0.4s).
+- **Multi-axis MirageTick** (`ai_mirage.qc`): added pitch jitter (vertical drift), glance-aways (skill 3+ briefly look off-target), variable hold-fire duration.
+- **Ammo-aware weapon switching** (`botfight.qc`): bots preemptively switch weapons before running dry (RL/GL <= 1 rocket, LG <= 5 cells, SNG <= 5 nails).
+- **Combat bunny hopping** (`botmove.qc`): bots hop when enemy is far (>400u), skilled bots (4+) hop while retreating mid-range.
+- **Blind fire memory** (`botfight.qc`): tracks consecutive missed pre-fires. After 2 misses at the same spot, blacklists it for 10s. Resets on enemy contact.
+- **GETGOODY threat abort** (`bot_ai.qc`): bots abandon item grabs when health < 40 and enemy is visible within 400 units.
+- **Vortex slime avoidance** (`ai_vortex.qc`): CONTENT_SLIME added to navmesh hazard checks.
+- **Specter drama enhancement** (`ai_specter.qc`): low-health duels (+6 drama) and recent combat (+4 drama) bonuses improve camera focus.
+- **Skill-scaled RJ depth** (`ai_ripple.qc`): rocket jump simulation steps scale from 6 (skill 0) to 12 (skill 10). Was fixed at 8.
+- **Mirage pitch bias** (`botfight.qc`): pitch bias from MirageTick applied to aiming for vertical tracking imperfection.
+
 ### Features
 - **Specter Gaze** cinematic spectator camera (`ai_specter.qc`, `client.qc`, `botit_th.qc`, `defs.qc`).
   - Toggle with `impulse 105`, cycle focus with `impulse 106`.
@@ -27,11 +50,11 @@
 - Silent Specters (stealth unstuck rollouts: quiet maneuvers, jump penalty when enemies are near, minimal jump noise).
 - Cursed Nodes (adaptive stuck-learning mesh with decay; integrated into rollouts and route cost).
 - Phantom Apprenticeship (spectral episodes with rollout validation, soft A* bias, decay; no teleport shortcuts or golden locks).
-- **Vortex Navmesh + Apex HPA\***: incremental dynamic mesh seeded from spawns/items, phantom-validated edges, cursed/glory-biased costs, decay culling, and hierarchical clustering for large maps (no pre-bake).
+- **Vortex Navmesh**: incremental dynamic mesh seeded from spawns/items, phantom-validated edges, cursed/glory-biased costs, and decay culling (no pre-bake).
 - **Vortex Telechains**: teleporter warp detection + one-way quantum edges, chain-limited A* fusion, hazard cursing, and glory boosts for strong exits.
-- **Apex Lifts**: lift detection/sampling with wait-cost biasing in Vortex and low-cost lift portals in Apex HPA*.
-- **Ripple Oracles + Maelstrom MCTS**: causal interactable prediction for buttons/doors/plats using MCTS rollouts with adaptive iterations, ripple edge fusion into Vortex, and beam-search fallback.
-- Mirage Minds (persona-driven humanization with entropy, micro-goals, heatmap denial, and feint pauses).
+- **Lift Routing**: lift detection/sampling with wait-cost biasing in Vortex A*.
+- **Ripple Oracles**: causal interactable prediction for buttons/doors/plats using heuristic trace probes with beam-search fallback, ripple edge fusion into Vortex.
+- Mirage Minds (entropy-driven humanization with yaw/pitch jitter, glance-aways, and feint pauses).
 - Teacher Mode debugging (impulse 102 show / 103 hide BotPath nodes with particles).
 - Speed Demon update (bunny hopping on straight runs and reflex projectile dodging).
 - Humanized idle behavior (BotRoam makes bots wander and scavenge instead of freezing).

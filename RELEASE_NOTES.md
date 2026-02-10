@@ -70,9 +70,21 @@ Watch bot matches with a smooth, film-like camera system.
 - Chase mode (`specter_chase 1`) for first-person through bot's eyes
 - Geometry-based angle computation eliminates jitter and wrapping bugs
 
-### Vortex Telechains + Apex Lifts (Reboot Extensions)
+### Vortex Telechains + Lift Routing (Reboot Extensions)
 - **Telechains**: bots detect teleporter warps and fuse one-way tele edges, enabling safe multi-tele flanks while avoiding cursed exits.
-- **Apex Lifts**: timed platform nodes add wait-cost biasing and low-cost lift portals for smoother lift routing and chaining.
+- **Lift Routing**: timed platform nodes add wait-cost biasing for smoother lift routing.
+
+### Intelligence Update (Skill-Differentiated Humanization)
+Bots now feel like different-skilled human players rather than identical machines.
+
+- **Aim**: Exponential jitter scaling (skill 0 = ~30 deg miss, skill 5+ = perfect). Pitch jitter from Mirage Minds adds vertical tracking imperfection.
+- **Reactions**: First shot delayed after spotting enemy (skill 0 = 300ms, skill 4+ = instant).
+- **Prediction**: Non-linear depth curve (skill 0 = 3 steps, skill 10 = 16 steps).
+- **Retreat**: Gradual probability curve based on effective health (health + armor), not hard cutoff.
+- **Combat**: Ammo-aware weapon switching, blind fire memory (stops pre-firing failed corners), item grab threat abort.
+- **Movement**: Adaptive strafe timing, combat bunny hopping for skilled bots, skill-scaled ambush patience.
+- **Humanization**: Multi-axis Mirage Minds with pitch jitter, glance-aways, and variable hold-fire feints.
+- **Camera**: Specter Gaze enhanced with low-health duel and recent combat drama bonuses.
 
 ---
 

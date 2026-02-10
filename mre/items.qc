@@ -1,6 +1,5 @@
 
 void () W_SetCurrentAmmo;
-void (vector pos, float val) Mirage_AddHeat;
 
 void () SUB_regen = {
 
@@ -548,7 +547,6 @@ void () weapon_touch = {
                   cacheRoute (other.movetarget,other.movetarget.movetarget,FALSE,self);
 
                }
-               Mirage_AddHeat (self.origin, 200.000);
             } else {
 
                if ( (self.classname == "weapon_grenadelauncher") ) {
@@ -584,7 +582,6 @@ void () weapon_touch = {
                         cacheRoute (other.movetarget,other.movetarget.movetarget,FALSE,self);
 
                      }
-                     Mirage_AddHeat (self.origin, 200.000);
                   } else {
 
                      objerror ("weapon_touch: unknown classname");
@@ -1388,13 +1385,6 @@ void () powerup_touch = {
          cacheRoute (other.movetarget,other.movetarget.movetarget,FALSE,self);
 
       }
-   }
-   if ( (self.classname == "item_artifact_super_damage") ) {
-      Mirage_AddHeat (self.origin, 500.000);
-   } else if ( (self.classname == "item_artifact_invulnerability") ) {
-      Mirage_AddHeat (self.origin, 500.000);
-   } else if ( (self.classname == "item_artifact_invisibility") ) {
-      Mirage_AddHeat (self.origin, 400.000);
    }
    activator = other;
    SUB_UseTargets ();

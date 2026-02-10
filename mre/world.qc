@@ -4,8 +4,6 @@ void () DecayCursed;
 void () Cursed_Reset;
 void () Vortex_Reset;
 void () Vortex_Frame;
-void () Apex_Reset;
-void () Apex_Frame;
 
 void () main = {
 
@@ -139,7 +137,6 @@ void () worldspawn =
    InitBodyQue ();
    Cursed_Reset ();
    Vortex_Reset ();
-   Apex_Reset ();
    Specter_Reset ();
    if ( (self.model == "maps/e1m8.bsp") ) {
 
@@ -255,7 +252,6 @@ void () StartFrame = {
    DecayEpisodes ();
    DecayCursed ();
    Vortex_Frame ();
-   Apex_Frame ();
 
 };
 

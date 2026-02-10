@@ -359,14 +359,16 @@ float () Bot_CheckReaction; // Forward declaration
   .float vortex_path_time;   // Last Vortex path compute time
 // Mirage Minds (persona/entropy humanization)
 .float mood_entropy;       // 0..1 persona variance
-.float persona_state;      // Persona enum
 .vector mirage_goal;       // Short-lived bias goal
 .float mirage_goal_time;   // Goal expiry time
 .float mirage_yaw_bias;    // Temporary yaw bias (degrees)
 .float mirage_yaw_time;    // Yaw bias expiry time
 .float mirage_next_time;   // Throttle timer
-.float mirage_persona_time;// Persona change throttle
 .float mirage_hold_fire_time; // Feint: pause firing
+.float mirage_pitch_bias;    // Temporary pitch bias (degrees)
+.float mirage_glance_time;   // Glance-away expiry
+.float blind_fire_miss;      // Consecutive missed blind fires
+.vector blind_fire_spot;     // Last blind fire target
 // Specter Gaze (cinematic spectator)
 .vector old_vel;           // Velocity from prior think (for Specter prediction)
 .vector replay_pos0;

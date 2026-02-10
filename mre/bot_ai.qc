@@ -271,10 +271,13 @@ float () RunAway = {
       }
 
    }
-   if ( (self.health < 15.000) ) {
-
-      return ( TRUE );
-
+   // Gradual retreat: probability increases as effective health drops
+   local float eff_hp;
+   eff_hp = (self.health + (self.armorvalue * self.armortype));
+   if ( (eff_hp < 60.000) ) {
+      if ( (random () < ((60.000 - eff_hp) / 60.000)) ) {
+         return ( TRUE );
+      }
    }
    if ( (weap & ((IT_SHOTGUN + IT_AXE) + IT_NAILGUN)) ) {
 
@@ -402,6 +405,12 @@ float () Bot_CheckReaction = {
       // Promote pending to active enemy
       self.enemy = self.pending_enemy;
       self.pending_enemy = world;
+      // Delay first shot — skill 0: 300ms, skill 4+: 0ms
+      local float fire_delay;
+      fire_delay = (0.300 - (self.skil * 0.075));
+      if ( fire_delay > FALSE ) {
+         self.attack_finished = (time + fire_delay);
+      }
       BotHuntTarget ();
       return ( TRUE );
 
@@ -1150,7 +1159,7 @@ void (float dist, float turn) aibot_run_slide = {
       }
 
    }
-   if ( (self.strafetime > 0.400) ) {
+   if ( (self.strafetime > (0.300 + (self.skil * 0.040))) ) {
 
       rnd = (random () * FL_SWIM);
       if ( (rnd > 1.870) ) {
@@ -1520,11 +1529,8 @@ void (float dist) BotAI_Main = {
       return;
    }
 
-   // Mirage Minds: persona/entropy biasing
+   // Mirage Minds: entropy biasing
    MirageTick ();
-   if ( Slayer_GodMode () && (self.skil > 8.000) && (random () < 0.200) ) {
-      self.persona_state = floor (random () * 5.000);
-   }
 
    // Phantom Apprenticeship: occasionally shadow a player
    if ( !self.phantom && (random () < 0.030) && (time > (self.last_phantom + 30.000)) ) {
@@ -1669,7 +1675,9 @@ void (float dist) BotAI_Main = {
       // When low health and being chased, set up an ambush instead of
       // running. Stop, aim at the entry point, and wait with SSG/RL.
       // =================================================================
-      if ( self.health < 40 && self.health > 0 && self.enemy ) {
+      local float ambush_hp;
+      ambush_hp = (self.health + (self.armorvalue * self.armortype));
+      if ( ambush_hp < 50 && self.health > 0 && self.enemy ) {
 
          // Calculate if enemy is chasing us (dot product check)
          local vector dir_to_bot;
@@ -1680,8 +1688,8 @@ void (float dist) BotAI_Main = {
          if ( chasing > 0.4 ) {
             // They are chasing! Set the trap.
 
-            // Timeout: don't ambush forever (max 4 seconds)
-            if ( self.ambush_ready && time > self.ambush_start_time + 4.0 ) {
+            // Timeout: skill-scaled (skill 0: 2s, skill 10: 5s)
+            if ( self.ambush_ready && time > self.ambush_start_time + (2.000 + self.skil * 0.300) ) {
                self.ambush_ready = FALSE;
                if ( cvar("developer") ) {
                   dprint ("[");
@@ -2232,6 +2240,15 @@ void (float dist) ai_botgetGoody = {
 
    }
    goody_yaw = vectoyaw ((self.goalentity.origin - self.origin));
+   // Threat abort: abandon item grab if taking heavy fire while low
+   if ( self.enemy && enemyvisible (self.enemy) ) {
+      local float threat_dist;
+      threat_dist = vlen (self.enemy.origin - self.origin);
+      if ( (self.health < 40.000) && (threat_dist < 400.000) ) {
+         ai_endgetGoody (dist);
+         return;
+      }
+   }
    if ( enemyvisible (self.enemy) ) {
 
       self.lastseenpos = self.enemy.origin;

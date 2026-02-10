@@ -3,7 +3,6 @@
 float (vector start, vector goal, float maneuver) EtherealRollout;
 float (vector pos) GetCursePenalty;
 float (vector spot) dropline;
-vector (vector start, vector goal) Apex_VortexNext;
 float (vector spot) BotDetectHazard;
 void (vector pos) CurseNode;
 float (float idx, float at_time) Vortex_LiftWaitAt;
@@ -690,7 +689,7 @@ void () Vortex_Flood = {
       if ( trace_fraction > 0.700 ) {
          endpos = trace_endpos;
          contents = pointcontents (endpos);
-         if ( (contents != CONTENT_LAVA) && (contents != CONTENT_SOLID) && (contents != CONTENT_SKY) ) {
+         if ( (contents != CONTENT_LAVA) && (contents != CONTENT_SLIME) && (contents != CONTENT_SOLID) && (contents != CONTENT_SKY) ) {
             floorpos = endpos;
             floorpos_z = (dropline (endpos) + 1.000);
             tidx = Vortex_FindNode (floorpos);
@@ -1031,7 +1030,7 @@ float () Vortex_ApplyGoal = {
    if ( (time < (self.vortex_path_time + 0.500)) && (vlen (self.vortex_path_goal - goal_pos) < 64.000) ) {
       next = self.vortex_path_next;
    } else {
-      next = Apex_VortexNext (self.origin, goal_pos);
+      next = Vortex_NextStep (self.origin, goal_pos);
       self.vortex_path_goal = goal_pos;
       self.vortex_path_next = next;
       self.vortex_path_time = time;

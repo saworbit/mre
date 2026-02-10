@@ -69,32 +69,37 @@ For visual/behavioral verification:
 - [ ] **Vortex Navmesh**: After ~30-60s, bots route around blocked LOS using dynamic mesh nodes
 - [ ] **Vortex Telechains**: Teleporter chains are detected (dm2/dm4), exits are predictable, and bots avoid cursed exits
 - [ ] **Lift Riding**: Bots wait on platforms, don't walk off mid-ride
-- [ ] **Apex Lifts**: Bots time lifts, chain lift paths, and don't spam jump on platforms
-- [ ] **Oracle Rides**: Bots sync approach speed to catch lift up-phases (reduced wait)
+- [ ] **Lift Routing**: Bots time lifts and don't spam jump on platforms
 - [ ] **Door Opening**: Bots trigger doors and wait for them to open
 - [ ] **Ripple Oracles**: Bots probe blocked goals, shoot/touch buttons or plats, and chain cascades
 - [ ] **Hazard Avoidance**: Bots refuse to walk into lava/slime
 - [ ] **Wall Flow**: Bots curve smoothly around corners (no stop-turn-go)
 - [ ] **Cliff Awareness**: Bots steer away from ledges before reaching them
-- [ ] **Mirage Arcs**: Bots show slight yaw arcs and micro-goal drift (persona layer)
+- [ ] **Mirage Arcs**: Bots show slight yaw/pitch drift and occasional glance-aways (entropy layer)
 - [ ] **Specter Gaze**: `impulse 105` toggles cinematic camera, smooth tracking, auto-switching on action
 - [ ] **Specter Chase**: `specter_chase 1` gives first-person through bot's eyes
 - [ ] **Specter Cycle**: `impulse 106` cycles focus, camera snaps then smoothly settles
 - [ ] **Specter Off**: `impulse 105` again returns player to original position
 
 ### Combat Fairness
-- [ ] **Aim Jitter**: Skill 0 bots miss noticeably (~25° error)
-- [ ] **Reaction Time**: Skill 0 bots have ~200ms delay before engaging (surprise attacks work)
+- [ ] **Aim Jitter**: Skill 0 bots miss noticeably (~30° error), skill 5+ near-perfect
+- [ ] **Reaction Time**: Skill 0 bots have ~300ms delay before first shot (surprise attacks work)
 - [ ] **Object Permanence**: Bots continue firing at doorways briefly after you break LOS
-- [ ] **Feints**: Bots occasionally pause fire briefly at close range (mirage persona)
+- [ ] **Feints**: Bots occasionally pause fire briefly at close range (mirage entropy)
+- [ ] **Pitch Jitter**: Bots show slight vertical aim drift (not laser-locked pitch)
+- [ ] **Glance-Aways**: Skill 3+ bots briefly look off-target during high entropy
 - [ ] **Knockback**: Bots get pushed by rockets/explosions (not rooted in place)
-- [ ] **Retreat**: Low-health bots without nearby goodies back off to break LOS
+- [ ] **Gradual Retreat**: Low-health bots retreat probabilistically based on effective health
+- [ ] **Ammo Switching**: Bots switch weapons before running dry (not after)
+- [ ] **Blind Fire Memory**: Pre-fire stops after 2 consecutive misses at same corner
+- [ ] **Item Grab Abort**: Low-health bots abandon item pickups when under fire
 - [ ] **No Vacuum Pickup**: Items don't vanish until bot reaches them
 - [ ] **Target Selection**: Bots fight each other, not just humans
 - [ ] **Safe Explosives**: Bots switch weapons at close range (<150 units)
 - [ ] **Water Safety**: Bots don't discharge lightning gun in water
 - [ ] **No Camping**: Bots don't linger at weapons they already own
 - [ ] **Observer Safety**: Bots ignore spectators (noclip players)
+- [ ] **Combat Bunny Hop**: Skilled bots (4+) hop while retreating mid-range
 
 ### Aiming
 - [ ] **Lead Capping**: Bots don't over-lead at long range
