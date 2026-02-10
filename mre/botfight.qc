@@ -3,11 +3,15 @@ vector (entity foe) MonteLead;
 float () Slayer_GodMode;
 
 // Reflex dodge: evade incoming rockets/grenades
+// Graded response: closer threats produce stronger dodges
 void () BotReflexDodge = {
 
    local entity missile;
    local vector dir;
    local vector side_dir;
+   local float threat_dist;
+   local float dodge_power;
+   local float side_bias;
 
    if ( time < self.last_dodge_time ) {
       return ;
@@ -19,18 +23,35 @@ void () BotReflexDodge = {
          if ( vlen (missile.velocity) > 10.000 ) {
             dir = normalize ((self.origin - missile.origin));
             if ( (normalize (missile.velocity) * dir) > 0.800 ) {
-               self.last_dodge_time = (time + 1.500);
+               threat_dist = vlen (self.origin - missile.origin);
+
+               // Graded dodge: closer threat = stronger response
+               // 200u: full power (450), 450u: minimal (200)
+               dodge_power = (450.000 - (threat_dist * 1.000));
+               if ( dodge_power < 200.000 ) dodge_power = 200.000;
+               if ( dodge_power > 450.000 ) dodge_power = 450.000;
+
+               // Variable cooldown: strong dodge = longer recovery
+               self.last_dodge_time = (time + 1.000 + ((dodge_power / 450.000) * 0.800));
+
                if ( cvar ("developer") ) {
-                  dprint ("Bot attempting DODGE!\n");
+                  dprint ("Bot DODGE: power=");
+                  dprint (ftos (floor (dodge_power)));
+                  dprint ("\n");
                }
                side_dir_x = missile.velocity_y;
                side_dir_y = -missile.velocity_x;
                side_dir_z = 0;
                side_dir = normalize (side_dir);
-               if ( (random () > 0.500) ) {
+
+               // Strong-side bias: entropy drives dodge preference
+               // Low entropy = consistent dodge side, high = random
+               side_bias = (0.500 + ((self.mood_entropy - 0.500) * 0.400));
+               if ( (random () > side_bias) ) {
                   side_dir = (side_dir * -1.000);
                }
-               self.velocity = (self.velocity + (side_dir * 350.000));
+
+               self.velocity = (self.velocity + (side_dir * dodge_power));
                self.button2 = TRUE;
                return ;
             }
@@ -397,20 +418,61 @@ vector () botaim = {
    }
    dir = normalize ((tg - self.origin));
 
-   // Skill-based aim error: exponential scaling
-   // Skill 0 = ~30 deg max, Skill 3 = ~5 deg, Skill 5+ = perfect
-   if ( (sk < 5.000) && !Slayer_GodMode () ) {
-      local float jit;
-      jit = ((5.000 - sk) * (5.000 - sk)) * 0.012;
-      dir = (dir + ((crandom () * jit) * '1 0 0'));
-      dir = (dir + ((crandom () * jit) * '0 1 0'));
-      dir = (dir + ((crandom () * jit * 0.600) * '0 0 1'));
+   // Slayer god mode: perfect snap tracking
+   if ( Slayer_GodMode () ) {
+      if ( self.mirage_pitch_bias ) {
+         dir = (dir + ((self.mirage_pitch_bias * 0.005) * '0 0 1'));
+      }
+      dir = normalize (dir);
+      self.last_aim_dir = dir;
+      self.aim_velocity = '0 0 0';
+      self.last_aim_time = time;
+      return ( dir );
+   }
+
+   // Spring-dampened aim tracking (human-like inertia)
+   // Instead of snap-to-target+noise, aim smoothly chases the target
+   // with velocity and damping, producing organic tracking curves
+   if ( (vlen (self.last_aim_dir) < 0.100) ) {
+      self.last_aim_dir = dir;
+      self.aim_velocity = '0 0 0';
+      self.last_aim_time = time;
+   }
+
+   local float stiff;
+   local float damp_c;
+   local float dt;
+   local vector accel;
+
+   dt = (time - self.last_aim_time);
+   self.last_aim_time = time;
+   if ( (dt <= FALSE) ) dt = 0.100;
+   if ( (dt > 0.200) ) dt = 0.200;
+
+   // Stiffness: how fast aim chases target
+   // Skill 0: sluggish (12), Skill 5: snappy (32)
+   stiff = (12.000 + (sk * 4.000));
+   // Damping: prevents oscillation/overshoot
+   // Skill 0: heavy (8), Skill 5: responsive (18)
+   damp_c = (8.000 + (sk * 2.000));
+
+   accel = (((dir - self.last_aim_dir) * stiff) - (self.aim_velocity * damp_c));
+   self.aim_velocity = (self.aim_velocity + (accel * dt));
+   self.last_aim_dir = (self.last_aim_dir + (self.aim_velocity * dt));
+   self.last_aim_dir = normalize (self.last_aim_dir);
+
+   // Micro-noise for human variance (much smaller than old jitter)
+   if ( (sk < 5.000) ) {
+      local float noise_amt;
+      noise_amt = (((5.000 - sk) * (5.000 - sk)) * 0.003);
+      self.last_aim_dir = (self.last_aim_dir + ((crandom () * noise_amt) * '1 0 0'));
+      self.last_aim_dir = (self.last_aim_dir + ((crandom () * noise_amt) * '0 1 0'));
    }
    // Mirage pitch bias (human imperfection in vertical tracking)
    if ( self.mirage_pitch_bias ) {
-      dir = (dir + ((self.mirage_pitch_bias * 0.010) * '0 0 1'));
+      self.last_aim_dir = (self.last_aim_dir + ((self.mirage_pitch_bias * 0.010) * '0 0 1'));
    }
-   dir = normalize (dir);
+   dir = normalize (self.last_aim_dir);
    return ( dir );
 
 };
@@ -886,6 +948,20 @@ void () W_BotAttack = {
 
       }
 
+   }
+
+   // Weapon switch fumble: brief fire delay when changing weapons
+   // Humans need time to settle aim after a weapon switch
+   if ( (self.weapon != self.weapon_prev) ) {
+      local float fumble;
+      fumble = (0.250 - (self.skil * 0.040));
+      if ( fumble < 0.050 ) fumble = 0.050;
+      fumble = (fumble * (0.800 + (random () * 0.400)));
+      self.weapon_switch_time = (time + fumble);
+      self.weapon_prev = self.weapon;
+   }
+   if ( (time < self.weapon_switch_time) ) {
+      return ;
    }
 
    addt = FALSE;

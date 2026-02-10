@@ -459,6 +459,21 @@ float LINK_LADDER     = 6; // Vertical water/ladder logic
 .float smooth_yaw_2;         // Buffer slot 2
 .float smooth_idx;           // Current buffer index (0-2)
 
+// Humanization: Aim spring dynamics (human-like tracking inertia)
+.vector aim_velocity;         // Aim tracking velocity (spring model)
+.vector last_aim_dir;         // Previous aim direction (spring state)
+.float last_aim_time;         // Last time aim spring was updated
+
+// Humanization: Strafe commitment
+.float strafe_hold_until;     // Time until current strafe direction is committed
+
+// Humanization: Combat entry stutter
+.float combat_entry_time;     // When combat engagement started
+
+// Humanization: Weapon switch fumble
+.float weapon_switch_time;    // Fire delay after weapon switch
+.float weapon_prev;           // Previous weapon (for detecting switches)
+
 // Air control (inspired by Frogbot AIR_ACCELERATION)
 float BOT_AIR_CONTROL = 1;   // Flag: allow limited air steering after knockback
 

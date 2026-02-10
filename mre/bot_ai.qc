@@ -353,6 +353,7 @@ void () BotHuntTarget = {
    }
    self.enemyrun = FALSE;
    self.strafetime = FALSE;
+   self.combat_entry_time = time;
    if ( (self.lefty & ONTRAIN) ) {
 
       self.lefty = (self.lefty - ONTRAIN);
@@ -709,6 +710,47 @@ float (entity targ) BotValidTarget = {
 
 };
 
+// Helper: compute threat-aware score for target selection
+// Lower score = higher priority target
+float (entity head, float dist) BotThreatScore = {
+
+   local float adj_dist;
+   local float ehp;
+   local float shp;
+   local vector dir_to_me;
+   local float face_dot;
+
+   adj_dist = dist;
+   ehp = (head.health + (head.armorvalue * head.armortype));
+   shp = (self.health + (self.armorvalue * self.armortype));
+   // Prefer weaker enemies
+   if ( (ehp < shp) && (shp > 0.000) ) {
+      adj_dist = (dist * (0.500 + (ehp / (shp * 2.000))));
+   }
+   // Avoid powerup carriers
+   if ( head.items & IT_QUAD ) {
+      adj_dist = (adj_dist * 1.500);
+   }
+   if ( head.items & IT_INVULNERABILITY ) {
+      adj_dist = (adj_dist * 3.000);
+   }
+   // Threat scoring: weapon danger + facing angle
+   dir_to_me = normalize (self.origin - head.origin);
+   makevectors (head.angles);
+   face_dot = (dir_to_me * v_forward);
+   if ( (face_dot > 0.700) ) {
+      adj_dist = (adj_dist - (100 * face_dot));
+   }
+   if ( (head.weapon == IT_ROCKET_LAUNCHER) || (head.weapon == IT_LIGHTNING) ) {
+      adj_dist = (adj_dist - 80);
+   } else if ( (head.weapon == IT_SUPER_NAILGUN) ) {
+      adj_dist = (adj_dist - 40);
+   }
+
+   return ( adj_dist );
+
+};
+
 // Target acquisition: use checkclient() for players and cached bot list to avoid full entity scans
 float /* Warning: Could not determine return type */ () BotFindTarget = {
 
@@ -781,39 +823,11 @@ float /* Warning: Could not determine return type */ () BotFindTarget = {
          if ( BotValidTarget (head) ) {
 
             dist = vlen (head.origin - self.origin);
-            // Threat-aware scoring: prefer weaker enemies, avoid powerup carriers
-            local float adj_dist;
-            local float ehp;
-            local float shp;
-            adj_dist = dist;
-            ehp = (head.health + (head.armorvalue * head.armortype));
-            shp = (self.health + (self.armorvalue * self.armortype));
-            if ( (ehp < shp) && (shp > 0.000) ) {
-               adj_dist = (dist * (0.500 + (ehp / (shp * 2.000))));
-            }
-            if ( head.items & IT_QUAD ) {
-               adj_dist = (adj_dist * 1.500);
-            }
-            if ( head.items & IT_INVULNERABILITY ) {
-               adj_dist = (adj_dist * 3.000);
-            }
-            // Threat scoring: weapon danger + facing angle
-            local vector dir_to_me;
-            local float face_dot;
-            dir_to_me = normalize(self.origin - head.origin);
-            makevectors(head.angles);
-            face_dot = dir_to_me * v_forward;
-            if ( (face_dot > 0.700) ) {
-               adj_dist = adj_dist - (100 * face_dot);
-            }
-            if ( (head.weapon == IT_ROCKET_LAUNCHER) || (head.weapon == IT_LIGHTNING) ) {
-               adj_dist = adj_dist - 80;
-            } else if ( (head.weapon == IT_SUPER_NAILGUN) ) {
-               adj_dist = adj_dist - 40;
-            }
-            if ( adj_dist < best_dist ) {
+            local float score;
+            score = BotThreatScore (head, dist);
+            if ( score < best_dist ) {
 
-               best_dist = adj_dist;
+               best_dist = score;
                best = head;
 
             }
@@ -831,39 +845,11 @@ float /* Warning: Could not determine return type */ () BotFindTarget = {
       if ( (head.classname == "dmbot") && BotValidTarget (head) ) {
 
          dist = vlen (head.origin - self.origin);
-         // Threat-aware scoring: prefer weaker enemies, avoid powerup carriers
-         local float adj_dist2;
-         local float ehp2;
-         local float shp2;
-         adj_dist2 = dist;
-         ehp2 = (head.health + (head.armorvalue * head.armortype));
-         shp2 = (self.health + (self.armorvalue * self.armortype));
-         if ( (ehp2 < shp2) && (shp2 > 0.000) ) {
-            adj_dist2 = (dist * (0.500 + (ehp2 / (shp2 * 2.000))));
-         }
-         if ( head.items & IT_QUAD ) {
-            adj_dist2 = (adj_dist2 * 1.500);
-         }
-         if ( head.items & IT_INVULNERABILITY ) {
-            adj_dist2 = (adj_dist2 * 3.000);
-         }
-         // Threat scoring: weapon danger + facing angle
-         local vector dir_to_me2;
-         local float face_dot2;
-         dir_to_me2 = normalize(self.origin - head.origin);
-         makevectors(head.angles);
-         face_dot2 = dir_to_me2 * v_forward;
-         if ( (face_dot2 > 0.700) ) {
-            adj_dist2 = adj_dist2 - (100 * face_dot2);
-         }
-         if ( (head.weapon == IT_ROCKET_LAUNCHER) || (head.weapon == IT_LIGHTNING) ) {
-            adj_dist2 = adj_dist2 - 80;
-         } else if ( (head.weapon == IT_SUPER_NAILGUN) ) {
-            adj_dist2 = adj_dist2 - 40;
-         }
-         if ( adj_dist2 < best_dist ) {
+         local float score2;
+         score2 = BotThreatScore (head, dist);
+         if ( score2 < best_dist ) {
 
-            best_dist = adj_dist2;
+            best_dist = score2;
             best = head;
 
          }
@@ -999,6 +985,15 @@ void (float dist, float turn) aibot_run_slide = {
    local float user_bias;
 
    trn = turn;
+
+   // Combat entry stutter: brief hesitation when first engaging
+   // Humans need a moment to process a new combat encounter
+   if ( (self.combat_entry_time > FALSE) && (time < (self.combat_entry_time + 0.200)) ) {
+      local float entry_frac;
+      entry_frac = ((time - self.combat_entry_time) / 0.200);
+      dist = (dist * (0.400 + (entry_frac * 0.600)));
+   }
+
    self.ideal_yaw = vectoyaw ((self.enemy.origin - self.origin));
    ChangeYaw ();
 
@@ -1279,25 +1274,22 @@ void (float dist, float turn) aibot_run_slide = {
       }
 
    }
-   if ( (self.strafetime > ((0.300 + (self.skil * 0.040)) * (0.750 + (random () * 0.500)))) ) {
-
-      rnd = (random () * FL_SWIM);
-      if ( (rnd > 1.870) ) {
-
+   // Strafe commitment: hold direction for a committed burst
+   // Humans commit to a direction, not jitter every frame
+   if ( (time > self.strafe_hold_until) ) {
+      local float hold_dur;
+      hold_dur = (0.300 + (self.skil * 0.060));
+      hold_dur = (hold_dur * (0.700 + (random () * 0.600)));
+      self.strafe_hold_until = (time + hold_dur);
+      rnd = random ();
+      if ( (rnd > 0.550) ) {
          if ( (self.lefty & STRAFE_DIR) ) {
-
             self.lefty = (self.lefty - STRAFE_DIR);
-
          } else {
-
             self.lefty = (self.lefty + STRAFE_DIR);
-
          }
-         self.strafetime = FALSE;
-         return ;
-
       }
-
+      self.strafetime = FALSE;
    }
    if ( (self.lefty & STRAFE_DIR) ) {
 
@@ -1629,6 +1621,20 @@ float (float dist) BotAI_CheckSoundInvestigation = {
    BotLogAI (AI_STATE_INVESTIGATE, "INVESTIGATING");
    dir_to_noise = self.noise_target - self.origin;
    self.ideal_yaw = vectoyaw (dir_to_noise);
+
+   // Hearing error: humans can't pinpoint exact sound direction
+   // Error scales with distance, inversely with skill
+   // Uses noise_time as stable seed so error doesn't jitter per frame
+   local float hear_err;
+   local float err_seed;
+   hear_err = (35.000 - (self.skil * 4.000));
+   if ( hear_err < 6.000 ) hear_err = 6.000;
+   hear_err = (hear_err * (0.500 + (dist_to_noise * 0.001)));
+   if ( hear_err > 45.000 ) hear_err = 45.000;
+   err_seed = (self.noise_time * 100.000);
+   err_seed = (err_seed - floor (err_seed));
+   self.ideal_yaw = (self.ideal_yaw + ((err_seed - 0.500) * hear_err * 2.000));
+
    ChangeYaw ();
 
    // Look around while investigating (slight head movement)

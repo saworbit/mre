@@ -101,7 +101,7 @@ Feeler exploration logs are developer-only: `Activating FEELER mode` and
 `[BotName] BREADCRUMB: Dropped at ...` appear when feeler mode triggers and
 bots drop breadcrumbs. Player learning logs appear as
 `[Player] BREADCRUMB: Learned waypoint at ...`.
-Reflex dodge logs appear as `Bot attempting DODGE!`.
+Reflex dodge logs appear as `Bot DODGE: power=<N>` with the graded impulse value.
 Quad debug logs appear as `[QuadSpawn]` when the item respawns and
 `[QuadTouch] accept/blocked/reject` when a player or bot tries to pick it up.
 Teleport traces appear as `[Teleport]` for bot teleporter use, and large
@@ -277,6 +277,59 @@ Mirage uses an entropy model (no personas or heat maps):
 - Cursed Nodes (stuck-learning mesh) remain integrated in `ai_mirage.qc`.
 
 Defaults for `sv_mirage` and `mirage_debug` are set in `mre/Autoexec.cfg`.
+
+## Humanization pass (intelligence pass #5)
+Seven changes to reduce robotic tells and improve organic behavior.
+
+### 1. Aim spring model (`botfight.qc`, `botaim()`)
+Replaces per-frame snap-to-target+noise with a spring-dampened tracking system.
+The aim direction smoothly chases the target with velocity and damping, producing
+organic tracking curves instead of jittery corrections.
+- Stiffness: 12 (skill 0) to 32 (skill 5) — controls chase speed.
+- Damping: 8 (skill 0) to 18 (skill 5) — prevents oscillation.
+- Uses `time - last_aim_time` for frame-rate independent delta.
+- Micro-noise (0.003 scale) replaces old exponential jitter (0.012 scale).
+- Slayer god mode bypasses the spring for perfect snap tracking.
+- Fields: `.aim_velocity`, `.last_aim_dir`, `.last_aim_time`.
+
+### 2. Graded dodge response (`botfight.qc`, `BotReflexDodge()`)
+Dodge impulse now scales with threat proximity instead of a flat 350u push.
+- Close threats (200u): 450u impulse. Distant threats (450u): 200u impulse.
+- Variable cooldown: 1.0–1.8s proportional to dodge strength.
+- Strong-side bias driven by `mood_entropy` (low entropy = consistent side).
+
+### 3. Weapon switch fumble (`botfight.qc`, `W_BotAttack()`)
+Brief fire delay after any weapon change (including auto-switches from ammo
+awareness). Simulates the human need to re-settle aim on a new weapon.
+- Delay: 50–250ms, skill-scaled (0.250 - skill * 0.040, min 0.050).
+- Randomized ±20% per switch for variance.
+- Fields: `.weapon_switch_time`, `.weapon_prev`.
+
+### 4. Strafe commitment (`bot_ai.qc`, `aibot_run_slide()`)
+Replaces per-frame random strafe switching with committed directional bursts.
+- Hold duration: 0.3–0.6s, skill-scaled (0.300 + skill * 0.060).
+- 45% chance to maintain current direction on re-roll (bias toward holds).
+- Uses `strafe_hold_until` timestamp instead of accumulating `strafetime`.
+- Field: `.strafe_hold_until`.
+
+### 5. Combat entry stutter (`bot_ai.qc`, `aibot_run_slide()` + `BotHuntTarget()`)
+200ms movement speed ramp when first engaging a new enemy. Movement scales from
+40% to 100% over the window, simulating a human's brief processing delay.
+- Set in `BotHuntTarget()` when combat begins.
+- Applied at the top of `aibot_run_slide()` using linear interpolation.
+- Field: `.combat_entry_time`.
+
+### 6. Sound direction error (`bot_ai.qc`, `BotAI_CheckSoundInvestigation()`)
+Bots no longer path perfectly to heard sounds. Hearing error is applied to the
+investigation yaw, causing bots to arrive slightly off-target.
+- Error range: 6° (skill 8+) to 35° (skill 0), capped at 45°.
+- Scales with distance (further = harder to localize).
+- Uses `noise_time * 100` as a stable pseudo-random seed to avoid per-frame jitter.
+
+### 7. Threat score refactor (`bot_ai.qc`, `BotFindTarget()`)
+Extracted ~80 lines of duplicated threat scoring into `BotThreatScore()` helper.
+Both the player scanning loop and the bot scanning loop now call the shared
+function. No behavioral change — pure code deduplication.
 
 ## Specter Gaze (cinematic spectator camera)
 Two-layer spectator camera system in `mre/ai_specter.qc`, hooked into `PlayerPreThink`
