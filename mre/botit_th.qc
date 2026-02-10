@@ -128,6 +128,8 @@ float (entity targ, entity inflictor) CanDamage;
 .entity enemycache;
 .float endpoint;
 .string teamname;
+.float dmg_dealt;
+.float post_kill_time;
 float NORMALSCORE    = 1.000;
 float MYSCORE    = 2.000;
 float MUST_HAVE    = 100.000;

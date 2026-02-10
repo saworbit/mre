@@ -99,7 +99,13 @@ For visual/behavioral verification:
 - [ ] **Water Safety**: Bots don't discharge lightning gun in water
 - [ ] **No Camping**: Bots don't linger at weapons they already own
 - [ ] **Observer Safety**: Bots ignore spectators (noclip players)
-- [ ] **Combat Bunny Hop**: Skilled bots (4+) hop while retreating mid-range
+- [ ] **Combat Bunny Hop**: Skilled bots hop (roam: skill 5+, far combat: skill 3+, retreat: skill 4+)
+- [ ] **Circle Strafing**: Skill 5+ bots orbit tighter (60-75°) during combat
+- [ ] **Elevation Preference**: Bots prefer strafing toward higher ground
+- [ ] **Threat Targeting**: Bots prioritize enemies aiming at them with dangerous weapons
+- [ ] **Post-Kill Scavenge**: Bots pick up backpacks/items for 2s after a kill
+- [ ] **Powerup Timing**: Skill 3+ bots pre-position for powerups about to spawn
+- [ ] **Ambush Silence**: Ambushing bots don't jump (no position giveaway)
 
 ### Aiming
 - [ ] **Lead Capping**: Bots don't over-lead at long range

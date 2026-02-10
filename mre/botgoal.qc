@@ -984,6 +984,23 @@ void () aibot_chooseGoal = {
 
                if ( (e.solid == SOLID_NOT) ) {
 
+                  // Skill 3+ bots anticipate items about to respawn
+                  if ( (self.skil >= 3) && (e.think == SUB_regen) && (e.nextthink > 0) && ((e.nextthink - time) <= 10) ) {
+                     local float spawn_eta;
+                     spawn_eta = e.nextthink - time;
+                     if ( (e.classname == "item_artifact_super_damage") || (e.classname == "item_artifact_invulnerability") ) {
+                        weight = MUST_HAVE * ((10.000 - spawn_eta) / 10.000);
+                     } else {
+                        weight = KINDA_WANT * ((10.000 - spawn_eta) / 10.000);
+                     }
+                     if ( (weight > best) ) {
+                        botTarget.goalentity = e;
+                        best = weight;
+                        bestorg = ((e.absmin + e.absmax) * 0.500);
+                     }
+                     e = e.chain;
+                     continue;
+                  }
                   weight = DONT_WANT;
 
                } else {

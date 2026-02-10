@@ -476,34 +476,34 @@ float (float ideal_yaw, float speed_factor) BotSteer = {
       }
    }
 
-   // 3. SENSOR 2: Left Whisker (-45 degrees)
-   feeler = (fwd * 0.7) - (rt * 0.7);
-   end_pos = start + (feeler * (dist * 0.8));
+   // 3. SENSOR 2: Left Whisker (-45 degrees) — staggered on even frames
+   if ( !((self.lefty & TRUE)) ) {
+      feeler = (fwd * 0.7) - (rt * 0.7);
+      end_pos = start + (feeler * (dist * 0.8));
 
-   traceline (start, end_pos, TRUE, self);
-   if ( trace_fraction < 1.0 ) {
-      if ( !BotIsStep (trace_endpos, feeler) ) {
-         // Real wall -> Push right (along normal)
-         steer_dir = steer_dir + (trace_plane_normal * 1.5);
+      traceline (start, end_pos, TRUE, self);
+      if ( trace_fraction < 1.0 ) {
+         if ( !BotIsStep (trace_endpos, feeler) ) {
+            steer_dir = steer_dir + (trace_plane_normal * 1.5);
+         }
+      } else if ( hazard_check && BotDetectHazard (end_pos) ) {
+         steer_dir = steer_dir + (rt * 2.0);
       }
-   } else if ( hazard_check && BotDetectHazard (end_pos) ) {
-      // Hazard left -> Push right hard
-      steer_dir = steer_dir + (rt * 2.0);
    }
 
-   // 4. SENSOR 3: Right Whisker (+45 degrees)
-   feeler = (fwd * 0.7) + (rt * 0.7);
-   end_pos = start + (feeler * (dist * 0.8));
+   // 4. SENSOR 3: Right Whisker (+45 degrees) — staggered on odd frames
+   if ( (self.lefty & TRUE) ) {
+      feeler = (fwd * 0.7) + (rt * 0.7);
+      end_pos = start + (feeler * (dist * 0.8));
 
-   traceline (start, end_pos, TRUE, self);
-   if ( trace_fraction < 1.0 ) {
-      if ( !BotIsStep (trace_endpos, feeler) ) {
-         // Real wall -> Push left (along normal)
-         steer_dir = steer_dir + (trace_plane_normal * 1.5);
+      traceline (start, end_pos, TRUE, self);
+      if ( trace_fraction < 1.0 ) {
+         if ( !BotIsStep (trace_endpos, feeler) ) {
+            steer_dir = steer_dir + (trace_plane_normal * 1.5);
+         }
+      } else if ( hazard_check && BotDetectHazard (end_pos) ) {
+         steer_dir = steer_dir + (rt * -2.0);
       }
-   } else if ( hazard_check && BotDetectHazard (end_pos) ) {
-      // Hazard right -> Push left hard
-      steer_dir = steer_dir + (rt * -2.0);
    }
 
    // 5. RESOLVE FORCES
@@ -645,17 +645,7 @@ float (float target_yaw) BotSmoothSteer = {
       delta = -15;
    }
 
-   // Log when smoothing significantly dampens jitter (only extreme cases)
-   // Raised threshold from 20° to 40° to reduce spam - only log big corrections
-   if ( cvar("developer") && (fabs(raw_delta) > 40) && (fabs(raw_delta - delta) > 20) ) {
-      dprint ("[");
-      dprint (self.netname);
-      dprint ("] SMOOTH: Dampened ");
-      dprint (ftos(floor(raw_delta)));
-      dprint ("° to ");
-      dprint (ftos(floor(delta)));
-      dprint ("°\n");
-   }
+   // Turn smoothing debug removed — validated working, was producing 1500+ msgs/session
 
    smoothed = self.last_yaw + delta;
 
@@ -1192,17 +1182,17 @@ float (float s_yaw, float s_dist) botwalkmove = {
    }
    if ( is_straight_path && (self.health > 50.000) && !self.feeler_mode_active && self.whiskers_allowed ) {
       if ( !self.enemy || (self.enemy == world) ) {
-         // Only hop when far from goal — walk deliberately when closing in on items
-         if ( vlen (self.goalentity.origin - self.origin) > 600.000 ) {
+         // Only expert bots bunny hop while roaming — casual bots walk
+         if ( (self.skil >= 5.000) && (vlen (self.goalentity.origin - self.origin) > 600.000) ) {
             BotBunnyHop (self, s_yaw);
          }
       } else {
          local float edist;
          edist = vlen (self.enemy.origin - self.origin);
-         // Always hop if enemy far away
-         if ( edist > 400.000 ) {
+         // Skilled bots hop when enemy is far away
+         if ( (self.skil >= 3.000) && (edist > 400.000) ) {
             BotBunnyHop (self, s_yaw);
-         // Skilled bots hop while retreating mid-range
+         // Expert bots hop while retreating mid-range
          } else if ( (self.skil >= 4.000) && (edist > 200.000) && (self.lefty & RUNAWAY) ) {
             BotBunnyHop (self, s_yaw);
          }
@@ -1732,6 +1722,9 @@ float /* Warning: Could not determine return type */ (float vz, float dist, floa
    local vector dir;
    local vector start;
    local entity botTarget;
+
+   // Don't jump while ambushing — gives away position
+   if ( (self.last_ai_state == AI_STATE_AMBUSH) ) return ( FALSE );
 
    if ( !(self.flags & (FL_ONGROUND + FL_SWIM)) ) {
 

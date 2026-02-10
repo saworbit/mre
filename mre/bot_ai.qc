@@ -160,6 +160,7 @@ void () endEnemy = {
 
    }
    self.enemy = world;
+   self.dmg_dealt = 0;
    self.think = self.th_walk;
    self.nextthink = (time + 0.100);
    self.search_time = (time - TRUE);
@@ -796,6 +797,20 @@ float /* Warning: Could not determine return type */ () BotFindTarget = {
             if ( head.items & IT_INVULNERABILITY ) {
                adj_dist = (adj_dist * 3.000);
             }
+            // Threat scoring: weapon danger + facing angle
+            local vector dir_to_me;
+            local float face_dot;
+            dir_to_me = normalize(self.origin - head.origin);
+            makevectors(head.angles);
+            face_dot = dir_to_me * v_forward;
+            if ( (face_dot > 0.700) ) {
+               adj_dist = adj_dist - (100 * face_dot);
+            }
+            if ( (head.weapon == IT_ROCKET_LAUNCHER) || (head.weapon == IT_LIGHTNING) ) {
+               adj_dist = adj_dist - 80;
+            } else if ( (head.weapon == IT_SUPER_NAILGUN) ) {
+               adj_dist = adj_dist - 40;
+            }
             if ( adj_dist < best_dist ) {
 
                best_dist = adj_dist;
@@ -831,6 +846,20 @@ float /* Warning: Could not determine return type */ () BotFindTarget = {
          }
          if ( head.items & IT_INVULNERABILITY ) {
             adj_dist2 = (adj_dist2 * 3.000);
+         }
+         // Threat scoring: weapon danger + facing angle
+         local vector dir_to_me2;
+         local float face_dot2;
+         dir_to_me2 = normalize(self.origin - head.origin);
+         makevectors(head.angles);
+         face_dot2 = dir_to_me2 * v_forward;
+         if ( (face_dot2 > 0.700) ) {
+            adj_dist2 = adj_dist2 - (100 * face_dot2);
+         }
+         if ( (head.weapon == IT_ROCKET_LAUNCHER) || (head.weapon == IT_LIGHTNING) ) {
+            adj_dist2 = adj_dist2 - 80;
+         } else if ( (head.weapon == IT_SUPER_NAILGUN) ) {
+            adj_dist2 = adj_dist2 - 40;
          }
          if ( adj_dist2 < best_dist ) {
 
@@ -1301,6 +1330,35 @@ void (float dist, float turn) aibot_run_slide = {
       }
 
    }
+   // Circle strafing: skilled bots orbit at tighter angles
+   if ( (self.skil >= 5) ) {
+      local float circle_ofs;
+      circle_ofs = 60 + (random() * 15);
+      if ( (ofs < 0) ) circle_ofs = 0 - circle_ofs;
+      ofs = circle_ofs;
+   } else if ( (self.skil >= 3) ) {
+      local float circle_ofs2;
+      circle_ofs2 = 75 + (random() * 10);
+      if ( (ofs < 0) ) circle_ofs2 = 0 - circle_ofs2;
+      ofs = circle_ofs2;
+   }
+   // Elevation preference: bias strafing toward higher ground
+   if ( self.enemy && (self.skil >= 2) ) {
+      local vector left_pos, right_pos;
+      local float left_z, right_z;
+      makevectors(self.angles);
+      left_pos = self.origin + (v_right * -80);
+      right_pos = self.origin + (v_right * 80);
+      traceline(left_pos, left_pos - '0 0 200', TRUE, self);
+      left_z = trace_endpos_z;
+      traceline(right_pos, right_pos - '0 0 200', TRUE, self);
+      right_z = trace_endpos_z;
+      if ( (left_z > (right_z + 16)) && (ofs > 0) ) {
+         ofs = 0 - ofs;
+      } else if ( (right_z > (left_z + 16)) && (ofs < 0) ) {
+         ofs = 0 - ofs;
+      }
+   }
    if ( botwalkmove ((self.ideal_yaw + ofs),dis) ) {
 
       return ;
@@ -1418,6 +1476,38 @@ void (float dist) ai_botretreat = {
    away_yaw = vectoyaw (away_dir);
    self.ideal_yaw = away_yaw;
    ChangeYaw ();
+
+   // Retreat toward safety: blend retreat direction with nearby health/armor
+   local entity safe_item;
+   local float safe_dist;
+   safe_item = world;
+   safe_dist = 600;
+   local entity scan;
+   scan = findradius(self.origin, 600);
+   while ( scan ) {
+      if ( (scan.flags & FL_ITEM) ) {
+         if ( (scan.classname == "item_health") || (scan.classname == "item_armor1") || (scan.classname == "item_armor2") || (scan.classname == "item_armorInv") ) {
+            if ( (scan.solid == SOLID_TRIGGER) ) {
+               local float sd;
+               sd = vlen(scan.origin - self.origin);
+               if ( (sd < safe_dist) ) {
+                  safe_dist = sd;
+                  safe_item = scan;
+               }
+            }
+         }
+      }
+      scan = scan.chain;
+   }
+   if ( safe_item != world ) {
+      local float safe_yaw;
+      safe_yaw = vectoyaw(safe_item.origin - self.origin);
+      local float yaw_diff;
+      yaw_diff = safe_yaw - self.ideal_yaw;
+      while ( yaw_diff > 180 ) yaw_diff = yaw_diff - 360;
+      while ( yaw_diff < -180 ) yaw_diff = yaw_diff + 360;
+      self.ideal_yaw = self.ideal_yaw + (yaw_diff * 0.400);
+   }
 
    // Zigzag while retreating: alternate 30-degree offsets
    strafe_ofs = 30;
@@ -1677,6 +1767,7 @@ void (float dist) BotAI_Main = {
 
    if ( (self.enemy.deadflag != DEAD_NO) ) {
 
+      self.post_kill_time = time + 2.000;
       BotLogAI (AI_STATE_NONE, "NO_ENEMY");
       endEnemy ();
       return ;
@@ -1684,6 +1775,31 @@ void (float dist) BotAI_Main = {
    }
    if ( !self.enemy ) {
 
+      // Post-kill scavenge: briefly seek nearby items before resuming patrol
+      if ( (self.post_kill_time > time) ) {
+         local entity loot;
+         local float loot_dist;
+         loot = world;
+         loot_dist = 300;
+         local entity sc;
+         sc = findradius(self.origin, 300);
+         while ( sc ) {
+            if ( (sc.flags & FL_ITEM) && (sc.solid == SOLID_TRIGGER) ) {
+               local float ld;
+               ld = vlen(sc.origin - self.origin);
+               if ( (ld < loot_dist) ) {
+                  loot_dist = ld;
+                  loot = sc;
+               }
+            }
+            sc = sc.chain;
+         }
+         if ( loot != world ) {
+            self.goalentity.goalentity = loot;
+            setorigin(self.goalentity, loot.origin);
+            self.search_time = self.post_kill_time;
+         }
+      }
       BotLogAI (AI_STATE_NONE, "NO_ENEMY");
       endEnemy ();
       return ;
@@ -1767,7 +1883,10 @@ void (float dist) BotAI_Main = {
       hyst = 0.500;
       if ( self.last_ai_state == AI_STATE_RETREAT ) hyst = 1.500;
       else if ( self.last_ai_state == AI_STATE_GOODY ) hyst = 0.800;
-      else if ( self.last_ai_state == AI_STATE_ATTACK ) hyst = 1.000;
+      else if ( self.last_ai_state == AI_STATE_ATTACK ) {
+         hyst = 1.000 + (self.dmg_dealt * 0.500);
+         if ( hyst > 3.000 ) hyst = 3.000;
+      }
       if ( ((self.last_ai_state == AI_STATE_GOODY) || (self.last_ai_state == AI_STATE_RETREAT) || (self.last_ai_state == AI_STATE_ATTACK)) && (time < (self.last_ai_state_time + hyst)) ) {
 
          // Continue current state without re-evaluating
@@ -1934,6 +2053,11 @@ void (float dist) BotAI_Main = {
 
    }
    BotLogAI (AI_STATE_ATTACK, "ATTACK");
+
+   // Track engagement commitment (time spent firing at enemy)
+   if ( self.enemy ) {
+      self.dmg_dealt = self.dmg_dealt + frametime;
+   }
 
    // TACTICAL: Check for displacement kill opportunity (knock into hazard)
    if ( !BotCheckEnvironmentKill () ) {

@@ -114,6 +114,30 @@
   +4 drama. Improves camera focus on dramatic moments.
 - Enhancement: **Skill-scaled RJ depth** (`ai_ripple.qc`). Rocket jump beam simulation
   steps changed from fixed 8 to `6 + floor(skil * 0.6)` (6 at skill 0, 12 at skill 10).
+- Enhancement: **Powerup spawn timing** (`botgoal.qc`). Skill 3+ bots anticipate items
+  about to respawn within 10s window. Powerups (Quad/Pent) get up to MUST_HAVE weight,
+  regular items get KINDA_WANT, linearly scaled by time remaining.
+- Enhancement: **Threat-scored targeting** (`bot_ai.qc`). Target selection now considers
+  weapon danger and facing angle. Enemies aiming at the bot (dot > 0.7) get -100 distance
+  bonus. RL/LG wielders get -80, SNG gets -40.
+- Enhancement: **Circle strafing** (`bot_ai.qc`). Skill 5+ bots orbit at 60-75° (tight
+  flanking), skill 3-4 at 75-85° (slight tightening), skill 0-2 unchanged at 90°.
+- Enhancement: **Retreat toward safety** (`bot_ai.qc`). Retreating bots scan findradius(600)
+  for health/armor items and blend 40% toward the nearest one instead of running blindly.
+- Enhancement: **Elevation preference** (`bot_ai.qc`). Skill 2+ bots trace downward from
+  left/right strafe positions and bias toward higher ground (16u threshold, 2 traces/frame).
+- Enhancement: **Engagement commitment** (`bot_ai.qc`, `botit_th.qc`). ATTACK hysteresis
+  scales with fight duration: `1.0 + dmg_dealt * 0.5`, capped at 3.0s. Bots in prolonged
+  fights commit harder instead of switching targets.
+- Enhancement: **Post-kill scavenge** (`bot_ai.qc`). After killing an enemy, bots spend
+  2s scanning for nearby items (backpacks, health) within 300u before resuming normal goals.
+- Performance: **Traceline stagger** (`botmove.qc`). BotSteer alternates left/right whiskers
+  each frame using `self.lefty` bit. Saves ~8 traces per server frame across 8 bots.
+- Enhancement: **Ambush jump suppression** (`botmove.qc`). Bots in AI_STATE_AMBUSH no longer
+  jump, preventing position giveaway during ambush setups.
+- Tuning: **Skill-gated bunny hop** (`botmove.qc`). Roaming hop requires skill 5+ (was all
+  skills). Far-combat hop (enemy >400u) requires skill 3+ (was all skills). Mid-range retreat
+  hop unchanged at skill 4+. Low-skill bots now walk like normal players.
 - Feature: **Specter Gaze** cinematic spectator camera (`ai_specter.qc`, `client.qc`,
   `botit_th.qc`, `defs.qc`). Two-layer architecture: Think (50-200ms) computes ideal
   camera positions via orbital + velocity prediction; ViewUpdate (every server frame
