@@ -48,6 +48,30 @@
 - Enhancement: **Skill-scaled turn speed** (`botmove.qc`). `BotClampYaw` max turn
   scales from 18°/frame (skill 0) to 30°/frame (skill 10) via
   `BOT_MAX_TURN_SPEED + skil * 1.2`. Was flat 18° for all skills.
+- Enhancement: **Quad hyper-aggression** (`bot_ai.qc`). Quad holders retreat only
+  below 25 eff HP (was 50) and skip gradual retreat entirely. Pushes aggressively
+  during Quad.
+- Enhancement: **Enemy Quad caution** (`bot_ai.qc`). Bots with <80 eff HP flee
+  enemy Quad even with good weapons. Only tanky bots stand and fight 4x damage.
+- Enhancement: **Fast-kill hitscan boost** (`botfight.qc`). When enemy health <25,
+  bots switch from RL/GL to LG or SNG for reliable finishing.
+- Enhancement: **Weapon-range engagement** (`bot_ai.qc`). Bots drift toward optimal
+  distance for current weapon (LG: 250u, SNG: 350u, RL: 500u, SSG: 200u) with
+  30%-strength pre-step before strafing.
+- Enhancement: **Score pressure adaptation** (`bot_ai.qc`). Losing bots (-5 frags)
+  halve retreat probability. Winning bots (+5 frags) increase retreat by 30%.
+- Enhancement: **Velocity-based stuck guard** (`botgoal.qc`). Stuck detection now
+  requires low position delta AND low velocity (<100). Eliminates false triggers
+  during jumps, lifts, and swimming.
+- Enhancement: **Skill-scaled search timeout** (`botgoal.qc`). Goal lock time scales
+  from 3.5s (skill 0) to 1.5s (skill 10) via `1.5 + (10 - skil) * 0.2`.
+- Enhancement: **Speed-scaled whisker distance** (`botmove.qc`). Obstacle lookahead
+  uses actual velocity instead of walkmove input: `50 + vlen(velocity) * 0.125`.
+- Enhancement: **Effective HP armor weight** (`botit_th.qc`). `armorweight` uses
+  effective HP (value * type) derived from classname. Red armor correctly beats
+  green. Low-health bots get +20 armor urgency.
+- Enhancement: **Ambush weapon safety** (`bot_ai.qc`). Nervous trigger pre-fire
+  suppressed for RL/GL at close range (<200u). Prevents splash suicide during ambush.
 - Enhancement: **Exponential aim jitter** (`botfight.qc`). Replaced linear
   `(3 - sk) * 0.15` with `((5 - sk)^2) * 0.012`. Skill 0 = ~30 deg, skill 3 = ~5 deg,
   skill 5+ = 0. Also adds Z-axis (pitch) jitter at 60% of horizontal.

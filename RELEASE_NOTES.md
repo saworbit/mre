@@ -81,9 +81,11 @@ Bots now feel like different-skilled human players rather than identical machine
 - **Reactions**: First shot delayed after spotting enemy (skill 0 = 300ms, skill 4+ = instant).
 - **Prediction**: Non-linear depth curve (skill 0 = 3 steps, skill 10 = 16 steps).
 - **Retreat**: Gradual probability curve based on effective health (health + armor), not hard cutoff. Zigzag strafing while retreating (±30° weave).
-- **Combat**: Ammo-aware weapon switching, blind fire memory, item grab threat abort. Weapon distance scoring (RL penalized at range, SNG mid-range bonus). Splash risk override (finish kills at close range). Target commitment (150u momentum, near-dead loyalty).
-- **Movement**: Adaptive strafe timing with ±25% jitter, combat bunny hopping for skilled bots, skill-scaled ambush patience and turn speed (18-30°/frame).
-- **Items**: Distance-weighted goal selection, doubled search radius (1200u), effective HP health weight (armored bots fight), ammo urgency for RL/LG. Faster goal re-evaluation (2.5s vs 4s).
+- **Combat**: Ammo-aware weapon switching, blind fire memory, item grab threat abort. Weapon distance scoring (RL penalized at range, SNG mid-range bonus). Splash risk override (finish kills at close range). Target commitment (150u momentum, near-dead loyalty). Fast-kill hitscan boost (LG/SNG to finish <25 HP enemies). Ambush weapon safety (no RL/GL pre-fire at close range).
+- **Powerups**: Quad holders fight to the death (skip retreat). Bots with <80 eff HP flee enemy Quad. Score pressure: losing bots (-5 frags) fight harder, winning bots play safer.
+- **Range**: Weapon-range engagement nudges bots toward optimal distance (LG: 250u, SNG: 350u, RL: 500u, SSG: 200u).
+- **Movement**: Adaptive strafe timing with ±25% jitter, combat bunny hopping for skilled bots, skill-scaled ambush patience and turn speed (18-30°/frame). Speed-scaled whisker distance for smoother high-speed navigation.
+- **Items**: Distance-weighted goal selection, doubled search radius (1200u), effective HP health weight (armored bots fight), ammo urgency for RL/LG. Skill-scaled goal re-evaluation (1.5-3.5s). Effective HP armor weight (red armor correctly valued over green).
 - **Humanization**: Multi-axis Mirage Minds with pitch jitter, glance-aways, and variable hold-fire feints.
 - **Camera**: Specter Gaze enhanced with low-health duel and recent combat drama bonuses.
 

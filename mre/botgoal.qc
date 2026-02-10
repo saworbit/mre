@@ -90,7 +90,7 @@ void (float dist) ai_botseek = {
 
    // Silent Specters: Stealthy stuck recovery with quiet rollouts
    stuck_dist = vlen (self.origin - self.oldorigin);
-   if ( (stuck_dist < 5.000) ) {
+   if ( (stuck_dist < 5.000) && (vlen(self.velocity) < 100) ) {
 
       // Track how long we've been stuck
       if ( self.stuck_time == 0 ) {
@@ -955,7 +955,7 @@ void () aibot_chooseGoal = {
    }
    self.lefty = (self.lefty + TRUE);
    current = botTarget.goalentity;
-   self.search_time = (time + 2.500);
+   self.search_time = (time + 1.500 + ((10.000 - self.skil) * 0.200));
    best = DONT_WANT;
    OK_NOTVIS = FALSE;
    if ( (self.air_finished < (time + MOVETYPE_FLYMISSILE)) ) {

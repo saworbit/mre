@@ -889,6 +889,7 @@ impulse 106  →  Specter_CycleFocus()     [ai_specter.qc]
 
 | Date | Change |
 |------|--------|
+| 2026-02-10 | Intelligence pass #3: Quad aggression, enemy Quad caution, fast-kill hitscan, weapon-range engagement, score pressure, velocity stuck guard, skill-scaled search timeout, speed-scaled whiskers, effective HP armor weight, ambush weapon safety |
 | 2026-02-10 | Intelligence pass #2: strafe jitter, weapon distance scoring, splash risk override, target momentum, state hysteresis, effective HP weights, ammo urgency, retreat strafing, goal commitment, skill-scaled turn speed |
 | 2026-02-10 | Navigation fix: distance-weighted goals, doubled search radius, goal-aware bunny hop |
 | 2026-02-10 | Removed Apex HPA*, simplified Mirage Minds (entropy-only) and Ripple Oracles (no MCTS), 12 intelligence enhancements |

@@ -274,18 +274,34 @@ float () RunAway = {
    }
    if ( (self.items & IT_QUAD) ) {
 
-      if ( ((self.health + (self.armorvalue * self.armortype)) > 50.000) ) {
+      if ( ((self.health + (self.armorvalue * self.armortype)) > 25.000) ) {
 
          return ( FALSE );
 
       }
 
    }
+   // Quad holders don't gradually retreat - fight to the death
+   if ( (self.items & IT_QUAD) ) {
+      return ( FALSE );
+   }
    // Gradual retreat: probability increases as effective health drops
    local float eff_hp;
    eff_hp = (self.health + (self.armorvalue * self.armortype));
    if ( (eff_hp < 60.000) ) {
-      if ( (random () < ((60.000 - eff_hp) / 60.000)) ) {
+      local float retreat_chance;
+      retreat_chance = ((60.000 - eff_hp) / 60.000);
+      // Score pressure: losing bots fight harder, winning bots play safer
+      if ( self.enemy ) {
+         local float score_diff;
+         score_diff = self.frags - self.enemy.frags;
+         if ( score_diff < -5 ) {
+            retreat_chance = retreat_chance * 0.500;
+         } else if ( score_diff > 5 ) {
+            retreat_chance = retreat_chance * 1.300;
+         }
+      }
+      if ( (random () < retreat_chance) ) {
          return ( TRUE );
       }
    }
@@ -302,6 +318,12 @@ float () RunAway = {
 
       }
 
+   }
+   // Even with good weapons, flee enemy Quad if not tanky
+   if ( (self.enemy.items & IT_QUAD) ) {
+      if ( ((self.health + (self.armorvalue * self.armortype)) < 80.000) ) {
+         return ( TRUE );
+      }
    }
    if ( (self.lefty & MULTIENEMY) ) {
 
@@ -950,6 +972,24 @@ void (float dist, float turn) aibot_run_slide = {
    trn = turn;
    self.ideal_yaw = vectoyaw ((self.enemy.origin - self.origin));
    ChangeYaw ();
+
+   // Weapon-range engagement: gentle nudge toward optimal distance
+   if ( self.enemy ) {
+      local float opt_dist;
+      local float cur_dist;
+      opt_dist = 400;
+      if ( self.weapon == IT_LIGHTNING ) opt_dist = 250;
+      else if ( self.weapon == IT_SUPER_NAILGUN ) opt_dist = 350;
+      else if ( self.weapon == IT_ROCKET_LAUNCHER ) opt_dist = 500;
+      else if ( self.weapon == IT_SUPER_SHOTGUN ) opt_dist = 200;
+      cur_dist = vlen(self.enemy.origin - self.origin);
+      if ( cur_dist > (opt_dist + 100) ) {
+         botwalkmove(self.ideal_yaw, dist * 0.300);
+      } else if ( cur_dist < (opt_dist - 100) ) {
+         botwalkmove(vectoyaw(self.origin - self.enemy.origin), dist * 0.300);
+      }
+   }
+
    ofs = 90.000;
    dis = dist;
    self.strafeonly = (self.strafeonly - TRUE);
@@ -1828,11 +1868,14 @@ void (float dist) BotAI_Main = {
             // NERVOUS TRIGGER: If they're very close, pre-fire!
             if ( vlen(self.lastseenpos - self.origin) < 200 ) {
                if ( time - self.last_seen_time < 1.5 ) {
-                  self.button0 = TRUE;
-                  if ( cvar("developer") && random() < 0.1 ) {
-                     dprint ("[");
-                     dprint (self.netname);
-                     dprint ("] AMBUSH: Nervous trigger!\n");
+                  // Don't pre-fire explosives at close range (splash suicide)
+                  if ( !((self.weapon == IT_ROCKET_LAUNCHER) || (self.weapon == IT_GRENADE_LAUNCHER)) ) {
+                     self.button0 = TRUE;
+                     if ( cvar("developer") && random() < 0.1 ) {
+                        dprint ("[");
+                        dprint (self.netname);
+                        dprint ("] AMBUSH: Nervous trigger!\n");
+                     }
                   }
                }
             }

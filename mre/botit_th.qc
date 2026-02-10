@@ -552,8 +552,19 @@ float (entity e) ssgweight = {
 float (entity e) armorweight = {
 
    local float weight;
-
-   weight = (e.armorvalue - self.armorvalue);
+   local float new_eff, old_eff;
+   local float new_type;
+   new_type = 0.300;
+   if ( (e.classname == "item_armor2") )
+      new_type = 0.600;
+   else if ( (e.classname == "item_armorInv") )
+      new_type = 0.800;
+   new_eff = (e.armorvalue * new_type);
+   old_eff = (self.armorvalue * self.armortype);
+   weight = (new_eff - old_eff);
+   if ( (self.health < 50) ) {
+      weight = weight + 20;
+   }
    return ( weight );
 
 };

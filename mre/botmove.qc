@@ -431,7 +431,7 @@ float (float ideal_yaw, float speed_factor) BotSteer = {
    local float content;
 
    // Look ahead based on speed
-   dist = 50 + (speed_factor * 25);
+   dist = 50 + (vlen(self.velocity) * 0.125);
    min_speed = cvar ("bot_hazard_min_speed");
    if ( (min_speed <= FALSE) ) {
       min_speed = 60.000;

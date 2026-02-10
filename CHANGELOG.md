@@ -29,6 +29,18 @@
 - **Goal commitment time** (`botgoal.qc`): reduced from 4s to 2.5s lock. Bots re-evaluate goals 60% faster.
 - **Skill-scaled turn speed** (`botmove.qc`): max turn speed scales from 18°/frame (skill 0) to 30°/frame (skill 10). Was flat 18° for all.
 
+### Intelligence Pass #3 (10 Enhancements)
+- **Quad hyper-aggression** (`bot_ai.qc`): Quad holders retreat only below 25 eff HP (was 50) and skip gradual retreat entirely. Bots push aggressively during Quad instead of wasting it.
+- **Enemy Quad caution** (`bot_ai.qc`): bots with <80 eff HP flee enemy Quad even with good weapons. Only tanky bots stand and fight 4x damage.
+- **Fast-kill hitscan boost** (`botfight.qc`): when enemy health <25, bots switch from RL/GL to LG or SNG for reliable finishing. Prevents whiffed rockets on near-dead targets.
+- **Weapon-range engagement** (`bot_ai.qc`): bots drift toward optimal distance for current weapon (LG: 250u, SNG: 350u, RL: 500u, SSG: 200u). 30%-strength pre-step before strafing.
+- **Score pressure adaptation** (`bot_ai.qc`): losing bots (-5 frags) halve retreat probability. Winning bots (+5 frags) increase retreat by 30%. Score affects aggression.
+- **Velocity-based stuck guard** (`botgoal.qc`): stuck detection requires both low position delta AND low velocity (<100). Eliminates false triggers during jumps, lifts, and swimming.
+- **Skill-scaled search timeout** (`botgoal.qc`): goal lock time scales from 3.5s (skill 0) to 1.5s (skill 10). High-skill bots adapt goals faster; low-skill bots stay committed.
+- **Speed-scaled whisker distance** (`botmove.qc`): obstacle lookahead uses actual velocity instead of walkmove input. Faster bots see obstacles further ahead (50u stopped, 112u bunny hopping).
+- **Effective HP armor weight** (`botit_th.qc`): armor evaluation uses effective HP (value * type) derived from classname. Red 200 (160 eff) correctly beats green 100 (30 eff). Low-health bots get +20 armor urgency.
+- **Ambush weapon safety** (`bot_ai.qc`): nervous trigger pre-fire suppressed for RL/GL at close range (<200u). LG/SNG/SSG still pre-fire safely. Prevents splash suicide during ambush.
+
 ### Intelligence Update (12 Enhancements)
 - **Exponential aim jitter** (`botfight.qc`): skill 0 = ~30 deg max error, skill 3 = ~5 deg, skill 5+ = perfect. Was linear ~8 deg max. Also adds Z-axis (pitch) jitter.
 - **Reaction fire delay** (`bot_ai.qc`): first shot delayed after spotting enemy (skill 0 = 300ms, skill 4+ = instant). Previously only gated seeing, not firing.

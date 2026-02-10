@@ -619,6 +619,17 @@ float () W_BestBotWeapon = {
       }
    }
 
+   // Fast-kill: boost hitscan weapons to finish low-HP enemies
+   if ( self.enemy && (self.enemy.health < 25) ) {
+      if ( best_weapon == IT_ROCKET_LAUNCHER || best_weapon == IT_GRENADE_LAUNCHER ) {
+         if ( (self.ammo_cells >= TRUE) && (it & IT_LIGHTNING) && (dist < 450) ) {
+            best_weapon = IT_LIGHTNING;
+         } else if ( (self.ammo_nails >= FL_SWIM) && (it & IT_SUPER_NAILGUN) ) {
+            best_weapon = IT_SUPER_NAILGUN;
+         }
+      }
+   }
+
    // Prefer nails over shotguns at long range (> 500 units)
    if ( (dist > 500.000) && best_weapon == IT_AXE ) {
       if ( ((self.ammo_nails >= TRUE) && (it & IT_NAILGUN)) ) {
