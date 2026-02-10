@@ -83,6 +83,14 @@ from `archive/`.
   - Platform fidgeting (micro-drift and look-around while riding lifts)
   - Roaming speed variation (180-240 speed, corner slowdown, micro-pauses)
   - Swimming clumsiness (pitch wobble + sluggish velocity blend in water)
+- **Problem-Solving Update** (Planned): Cross-system game sense layer
+  - Risk-reward goal scoring (enemy proximity, cursed zones, own strength gate item selection)
+  - Multi-threat assessment (1v2+ retreat, third-party opportunism)
+  - Situational weapon scoring (distance, enemy velocity, corridor geometry, ammo conservation)
+  - Tactical repositioning spectrum (fight/kite/retreat instead of binary run-or-fight)
+  - Combat resource drift (subtle strafe bias toward nearby health/armor when wounded)
+  - Pre-engagement evaluation (don't charge hopeless fights — weapon/health/powerup gate)
+  - Sound-driven threat inference (weapon sounds inform caution level)
 
 ### Investigated (Likely Fixed / Not Found)
 - "Bot frags not shown" - MSG_UPDATEFRAGS sent correctly, likely fixed by 0-index fix

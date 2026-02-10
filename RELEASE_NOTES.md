@@ -89,6 +89,7 @@ Bots now feel like different-skilled human players rather than identical machine
 - **Items**: Distance-weighted goal selection, doubled search radius (1200u), effective HP health weight (armored bots fight), ammo urgency for RL/LG. Skill-scaled goal re-evaluation (1.5-3.5s). Effective HP armor weight (red armor correctly valued over green). Powerup spawn timing (skill 3+ pre-position within 10s). Post-kill scavenge (2s backpack/item pickup after kills).
 - **Humanization**: Multi-axis Mirage Minds with pitch jitter, glance-aways, and variable hold-fire feints.
 - **Camera**: Specter Gaze enhanced with low-health duel and recent combat drama bonuses.
+- **Problem-Solving** (Planned): Risk-reward goal scoring, multi-threat assessment (1v2+ retreat, third-party patience), situational weapon scoring, tactical repositioning (fight/kite/retreat spectrum), combat resource drift, pre-engagement evaluation, sound-driven threat inference.
 
 ---
 

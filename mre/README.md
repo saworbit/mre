@@ -90,6 +90,15 @@ For visual/behavioral verification:
 - [ ] **Roaming Speed Variance**: Idle bots vary speed, slow at corners, occasionally micro-pause
 - [ ] **Swim Clumsiness**: Bots wobble in pitch and respond sluggishly when swimming
 
+### Problem-Solving (Planned)
+- [ ] **Risk-Reward Goals**: Bots avoid items near enemies when weak, prefer close safe pickups
+- [ ] **Multi-Threat Awareness**: Bots disengage from 1v2+, wait out third-party fights
+- [ ] **Situational Weapons**: Bots pick weapons by context (RL vs slow targets, SNG in corridors, SSG for ambush)
+- [ ] **Tactical Repositioning**: Bots kite (fire while backing) instead of only fight-or-flee
+- [ ] **Combat Resource Drift**: Wounded bots subtly drift toward nearby health/armor during fights
+- [ ] **Engagement Evaluation**: Underarmed/weak bots skip hopeless fights instead of charging in
+- [ ] **Sound Threat Model**: Bots infer enemy weapons from sounds and adjust caution accordingly
+
 ### Combat Fairness
 - [ ] **Aim Jitter**: Skill 0 bots miss noticeably (~30° error), skill 5+ near-perfect
 - [ ] **Reaction Time**: Skill 0 bots have ~300ms delay before first shot (surprise attacks work)

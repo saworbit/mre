@@ -2,6 +2,20 @@
 
 ## Unreleased
 - Clean baseline restored in `mre/`.
+- Planned: **Risk-reward goal scoring** (`botgoal.qc`). `GoalRiskScore()` modulates
+  item weight by enemy proximity, cursed nodes, own strength, and Quad urgency.
+- Planned: **Multi-threat assessment** (`bot_ai.qc`). `visible_threats` count in
+  BotFindTarget; 1v2+ retreat and third-party patience for skill 3+.
+- Planned: **Situational weapon scoring** (`botfight.qc`). Scored evaluation replaces
+  priority cascade: distance, enemy velocity, corridor geometry, ammo conservation.
+- Planned: **Tactical repositioning** (`bot_ai.qc`). `BotAssessPosition()` fight/kite/
+  retreat spectrum replaces binary `RunAway()`.
+- Planned: **Combat resource drift** (`bot_ai.qc`). 30% strafe bias toward nearby
+  health/armor when wounded (<80 eff HP) during combat.
+- Planned: **Pre-engagement evaluation** (`bot_ai.qc`). Skill 2+ gate fights by
+  weapon/health/powerup assessment before committing.
+- Planned: **Sound-driven threat inference** (`bot_ai.qc`). Weapon sounds inform
+  enemy loadout model; cautious investigation when weak and heard RL.
 - Enhancement: **Bunny hop rhythm variance** (`botmove.qc`). Variable hop timing
   (0.28-0.50s), strafe angle (10-22deg), and accel (30-50 ground, 8-16 air). All
   skill-scaled: higher skill = tighter variance toward optimal values.

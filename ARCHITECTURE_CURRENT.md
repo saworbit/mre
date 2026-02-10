@@ -153,15 +153,25 @@ marks a local cursed node (`CurseNode`). Cursed decay is global in `StartFrame`.
 ### Target Acquisition
 
 ```
-BotFindTarget()               [bot_ai.qc]
-  ├─> Iterates all entities
-  ├─> BotValidTarget() checks:
-  │     ├─> Not dead (deadflag)
-  │     ├─> Not observer (MOVETYPE_NOCLIP)
-  │     ├─> Not same team
-  │     └─> Visible (traceline)
-  └─> Returns closest valid enemy
+BotFindTarget()               [bot_ai.qc:755]
+  ├─> Throttle: skill-scaled scan interval (20-50ms), bypassed on recent contact/noise
+  ├─> Scan players: checkclient() loop (capped at 4+skill, max 8)
+  │     ├─> BotValidTarget() checks:
+  │     │     ├─> Not dead/observer/teammate/invisible/notarget
+  │     │     ├─> Distance < 1200u OR audible
+  │     │     ├─> Visible (traceline) AND (in front OR audible)
+  │     │     └─> Low-skill notice chance (skill 0 misses 75%)
+  │     └─> BotThreatScore(): distance adjusted by HP ratio, powerups, facing angle, weapon
+  ├─> Scan bots: cached bot_list_head linked list (same scoring)
+  ├─> Target momentum: new target must beat current by 150u; near-dead (<20 eff HP) +300u loyalty
+  └─> Returns best-scored target (NOT just closest)
 ```
+
+**Planned: Multi-threat assessment** — `visible_threats` counter during scan, feeding
+into `RunAway()` (1v2+ retreat) and third-party patience (wait out other fights).
+
+**Planned: Pre-engagement evaluation** — `BotFoundTarget()` will assess fight viability
+(weapon/HP/powerup) before committing; skip hopeless engagements at skill 2+.
 
 ---
 
@@ -894,6 +904,7 @@ impulse 106  →  Specter_CycleFocus()     [ai_specter.qc]
 
 | Date | Change |
 |------|--------|
+| 2026-02-10 | Intelligence pass #7 (planned): Problem-solving review — risk-reward goals, multi-threat assessment, situational weapons, tactical repositioning, combat resource drift, pre-engagement evaluation, sound threat inference |
 | 2026-02-10 | Intelligence pass #6: Navigation humanization — bunny hop rhythm variance, velocity momentum blending, S-curve turns, graduated edge friction, platform fidgeting, roaming speed variation, swimming clumsiness |
 | 2026-02-10 | Intelligence pass #4: Powerup spawn timing, threat-scored targeting, circle strafing, retreat toward safety, elevation preference, engagement commitment, post-kill scavenge, traceline stagger, ambush jump suppression, skill-gated bunny hop |
 | 2026-02-10 | Intelligence pass #3: Quad aggression, enemy Quad caution, fast-kill hitscan, weapon-range engagement, score pressure, velocity stuck guard, skill-scaled search timeout, speed-scaled whiskers, effective HP armor weight, ambush weapon safety |

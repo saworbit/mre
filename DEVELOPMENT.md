@@ -331,6 +331,71 @@ Extracted ~80 lines of duplicated threat scoring into `BotThreatScore()` helper.
 Both the player scanning loop and the bot scanning loop now call the shared
 function. No behavioral change — pure code deduplication.
 
+## Problem-solving review (intelligence pass #7 — planned)
+Cross-system "game sense" layer. Core deficit: every decision is made in isolation.
+Goals ignore enemies, combat ignores resources, retreat is binary. Seven proposed systems.
+
+### 1. Risk-reward goal scoring (`botgoal.qc`, `aibot_chooseGoal()`)
+New `GoalRiskScore(item, base_weight)` modulates item desirability:
+- Enemy proximity: -40% if enemy within 300u of item, extra -20% when fragile (<50 eff HP).
+- Cursed node penalty: `GetCursePenalty(item_org)` adds 0-40% cost for stuck zones.
+- Strength gating: fragile bots (<40 eff HP) penalize far items, boost nearby health -50%.
+- Quad urgency: holding Quad deprioritizes health (+30% penalty) when above 50 HP.
+- Applied after `itemweight()`, before final comparison in `aibot_chooseGoal`.
+
+### 2. Multi-threat assessment (`bot_ai.qc`, `BotFindTarget()`)
+`visible_threats` counter piggybacks existing player+bot scan at zero extra cost:
+- 1v2+ with <100 eff HP: always retreat.
+- 1v3+: 70% retreat even when tanky.
+- Third-party patience (skill 3+): if enemy.enemy != self and distance >400u, pause
+  1.5s to let them weaken each other before engaging. `AI_STATE_INVESTIGATE` / `THIRD_PARTY_WAIT`.
+- `MULTIENEMY` flag currently only triggers at `health < 10` — effectively dead code.
+
+### 3. Situational weapon scoring (`botfight.qc`, `W_BestHeldWeapon()`)
+Replace priority cascade with scored evaluation per weapon:
+- LG: base 90, -40 if >450u, -15 vs fast dodger (enemy vel >400), -20 if ammo <15.
+- RL: base 85, -60 close (<150u without Quad), +10 vs slow enemy, -25 if ammo <=2.
+- SNG: base 70, +15 sweet spot (150-400u), +10 corridor bonus (sideways trace <0.5).
+- SSG: base 55, +30 close (<200u), +20 if ambush_ready, -30 far (>400u).
+- GL: base 40, -50 close, +20 if enemy below (-50u).
+- One extra `traceline` for corridor detection (SNG bonus).
+- Dead code: `confidence_rl/lg/gl/sg` fields decay in `BotAI_Main:1764-1769` but are
+  never read by weapon selection — wire up or remove.
+
+### 4. Tactical repositioning (`bot_ai.qc`)
+New `BotAssessPosition()` replaces binary `RunAway()` with spectrum:
+- Returns 0 (fight), 1 (kite), 2 (retreat) based on advantage score.
+- Advantage = eff HP delta + weapon advantage (+30 RL vs none) + Quad (-80 enemy Quad)
+  + multi-threat (-60 per extra enemy) + height (+20 if elevated).
+- Kite state: fires while backing at 80% speed, 30% yaw blend toward strafe.
+- Replaces fight-or-flee binary that currently has no middle ground.
+
+### 5. Combat resource drift (`bot_ai.qc`, `aibot_run_slide()`)
+During combat, when <80 eff HP, `findradius(250)` locates nearest health/armor:
+- 30% strafe offset blend toward item (item_yaw - ideal_yaw) * 0.3.
+- Small radius (250u) means few entities iterated — cheap.
+- Placed after cover_bias calculation, before circle strafing adjustment.
+
+### 6. Pre-engagement evaluation (`bot_ai.qc`, `BotFoundTarget()`)
+Skill 2+ bots assess fight viability before committing:
+- Fight score: -40 underarmed (no RL/LG/SNG/SSG), -30 low HP (<40), -50 enemy Quad,
+  -20 far+weak (>600u + <60 eff HP), +60 own Quad, +20 tanky (>120 eff HP).
+- Score < -40: skip engagement, set `lastseenpos` for awareness but don't enter combat.
+- Inserted between validation checks and `BotHuntTarget()` call.
+
+### 7. Sound-driven threat inference (`bot_ai.qc`, `Bot_AnalyzeSound()`)
+`NOISE_WEAPON` handler (currently empty `return`) now infers enemy capability:
+- Volume >700 = inferred RL/GL, >500 = inferred SNG/LG.
+- Stored as `self.inferred_threat_weapon`, `inferred_threat_time`, `inferred_threat_loc`.
+- If weak (<60 eff HP) and inferred RL within 500u: 40% retreat bias in `RunAway()`.
+- If healthy (>60 eff HP): aggressive investigation (priority 90).
+- Zero extra tracelines — just variable tracking from existing sound callbacks.
+
+### Dead code note
+`confidence_rl`, `confidence_lg`, `confidence_gl`, `confidence_sg` fields are declared,
+decayed 10%/minute in `BotAI_Main:1764-1769`, but never used in any weapon selection
+or scoring function. Either wire into Issue #3 (weapon scoring) or remove.
+
 ## Navigation humanization (intelligence pass #6)
 Seven movement systems to eliminate robotic navigation tells, all skill-scaled.
 

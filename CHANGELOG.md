@@ -6,6 +6,39 @@
 - Rebooting Reaper Bot from a clean baseline.
 - Focusing first on community-reported issues.
 
+### Intelligence Pass #7 (Problem-Solving — Planned)
+Seven cross-system "game sense" improvements to make decisions situation-aware:
+- **Risk-reward goal scoring** (`botgoal.qc`). `GoalRiskScore()` modulates item weight
+  by enemy proximity to item (-40% if enemy within 300u), cursed node penalty at
+  destination, own strength gating (fragile bots prefer close safe items, boost nearby
+  health), and Quad urgency (skip health when Quad is ticking). Currently `aibot_chooseGoal`
+  uses pure `weight + distance` with zero environmental awareness.
+- **Multi-threat assessment** (`bot_ai.qc`). `visible_threats` counter piggybacks
+  existing `BotFindTarget` scan at zero cost. Bots flee 1v2+ when not tanky (<100 eff HP),
+  and skill 3+ bots wait out third-party fights before engaging weakened survivors.
+  Currently `MULTIENEMY` flag only triggers at `health < 10` — essentially unused.
+- **Situational weapon scoring** (`botfight.qc`). Replace `W_BestHeldWeapon` priority
+  cascade with scored evaluation: LG penalized out-of-range/against fast dodgers, RL
+  penalized close/rewarded vs slow targets, SNG boosted in corridors (sideways trace),
+  SSG boosted for ambush, ammo conservation deductions. Currently a hard-coded priority
+  list that always picks LG if available. Also: `confidence_rl/lg/gl/sg` fields decay
+  in `BotAI_Main` but are never read — dead code.
+- **Tactical repositioning** (`bot_ai.qc`). `BotAssessPosition()` returns fight (0),
+  kite (1), or retreat (2) based on advantage score (eff HP delta, weapon mismatch,
+  Quad, multi-threat, height). Kite state fires while backing away at 80% speed with
+  30% strafe blend. Currently `RunAway()` is binary TRUE/FALSE with no middle ground.
+- **Combat resource drift** (`bot_ai.qc`). During combat, `findradius(250)` locates
+  nearby health/armor and blends 30% strafe bias toward it when wounded (<80 eff HP).
+  Currently combat movement is purely geometric with no resource awareness.
+- **Pre-engagement evaluation** (`bot_ai.qc`). Skill 2+ bots assess fight viability
+  before committing: weapon loadout, eff HP, enemy powerups, range. Fights scoring
+  below -40 are skipped — bot remembers position but doesn't charge. Currently any
+  visible valid target triggers immediate combat entry.
+- **Sound-driven threat inference** (`bot_ai.qc`). `NOISE_WEAPON` handler (currently
+  empty — just returns) now infers enemy weapon from sound volume (>700=RL, >500=SNG)
+  and adjusts investigation urgency by own health. Feeds into `RunAway()` for
+  hearing-based caution.
+
 ### Intelligence Pass #6 (Navigation Humanization)
 - **Bunny hop rhythm variance** (`botmove.qc`). Replaced fixed 0.4s/15deg/40accel
   with variable hop_interval (0.28-0.50s, skill-narrowed), strafe_angle (10-22deg,
