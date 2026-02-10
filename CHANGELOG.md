@@ -12,6 +12,23 @@
 - Simplified **Ripple Oracles**: removed MCTS tree search. Now uses heuristic trace probes with flat beam-search fallback. Same cascade fusion, far less code.
 - Cleaned up **Slayer Eclipse**: removed hardcoded username checks (`slywall`/`Shane`). `user_learn` now applies to any connected player.
 
+### Navigation Fix (3 Changes)
+- **Distance-weighted goal selection** (`botgoal.qc`): items closer to bot score up to +20 bonus. Was pure weight comparison ignoring distance.
+- **Doubled search radius** (`botit_th.qc`): `SEARCH_RADIUS` increased from 600 to 1200 units. Bots see items much further away.
+- **Goal-aware bunny hop** (`botmove.qc`): bots only hop when >600u from goal. Prevents chaotic bouncing near items.
+
+### Intelligence Pass #2 (10 Enhancements)
+- **Strafe timing jitter** (`bot_ai.qc`): strafe flip timing varies ±25% each cycle. Was fixed, learnable rhythm.
+- **Weapon distance scoring** (`botfight.qc`): RL penalized at long range (-10 at 500u, -25 at 800u). SNG gets +15 bonus at mid range (300-700u). Bots show weapon variety.
+- **Splash risk override** (`botfight.qc`): bots keep RL/GL at close range to finish near-dead enemies (<30 HP) or when holding Pentagram. Was always swapping off.
+- **Target switching momentum** (`bot_ai.qc`): new targets must be 150u closer to steal focus. Near-dead enemies (<20 eff HP) get extra 300u loyalty. Bots commit to kills.
+- **State-dependent hysteresis** (`bot_ai.qc`): RETREAT locks 1.5s, GOODY 0.8s, ATTACK 1.0s. Was flat 0.5s for GOODY/RETREAT only. Eliminates attack-retreat-attack stutter.
+- **Effective HP health weight** (`botit_th.qc`): health urgency requires both health < 60 AND effective HP < 100. Armored bots fight instead of chasing health packs.
+- **Ammo urgency** (`botit_th.qc`): RL bots with <5 rockets and LG bots with <10 cells urgently seek ammo (MUST_HAVE priority).
+- **Retreat strafing** (`bot_ai.qc`): retreating bots zigzag at ±30° offsets using STRAFE_DIR alternation. Was straight backpedal.
+- **Goal commitment time** (`botgoal.qc`): reduced from 4s to 2.5s lock. Bots re-evaluate goals 60% faster.
+- **Skill-scaled turn speed** (`botmove.qc`): max turn speed scales from 18°/frame (skill 0) to 30°/frame (skill 10). Was flat 18° for all.
+
 ### Intelligence Update (12 Enhancements)
 - **Exponential aim jitter** (`botfight.qc`): skill 0 = ~30 deg max error, skill 3 = ~5 deg, skill 5+ = perfect. Was linear ~8 deg max. Also adds Z-axis (pitch) jitter.
 - **Reaction fire delay** (`bot_ai.qc`): first shot delayed after spotting enemy (skill 0 = 300ms, skill 4+ = instant). Previously only gated seeing, not firing.

@@ -160,7 +160,7 @@ float (vector pos, float ntype) Vortex_AddNode = {
    vortex_pos[idx] = pos;
    vortex_conn_count[idx] = 0.000;
    vortex_type[idx] = ntype;
-   vortex_usage[idx] = 1.000;
+   vortex_usage[idx] = 5.000;
    vortex_tele_exit[idx] = -1.000;
    vortex_lift_cycle[idx] = 0.000;
    vortex_lift_phase[idx] = 0.000;
@@ -765,8 +765,8 @@ float (float cur, float next) Vortex_EdgeCost = {
    }
 
    usage = vortex_usage[next];
-   if ( usage < 0.100 ) {
-      usage = 0.100;
+   if ( usage < 1.000 ) {
+      usage = 1.000;
    }
    cost = (cost / usage);
 

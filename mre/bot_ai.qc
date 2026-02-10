@@ -259,6 +259,16 @@ float () RunAway = {
    weap = W_BestHeldWeapon ();
    if ( (weap & (IT_ROCKET_LAUNCHER + IT_LIGHTNING)) ) {
 
+      // Even armed bots should flee when critically wounded
+      local float flee_hp;
+      flee_hp = (self.health + (self.armorvalue * self.armortype));
+      if ( flee_hp > 40.000 ) {
+         return ( FALSE );
+      }
+      // Below 40 eff HP with good weapon: coin flip to survive
+      if ( random () < 0.600 ) {
+         return ( TRUE );
+      }
       return ( FALSE );
 
    }
@@ -715,6 +725,15 @@ float /* Warning: Could not determine return type */ () BotFindTarget = {
    best = world;
    best_dist = 100000;
 
+   // Target momentum: new target must beat current by 150u margin
+   if ( (self.enemy != world) && (self.enemy.health > 0) ) {
+      best_dist = vlen (self.enemy.origin - self.origin) - 150;
+      // Finish the kill: don't switch off near-dead enemy
+      if ( (self.enemy.health + (self.enemy.armorvalue * self.enemy.armortype)) < 20 ) {
+         best_dist = best_dist - 300;
+      }
+   }
+
    // Scan human players via checkclient (fast, avoids full entity walk).
    limit = fMaxClients;
    if ( (limit < TRUE) ) {
@@ -739,9 +758,25 @@ float /* Warning: Could not determine return type */ () BotFindTarget = {
          if ( BotValidTarget (head) ) {
 
             dist = vlen (head.origin - self.origin);
-            if ( dist < best_dist ) {
+            // Threat-aware scoring: prefer weaker enemies, avoid powerup carriers
+            local float adj_dist;
+            local float ehp;
+            local float shp;
+            adj_dist = dist;
+            ehp = (head.health + (head.armorvalue * head.armortype));
+            shp = (self.health + (self.armorvalue * self.armortype));
+            if ( (ehp < shp) && (shp > 0.000) ) {
+               adj_dist = (dist * (0.500 + (ehp / (shp * 2.000))));
+            }
+            if ( head.items & IT_QUAD ) {
+               adj_dist = (adj_dist * 1.500);
+            }
+            if ( head.items & IT_INVULNERABILITY ) {
+               adj_dist = (adj_dist * 3.000);
+            }
+            if ( adj_dist < best_dist ) {
 
-               best_dist = dist;
+               best_dist = adj_dist;
                best = head;
 
             }
@@ -759,9 +794,25 @@ float /* Warning: Could not determine return type */ () BotFindTarget = {
       if ( (head.classname == "dmbot") && BotValidTarget (head) ) {
 
          dist = vlen (head.origin - self.origin);
-         if ( dist < best_dist ) {
+         // Threat-aware scoring: prefer weaker enemies, avoid powerup carriers
+         local float adj_dist2;
+         local float ehp2;
+         local float shp2;
+         adj_dist2 = dist;
+         ehp2 = (head.health + (head.armorvalue * head.armortype));
+         shp2 = (self.health + (self.armorvalue * self.armortype));
+         if ( (ehp2 < shp2) && (shp2 > 0.000) ) {
+            adj_dist2 = (dist * (0.500 + (ehp2 / (shp2 * 2.000))));
+         }
+         if ( head.items & IT_QUAD ) {
+            adj_dist2 = (adj_dist2 * 1.500);
+         }
+         if ( head.items & IT_INVULNERABILITY ) {
+            adj_dist2 = (adj_dist2 * 3.000);
+         }
+         if ( adj_dist2 < best_dist ) {
 
-            best_dist = dist;
+            best_dist = adj_dist2;
             best = head;
 
          }
@@ -1159,7 +1210,7 @@ void (float dist, float turn) aibot_run_slide = {
       }
 
    }
-   if ( (self.strafetime > (0.300 + (self.skil * 0.040))) ) {
+   if ( (self.strafetime > ((0.300 + (self.skil * 0.040)) * (0.750 + (random () * 0.500)))) ) {
 
       rnd = (random () * FL_SWIM);
       if ( (rnd > 1.870) ) {
@@ -1316,6 +1367,7 @@ void (float dist) ai_botretreat = {
 
    local vector away_dir;
    local float away_yaw;
+   local float strafe_ofs;
 
    if ( !self.enemy ) {
 
@@ -1326,6 +1378,27 @@ void (float dist) ai_botretreat = {
    away_yaw = vectoyaw (away_dir);
    self.ideal_yaw = away_yaw;
    ChangeYaw ();
+
+   // Zigzag while retreating: alternate 30-degree offsets
+   strafe_ofs = 30;
+   if ( (self.lefty & STRAFE_DIR) ) {
+      strafe_ofs = -30;
+   }
+   self.strafetime = (self.strafetime + 0.100);
+   if ( (self.strafetime > (0.400 + (random () * 0.200))) ) {
+      self.strafetime = FALSE;
+      if ( (self.lefty & STRAFE_DIR) ) {
+         self.lefty = (self.lefty - STRAFE_DIR);
+      } else {
+         self.lefty = (self.lefty + STRAFE_DIR);
+      }
+   }
+
+   if ( botwalkmove ((away_yaw + strafe_ofs), dist) ) {
+
+      return ;
+
+   }
    if ( botwalkmove (self.ideal_yaw, dist) ) {
 
       return ;
@@ -1483,7 +1556,7 @@ float () BotRivalPowerupRush = {
    if ( (self.lefty & GETGOODY) ) {
       return ( FALSE );
    }
-   if ( !Slayer_GodMode () && (self.skil < 8.000) ) {
+   if ( !Slayer_GodMode () && (self.skil < 5.000) ) {
       return ( FALSE );
    }
    if ( (self.health <= 50.000) ) {
@@ -1498,7 +1571,10 @@ float () BotRivalPowerupRush = {
          if ( visible (scan) ) {
             eta_self = (vlen (scan.origin - self.origin) / 350.000);
             eta_enemy = (vlen (scan.origin - self.enemy.origin) / 350.000);
-            if ( (eta_self < (eta_enemy + 2.000)) && (eta_self < best_eta) ) {
+            // Skill-scaled ETA margin: higher skill = more aggressive rush
+            local float eta_margin;
+            eta_margin = (1.000 + (self.skil * 0.125));
+            if ( (eta_self < (eta_enemy + eta_margin)) && (eta_self < best_eta) ) {
                best_eta = eta_self;
                best = scan;
             }
@@ -1531,6 +1607,15 @@ void (float dist) BotAI_Main = {
 
    // Mirage Minds: entropy biasing
    MirageTick ();
+
+   // Weapon confidence decay: 10% per minute prevents stale preferences
+   if ( time > (self.confidence_decay_time + 60.000) ) {
+      self.confidence_decay_time = time;
+      self.confidence_rl = (self.confidence_rl * 0.900);
+      self.confidence_lg = (self.confidence_lg * 0.900);
+      self.confidence_gl = (self.confidence_gl * 0.900);
+      self.confidence_sg = (self.confidence_sg * 0.900);
+   }
 
    // Phantom Apprenticeship: occasionally shadow a player
    if ( !self.phantom && (random () < 0.030) && (time > (self.last_phantom + 30.000)) ) {
@@ -1637,33 +1722,42 @@ void (float dist) BotAI_Main = {
       self.lefty = (self.lefty - (self.lefty & LOCAL_TIME));
       self.lastseenpos = self.goalentity.origin;
 
-      // FIX: Hysteresis - stay in GOODY/RETREAT for minimum 0.5s to prevent oscillation
-      if ( ((self.last_ai_state == AI_STATE_GOODY) || (self.last_ai_state == AI_STATE_RETREAT)) && (time < (self.last_ai_state_time + 0.500)) ) {
+      // FIX: State-dependent hysteresis to prevent oscillation
+      local float hyst;
+      hyst = 0.500;
+      if ( self.last_ai_state == AI_STATE_RETREAT ) hyst = 1.500;
+      else if ( self.last_ai_state == AI_STATE_GOODY ) hyst = 0.800;
+      else if ( self.last_ai_state == AI_STATE_ATTACK ) hyst = 1.000;
+      if ( ((self.last_ai_state == AI_STATE_GOODY) || (self.last_ai_state == AI_STATE_RETREAT) || (self.last_ai_state == AI_STATE_ATTACK)) && (time < (self.last_ai_state_time + hyst)) ) {
 
          // Continue current state without re-evaluating
          if ( (self.last_ai_state == AI_STATE_GOODY) ) {
 
             ai_botgetGoody (dist);
+            return ;
 
-         } else {
+         } else if ( (self.last_ai_state == AI_STATE_RETREAT) ) {
 
             ai_botretreat (dist);
+            return ;
 
          }
+         // ATTACK hysteresis: skip goody/retreat, fall through RunAway block
+
+      } else {
+
+         if ( aibot_checkforGoodies (DONT_WANT) ) {
+
+            BotLogAI (AI_STATE_GOODY, "GOODY");
+            ai_botgetGoody (dist);
+            return ;
+
+         }
+         BotLogAI (AI_STATE_RETREAT, "RETREAT");
+         ai_botretreat (dist);
          return ;
 
       }
-
-      if ( aibot_checkforGoodies (DONT_WANT) ) {
-
-         BotLogAI (AI_STATE_GOODY, "GOODY");
-         ai_botgetGoody (dist);
-         return ;
-
-      }
-      BotLogAI (AI_STATE_RETREAT, "RETREAT");
-      ai_botretreat (dist);
-      return ;
 
    }
    enemy_infront = infrontofbot (self.enemy);
@@ -1750,9 +1844,9 @@ void (float dist) BotAI_Main = {
 
       // Object Permanence: continue engaging last known position
       local float memory_duration;
-      memory_duration = (0.500 + (self.skil * 0.250));
-      if ( (memory_duration > 1.500) )
-         memory_duration = 1.500;
+      memory_duration = (0.500 + (self.skil * 0.300));
+      if ( (memory_duration > 3.000) )
+         memory_duration = 3.000;
       if ( Slayer_GodMode () ) {
          memory_duration = 5.000;
       }
@@ -1764,6 +1858,13 @@ void (float dist) BotAI_Main = {
 
          // TACTICAL: Try pre-firing at corners (suppressive fire)
          BotBlindFire ();
+
+         // Shadow Puppets: tactical repositioning during memory phase
+         if ( self.enemy && (self.enemy != world) ) {
+            local float mdist;
+            mdist = vlen (self.lastseenpos - self.origin);
+            BotShadowCombatThink (self.enemy, mdist);
+         }
 
          CheckBotAttack ();
          aibot_run_slide (dist,CANTURN);

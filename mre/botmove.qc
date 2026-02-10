@@ -538,11 +538,14 @@ float (float target_yaw) BotClampYaw = {
       delta = delta + 360;
    }
 
-   // Clamp the delta to max turn speed
-   if ( delta > BOT_MAX_TURN_SPEED ) {
-      delta = BOT_MAX_TURN_SPEED;
-   } else if ( delta < (0 - BOT_MAX_TURN_SPEED) ) {
-      delta = 0 - BOT_MAX_TURN_SPEED;
+   // Clamp the delta to max turn speed (skill-scaled)
+   local float max_turn;
+   max_turn = BOT_MAX_TURN_SPEED + (self.skil * 1.200);
+   if ( max_turn > 30 ) max_turn = 30;
+   if ( delta > max_turn ) {
+      delta = max_turn;
+   } else if ( delta < (0 - max_turn) ) {
+      delta = 0 - max_turn;
    }
 
    // Calculate clamped yaw
@@ -1189,7 +1192,10 @@ float (float s_yaw, float s_dist) botwalkmove = {
    }
    if ( is_straight_path && (self.health > 50.000) && !self.feeler_mode_active && self.whiskers_allowed ) {
       if ( !self.enemy || (self.enemy == world) ) {
-         BotBunnyHop (self, s_yaw);
+         // Only hop when far from goal — walk deliberately when closing in on items
+         if ( vlen (self.goalentity.origin - self.origin) > 600.000 ) {
+            BotBunnyHop (self, s_yaw);
+         }
       } else {
          local float edist;
          edist = vlen (self.enemy.origin - self.origin);
@@ -1208,7 +1214,7 @@ float (float s_yaw, float s_dist) botwalkmove = {
       flow_yaw = s_yaw;
    } else if ( self.feeler_mode_active ) {
       // FEELER MODE: Override normal steering
-      if ( time > (self.feeler_start_time + 10) ) {
+      if ( time > (self.feeler_start_time + 5) ) {
          self.feeler_mode_active = FALSE;
          flow_yaw = BotSteer (s_yaw, 1.0);
       } else {

@@ -1064,17 +1064,20 @@ float () ShadowCombatEnemyAction = {
       eskil = 10.000;
    }
 
-   // Low skill: 40/20/20/20, High skill: 30/20/30/20
+   // Low skill: 35/15/20/15/15, High skill: 25/15/25/15/20
+   local float eprob4;
    if ( (eskil >= 5.000) ) {
-      eprob0 = 30.000; // strafe toward / circle
-      eprob1 = 20.000; // away
-      eprob2 = 30.000; // mirror
-      eprob3 = 20.000; // charge/fire
+      eprob0 = 25.000; // strafe toward / circle
+      eprob1 = 15.000; // away
+      eprob2 = 25.000; // mirror
+      eprob3 = 15.000; // charge/fire
+      eprob4 = 20.000; // jump/air-dodge
    } else {
-      eprob0 = 40.000;
-      eprob1 = 20.000;
+      eprob0 = 35.000;
+      eprob1 = 15.000;
       eprob2 = 20.000;
-      eprob3 = 20.000;
+      eprob3 = 15.000;
+      eprob4 = 15.000;
    }
 
    // Slayer Eclipse: bias enemy action model using learned user strafe
@@ -1086,12 +1089,13 @@ float () ShadowCombatEnemyAction = {
          eprob3 = (eprob3 - shift); // right strafe + fire
          if ( (eprob2 < 5.000) ) eprob2 = 5.000;
          if ( (eprob3 < 5.000) ) eprob3 = 5.000;
-         total = (eprob0 + eprob1 + eprob2 + eprob3);
+         total = (eprob0 + eprob1 + eprob2 + eprob3 + eprob4);
          if ( (total > 0.000) ) {
             eprob0 = (eprob0 * (100.000 / total));
             eprob1 = (eprob1 * (100.000 / total));
             eprob2 = (eprob2 * (100.000 / total));
             eprob3 = (eprob3 * (100.000 / total));
+            eprob4 = (eprob4 * (100.000 / total));
          }
       }
    }
@@ -1102,14 +1106,16 @@ float () ShadowCombatEnemyAction = {
    if ( (roll < eprob1) ) return ( 1.000 ); // away
    roll = (roll - eprob1);
    if ( (roll < eprob2) ) return ( 2.000 ); // mirror
-   return ( 3.000 ); // fire + forward
+   roll = (roll - eprob2);
+   if ( (roll < eprob3) ) return ( 3.000 ); // fire + forward
+   return ( 4.000 ); // jump/air-dodge
 
 };
 
 float (float weapon, float dist, float in_water) ShadowCombatWeaponDamage = {
 
    if ( (weapon == IT_ROCKET_LAUNCHER) ) {
-      if ( (dist < 800.000) ) return ( 100.000 - (dist * 0.050) );
+      if ( (dist < 1000.000) ) return ( 100.000 - (dist * 0.040) );
       return ( FALSE );
    }
    if ( (weapon == IT_LIGHTNING) ) {
@@ -1118,7 +1124,7 @@ float (float weapon, float dist, float in_water) ShadowCombatWeaponDamage = {
       return ( FALSE );
    }
    if ( (weapon == IT_SUPER_SHOTGUN) ) {
-      if ( (dist < 400.000) ) return ( 40.000 - (dist * 0.050) );
+      if ( (dist < 500.000) ) return ( 40.000 - (dist * 0.050) );
       return ( FALSE );
    }
    if ( (weapon == IT_SHOTGUN) ) {
@@ -1126,11 +1132,11 @@ float (float weapon, float dist, float in_water) ShadowCombatWeaponDamage = {
       return ( FALSE );
    }
    if ( (weapon == IT_SUPER_NAILGUN) ) {
-      if ( (dist < 700.000) ) return ( 18.000 );
+      if ( (dist < 900.000) ) return ( 18.000 );
       return ( FALSE );
    }
    if ( (weapon == IT_NAILGUN) ) {
-      if ( (dist < 700.000) ) return ( 12.000 );
+      if ( (dist < 800.000) ) return ( 12.000 );
       return ( FALSE );
    }
    return ( FALSE );
@@ -1401,8 +1407,11 @@ void (vector bpos, vector bvel, float bair, float bhp, float bammo, vector epos,
       ShadowSimStep (epos, evel, eair, 3.000, efwd, eright, use_trace);
    } else if ( (enemy_act == 2.000) ) {
       ShadowSimStep (epos, evel, eair, 1.000, efwd, eright, use_trace);
-   } else {
+   } else if ( (enemy_act == 3.000) ) {
       ShadowSimStep (epos, evel, eair, 2.000, efwd, eright, use_trace);
+   } else {
+      // Jump/air-dodge: forward + jump
+      ShadowSimStep (epos, evel, eair, 4.000, efwd, eright, use_trace);
    }
    cb_out_epos = sp_out_pos;
    cb_out_evel = sp_out_vel;
@@ -1473,8 +1482,12 @@ float (entity enemy, float dist, float wpn, float depth, float beam_w, float fir
    if ( (beam_w > SHADOW_COMBAT_BEAM_MAX) ) {
       beam_w = SHADOW_COMBAT_BEAM_MAX;
    }
-   if ( (act_limit > 16.000) ) {
-      act_limit = 16.000;
+   // Skill-scaled action cap (was hardcoded 16)
+   local float act_cap_max;
+   act_cap_max = (16.000 + floor (self.skil * 2.000));
+   if ( act_cap_max > 32.000 ) act_cap_max = 32.000;
+   if ( (act_limit > act_cap_max) ) {
+      act_limit = act_cap_max;
    }
 
    // Init
@@ -1655,7 +1668,11 @@ void (entity enemy, float dist) BotShadowCombatThink = {
       act_limit = (8.000 * 2.000 * (1.000 + floor (self.skil / 5.000)));
    }
    if ( (act_limit < 8.000) ) act_limit = 8.000;
-   if ( (act_limit > 16.000) ) act_limit = 16.000;
+   // Skill-scaled action cap (was hardcoded 16)
+   local float act_cap;
+   act_cap = (16.000 + floor (self.skil * 2.000));
+   if ( act_cap > 32.000 ) act_cap = 32.000;
+   if ( (act_limit > act_cap) ) act_limit = act_cap;
    if ( (depth_override > FALSE) ) {
       depth = depth_override;
       if ( (depth > SHADOW_COMBAT_MAX_DEPTH) ) depth = SHADOW_COMBAT_MAX_DEPTH;

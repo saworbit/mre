@@ -369,6 +369,7 @@ float () Bot_CheckReaction; // Forward declaration
 .float mirage_glance_time;   // Glance-away expiry
 .float blind_fire_miss;      // Consecutive missed blind fires
 .vector blind_fire_spot;     // Last blind fire target
+.float confidence_decay_time; // Last confidence decay tick
 // Specter Gaze (cinematic spectator)
 .vector old_vel;           // Velocity from prior think (for Specter prediction)
 .vector replay_pos0;

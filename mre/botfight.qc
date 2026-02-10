@@ -201,10 +201,15 @@ vector (vector src, vector trg, float invMvel) leadtarget = {
    dist = vlen ((trg - src));
    lead_time = (dist * invMvel);
 
-   // Cap prediction to 0.5 seconds to prevent excessive leading at long range
-   if ( (lead_time > 0.500) ) {
+   // Weapon-specific lead caps (slow projectiles need more lead at range)
+   local float cap;
+   cap = 0.500;
+   if ( self.weapon == IT_ROCKET_LAUNCHER ) cap = 0.700;
+   else if ( self.weapon == IT_GRENADE_LAUNCHER ) cap = 0.800;
+   else if ( (self.weapon == IT_NAILGUN) || (self.weapon == IT_SUPER_NAILGUN) ) cap = 0.600;
+   if ( (lead_time > cap) ) {
 
-      lead_time = 0.500;
+      lead_time = cap;
 
    }
 
@@ -561,6 +566,12 @@ float () W_BestBotWeapon = {
       score_rl = 90;
       // DARWIN: Apply personal confidence (biggest impact)
       score_rl = score_rl + (self.confidence_rl * 8);
+      // RL loses effectiveness at long range (rockets easily dodged)
+      if ( dist > 800 ) {
+         score_rl = score_rl - 25;
+      } else if ( dist > 500 ) {
+         score_rl = score_rl - 10;
+      }
       if ( score_rl > best_score ) {
          best_score = score_rl;
          best_weapon = IT_ROCKET_LAUNCHER;
@@ -570,6 +581,10 @@ float () W_BestBotWeapon = {
    // Super Nailgun scoring
    if ( ((self.ammo_nails >= FL_SWIM) && (it & IT_SUPER_NAILGUN)) ) {
       score_sng = 80;
+      // SNG excels at mid range (300-700u)
+      if ( (dist > 300) && (dist < 700) ) {
+         score_sng = score_sng + 15;
+      }
       if ( score_sng > best_score ) {
          best_score = score_sng;
          best_weapon = IT_SUPER_NAILGUN;
@@ -837,10 +852,12 @@ void () W_BotAttack = {
 
       if ( (vlen ((self.enemy.origin - self.origin)) < 150.000) ) {
 
-         // Switch to a safer weapon instead of suiciding
-         self.weapon = W_BestHeldWeapon ();
-         W_SetCurrentAmmo ();
-         return ;
+         // Allow splash risk: enemy nearly dead or we have pent
+         if ( !((self.enemy.health < 30) || (self.items & IT_INVULNERABILITY)) ) {
+            self.weapon = W_BestHeldWeapon ();
+            W_SetCurrentAmmo ();
+            return ;
+         }
 
       }
 

@@ -138,7 +138,7 @@ void (float dist) ai_botseek = {
 
             // DARWIN: Learn from navigation failure
             if ( self.last_waypoint && self.last_waypoint != world ) {
-               ModulateNodeWeight (self.last_waypoint, -100);
+               ModulateNodeWeight (self.last_waypoint, -30);
                if ( cvar("developer") ) {
                   dprint("[");
                   dprint(self.netname);
@@ -955,7 +955,7 @@ void () aibot_chooseGoal = {
    }
    self.lefty = (self.lefty + TRUE);
    current = botTarget.goalentity;
-   self.search_time = (time + MOVETYPE_STEP);
+   self.search_time = (time + 2.500);
    best = DONT_WANT;
    OK_NOTVIS = FALSE;
    if ( (self.air_finished < (time + MOVETYPE_FLYMISSILE)) ) {
@@ -1033,6 +1033,9 @@ void () aibot_chooseGoal = {
                org_z = (e.absmax_z + TRUE);
 
             }
+            // Distance bonus: closer items score higher (up to +20 at point blank)
+            d2 = vlen ((self.origin - org));
+            weight = (weight + (20.000 * (1.000 - (d2 / SEARCH_RADIUS))));
             if ( (weight == best) ) {
 
                d1 = vlen ((self.origin - bestorg));

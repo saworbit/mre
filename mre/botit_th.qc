@@ -136,7 +136,7 @@ float KINDA_WANT    = 20.000;
 float DONT_WANT    = 0.000;
 float CANTURN    = 1.000;
 float NOTURN    = 2.000;
-float SEARCH_RADIUS    = 600.000;
+float SEARCH_RADIUS    = 1200.000;
 float LOOPTIME    = 20.000;
 float MAXPATHERS    = 16.000;
 float DROPPED    = 2.000;
@@ -387,9 +387,11 @@ float (entity e) backpackweight = {
 float (entity e) healthweight = {
 
    local float weight;
+   local float eff;
 
    weight = WANT;
-   if ( (self.health < 60.000) ) {
+   eff = (self.health + (self.armorvalue * self.armortype));
+   if ( (self.health < 60.000) && (eff < 100.000) ) {
 
       weight = (MUST_HAVE - TRUE);
 
@@ -464,6 +466,8 @@ float (entity e) cellweight = {
 
       weight = DONT_WANT;
 
+   } else if ( (self.items & IT_LIGHTNING) && (self.ammo_cells < 10) ) {
+      weight = (MUST_HAVE - TRUE);
    }
    return ( weight );
 
@@ -477,6 +481,8 @@ float (entity e) rocketweight = {
 
       weight = DONT_WANT;
 
+   } else if ( (self.items & IT_ROCKET_LAUNCHER) && (self.ammo_rockets < 5) ) {
+      weight = (MUST_HAVE - TRUE);
    }
    return ( weight );
 

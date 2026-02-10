@@ -80,9 +80,10 @@ Bots now feel like different-skilled human players rather than identical machine
 - **Aim**: Exponential jitter scaling (skill 0 = ~30 deg miss, skill 5+ = perfect). Pitch jitter from Mirage Minds adds vertical tracking imperfection.
 - **Reactions**: First shot delayed after spotting enemy (skill 0 = 300ms, skill 4+ = instant).
 - **Prediction**: Non-linear depth curve (skill 0 = 3 steps, skill 10 = 16 steps).
-- **Retreat**: Gradual probability curve based on effective health (health + armor), not hard cutoff.
-- **Combat**: Ammo-aware weapon switching, blind fire memory (stops pre-firing failed corners), item grab threat abort.
-- **Movement**: Adaptive strafe timing, combat bunny hopping for skilled bots, skill-scaled ambush patience.
+- **Retreat**: Gradual probability curve based on effective health (health + armor), not hard cutoff. Zigzag strafing while retreating (±30° weave).
+- **Combat**: Ammo-aware weapon switching, blind fire memory, item grab threat abort. Weapon distance scoring (RL penalized at range, SNG mid-range bonus). Splash risk override (finish kills at close range). Target commitment (150u momentum, near-dead loyalty).
+- **Movement**: Adaptive strafe timing with ±25% jitter, combat bunny hopping for skilled bots, skill-scaled ambush patience and turn speed (18-30°/frame).
+- **Items**: Distance-weighted goal selection, doubled search radius (1200u), effective HP health weight (armored bots fight), ammo urgency for RL/LG. Faster goal re-evaluation (2.5s vs 4s).
 - **Humanization**: Multi-axis Mirage Minds with pitch jitter, glance-aways, and variable hold-fire feints.
 - **Camera**: Specter Gaze enhanced with low-health duel and recent combat drama bonuses.
 

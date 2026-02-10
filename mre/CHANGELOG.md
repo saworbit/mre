@@ -15,6 +15,39 @@
 - Simplification: **Slayer Eclipse** cleaned up. Removed hardcoded username checks
   (`slywall`/`Shane`) from `Slayer_IsUser()`. `user_learn` cvar now applies to any
   connected player.
+- Navigation fix: **Distance-weighted goal selection** (`botgoal.qc`). Closer items
+  score up to +20 bonus in `aibot_chooseGoal`. Was pure weight comparison with no
+  distance factor, causing bots to ignore nearby items.
+- Navigation fix: **Doubled search radius** (`botit_th.qc`). `SEARCH_RADIUS` increased
+  from 600 to 1200 units. Bots detect items much further away.
+- Navigation fix: **Goal-aware bunny hop** (`botmove.qc`). No-enemy hopping now gated
+  by `vlen(goalentity.origin - self.origin) > 600`. Prevents chaotic bouncing when
+  closing in on items.
+- Enhancement: **Strafe timing jitter** (`bot_ai.qc`). Strafe flip threshold multiplied
+  by `0.75 + random() * 0.50` each cycle for ±25% variation. Was fixed, learnable rhythm.
+- Enhancement: **Weapon distance scoring** (`botfight.qc`). RL penalized at long range
+  (-10 at >500u, -25 at >800u). SNG gets +15 bonus at mid range (300-700u). Bots show
+  weapon variety instead of always picking RL.
+- Enhancement: **Splash risk override** (`botfight.qc`). Bots keep RL/GL at close range
+  when enemy health < 30 or bot has IT_INVULNERABILITY. Was always swapping to safe weapon.
+- Enhancement: **Target switching momentum** (`bot_ai.qc`). New targets must beat current
+  enemy distance by 150u. Near-dead enemies (<20 effective HP) get 300u extra loyalty.
+  Bots commit to kills instead of ADHD flipping.
+- Enhancement: **State-dependent hysteresis** (`bot_ai.qc`). RETREAT locks 1.5s, GOODY
+  0.8s, ATTACK 1.0s. Was flat 0.5s for GOODY/RETREAT only. ATTACK hysteresis prevents
+  retreat-flipping mid-fight.
+- Enhancement: **Effective HP health weight** (`botit_th.qc`). `healthweight` urgency
+  now requires `self.health < 60 && eff < 100` (eff = health + armor * armortype).
+  Armored bots fight instead of chasing health packs.
+- Enhancement: **Ammo urgency** (`botit_th.qc`). `rocketweight` boosts to MUST_HAVE-1
+  when bot has RL and <5 rockets. `cellweight` same for LG and <10 cells.
+- Enhancement: **Retreat strafing** (`bot_ai.qc`). `ai_botretreat` zigzags at ±30°
+  offsets using STRAFE_DIR alternation with 0.4-0.6s flip timing. Was straight backpedal.
+- Enhancement: **Goal commitment time** (`botgoal.qc`). `search_time` reduced from
+  `time + 4.0` to `time + 2.5`. Bots re-evaluate goals 60% faster.
+- Enhancement: **Skill-scaled turn speed** (`botmove.qc`). `BotClampYaw` max turn
+  scales from 18°/frame (skill 0) to 30°/frame (skill 10) via
+  `BOT_MAX_TURN_SPEED + skil * 1.2`. Was flat 18° for all skills.
 - Enhancement: **Exponential aim jitter** (`botfight.qc`). Replaced linear
   `(3 - sk) * 0.15` with `((5 - sk)^2) * 0.012`. Skill 0 = ~30 deg, skill 3 = ~5 deg,
   skill 5+ = 0. Also adds Z-axis (pitch) jitter at 60% of horizontal.
