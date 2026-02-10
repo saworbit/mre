@@ -26,6 +26,9 @@ id1/
 .DS_Store
 Thumbs.db
 
+# Windows reserved device names (created by accidental writes to 'nul')
+nul
+
 # IDE / Editor specific
 .claude/
 
