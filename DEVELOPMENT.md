@@ -331,6 +331,49 @@ Extracted ~80 lines of duplicated threat scoring into `BotThreatScore()` helper.
 Both the player scanning loop and the bot scanning loop now call the shared
 function. No behavioral change — pure code deduplication.
 
+## Navigation humanization (intelligence pass #6)
+Seven movement systems to eliminate robotic navigation tells, all skill-scaled.
+
+### 1. Bunny hop rhythm variance (`botmove.qc`, `BotBunnyHop()`)
+Replaces fixed 0.4s/15deg/40accel with per-hop randomized values:
+- Hop interval: 0.30-0.50s, narrowed by `skill * 0.008` (min 0.28s).
+- Strafe angle: 10-22deg, skill-converges toward ~15 optimal.
+- Accel boost: 30-50 (ground), 8-16 (air).
+
+### 2. Velocity momentum blending (`botmove.qc`, `botwalkmove()`)
+Direction changes lerp over 2-3 frames instead of instant velocity snap:
+- `blend_rate = 0.6 + skill * 0.03` (cap 0.85).
+- Applied to X/Y velocity in `botwalkmove` after `makevectors`.
+
+### 3. S-curve turn acceleration (`botmove.qc`, `BotClampYaw()`)
+Hermite smoothstep (`3t^2 - 2t^3`) modulates max turn speed:
+- `turn_fraction = abs_delta / max_turn` (clamped to 1).
+- `max_turn *= 0.3 + turn_fraction * 0.7` — small residuals decelerate, large angles ramp up.
+- Creates "whip and settle" mouse acceleration pattern.
+
+### 4. Graduated edge friction (`botmove.qc`, `BotApplyEdgeFriction()`)
+Two-distance braking replaces single binary check:
+- Far (64u ahead): 0.92 friction — gentle early brake.
+- Near (32u ahead): 0.70 friction — heavy brake.
+- One extra traceline per frame vs. the original.
+
+### 5. Platform fidgeting (`botmove.qc`, `BotCheckPlatformRide()`)
+Replaces `velocity = '0 0 0'` with idle animation:
+- Micro-drift: `(random() - 0.5) * 20` on X/Y.
+- 5% chance per frame: yaw += random ±20 deg + `ChangeYaw()`.
+
+### 6. Roaming speed variation (`bot_ai.qc`, `BotRoam()`)
+Replaces fixed 200 speed with mood-based variance:
+- Base: 180-240 random per frame.
+- Corner slowdown: 0.7x when whiskers detected obstacle.
+- 2% micro-pause: 0.2x speed + ±30 deg look-around.
+
+### 7. Swimming clumsiness (`botmove.qc`, `BotSwim()`)
+Pitch wobble + sluggish velocity response:
+- Triangle wave: ±(8 - skill) deg, ~2s period.
+- Velocity blend: `swim_blend = 0.4 + skill * 0.04` (cap 0.75).
+- All three axes (X/Y/Z) blend toward target velocity.
+
 ## Specter Gaze (cinematic spectator camera)
 Two-layer spectator camera system in `mre/ai_specter.qc`, hooked into `PlayerPreThink`
 via `mre/client.qc`.

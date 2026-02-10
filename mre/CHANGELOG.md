@@ -2,6 +2,26 @@
 
 ## Unreleased
 - Clean baseline restored in `mre/`.
+- Enhancement: **Bunny hop rhythm variance** (`botmove.qc`). Variable hop timing
+  (0.28-0.50s), strafe angle (10-22deg), and accel (30-50 ground, 8-16 air). All
+  skill-scaled: higher skill = tighter variance toward optimal values.
+- Enhancement: **Velocity momentum blending** (`botmove.qc`). Direction changes
+  lerp over 2-3 frames via `blend_rate = 0.6 + skill*0.03` (cap 0.85) instead of
+  instant velocity snapping. Creates human-like momentum on turns.
+- Enhancement: **S-curve turn acceleration** (`botmove.qc`). Hermite smoothstep
+  (`3t^2 - 2t^3`) added to `BotClampYaw` for ease-in-out "whip and settle" turn
+  profile. Small residual angles decelerate, large angles ramp up.
+- Enhancement: **Graduated edge friction** (`botmove.qc`). Two-tier braking in
+  `BotApplyEdgeFriction`: far (64u) = 0.92 gentle brake, near (32u) = 0.70 heavy
+  brake. Replaces single binary 32u check.
+- Enhancement: **Platform fidgeting** (`botmove.qc`). Micro-drift (±10u/s) and 5%
+  look-around while riding lifts in `BotCheckPlatformRide`. Replaces motionless
+  standing.
+- Enhancement: **Roaming speed variation** (`bot_ai.qc`). Variable 180-240 speed,
+  0.7x corner slowdown, and 2% micro-pauses in `BotRoam`. Replaces fixed 200 speed.
+- Enhancement: **Swimming clumsiness** (`botmove.qc`). Triangle-wave pitch wobble
+  (±(8-skill) deg, ~2s period) and sluggish velocity blend (0.4+skill*0.04, cap
+  0.75) in `BotSwim`. Replaces instant velocity assignment.
 - Simplification: **Removed Apex HPA\*** (`ai_apex.qc` deleted, forward declarations and
   calls removed from `world.qc`, entry removed from `progs.src`). Vortex A* handles all
   maps without a second abstraction layer.

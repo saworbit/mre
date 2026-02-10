@@ -903,10 +903,7 @@ void () BotRoam = {
       ChangeYaw ();
    }
 
-   // 4. ROBUST FLOW MOVEMENT
-   // Use sensor fusion to steer around obstacles smoothly
-   roam_dist = 200 * BOT_IDLE_THINK;
-
+   // 4. ROBUST FLOW MOVEMENT with human speed variance
    // Get the steering suggestion (0.6 = slower speed factor for roaming)
    flow_yaw = BotSteer (self.ideal_yaw, 0.6);
 
@@ -915,6 +912,25 @@ void () BotRoam = {
       self.ideal_yaw = flow_yaw;
       ChangeYaw ();
    }
+
+   // Base roaming speed with mood-based variance (180-240 range)
+   local float roam_speed;
+   roam_speed = 180.000 + (random () * 60.000);
+
+   // Slow down near corners (whiskers detected obstacle recently)
+   if ( flow_yaw != self.ideal_yaw ) {
+      roam_speed = roam_speed * 0.700;
+   }
+
+   // Occasional micro-pause (2% chance): human "listening" behavior
+   if ( random () < 0.020 ) {
+      roam_speed = roam_speed * 0.200;
+      // Look around during pause
+      self.ideal_yaw = self.ideal_yaw + (random () * 60.000) - 30.000;
+      ChangeYaw ();
+   }
+
+   roam_dist = roam_speed * BOT_IDLE_THINK;
 
    // Call robust movement function with the steered angle
    if ( !botwalkmove (self.ideal_yaw, roam_dist) ) {

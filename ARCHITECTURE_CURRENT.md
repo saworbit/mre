@@ -284,7 +284,12 @@ Called from `botwalkmove()` after sensor fusion but before `walkmove()`.
 
 ### Low-Level Movement
 
-- Bunny hop: `BotBunnyHop` adds a strafe-jump style velocity boost on long, straight runs when safe.
+- Bunny hop: `BotBunnyHop` adds variable-rhythm strafe-jumps (0.28-0.50s, 10-22deg, 30-50 accel) when safe.
+- Velocity blending: Direction changes lerp over 2-3 frames (blend_rate 0.6-0.85) instead of instant snap.
+- S-curve turns: `BotClampYaw` uses Hermite smoothstep for "whip and settle" turn profile.
+- Graduated edge friction: `BotApplyEdgeFriction` uses two-tier braking (64u=0.92, 32u=0.70).
+- Platform fidgeting: `BotCheckPlatformRide` adds micro-drift and look-around while riding lifts.
+- Swim clumsiness: `BotSwim` adds pitch wobble and sluggish velocity blend in water.
 
 ```
 botwalkmove(yaw, dist)                 [botmove.qc:513]
@@ -889,6 +894,7 @@ impulse 106  →  Specter_CycleFocus()     [ai_specter.qc]
 
 | Date | Change |
 |------|--------|
+| 2026-02-10 | Intelligence pass #6: Navigation humanization — bunny hop rhythm variance, velocity momentum blending, S-curve turns, graduated edge friction, platform fidgeting, roaming speed variation, swimming clumsiness |
 | 2026-02-10 | Intelligence pass #4: Powerup spawn timing, threat-scored targeting, circle strafing, retreat toward safety, elevation preference, engagement commitment, post-kill scavenge, traceline stagger, ambush jump suppression, skill-gated bunny hop |
 | 2026-02-10 | Intelligence pass #3: Quad aggression, enemy Quad caution, fast-kill hitscan, weapon-range engagement, score pressure, velocity stuck guard, skill-scaled search timeout, speed-scaled whiskers, effective HP armor weight, ambush weapon safety |
 | 2026-02-10 | Intelligence pass #2: strafe jitter, weapon distance scoring, splash risk override, target momentum, state hysteresis, effective HP weights, ammo urgency, retreat strafing, goal commitment, skill-scaled turn speed |

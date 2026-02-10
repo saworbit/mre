@@ -81,6 +81,15 @@ For visual/behavioral verification:
 - [ ] **Specter Cycle**: `impulse 106` cycles focus, camera snaps then smoothly settles
 - [ ] **Specter Off**: `impulse 105` again returns player to original position
 
+### Navigation Humanization
+- [ ] **Bunny Hop Variance**: Watch bots hop - timing and strafe angles vary per hop (not metronomic)
+- [ ] **Momentum Blending**: Bots don't snap-turn instantly - direction changes have visible momentum
+- [ ] **S-Curve Turns**: Bots accelerate into turns and decelerate out ("whip and settle" pattern)
+- [ ] **Graduated Edge Braking**: Bots slow down early near edges instead of abrupt last-second stop
+- [ ] **Platform Fidgeting**: Bots shift slightly and look around while riding lifts (not frozen)
+- [ ] **Roaming Speed Variance**: Idle bots vary speed, slow at corners, occasionally micro-pause
+- [ ] **Swim Clumsiness**: Bots wobble in pitch and respond sluggishly when swimming
+
 ### Combat Fairness
 - [ ] **Aim Jitter**: Skill 0 bots miss noticeably (~30° error), skill 5+ near-perfect
 - [ ] **Reaction Time**: Skill 0 bots have ~300ms delay before first shot (surprise attacks work)

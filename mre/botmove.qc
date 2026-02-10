@@ -51,13 +51,17 @@ float () BotCheckPlatformRide = {
    // func_plat: vertical lifts - wait for them to move us
    if ( (plat.classname == "func_plat") || (plat.classname == "plat") ) {
       // If the plat is moving UP or at TOP, wait for it
-      if ( (plat.state == STATE_UP) || (plat.state == STATE_TOP) ) {
-         self.velocity = '0 0 0';
-         return ( TRUE );
-      }
-      // If plat is at BOTTOM, wait for it to trigger and rise
-      if ( plat.state == STATE_BOTTOM ) {
-         self.velocity = '0 0 0';
+      if ( (plat.state == STATE_UP) || (plat.state == STATE_TOP) ||
+           (plat.state == STATE_BOTTOM) ) {
+         // Human-like fidgeting while waiting (not perfectly still)
+         self.velocity_x = (random () - 0.500) * 20.000;
+         self.velocity_y = (random () - 0.500) * 20.000;
+         self.velocity_z = 0;
+         // Occasionally look around (5% chance per frame)
+         if ( random () < 0.050 ) {
+            self.ideal_yaw = self.ideal_yaw + (random () * 40.000) - 20.000;
+            ChangeYaw ();
+         }
          return ( TRUE );
       }
    }
@@ -526,6 +530,9 @@ float (float target_yaw) BotClampYaw = {
 
    local float delta;
    local float clamped_yaw;
+   local float max_turn;
+   local float abs_delta;
+   local float turn_fraction;
 
    // Calculate shortest angle difference
    delta = target_yaw - self.last_yaw;
@@ -539,9 +546,21 @@ float (float target_yaw) BotClampYaw = {
    }
 
    // Clamp the delta to max turn speed (skill-scaled)
-   local float max_turn;
    max_turn = BOT_MAX_TURN_SPEED + (self.skil * 1.200);
    if ( max_turn > 30 ) max_turn = 30;
+
+   // S-curve turn profile: mimics human mouse acceleration
+   // Small residual angles decelerate, large angles ramp up
+   // Creates the "whip and settle" pattern humans exhibit
+   abs_delta = fabs (delta);
+   if ( abs_delta > 1 ) {
+      turn_fraction = abs_delta / max_turn;
+      if ( turn_fraction > 1 ) turn_fraction = 1;
+      // Hermite smoothstep: 3t^2 - 2t^3 (ease-in-out)
+      turn_fraction = turn_fraction * turn_fraction * (3.000 - 2.000 * turn_fraction);
+      max_turn = max_turn * (0.300 + (turn_fraction * 0.700));
+   }
+
    if ( delta > max_turn ) {
       delta = max_turn;
    } else if ( delta < (0 - max_turn) ) {
@@ -673,28 +692,43 @@ void () BotApplyEdgeFriction = {
 
    local vector ahead;
    local vector down;
+   local float friction;
+   local vector vel_dir;
 
    // Only apply when on ground with horizontal velocity
    if ( !(self.flags & FL_ONGROUND) ) {
       return;
    }
 
-   // Look 32 units ahead in movement direction
    if ( vlen (self.velocity) < 50 ) {
       return;  // Not moving fast enough to worry
    }
 
-   ahead = self.origin + (normalize (self.velocity) * 32);
+   vel_dir = normalize (self.velocity);
+   friction = 1.000;
+
+   // Graduated edge friction: check at two distances for natural deceleration
+   // Far check (64 units): gentle early brake
+   ahead = self.origin + (vel_dir * 64);
    down = ahead;
-   down_z = down_z - 48;  // Look down for ground
-
+   down_z = down_z - 48;
    traceline (ahead, down, TRUE, self);
-
-   // If no ground ahead, apply extra friction
    if ( trace_fraction == 1.0 ) {
-      // Edge detected - slow down
-      self.velocity_x = self.velocity_x * BOT_EDGE_FRICTION;
-      self.velocity_y = self.velocity_y * BOT_EDGE_FRICTION;
+      friction = 0.920;  // Gentle deceleration starts early
+   }
+
+   // Near check (32 units): heavier brake
+   ahead = self.origin + (vel_dir * 32);
+   down = ahead;
+   down_z = down_z - 48;
+   traceline (ahead, down, TRUE, self);
+   if ( trace_fraction == 1.0 ) {
+      friction = 0.700;  // Heavy braking close to edge
+   }
+
+   if ( friction < 1.000 ) {
+      self.velocity_x = self.velocity_x * friction;
+      self.velocity_y = self.velocity_y * friction;
    }
 
 };
@@ -821,16 +855,36 @@ float (float desired_speed) BotSwim = {
       target_org = self.origin + (v_forward * 100.000);
    }
 
-   // 3. CALCULATE 3D DIRECTION (Pitch + Yaw)
+   // 3. CALCULATE 3D DIRECTION (Pitch + Yaw) with swim wobble
    aim_dir = normalize ((target_org - self.origin));
    swim_angles = vectoangles (aim_dir);
    heading = vectoyaw (aim_dir);
    self.ideal_yaw = BotClampYaw (heading);
+
+   // Pitch wobble: humans can't hold steady pitch while swimming
+   // Triangle wave from time: oscillates -1..+1 over ~2 second period
+   local float pitch_wobble;
+   local float wave_t;
+   wave_t = (time * 0.500) - floor (time * 0.500);
+   if ( wave_t < 0.500 )
+      pitch_wobble = (wave_t * 4.000) - 1.000;
+   else
+      pitch_wobble = 3.000 - (wave_t * 4.000);
+   pitch_wobble = pitch_wobble * (8.000 - self.skil);
+   swim_angles_x = swim_angles_x + pitch_wobble;
+
    self.angles = swim_angles;
    self.angles_y = self.ideal_yaw;
 
-   // 4. APPLY PHYSICS VELOCITY
-   self.velocity = (aim_dir * desired_speed);
+   // 4. APPLY PHYSICS VELOCITY (sluggish blend, not instant snap)
+   local vector target_swim_vel;
+   local float swim_blend;
+   target_swim_vel = (aim_dir * desired_speed);
+   swim_blend = 0.400 + (self.skil * 0.040);
+   if ( swim_blend > 0.750 ) swim_blend = 0.750;
+   self.velocity_x = self.velocity_x + ((target_swim_vel_x - self.velocity_x) * swim_blend);
+   self.velocity_y = self.velocity_y + ((target_swim_vel_y - self.velocity_y) * swim_blend);
+   self.velocity_z = self.velocity_z + ((target_swim_vel_z - self.velocity_z) * swim_blend);
 
    // 5. OBSTACLE AVOIDANCE (Whisker slide)
    traceline (self.origin, self.origin + (aim_dir * 32.000), TRUE, self);
@@ -1015,35 +1069,44 @@ float (entity next_node, float dist) BotExecuteLink = {
 void (entity bot, float desired_yaw) BotBunnyHop = {
 
    local float strafe_angle;
+   local float hop_interval;
+   local float accel_boost;
 
-   if ( !bot ) {
-      return ;
-   }
-   if ( vlen (bot.velocity) < 200.000 ) {
-      return ;
-   }
+   if ( !bot ) return;
+   if ( vlen (bot.velocity) < 200.000 ) return;
 
-   // Air control: simulate strafe-jump acceleration
+   // Air control: simulate strafe-jump acceleration with variance
    if ( !(bot.flags & FL_ONGROUND) ) {
       makevectors ('0 1 0' * desired_yaw);
-      bot.velocity = (bot.velocity + (v_forward * 12.000));
+      // Vary air control: 8-16 instead of flat 12
+      accel_boost = 8.000 + (random () * 8.000);
+      bot.velocity = (bot.velocity + (v_forward * accel_boost));
       if ( (vlen (bot.velocity) > 550.000) ) {
          bot.velocity = (normalize (bot.velocity) * 550.000);
       }
-      return ;
+      return;
    }
 
-   // Rhythm: alternate strafe direction and jump
+   // Human-like hop rhythm: 0.30-0.50s with slight skill bias
+   hop_interval = 0.300 + (random () * 0.200);
+   // Skilled players are more consistent (tighter variance)
+   hop_interval = hop_interval - (bot.skil * 0.008);
+   if ( hop_interval < 0.280 ) hop_interval = 0.280;
+
    if ( time > bot.strafe_timer ) {
       if ( (bot.strafe_state == 1.000) ) {
          bot.strafe_state = 2.000;
       } else {
          bot.strafe_state = 1.000;
       }
-      bot.strafe_timer = (time + 0.400);
+      bot.strafe_timer = (time + hop_interval);
       bot.button2 = TRUE;
 
-      strafe_angle = 15.000;
+      // Vary strafe angle: 10-22 degrees (humans aren't precise)
+      strafe_angle = 10.000 + (random () * 12.000);
+      // Skill narrows the variance toward optimal ~15
+      strafe_angle = 15.000 + ((strafe_angle - 15.000) * (1.000 - (bot.skil * 0.080)));
+
       if ( (bot.strafe_state == 1.000) ) {
          bot.v_angle_y = (desired_yaw + strafe_angle);
       } else {
@@ -1051,7 +1114,9 @@ void (entity bot, float desired_yaw) BotBunnyHop = {
       }
 
       makevectors ('0 1 0' * desired_yaw);
-      bot.velocity = (bot.velocity + (v_forward * 40.000));
+      // Vary forward boost: 30-50 instead of flat 40
+      accel_boost = 30.000 + (random () * 20.000);
+      bot.velocity = (bot.velocity + (v_forward * accel_boost));
       if ( (vlen (bot.velocity) > 550.000) ) {
          bot.velocity = (normalize (bot.velocity) * 550.000);
       }
@@ -1241,10 +1306,20 @@ float (float s_yaw, float s_dist) botwalkmove = {
          Bot_DropBreadcrumb ();
       }
 
-      // 1. Velocity Matching (Fixes teleport/jitter)
+      // 1. Velocity Blending (momentum-preserving direction changes)
+      // Humans have momentum — direction changes blend over 2-3 frames
       makevectors ('0 1 0' * flow_yaw);
-      self.velocity_x = v_forward_x * s_dist * 10.0;
-      self.velocity_y = v_forward_y * s_dist * 10.0;
+      local vector target_vel;
+      local float blend_rate;
+      target_vel_x = v_forward_x * s_dist * 10.0;
+      target_vel_y = v_forward_y * s_dist * 10.0;
+
+      // Blend toward target velocity (0.6 = fast but not instant)
+      // Higher skill = crisper movement (better mouse control)
+      blend_rate = 0.600 + (self.skil * 0.030);
+      if ( blend_rate > 0.850 ) blend_rate = 0.850;
+      self.velocity_x = self.velocity_x + ((target_vel_x - self.velocity_x) * blend_rate);
+      self.velocity_y = self.velocity_y + ((target_vel_y - self.velocity_y) * blend_rate);
 
       // 2. Ground Glue (Fixes z-axis jitter on stairs/ramps)
       if ( self.flags & FL_ONGROUND ) {

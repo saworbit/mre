@@ -6,6 +6,36 @@
 - Rebooting Reaper Bot from a clean baseline.
 - Focusing first on community-reported issues.
 
+### Intelligence Pass #6 (Navigation Humanization)
+- **Bunny hop rhythm variance** (`botmove.qc`). Replaced fixed 0.4s/15deg/40accel
+  with variable hop_interval (0.28-0.50s, skill-narrowed), strafe_angle (10-22deg,
+  skill-converges to ~15 optimal), and accel_boost (30-50 ground, 8-16 air). Higher
+  skill = tighter, more consistent rhythm.
+- **Velocity momentum blending** (`botmove.qc`). Replaced instant velocity snapping
+  in `botwalkmove` with lerp-based direction changes: `blend_rate = 0.6 + skill*0.03`
+  (cap 0.85). Direction changes blend over 2-3 frames instead of instant 90-degree
+  snaps. Creates human-like momentum on turns.
+- **S-curve turn acceleration** (`botmove.qc`). Added Hermite smoothstep
+  (`3t^2 - 2t^3`) to `BotClampYaw`. Small residual angles decelerate, large angles
+  ramp up — creates the "whip and settle" pattern humans exhibit with mouse
+  acceleration. Turn speed modulated from 30% to 100% of max based on the curve.
+- **Graduated edge friction** (`botmove.qc`). Replaced single 32-unit binary check
+  with two-distance graduated braking in `BotApplyEdgeFriction`: far check (64u) =
+  0.92 gentle brake, near check (32u) = 0.70 heavy brake. Natural early deceleration
+  instead of an abrupt last-second stop.
+- **Platform fidgeting** (`botmove.qc`). Replaced `velocity = '0 0 0'` in
+  `BotCheckPlatformRide` with micro-drift (±10 units/s random) and 5% chance per
+  frame to look around (±20 deg yaw). Bots shift weight and glance while riding
+  lifts instead of standing perfectly still.
+- **Roaming speed variation** (`bot_ai.qc`). Replaced fixed `200 * BOT_IDLE_THINK`
+  in `BotRoam` with variable 180-240 speed, 0.7x corner slowdown (when whiskers
+  detected obstacle), and 2% micro-pause with look-around. Eliminates the constant
+  metronome pace of idle wandering.
+- **Swimming clumsiness** (`botmove.qc`). Added triangle-wave pitch wobble
+  (`±(8 - skill)` degrees, ~2s period) and sluggish velocity blend
+  (`0.4 + skill*0.04`, cap 0.75) in `BotSwim`. Replaces instant velocity assignment
+  with gradual convergence — bots wallow in water instead of laser-tracking targets.
+
 ### Simplification (System Cleanup)
 - Removed **Apex HPA\*** hierarchical clustering (`ai_apex.qc` deleted, references removed from `world.qc`, `progs.src`). The Vortex A* mesh handles all maps without a second abstraction layer.
 - Simplified **Mirage Minds**: removed persona system (5 personas, persona switching, heat maps, micro-goals). Now entropy-only with yaw/pitch jitter, glance-aways, and hold-fire feints.

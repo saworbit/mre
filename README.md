@@ -75,6 +75,14 @@ from `archive/`.
   - Blind fire memory (stops pre-firing corners after 2 consecutive misses)
   - Item grab threat abort (abandons pickups when under fire at low health)
   - Vortex slime avoidance and skill-scaled rocket jump depth
+- **Navigation Humanization**: Seven movement systems to eliminate robotic tells
+  - Bunny hop rhythm variance (0.28-0.50s timing, 10-22 deg strafe, 30-50 accel)
+  - Velocity momentum blending (lerp-based direction changes instead of instant snap)
+  - S-curve turns (Hermite smoothstep ease-in-out on yaw clamping)
+  - Graduated edge friction (two-tier braking: 64u=0.92, 32u=0.70)
+  - Platform fidgeting (micro-drift and look-around while riding lifts)
+  - Roaming speed variation (180-240 speed, corner slowdown, micro-pauses)
+  - Swimming clumsiness (pitch wobble + sluggish velocity blend in water)
 
 ### Investigated (Likely Fixed / Not Found)
 - "Bot frags not shown" - MSG_UPDATEFRAGS sent correctly, likely fixed by 0-index fix
