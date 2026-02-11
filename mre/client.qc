@@ -1651,6 +1651,9 @@ void (entity targ, entity attacker) ClientObituary = {
                }
             }
 
+            // ADAPTIVE TACTICS: Update opponent threat profiles on kill
+            OppRecordResult(attacker, targ);
+
             rnum = attacker.weapon;
             deathstring = " was killed by ";
             deathstring2 = "\n";

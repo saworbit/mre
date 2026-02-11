@@ -129,6 +129,9 @@ void (entity source, vector org, float volume, float type) Bot_BroadcastNoise = 
             bot.heard_sound_time = time;
             bot.heard_sound_loc = org;
             bot.heard_sound_type = type;
+            // ADAPTIVE TACTICS: Store shooter's weapon for sound inference
+            if ( type == NOISE_WEAPON )
+               bot.heard_sound_weapon = source.weapon;
          }
       }
       bot = find (bot, classname, "dmbot");

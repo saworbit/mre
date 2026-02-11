@@ -167,11 +167,13 @@ BotFindTarget()               [bot_ai.qc:755]
   └─> Returns best-scored target (NOT just closest)
 ```
 
-**Planned: Multi-threat assessment** — `visible_threats` counter during scan, feeding
-into `RunAway()` (1v2+ retreat) and third-party patience (wait out other fights).
+**Multi-threat awareness** — `visible_threats` counter during scan feeds into
+`BotAggressionScore()` (2+ enemies = -0.25, 3+ = -0.15 aggression penalty). No hard
+THIRD_PARTY_WAIT return (removed — it suppressed all combat). Multi-threat pressure
+is expressed purely through the aggression score.
 
-**Planned: Pre-engagement evaluation** — `BotFoundTarget()` will assess fight viability
-(weapon/HP/powerup) before committing; skip hopeless engagements at skill 2+.
+**Opponent profiling** — `OppUpdate(enemy)` called when enemy is visible, updates
+EMA for aggression/weapon/threat. `OppRecordResult()` called from `ClientObituary`.
 
 ---
 
@@ -826,7 +828,115 @@ W_BestBotWeapon()                          [botfight.qc]
   │     ├─> GL: score += confidence_gl * 6
   │     └─> SSG: score += confidence_sg * 4
   │
+  ├─> [Counter-weapon bonuses (skill 2+)]
+  │     ├─> enemy has LG → RL +15
+  │     ├─> enemy has RL → LG +15
+  │     ├─> enemy has SSG/SG → SNG +10
+  │     └─> enemy has GL → SSG +10
+  │
   └─> Return weapon with highest score
+```
+
+---
+
+## Call Graph: Adaptive Tactics (Intelligence Pass #8)
+
+### Opponent Profiling
+
+Bots track per-enemy behavior over time:
+
+```
+BotAI_Main(dist)                           [bot_ai.qc]
+  │
+  ├─> [if enemy visible]
+  │     └─> OppUpdate(self.enemy)          [botit_th.qc]
+  │           ├─> OppSlotOrEvict(en)       [find/create 4-slot LRU profile]
+  │           ├─> EMA aggression: vel dot product toward self (alpha=0.3)
+  │           └─> EMA weapon: store en.weapon in profile
+  │
+  └─> [on kill/death via ClientObituary]
+        └─> OppRecordResult(winner, loser) [botit_th.qc]
+              ├─> winner's view: threat EMA blend toward 1.0 (dangerous)
+              └─> loser's view: threat EMA blend toward 0.0 (easy)
+```
+
+### Continuous Aggression Score
+
+Replaces binary RunAway() with a 0.0-1.0 spectrum:
+
+```
+BotAggressionScore()                       [bot_ai.qc]
+  │
+  ├─> base = eff_hp / 120 (clamped 0.1-0.9)
+  ├─> += weapon quality (±0.15 RL/LG, ±0.05 SNG/SSG, -0.15 weak)
+  ├─> += powerups (+0.3 Quad, 1.0 Invuln, -0.3/-0.5 enemy)
+  ├─> += opponent profile (threat ±0.09, aggression counter-play ±0.1)
+  ├─> += enemy health (+0.2 if <25 HP)
+  ├─> += score pressure (±0.1 at 5-frag delta)
+  ├─> += multi-threat (-0.25 for 2, -0.15 for 3+)
+  ├─> += match phase (±0.1-0.15)
+  ├─> skill dampening: 0.5 + (aggro - 0.5) * (0.5 + skill * 0.05)
+  └─> hysteresis: self.aggression = old * 0.7 + new * 0.3
+
+BotAI_Main [RunAway replacement]           [bot_ai.qc]
+  │
+  ├─> [aggro < 0.25] → retreat: face enemy, raw walkmove() backward,
+  │     zigzag ±30°, drift toward health/armor, CheckBotAttack()
+  ├─> [aggro 0.25-0.45] → kite: face enemy, raw walkmove() at 0.6x speed,
+  │     ±45°/±90° fallbacks, CheckBotAttack()
+  └─> [aggro >= 0.45] → normal combat
+```
+
+### Match Phase Detection
+
+```
+BotUpdateMatchPhase()                      [bot_ai.qc]
+  │                                        [called from BotAI_Main, 1/sec throttle]
+  ├─> scan all players + bots for total_frags, max_frags
+  ├─> fraglimit = cvar("fraglimit")
+  │
+  ├─> [total_frags < 10] → phase 0 (SCRAMBLE)
+  ├─> [max_frags >= fraglimit - 5] → phase 2 (ENDGAME)
+  └─> [else] → phase 1 (CONTROL)
+
+aibot_chooseGoal()                         [botgoal.qc]
+  │
+  ├─> [phase 0 SCRAMBLE] → +20 weight for RL/LG weapons
+  ├─> [phase 1 CONTROL]  → +15 weight for armor2/armorInv
+  └─> [phase 2 ENDGAME]  → +30 weight for Quad/Pent
+```
+
+### Weapon Sound Inference
+
+```
+Bot_BroadcastNoise(source, bot, type)      [botnoise.qc]
+  │
+  └─> [if type == NOISE_WEAPON]
+        └─> bot.heard_sound_weapon = source.weapon
+
+Bot_AnalyzeSound() [NOISE_WEAPON handler]  [bot_ai.qc]
+  │
+  ├─> [RL/GL heard + weak (<60 eff HP)] → cautious investigation (priority 30)
+  ├─> [weak weapon + strong (>80 HP)]   → aggressive push (priority 90)
+  └─> [default]                         → normal investigation (priority 50)
+```
+
+### Adaptive Engagement Distance
+
+```
+aibot_run_slide()                          [bot_ai.qc]
+  │
+  ├─> [skill >= 2]
+  │     ├─> base opt_dist from current weapon
+  │     ├─> enemy LG: +100u (stay outside range)
+  │     ├─> enemy RL: -80u (close gap)
+  │     ├─> enemy SSG: +60u (SSG falls off)
+  │     ├─> enemy weak: -100u (push)
+  │     ├─> aggression: opt_dist + (0.5 - aggro) * 150
+  │     └─> clamp 100-800u
+  │
+  └─> [strafe bias]
+        └─> low aggression → higher rdir (more evasive strafing)
 ```
 
 ---
@@ -904,6 +1014,7 @@ impulse 106  →  Specter_CycleFocus()     [ai_specter.qc]
 
 | Date | Change |
 |------|--------|
+| 2026-02-10 | Intelligence pass #8: Adaptive tactics — opponent profiling, counter-weapon selection, continuous aggression score, multi-threat awareness, match phase detection, weapon sound inference, adaptive engagement distance |
 | 2026-02-10 | Intelligence pass #7 (planned): Problem-solving review — risk-reward goals, multi-threat assessment, situational weapons, tactical repositioning, combat resource drift, pre-engagement evaluation, sound threat inference |
 | 2026-02-10 | Intelligence pass #6: Navigation humanization — bunny hop rhythm variance, velocity momentum blending, S-curve turns, graduated edge friction, platform fidgeting, roaming speed variation, swimming clumsiness |
 | 2026-02-10 | Intelligence pass #4: Powerup spawn timing, threat-scored targeting, circle strafing, retreat toward safety, elevation preference, engagement commitment, post-kill scavenge, traceline stagger, ambush jump suppression, skill-gated bunny hop |

@@ -331,70 +331,79 @@ Extracted ~80 lines of duplicated threat scoring into `BotThreatScore()` helper.
 Both the player scanning loop and the bot scanning loop now call the shared
 function. No behavioral change — pure code deduplication.
 
-## Problem-solving review (intelligence pass #7 — planned)
-Cross-system "game sense" layer. Core deficit: every decision is made in isolation.
-Goals ignore enemies, combat ignores resources, retreat is binary. Seven proposed systems.
+## Adaptive tactics (intelligence pass #8)
+Cross-system "game sense" layer with opponent modeling. Seven adaptive tactics systems.
 
-### 1. Risk-reward goal scoring (`botgoal.qc`, `aibot_chooseGoal()`)
-New `GoalRiskScore(item, base_weight)` modulates item desirability:
-- Enemy proximity: -40% if enemy within 300u of item, extra -20% when fragile (<50 eff HP).
-- Cursed node penalty: `GetCursePenalty(item_org)` adds 0-40% cost for stuck zones.
-- Strength gating: fragile bots (<40 eff HP) penalize far items, boost nearby health -50%.
-- Quad urgency: holding Quad deprioritizes health (+30% penalty) when above 50 HP.
-- Applied after `itemweight()`, before final comparison in `aibot_chooseGoal`.
+### 1. Opponent profiling (`botit_th.qc`, `defs.qc`)
+4-slot LRU opponent tracker with EMA for aggression, weapon, and threat per enemy:
+- `OppSlot(en)` / `OppSlotOrEvict(en)`: find or create profile with LRU eviction.
+- `OppUpdate(en)`: EMA update (alpha=0.3) — aggression from velocity dot product, weapon from `en.weapon`.
+- `OppGetAggro(en)` / `OppGetThreat(en)` / `OppGetWeap(en)`: query cached values.
+- `OppRecordResult(winner, loser)`: update threat EMA on kills/deaths via self-swap.
+- Entity fields: `opp_ent_0..3`, `opp_aggro_0..3`, `opp_weap_0..3`, `opp_threat_0..3`.
+- Called from `BotAI_Main` (enemy visible → `OppUpdate`) and `ClientObituary` (kill/death → `OppRecordResult`).
 
-### 2. Multi-threat assessment (`bot_ai.qc`, `BotFindTarget()`)
-`visible_threats` counter piggybacks existing player+bot scan at zero extra cost:
-- 1v2+ with <100 eff HP: always retreat.
-- 1v3+: 70% retreat even when tanky.
-- Third-party patience (skill 3+): if enemy.enemy != self and distance >400u, pause
-  1.5s to let them weaken each other before engaging. `AI_STATE_INVESTIGATE` / `THIRD_PARTY_WAIT`.
-- `MULTIENEMY` flag currently only triggers at `health < 10` — effectively dead code.
+### 2. Counter-weapon selection (`botfight.qc`, `W_BestBotWeapon()`)
+After existing weapon scoring, reads enemy weapon and adds counter bonuses (skill 2+):
+- RL +15 vs LG (rockets punish LG range), LG +15 vs RL (shaft dodges rockets).
+- SNG +10 vs SSG/SG (nails outrange pellets), SSG +10 vs GL (close rush beats nades).
+- Uses `OppGetWeap()` with `enemy.weapon` fallback. Re-evaluates best after bonuses.
 
-### 3. Situational weapon scoring (`botfight.qc`, `W_BestHeldWeapon()`)
-Replace priority cascade with scored evaluation per weapon:
-- LG: base 90, -40 if >450u, -15 vs fast dodger (enemy vel >400), -20 if ammo <15.
-- RL: base 85, -60 close (<150u without Quad), +10 vs slow enemy, -25 if ammo <=2.
-- SNG: base 70, +15 sweet spot (150-400u), +10 corridor bonus (sideways trace <0.5).
-- SSG: base 55, +30 close (<200u), +20 if ambush_ready, -30 far (>400u).
-- GL: base 40, -50 close, +20 if enemy below (-50u).
-- One extra `traceline` for corridor detection (SNG bonus).
-- Dead code: `confidence_rl/lg/gl/sg` fields decay in `BotAI_Main:1764-1769` but are
-  never read by weapon selection — wire up or remove.
+### 3. Continuous aggression score (`bot_ai.qc`, `BotAggressionScore()`)
+Returns 0.0-1.0 based on multiple factors:
+- Base: effective HP / 120 (clamped 0.1-0.9).
+- Weapon quality: +0.15 RL/LG, +0.05 SNG/SSG, -0.15 SG/AXE/NG.
+- Powerups: +0.3 Quad, 1.0 Invuln, -0.3 enemy Quad, -0.5 enemy Invuln.
+- Opponent profile: threat EMA modulates ±0.09, aggression EMA counter-play ±0.1.
+- Enemy health: +0.2 if <25 HP. Score pressure: ±0.1 at 5-frag delta.
+- Multi-threat: -0.25 for 2 enemies, -0.15 for 3+.
+- Match phase: +0.1 SCRAMBLE, ±0.15 ENDGAME (lead-dependent).
+- Skill dampening: `0.5 + (aggro - 0.5) * (0.5 + skill * 0.05)`.
+- Hysteresis: `self.aggression = self.aggression * 0.7 + aggro * 0.3`.
 
-### 4. Tactical repositioning (`bot_ai.qc`)
-New `BotAssessPosition()` replaces binary `RunAway()` with spectrum:
-- Returns 0 (fight), 1 (kite), 2 (retreat) based on advantage score.
-- Advantage = eff HP delta + weapon advantage (+30 RL vs none) + Quad (-80 enemy Quad)
-  + multi-threat (-60 per extra enemy) + height (+20 if elevated).
-- Kite state: fires while backing at 80% speed, 30% yaw blend toward strafe.
-- Replaces fight-or-flee binary that currently has no middle ground.
+Replaces binary `RunAway()` call in `BotAI_Main` with three-tier response:
+- `aggro < 0.25`: retreat — faces enemy, backpedals with raw `walkmove()`, zigzags ±30°,
+  drifts toward health/armor, fires via `CheckBotAttack()`. No more turning back to run.
+- `aggro 0.25-0.45`: kite — faces enemy, raw `walkmove()` at 0.6x speed with ±45°/±90°
+  fallback escapes, fires via `CheckBotAttack()`. Uses raw walkmove to avoid BotSteer
+  whisker interference with backward movement.
+- `aggro >= 0.45`: normal combat (fall through to existing code).
 
-### 5. Combat resource drift (`bot_ai.qc`, `aibot_run_slide()`)
-During combat, when <80 eff HP, `findradius(250)` locates nearest health/armor:
-- 30% strafe offset blend toward item (item_yaw - ideal_yaw) * 0.3.
-- Small radius (250u) means few entities iterated — cheap.
-- Placed after cover_bias calculation, before circle strafing adjustment.
+### 4. Multi-threat awareness (`bot_ai.qc`, `BotFindTarget()`)
+`visible_threats` counter piggybacks both player and bot scan loops at zero extra cost.
+- Feeds into aggression score as -0.25 (2 enemies) or -0.15 (3+).
+- Note: THIRD_PARTY_WAIT (hard `return` that suppressed all combat when 2+ enemies visible)
+  was removed — it caused bots to freeze and not shoot. Multi-threat pressure is expressed
+  purely through the aggression score penalty.
 
-### 6. Pre-engagement evaluation (`bot_ai.qc`, `BotFoundTarget()`)
-Skill 2+ bots assess fight viability before committing:
-- Fight score: -40 underarmed (no RL/LG/SNG/SSG), -30 low HP (<40), -50 enemy Quad,
-  -20 far+weak (>600u + <60 eff HP), +60 own Quad, +20 tanky (>120 eff HP).
-- Score < -40: skip engagement, set `lastseenpos` for awareness but don't enter combat.
-- Inserted between validation checks and `BotHuntTarget()` call.
+### 5. Match phase detection (`bot_ai.qc`, `botgoal.qc`)
+`BotUpdateMatchPhase()` scans all players/bots for total and max frags (1/sec throttle):
+- Phase 0 (SCRAMBLE): total frags <10 → `botgoal.qc` adds +20 for RL/LG weapons.
+- Phase 1 (CONTROL): mid-game → +15 for armor2/armorInv.
+- Phase 2 (ENDGAME): max frags within 5 of `cvar("fraglimit")` → +30 for Quad/Pent.
+- Aggression score: +0.1 SCRAMBLE, ±0.15 ENDGAME (lead-dependent).
 
-### 7. Sound-driven threat inference (`bot_ai.qc`, `Bot_AnalyzeSound()`)
-`NOISE_WEAPON` handler (currently empty `return`) now infers enemy capability:
-- Volume >700 = inferred RL/GL, >500 = inferred SNG/LG.
-- Stored as `self.inferred_threat_weapon`, `inferred_threat_time`, `inferred_threat_loc`.
-- If weak (<60 eff HP) and inferred RL within 500u: 40% retreat bias in `RunAway()`.
-- If healthy (>60 eff HP): aggressive investigation (priority 90).
-- Zero extra tracelines — just variable tracking from existing sound callbacks.
+### 6. Weapon sound inference (`botnoise.qc`, `bot_ai.qc`)
+`Bot_BroadcastNoise` stores `heard_sound_weapon` when type is NOISE_WEAPON.
+`Bot_AnalyzeSound` NOISE_WEAPON handler (was empty return) now classifies:
+- RL/GL heard + weak (<60 eff HP) → cautious investigation (priority 30).
+- Weak weapon heard + strong (>80 HP + good weapons) → aggressive push (priority 90).
+- Default → normal investigation (priority 50).
 
-### Dead code note
-`confidence_rl`, `confidence_lg`, `confidence_gl`, `confidence_sg` fields are declared,
-decayed 10%/minute in `BotAI_Main:1764-1769`, but never used in any weapon selection
-or scoring function. Either wire into Issue #3 (weapon scoring) or remove.
+### 7. Adaptive engagement distance (`bot_ai.qc`, `aibot_run_slide()`)
+Optimal combat distance modulated by enemy weapon (skill 2+):
+- Enemy LG: +100u (stay outside effective range).
+- Enemy RL: -80u (close gap, rockets easier to dodge close).
+- Enemy SSG: +60u (SSG damage falls off fast).
+- Enemy weak: -100u (push aggressively).
+- Aggression modulation: `opt_dist + (0.5 - self.aggression) * 150`.
+- Clamped 100-800u. Strafe evasiveness increases when aggression is low.
+
+### Weapon confidence (Darwin system) — correction
+`confidence_rl/lg/gl/sg` fields are NOT dead code. Full pipeline:
+- Incremented on kills in `ClientObituary` (client.qc), decremented on deaths.
+- Read in `W_BestBotWeapon` (botfight.qc) with ×4-8 multipliers on weapon scores.
+- Decayed 10%/minute in `BotAI_Main` (bot_ai.qc). Clamped to [-10, +10].
 
 ## Navigation humanization (intelligence pass #6)
 Seven movement systems to eliminate robotic navigation tells, all skill-scaled.

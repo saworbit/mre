@@ -1053,6 +1053,22 @@ void () aibot_chooseGoal = {
             // Distance bonus: closer items score higher (up to +20 at point blank)
             d2 = vlen ((self.origin - org));
             weight = (weight + (20.000 * (1.000 - (d2 / SEARCH_RADIUS))));
+
+            // ADAPTIVE TACTICS: Match phase modulates item priorities
+            if ( self.match_phase == 0 ) {
+               // SCRAMBLE: weapon priority boost
+               if ( e.classname == "weapon_rocketlauncher" || e.classname == "weapon_lightning" )
+                  weight = weight + 20;
+            } else if ( self.match_phase == 1 ) {
+               // CONTROL: armor priority for map control
+               if ( e.classname == "item_armor2" || e.classname == "item_armorInv" )
+                  weight = weight + 15;
+            } else if ( self.match_phase == 2 ) {
+               // ENDGAME: powerup denial is critical
+               if ( e.classname == "item_artifact_super_damage" || e.classname == "item_artifact_invulnerability" )
+                  weight = weight + 30;
+            }
+
             if ( (weight == best) ) {
 
                d1 = vlen ((self.origin - bestorg));

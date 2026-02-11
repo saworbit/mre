@@ -1399,7 +1399,8 @@ float (float s_yaw, float s_dist) botwalkmove = {
 
    // The Stuck Doctor:
    // If stuck against a low obstacle or weird geometry, try to JUMP over it
-   if ( self.flags & FL_ONGROUND ) {
+   // Cooldown prevents repeated futile jumps ("jumping on the spot")
+   if ( (self.flags & FL_ONGROUND) && (time > self.stuck_jump_cd) ) {
 
       // Check if the spot slightly above and ahead is clear
       jump_check = self.origin + (v_forward * 32);
@@ -1410,6 +1411,7 @@ float (float s_yaw, float s_dist) botwalkmove = {
          self.velocity_z = 270;
          self.flags = self.flags - FL_ONGROUND;
          sound (self, CHAN_BODY, "player/plyrjmp8.wav", 1, ATTN_NORM);
+         self.stuck_jump_cd = time + 2.0;  // Don't try again for 2 seconds
          return FALSE;
       }
 

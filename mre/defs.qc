@@ -150,6 +150,7 @@ void end_sys_fields;
 .float last_ai_state_time;  // FIX: Time when AI state last changed (hysteresis)
 .float shadow_next_time;    // Shadow Puppets throttle timer
 .float shadow_jump_time;    // Shadow Puppets jump hint (short-lived)
+.float stuck_jump_cd;       // Stuck Doctor jump cooldown (prevents jump spam)
 .float shadow_combat_time;  // Shadow Puppets combat hint expiry
 .float shadow_combat_yaw;   // Shadow Puppets combat steer
 .float shadow_combat_fire;  // Shadow Puppets combat fire hint
@@ -430,6 +431,39 @@ float LINK_LADDER     = 6; // Vertical water/ladder logic
 .float confidence_lg;        // Lightning Gun
 .float confidence_gl;        // Grenade Launcher
 .float confidence_sg;        // Shotgun/Super Shotgun
+
+// --- ADAPTIVE TACTICS (Intelligence Pass #8) ---
+// Opponent Profile Model: 4-slot per-enemy tracker with EMA
+.entity opp_ent_0;           // Tracked opponent slot 0 (most recent)
+.entity opp_ent_1;           // Tracked opponent slot 1
+.entity opp_ent_2;           // Tracked opponent slot 2
+.entity opp_ent_3;           // Tracked opponent slot 3 (LRU eviction)
+.float opp_aggro_0;          // Aggression EMA (0=passive, 1=pushing)
+.float opp_aggro_1;
+.float opp_aggro_2;
+.float opp_aggro_3;
+.float opp_weap_0;           // Observed dominant weapon (IT_* constant)
+.float opp_weap_1;
+.float opp_weap_2;
+.float opp_weap_3;
+.float opp_threat_0;         // Kill/death threat EMA (0=easy, 1=dangerous)
+.float opp_threat_1;
+.float opp_threat_2;
+.float opp_threat_3;
+
+// Continuous aggression score (0.0=full retreat, 1.0=full aggression)
+.float aggression;
+
+// Multi-threat awareness
+.float visible_threats;      // Count of visible enemies this scan
+.float third_party_time;     // When we noticed enemies fighting each other
+
+// Match phase (0=SCRAMBLE, 1=CONTROL, 2=ENDGAME)
+.float match_phase;
+.float phase_update_time;    // Throttle phase recalculation
+
+// Weapon sound inference
+.float heard_sound_weapon;   // IT_* constant of heard weapon fire
 
 // Rocket jump detection
 .float last_rj_time;         // To debounce RJ detection

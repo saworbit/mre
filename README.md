@@ -83,14 +83,14 @@ from `archive/`.
   - Platform fidgeting (micro-drift and look-around while riding lifts)
   - Roaming speed variation (180-240 speed, corner slowdown, micro-pauses)
   - Swimming clumsiness (pitch wobble + sluggish velocity blend in water)
-- **Problem-Solving Update** (Planned): Cross-system game sense layer
-  - Risk-reward goal scoring (enemy proximity, cursed zones, own strength gate item selection)
-  - Multi-threat assessment (1v2+ retreat, third-party opportunism)
-  - Situational weapon scoring (distance, enemy velocity, corridor geometry, ammo conservation)
-  - Tactical repositioning spectrum (fight/kite/retreat instead of binary run-or-fight)
-  - Combat resource drift (subtle strafe bias toward nearby health/armor when wounded)
-  - Pre-engagement evaluation (don't charge hopeless fights — weapon/health/powerup gate)
-  - Sound-driven threat inference (weapon sounds inform caution level)
+- **Adaptive Tactics Update**: Cross-system game sense with opponent modeling
+  - Opponent profiling: 4-slot LRU tracker with EMA for aggression, weapon, and threat per enemy
+  - Counter-weapon selection: reads enemy weapon to pick optimal counter (RL vs LG, LG vs RL, SNG vs SSG, SSG vs GL)
+  - Continuous aggression score: 0.0-1.0 spectrum replaces binary fight-or-flee (HP, weapons, powerups, opponent profile, score pressure, multi-threat, match phase)
+  - Multi-threat awareness: visible enemy counter during target scan; 2+ enemies feed aggression penalty (no hard combat suppression)
+  - Match phase detection: SCRAMBLE/CONTROL/ENDGAME phases shift item priorities (weapons early, armor mid, powerups late)
+  - Weapon sound inference: NOISE_WEAPON handler classifies heard weapons and adjusts investigation urgency by own health
+  - Adaptive engagement distance: optimal range modulated by enemy weapon (+100u vs LG, -80u vs RL) and aggression score
 
 ### Investigated (Likely Fixed / Not Found)
 - "Bot frags not shown" - MSG_UPDATEFRAGS sent correctly, likely fixed by 0-index fix

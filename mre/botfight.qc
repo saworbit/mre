@@ -604,6 +604,11 @@ float () W_BestBotWeapon = {
    local float best_score;
    local float best_weapon;
 
+   score_rl = 0;
+   score_lg = 0;
+   score_gl = 0;
+   score_sng = 0;
+   score_ssg = 0;
    best_score = 0;
    best_weapon = IT_AXE;
 
@@ -679,6 +684,33 @@ float () W_BestBotWeapon = {
          best_score = score_ssg;
          best_weapon = IT_SUPER_SHOTGUN;
       }
+   }
+
+   // ADAPTIVE TACTICS: Counter-weapon scoring based on enemy's weapon
+   // "He has LG? Use RL for splash. He has RL? Use LG to track at range."
+   if ( self.enemy && self.skil >= 2 ) {
+      local float en_weap;
+      en_weap = OppGetWeap(self.enemy);
+      if ( en_weap == 0 ) en_weap = self.enemy.weapon;  // fallback
+
+      // RL counters LG (splash bypasses tracking advantage)
+      if ( en_weap == IT_LIGHTNING && (it & IT_ROCKET_LAUNCHER) && self.ammo_rockets >= 1 )
+         score_rl = score_rl + 15;
+      // LG counters RL (tracking punishes slow projectiles at range)
+      if ( en_weap == IT_ROCKET_LAUNCHER && (it & IT_LIGHTNING) && self.ammo_cells >= 1 )
+         score_lg = score_lg + 15;
+      // SNG counters SSG (sustained DPS beats burst at mid-range)
+      if ( (en_weap == IT_SUPER_SHOTGUN || en_weap == IT_SHOTGUN) && (it & IT_SUPER_NAILGUN) )
+         score_sng = score_sng + 10;
+      // SSG counters GL (burst damage + mobility beats area denial)
+      if ( en_weap == IT_GRENADE_LAUNCHER && (it & IT_SUPER_SHOTGUN) )
+         score_ssg = score_ssg + 10;
+
+      // Re-evaluate best after counter bonuses
+      if ( score_lg > best_score ) { best_score = score_lg; best_weapon = IT_LIGHTNING; }
+      if ( score_rl > best_score ) { best_score = score_rl; best_weapon = IT_ROCKET_LAUNCHER; }
+      if ( score_sng > best_score ) { best_score = score_sng; best_weapon = IT_SUPER_NAILGUN; }
+      if ( score_ssg > best_score ) { best_score = score_ssg; best_weapon = IT_SUPER_SHOTGUN; }
    }
 
    // Fast-kill: boost hitscan weapons to finish low-HP enemies

@@ -2,20 +2,38 @@
 
 ## Unreleased
 - Clean baseline restored in `mre/`.
-- Planned: **Risk-reward goal scoring** (`botgoal.qc`). `GoalRiskScore()` modulates
-  item weight by enemy proximity, cursed nodes, own strength, and Quad urgency.
-- Planned: **Multi-threat assessment** (`bot_ai.qc`). `visible_threats` count in
-  BotFindTarget; 1v2+ retreat and third-party patience for skill 3+.
-- Planned: **Situational weapon scoring** (`botfight.qc`). Scored evaluation replaces
-  priority cascade: distance, enemy velocity, corridor geometry, ammo conservation.
-- Planned: **Tactical repositioning** (`bot_ai.qc`). `BotAssessPosition()` fight/kite/
-  retreat spectrum replaces binary `RunAway()`.
-- Planned: **Combat resource drift** (`bot_ai.qc`). 30% strafe bias toward nearby
-  health/armor when wounded (<80 eff HP) during combat.
-- Planned: **Pre-engagement evaluation** (`bot_ai.qc`). Skill 2+ gate fights by
-  weapon/health/powerup assessment before committing.
-- Planned: **Sound-driven threat inference** (`bot_ai.qc`). Weapon sounds inform
-  enemy loadout model; cautious investigation when weak and heard RL.
+- Fix: **Retreat faces enemy** (`bot_ai.qc`). `ai_botretreat()` faces enemy and fires
+  while backpedaling using raw `walkmove()`. No more turning back to run away.
+- Fix: **THIRD_PARTY_WAIT removed** (`bot_ai.qc`). Hard return suppressed all combat
+  when 2+ enemies visible. Multi-threat still works via aggression score penalty.
+- Fix: **Kite running on the spot** (`bot_ai.qc`). Raw `walkmove()` replaces
+  `botwalkmove()` in kite mode — BotSteer whiskers fought backward movement.
+- Fix: **Stuck Doctor jump spam** (`botmove.qc`, `defs.qc`). 2s cooldown on stuck
+  jumps via `stuck_jump_cd` field. No more repeated jumping when movement blocked.
+- Enhancement: **Opponent profiling** (`botit_th.qc`, `defs.qc`). 4-slot LRU opponent
+  tracker with EMA (alpha=0.3) for per-enemy aggression, weapon, and threat. Functions:
+  `OppSlot`, `OppSlotOrEvict`, `OppUpdate`, `OppGetAggro/Threat/Weap`, `OppRecordResult`.
+- Enhancement: **Counter-weapon selection** (`botfight.qc`). Reads enemy weapon via
+  `OppGetWeap()` and adds counter bonuses: RL +15 vs LG, LG +15 vs RL, SNG +10 vs
+  SSG/SG, SSG +10 vs GL. Skill 2+ gate.
+- Enhancement: **Continuous aggression score** (`bot_ai.qc`). `BotAggressionScore()`
+  returns 0.0-1.0 based on HP, weapons, powerups, opponent profile, score pressure,
+  multi-threat, and match phase. Replaces binary `RunAway()` call: <0.25 retreat,
+  0.25-0.45 kite (fire while backing at 0.6x speed), ≥0.45 fight. EMA hysteresis
+  (0.7/0.3 blend) prevents oscillation.
+- Enhancement: **Multi-threat awareness** (`bot_ai.qc`). `visible_threats` counter in
+  `BotFindTarget` scan loops. Third-party patience: 2+ enemies + target fighting
+  someone else → wait 2s. Feeds -0.25/-0.15 into aggression score.
+- Enhancement: **Match phase detection** (`bot_ai.qc`, `botgoal.qc`).
+  `BotUpdateMatchPhase()` detects SCRAMBLE/CONTROL/ENDGAME from total/max frags vs
+  fraglimit. Item weight modulation: +20 weapons (early), +15 armor (mid), +30
+  powerups (late). Aggression boost in SCRAMBLE, lead-dependent in ENDGAME.
+- Enhancement: **Weapon sound inference** (`botnoise.qc`, `bot_ai.qc`).
+  `heard_sound_weapon` stored on NOISE_WEAPON events. Handler classifies: RL heard +
+  weak → cautious (priority 30), weak weapon + strong → push (priority 90).
+- Enhancement: **Adaptive engagement distance** (`bot_ai.qc`). Optimal range modulated
+  by enemy weapon (+100u vs LG, -80u vs RL, +60u vs SSG, -100u vs weak) and aggression
+  score. Clamped 100-800u, skill 2+. Strafe evasiveness increases when aggression is low.
 - Enhancement: **Bunny hop rhythm variance** (`botmove.qc`). Variable hop timing
   (0.28-0.50s), strafe angle (10-22deg), and accel (30-50 ground, 8-16 air). All
   skill-scaled: higher skill = tighter variance toward optimal values.

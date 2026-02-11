@@ -80,7 +80,7 @@ Bots now feel like different-skilled human players rather than identical machine
 - **Aim**: Exponential jitter scaling (skill 0 = ~30 deg miss, skill 5+ = perfect). Pitch jitter from Mirage Minds adds vertical tracking imperfection.
 - **Reactions**: First shot delayed after spotting enemy (skill 0 = 300ms, skill 4+ = instant).
 - **Prediction**: Non-linear depth curve (skill 0 = 3 steps, skill 10 = 16 steps).
-- **Retreat**: Gradual probability curve based on effective health (health + armor), not hard cutoff. Zigzag strafing while retreating (±30° weave). Retreat toward safety (drift toward nearby health/armor items).
+- **Retreat**: Gradual probability curve based on effective health (health + armor), not hard cutoff. Bots face the enemy while retreating — backpedal with zigzag strafing (±30° weave) and fire while backing away. Retreat toward safety (drift toward nearby health/armor items). No more turning back to run.
 - **Combat**: Ammo-aware weapon switching, blind fire memory, item grab threat abort. Weapon distance scoring (RL penalized at range, SNG mid-range bonus). Splash risk override (finish kills at close range). Target commitment (150u momentum, near-dead loyalty). Fast-kill hitscan boost (LG/SNG to finish <25 HP enemies). Ambush weapon safety (no RL/GL pre-fire at close range). Threat-scored targeting (prioritize enemies aiming at you with dangerous weapons). Engagement commitment (1-3s scaled hysteresis in prolonged fights).
 - **Powerups**: Quad holders fight to the death (skip retreat). Bots with <80 eff HP flee enemy Quad. Score pressure: losing bots (-5 frags) fight harder, winning bots play safer.
 - **Range**: Weapon-range engagement nudges bots toward optimal distance (LG: 250u, SNG: 350u, RL: 500u, SSG: 200u).
@@ -89,7 +89,7 @@ Bots now feel like different-skilled human players rather than identical machine
 - **Items**: Distance-weighted goal selection, doubled search radius (1200u), effective HP health weight (armored bots fight), ammo urgency for RL/LG. Skill-scaled goal re-evaluation (1.5-3.5s). Effective HP armor weight (red armor correctly valued over green). Powerup spawn timing (skill 3+ pre-position within 10s). Post-kill scavenge (2s backpack/item pickup after kills).
 - **Humanization**: Multi-axis Mirage Minds with pitch jitter, glance-aways, and variable hold-fire feints.
 - **Camera**: Specter Gaze enhanced with low-health duel and recent combat drama bonuses.
-- **Problem-Solving** (Planned): Risk-reward goal scoring, multi-threat assessment (1v2+ retreat, third-party patience), situational weapon scoring, tactical repositioning (fight/kite/retreat spectrum), combat resource drift, pre-engagement evaluation, sound-driven threat inference.
+- **Adaptive Tactics**: Opponent profiling (4-slot LRU with EMA), counter-weapon selection (RL vs LG, LG vs RL), continuous aggression score (0.0-1.0 fight/kite/retreat spectrum), multi-threat awareness (visible enemy count feeds aggression penalty), match phase detection (SCRAMBLE/CONTROL/ENDGAME item priorities), weapon sound inference (classify heard weapons, adjust caution), adaptive engagement distance (modulated by enemy weapon and aggression).
 
 ---
 

@@ -223,6 +223,136 @@ float (entity e) hearnoise;
 entity () noisetarget;
 void (entity source, vector org, float volume, float type) Bot_BroadcastNoise;
 
+// =============================================================================
+// ADAPTIVE TACTICS: Opponent Profile Model (Intelligence Pass #8)
+// 4-slot per-enemy tracker using exponential moving averages.
+// Tracks aggression, weapon preference, and threat level per opponent.
+// =============================================================================
+
+// Find profile slot for this enemy (-1 if not tracked)
+float (entity en) OppSlot = {
+   if ( self.opp_ent_0 == en ) return 0;
+   if ( self.opp_ent_1 == en ) return 1;
+   if ( self.opp_ent_2 == en ) return 2;
+   if ( self.opp_ent_3 == en ) return 3;
+   return -1;
+};
+
+// Find or create slot (LRU eviction: shift 2→3, 1→2, new→1)
+float (entity en) OppSlotOrEvict = {
+   local float s;
+   s = OppSlot(en);
+   if ( s >= 0 ) return s;
+   // Evict slot 3, shift down
+   self.opp_ent_3 = self.opp_ent_2;
+   self.opp_aggro_3 = self.opp_aggro_2;
+   self.opp_weap_3 = self.opp_weap_2;
+   self.opp_threat_3 = self.opp_threat_2;
+   self.opp_ent_2 = self.opp_ent_1;
+   self.opp_aggro_2 = self.opp_aggro_1;
+   self.opp_weap_2 = self.opp_weap_1;
+   self.opp_threat_2 = self.opp_threat_1;
+   self.opp_ent_1 = en;
+   self.opp_aggro_1 = 0.5;
+   self.opp_weap_1 = 0;
+   self.opp_threat_1 = 0.5;
+   return 1;
+};
+
+// EMA update: alpha=0.3 blends new observation with history
+// Called each time enemy is visible in BotAI_Main
+void (entity en) OppUpdate = {
+   local float s;
+   local float aggro;
+   local vector to_me;
+
+   s = OppSlotOrEvict(en);
+
+   // Aggression = how much they push toward us
+   to_me = normalize(self.origin - en.origin);
+   aggro = normalize(en.velocity) * to_me;
+   aggro = (aggro + 1) * 0.5;  // normalize -1..1 to 0..1
+
+   // Apply EMA (alpha=0.3: responsive but stable)
+   if ( s == 0 ) {
+      self.opp_aggro_0 = self.opp_aggro_0 * 0.7 + aggro * 0.3;
+      self.opp_weap_0 = en.weapon;
+   } else if ( s == 1 ) {
+      self.opp_aggro_1 = self.opp_aggro_1 * 0.7 + aggro * 0.3;
+      self.opp_weap_1 = en.weapon;
+   } else if ( s == 2 ) {
+      self.opp_aggro_2 = self.opp_aggro_2 * 0.7 + aggro * 0.3;
+      self.opp_weap_2 = en.weapon;
+   } else {
+      self.opp_aggro_3 = self.opp_aggro_3 * 0.7 + aggro * 0.3;
+      self.opp_weap_3 = en.weapon;
+   }
+};
+
+// Query: get aggression EMA for a specific enemy
+float (entity en) OppGetAggro = {
+   local float s;
+   s = OppSlot(en);
+   if ( s == 0 ) return self.opp_aggro_0;
+   if ( s == 1 ) return self.opp_aggro_1;
+   if ( s == 2 ) return self.opp_aggro_2;
+   if ( s == 3 ) return self.opp_aggro_3;
+   return 0.5;  // unknown = neutral
+};
+
+// Query: get threat EMA for a specific enemy
+float (entity en) OppGetThreat = {
+   local float s;
+   s = OppSlot(en);
+   if ( s == 0 ) return self.opp_threat_0;
+   if ( s == 1 ) return self.opp_threat_1;
+   if ( s == 2 ) return self.opp_threat_2;
+   if ( s == 3 ) return self.opp_threat_3;
+   return 0.5;  // unknown = average
+};
+
+// Query: get last observed weapon for a specific enemy
+float (entity en) OppGetWeap = {
+   local float s;
+   s = OppSlot(en);
+   if ( s == 0 ) return self.opp_weap_0;
+   if ( s == 1 ) return self.opp_weap_1;
+   if ( s == 2 ) return self.opp_weap_2;
+   if ( s == 3 ) return self.opp_weap_3;
+   return 0;  // unknown
+};
+
+// Update threat EMA on kill/death events
+// winner killed loser: winner sees loser as less threatening,
+// loser sees winner as more threatening
+void (entity winner, entity loser) OppRecordResult = {
+   local float s;
+   local entity saved;
+   saved = self;
+
+   // Winner's view of loser: threat decreases (I beat them)
+   self = winner;
+   s = OppSlot(loser);
+   if ( s >= 0 ) {
+      if ( s == 0 ) self.opp_threat_0 = self.opp_threat_0 * 0.7 + 0.2 * 0.3;
+      else if ( s == 1 ) self.opp_threat_1 = self.opp_threat_1 * 0.7 + 0.2 * 0.3;
+      else if ( s == 2 ) self.opp_threat_2 = self.opp_threat_2 * 0.7 + 0.2 * 0.3;
+      else self.opp_threat_3 = self.opp_threat_3 * 0.7 + 0.2 * 0.3;
+   }
+
+   // Loser's view of winner: threat increases (they beat me)
+   self = loser;
+   s = OppSlot(winner);
+   if ( s >= 0 ) {
+      if ( s == 0 ) self.opp_threat_0 = self.opp_threat_0 * 0.7 + 0.8 * 0.3;
+      else if ( s == 1 ) self.opp_threat_1 = self.opp_threat_1 * 0.7 + 0.8 * 0.3;
+      else if ( s == 2 ) self.opp_threat_2 = self.opp_threat_2 * 0.7 + 0.8 * 0.3;
+      else self.opp_threat_3 = self.opp_threat_3 * 0.7 + 0.8 * 0.3;
+   }
+
+   self = saved;
+};
+
 void () CopyrightNotice = {
 
    dprint (" The Quake C modifications included in this archive are Copyright 1996, Steven Polge.");

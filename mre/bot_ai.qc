@@ -96,8 +96,42 @@ void () Bot_AnalyzeSound = {
    if ( self.enemy && enemyvisible (self.enemy) ) {
       return ;
    }
+   // ADAPTIVE TACTICS: Weapon sound inference
+   // Infer enemy weapon from sound and adjust investigation caution
    if ( (self.heard_sound_type == NOISE_WEAPON) ) {
-      return ;
+      if ( self.skil >= 2 ) {
+         local float heard_dist;
+         heard_dist = vlen(self.heard_sound_loc - self.origin);
+         if ( heard_dist < 800 ) {
+            local float heard_weap;
+            local float eff_hp_snd;
+            heard_weap = self.heard_sound_weapon;
+            eff_hp_snd = self.health + (self.armorvalue * self.armortype);
+
+            // RL/GL heard nearby while weak: cautious investigation
+            if ( (heard_weap == IT_ROCKET_LAUNCHER || heard_weap == IT_GRENADE_LAUNCHER) && eff_hp_snd < 60 ) {
+               self.noise_target = self.heard_sound_loc;
+               self.noise_time = time;
+               self.noise_priority = 30;  // low priority = cautious
+               self.investigating = TRUE;
+               return;
+            }
+            // Weak weapon heard while strong: aggressive push
+            if ( (heard_weap & (IT_SHOTGUN + IT_NAILGUN + IT_AXE)) && eff_hp_snd > 80 && (self.items & (IT_ROCKET_LAUNCHER + IT_LIGHTNING)) ) {
+               self.noise_target = self.heard_sound_loc;
+               self.noise_time = time;
+               self.noise_priority = 90;  // high priority = push
+               self.investigating = TRUE;
+               return;
+            }
+            // Default: investigate normally
+            self.noise_target = self.heard_sound_loc;
+            self.noise_time = time;
+            self.noise_priority = 50;
+            self.investigating = TRUE;
+         }
+      }
+      return;
    }
    if ( (self.heard_sound_type == NOISE_ITEM) ) {
       if ( (self.health > 80.000) && (self.items & IT_ROCKET_LAUNCHER) ) {
@@ -790,6 +824,9 @@ float /* Warning: Could not determine return type */ () BotFindTarget = {
    best = world;
    best_dist = 100000;
 
+   // ADAPTIVE TACTICS: Reset visible threat counter for multi-threat awareness
+   self.visible_threats = 0;
+
    // Target momentum: new target must beat current by 150u margin
    if ( (self.enemy != world) && (self.enemy.health > 0) ) {
       best_dist = vlen (self.enemy.origin - self.origin) - 150;
@@ -822,6 +859,7 @@ float /* Warning: Could not determine return type */ () BotFindTarget = {
 
          if ( BotValidTarget (head) ) {
 
+            self.visible_threats = self.visible_threats + 1;
             dist = vlen (head.origin - self.origin);
             local float score;
             score = BotThreatScore (head, dist);
@@ -844,6 +882,7 @@ float /* Warning: Could not determine return type */ () BotFindTarget = {
 
       if ( (head.classname == "dmbot") && BotValidTarget (head) ) {
 
+         self.visible_threats = self.visible_threats + 1;
          dist = vlen (head.origin - self.origin);
          local float score2;
          score2 = BotThreatScore (head, dist);
@@ -1014,6 +1053,7 @@ void (float dist, float turn) aibot_run_slide = {
    ChangeYaw ();
 
    // Weapon-range engagement: gentle nudge toward optimal distance
+   // ADAPTIVE TACTICS: Distance also adapts to enemy's weapon and aggression
    if ( self.enemy ) {
       local float opt_dist;
       local float cur_dist;
@@ -1022,6 +1062,31 @@ void (float dist, float turn) aibot_run_slide = {
       else if ( self.weapon == IT_SUPER_NAILGUN ) opt_dist = 350;
       else if ( self.weapon == IT_ROCKET_LAUNCHER ) opt_dist = 500;
       else if ( self.weapon == IT_SUPER_SHOTGUN ) opt_dist = 200;
+
+      // Adapt distance based on enemy weapon (skill 2+)
+      if ( self.skil >= 2 ) {
+         local float en_weap_dist;
+         en_weap_dist = self.enemy.weapon;
+         // Enemy has LG: stay far (outside effective LG range ~450u)
+         if ( en_weap_dist == IT_LIGHTNING )
+            opt_dist = opt_dist + 100;
+         // Enemy has RL: close gap (rockets easier to dodge up close)
+         else if ( en_weap_dist == IT_ROCKET_LAUNCHER )
+            opt_dist = opt_dist - 80;
+         // Enemy has SSG: maintain distance (SSG falls off fast)
+         else if ( en_weap_dist == IT_SUPER_SHOTGUN )
+            opt_dist = opt_dist + 60;
+         // Enemy has weak weapons: push aggressively
+         else if ( en_weap_dist & (IT_SHOTGUN + IT_AXE + IT_NAILGUN) )
+            opt_dist = opt_dist - 100;
+
+         // Modulate by aggression score
+         opt_dist = opt_dist + (0.5 - self.aggression) * 150;
+
+         if ( opt_dist < 100 ) opt_dist = 100;
+         if ( opt_dist > 800 ) opt_dist = 800;
+      }
+
       cur_dist = vlen(self.enemy.origin - self.origin);
       if ( cur_dist > (opt_dist + 100) ) {
          botwalkmove(self.ideal_yaw, dist * 0.300);
@@ -1069,6 +1134,12 @@ void (float dist, float turn) aibot_run_slide = {
    rdir = (random () * MOVETYPE_WALK);
    rng = botrange (self.enemy);
    weap = W_BestHeldWeapon ();
+
+   // ADAPTIVE TACTICS: Cautious aggression modulates strafe willingness
+   // Low aggression → bias toward backing off (higher rdir = more evasive)
+   if ( self.aggression < 0.5 ) {
+      rdir = rdir + (0.5 - self.aggression) * 0.8;
+   }
 
    // Splash-safe spacing: bias to backpedal/strafe before firing RL/GL at close range
    if ( ((weap == IT_ROCKET_LAUNCHER) || (weap == IT_GRENADE_LAUNCHER)) && enemyvisible (self.enemy) ) {
@@ -1473,6 +1544,8 @@ void (float dist) ai_botretreat = {
 
    local vector away_dir;
    local float away_yaw;
+   local float enemy_yaw;
+   local float move_yaw;
    local float strafe_ofs;
 
    if ( !self.enemy ) {
@@ -1482,10 +1555,17 @@ void (float dist) ai_botretreat = {
    }
    away_dir = (self.origin - self.enemy.origin);
    away_yaw = vectoyaw (away_dir);
-   self.ideal_yaw = away_yaw;
+   enemy_yaw = vectoyaw (self.enemy.origin - self.origin);
+
+   // Face the enemy — real players backpedal while shooting,
+   // they don't turn their back during retreat
+   self.ideal_yaw = enemy_yaw;
    ChangeYaw ();
 
-   // Retreat toward safety: blend retreat direction with nearby health/armor
+   // Movement direction starts as directly away from enemy
+   move_yaw = away_yaw;
+
+   // Retreat toward safety: blend movement direction toward nearby health/armor
    local entity safe_item;
    local float safe_dist;
    safe_item = world;
@@ -1511,10 +1591,10 @@ void (float dist) ai_botretreat = {
       local float safe_yaw;
       safe_yaw = vectoyaw(safe_item.origin - self.origin);
       local float yaw_diff;
-      yaw_diff = safe_yaw - self.ideal_yaw;
+      yaw_diff = safe_yaw - move_yaw;
       while ( yaw_diff > 180 ) yaw_diff = yaw_diff - 360;
       while ( yaw_diff < -180 ) yaw_diff = yaw_diff + 360;
-      self.ideal_yaw = self.ideal_yaw + (yaw_diff * 0.400);
+      move_yaw = move_yaw + (yaw_diff * 0.400);
    }
 
    // Zigzag while retreating: alternate 30-degree offsets
@@ -1532,37 +1612,21 @@ void (float dist) ai_botretreat = {
       }
    }
 
-   if ( botwalkmove ((away_yaw + strafe_ofs), dist) ) {
-
-      return ;
-
-   }
-   if ( botwalkmove (self.ideal_yaw, dist) ) {
-
-      return ;
-
-   }
-   if ( botwalkmove ((away_yaw + 45.000), (dist * 0.700)) ) {
-
-      return ;
-
-   }
-   if ( botwalkmove ((away_yaw - 45.000), (dist * 0.700)) ) {
-
-      return ;
-
-   }
-   if ( botwalkmove ((away_yaw + 90.000), (dist * 0.500)) ) {
-
-      return ;
-
-   }
-   if ( botwalkmove ((away_yaw - 90.000), (dist * 0.500)) ) {
-
-      return ;
-
+   // Move using raw walkmove — botwalkmove's BotSteer whiskers
+   // fight backward movement causing "running on the spot"
+   if ( !walkmove((move_yaw + strafe_ofs), dist) ) {
+      if ( !walkmove(move_yaw, dist) ) {
+         if ( !walkmove((away_yaw + 45), (dist * 0.7)) ) {
+            if ( !walkmove((away_yaw - 45), (dist * 0.7)) ) {
+               if ( !walkmove((away_yaw + 90), (dist * 0.5)) )
+                  walkmove((away_yaw - 90), (dist * 0.5));
+            }
+         }
+      }
    }
 
+   // Shoot while retreating — real players fire while backpedaling
+   CheckBotAttack ();
 };
 
 void (float state, string label) BotLogAI = {
@@ -1750,6 +1814,135 @@ float () BotRivalPowerupRush = {
 
 };
 
+// =============================================================================
+// ADAPTIVE TACTICS: Continuous Aggression Score (Intelligence Pass #8)
+// Returns 0.0 (full retreat) to 1.0 (full aggression)
+// Replaces binary RunAway() with smooth spectrum modulated by:
+// own HP/weapon, opponent profile, score, multi-threat, match phase
+// =============================================================================
+float () BotAggressionScore = {
+   local float aggro;
+   local float eff_hp;
+   local float weap;
+
+   eff_hp = self.health + (self.armorvalue * self.armortype);
+
+   // Base: health-mapped (eff_hp 0-120 → aggro 0.1-0.9)
+   aggro = eff_hp / 120;
+   if ( aggro > 0.9 ) aggro = 0.9;
+   if ( aggro < 0.1 ) aggro = 0.1;
+
+   // Weapon quality boost
+   weap = W_BestHeldWeapon();
+   if ( weap & (IT_ROCKET_LAUNCHER + IT_LIGHTNING) )
+      aggro = aggro + 0.15;
+   else if ( weap & (IT_SUPER_NAILGUN + IT_SUPER_SHOTGUN) )
+      aggro = aggro + 0.05;
+   else if ( weap & (IT_SHOTGUN + IT_AXE + IT_NAILGUN) )
+      aggro = aggro - 0.15;
+
+   // Powerup overrides
+   if ( self.items & IT_QUAD ) aggro = aggro + 0.3;
+   if ( self.items & IT_INVULNERABILITY ) aggro = 1.0;
+   if ( self.enemy ) {
+      if ( self.enemy.items & IT_QUAD ) aggro = aggro - 0.3;
+      if ( self.enemy.items & IT_INVULNERABILITY ) aggro = aggro - 0.5;
+
+      // Opponent profile: reduce aggression against high-threat enemies
+      local float en_threat;
+      en_threat = OppGetThreat(self.enemy);
+      aggro = aggro + (0.5 - en_threat) * 0.3;
+
+      // Counter-aggression: passive enemy → push, aggressive enemy → cautious
+      local float en_aggro;
+      en_aggro = OppGetAggro(self.enemy);
+      if ( en_aggro < 0.3 ) aggro = aggro + 0.1;
+      else if ( en_aggro > 0.7 ) aggro = aggro - 0.05;
+
+      // Enemy nearly dead: finish them
+      if ( self.enemy.health < 25 ) aggro = aggro + 0.2;
+
+      // Score pressure: losing → fight harder, winning → play safer
+      local float score_diff;
+      score_diff = self.frags - self.enemy.frags;
+      if ( score_diff < -5 ) aggro = aggro + 0.1;
+      else if ( score_diff > 5 ) aggro = aggro - 0.1;
+   }
+
+   // Multi-threat: retreat pressure from multiple visible enemies
+   if ( self.visible_threats >= 2 )
+      aggro = aggro - 0.25;
+   if ( self.visible_threats >= 3 )
+      aggro = aggro - 0.15;
+
+   // Match phase modulation
+   if ( self.match_phase == 0 )
+      aggro = aggro + 0.1;  // SCRAMBLE: push for weapons
+   else if ( self.match_phase == 2 ) {
+      // ENDGAME: protect lead or take risks
+      if ( self.enemy ) {
+         local float lead;
+         lead = self.frags - self.enemy.frags;
+         if ( lead >= 3 ) aggro = aggro - 0.15;
+         else if ( lead <= -3 ) aggro = aggro + 0.15;
+      }
+   }
+
+   // Skill dampening: low-skill bots are less extreme
+   aggro = 0.5 + (aggro - 0.5) * (0.5 + self.skil * 0.05);
+
+   // Clamp
+   if ( aggro > 1.0 ) aggro = 1.0;
+   if ( aggro < 0.0 ) aggro = 0.0;
+
+   // Hysteresis: smooth with previous value to prevent jitter
+   self.aggression = self.aggression * 0.7 + aggro * 0.3;
+
+   return self.aggression;
+};
+
+// =============================================================================
+// ADAPTIVE TACTICS: Match Phase Detection (Intelligence Pass #8)
+// 3-phase tactical overlay: SCRAMBLE → CONTROL → ENDGAME
+// Throttled to 1 recalculation per second
+// =============================================================================
+void () BotUpdateMatchPhase = {
+   local float total_frags;
+   local float max_frags;
+   local float fl;
+   local entity e;
+
+   if ( time < self.phase_update_time ) return;
+   self.phase_update_time = time + 1.0;
+
+   total_frags = 0;
+   max_frags = 0;
+
+   // Sum frags across all players and bots
+   e = find(world, classname, "player");
+   while ( e ) {
+      total_frags = total_frags + e.frags;
+      if ( e.frags > max_frags ) max_frags = e.frags;
+      e = find(e, classname, "player");
+   }
+   e = find(world, classname, "dmbot");
+   while ( e ) {
+      total_frags = total_frags + e.frags;
+      if ( e.frags > max_frags ) max_frags = e.frags;
+      e = find(e, classname, "dmbot");
+   }
+
+   // Phase thresholds
+   fl = cvar("fraglimit");
+   if ( total_frags < 10 ) {
+      self.match_phase = 0;  // SCRAMBLE: first kills, weapon rush
+   } else if ( fl > 0 && max_frags >= (fl - 5) ) {
+      self.match_phase = 2;  // ENDGAME: someone near frag limit
+   } else {
+      self.match_phase = 1;  // CONTROL: mid-game item dominance
+   }
+};
+
 void (float dist) BotAI_Main = {
 
    // FIX: Stop AI if dead - prevents overriding death animation frames
@@ -1759,6 +1952,9 @@ void (float dist) BotAI_Main = {
 
    // Mirage Minds: entropy biasing
    MirageTick ();
+
+   // ADAPTIVE TACTICS: Update match phase (throttled)
+   BotUpdateMatchPhase();
 
    // Weapon confidence decay: 10% per minute prevents stale preferences
    if ( time > (self.confidence_decay_time + 60.000) ) {
@@ -1861,6 +2057,8 @@ void (float dist) BotAI_Main = {
       self.lastseenpos = self.enemy.origin;
       // Tactical Intelligence: track enemy velocity for prediction
       self.last_enemy_vel = self.enemy.velocity;
+      // ADAPTIVE TACTICS: Update opponent profile (aggression, weapon, threat EMA)
+      OppUpdate(self.enemy);
       // Clear ambush state when we can see them
       self.ambush_ready = FALSE;
       // Shadow Puppets: combat rollout guidance
@@ -1895,7 +2093,17 @@ void (float dist) BotAI_Main = {
 
    }
    self.lefty = (self.lefty + TRUE);
-   if ( RunAway () ) {
+
+   // ADAPTIVE TACTICS: Continuous aggression spectrum (replaces binary RunAway)
+   // aggro < 0.25 = full retreat, 0.25-0.45 = cautious kite, >= 0.45 = fight
+   local float aggro;
+   aggro = BotAggressionScore();
+
+   // Multi-threat awareness is handled by BotAggressionScore() which applies
+   // -0.25/-0.15 penalty for 2+/3+ visible threats. No need for a hard
+   // THIRD_PARTY_WAIT return — that suppresses all combat and causes oscillation.
+
+   if ( aggro < 0.45 ) {
 
       self.lefty = (self.lefty - (self.lefty & LOCAL_TIME));
       self.lastseenpos = self.goalentity.origin;
@@ -1923,20 +2131,46 @@ void (float dist) BotAI_Main = {
             return ;
 
          }
-         // ATTACK hysteresis: skip goody/retreat, fall through RunAway block
+         // ATTACK hysteresis: skip goody/retreat, fall through
 
       } else {
 
-         if ( aibot_checkforGoodies (DONT_WANT) ) {
-
-            BotLogAI (AI_STATE_GOODY, "GOODY");
-            ai_botgetGoody (dist);
+         if ( aggro < 0.25 ) {
+            // Full retreat
+            if ( aibot_checkforGoodies (DONT_WANT) ) {
+               BotLogAI (AI_STATE_GOODY, "GOODY");
+               ai_botgetGoody (dist);
+               return ;
+            }
+            BotLogAI (AI_STATE_RETREAT, "RETREAT");
+            ai_botretreat (dist);
             return ;
-
+         } else {
+            // Cautious kite: face enemy while backing away slowly
+            // Uses raw walkmove() — botwalkmove()'s BotSteer whiskers
+            // fight backward movement causing "running on the spot"
+            BotLogAI (AI_STATE_RETREAT, "KITE");
+            local vector kite_away;
+            local float kite_away_yaw;
+            local float kite_enemy_yaw;
+            kite_away = self.origin - self.enemy.origin;
+            kite_away_yaw = vectoyaw(kite_away);
+            kite_enemy_yaw = vectoyaw(self.enemy.origin - self.origin);
+            // Face the enemy so we can actually shoot
+            self.ideal_yaw = kite_enemy_yaw;
+            ChangeYaw();
+            // Move backward using raw walkmove (no BotSteer interference)
+            if ( !walkmove(kite_away_yaw, dist * 0.6) ) {
+               // Try angled escapes if direct backpedal is blocked
+               if ( !walkmove(kite_away_yaw + 45, dist * 0.5) )
+                  if ( !walkmove(kite_away_yaw - 45, dist * 0.5) )
+                     // Corner: try perpendicular strafe
+                     if ( !walkmove(kite_away_yaw + 90, dist * 0.5) )
+                        walkmove(kite_away_yaw - 90, dist * 0.5);
+            }
+            CheckBotAttack ();
+            return ;
          }
-         BotLogAI (AI_STATE_RETREAT, "RETREAT");
-         ai_botretreat (dist);
-         return ;
 
       }
 
