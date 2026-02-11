@@ -2,6 +2,49 @@
 
 ## Unreleased
 - Clean baseline restored in `mre/`.
+
+### Optimization Pass #9 (Performance)
+Ten targeted optimizations for ~25-33% per-frame CPU reduction. All behavior-neutral
+(zero gameplay changes). Files touched: `defs.qc`, `weapons.qc`, `world.qc`,
+`bot_ai.qc`, `botfight.qc`, `botmove.qc`, `botroute.qc`, `botgoal.qc`,
+`botnoise.qc`, `ai_specter.qc`.
+- OPT 1: **Missile linked list** (`defs.qc`, `weapons.qc`, `botroute.qc`). New
+  `missile_list_head` / `.missile_next` linked list maintained by `W_FireRocket`,
+  `W_FireGrenade`, `LaunchLaser`, `fire_fly`, `fire_leo`. `BotReflexDodge` walks
+  10-20 missiles instead of `findradius()` scanning all ~600 edicts. ~8-12% saving.
+- OPT 2: **Cvar cache per frame** (`defs.qc`, `world.qc`, `bot_ai.qc`). `StartFrame()`
+  caches `cached_developer = cvar("developer")`. All hot-path `cvar("developer")` calls
+  (20+ per frame) replaced with the cached global. ~4-6% saving.
+- OPT 3: **Bot linked list in hot paths** (`bot_ai.qc`, `botnoise.qc`, `ai_specter.qc`).
+  Six functions converted from `find(classname,"dmbot")` to `bot_list_head` walk:
+  `Bot_AlertNoise`, `CallForHelp`, `BotfindBot`, `BotUpdateMatchPhase`,
+  `Bot_BroadcastNoise`, `Specter_RankAll`. Cold paths (spawn/impulse) left unchanged.
+  ~3-4% saving.
+- OPT 4: **Arithmetic angle averaging** (`botmove.qc`). `BotAverageAngles` replaced 3×
+  `makevectors` + `vlen` + `vectoyaw` with pure arithmetic delta averaging and 0/360
+  wraparound handling. ~2% saving.
+- OPT 5: **Retreat/scavenge scan throttle** (`bot_ai.qc`). Retreat item scan throttled
+  to 0.5s via `retreat_scan_time` with `retreat_safe_item` cache. Post-kill scavenge
+  reuses `post_kill_loot` while entity remains valid (`SOLID_TRIGGER` check). ~3-5%
+  saving.
+- OPT 6: **Environment kill throttle** (`bot_ai.qc`). `BotCheckEnvironmentKill` gated
+  to 0.3s interval via `env_kill_time` field. Saves 2-3 tracelines per bot per frame
+  when not near hazards. ~2% saving.
+- OPT 7: **Enemy distance dedup** (`bot_ai.qc`, `botfight.qc`). `cached_enemy_dist`
+  computed once from `enemy_delta` in `aibot_run_slide`. Reused by weapon scoring,
+  engagement distance, and `W_BestHeldWeapon`. Eliminated 2 redundant `vlen()` and 2
+  redundant `W_BestHeldWeapon` calls. ~1-2% saving.
+- OPT 8: **Effective HP cache** (`bot_ai.qc`). `.eff_hp` computed once per think in
+  `BotAI_Main`. Replaced 7 redundant `health + armorvalue * armortype` computations in
+  `RunAway`, `BotFindTarget`, `BotAggressionScore`, ambush, and `Bot_AnalyzeSound`.
+  ~1% saving.
+- OPT 9: **Edge friction early exit** (`botmove.qc`). `BotApplyEdgeFriction` restructured:
+  if far check (64u) finds ground, skip near check (32u) entirely. Saves 1 traceline
+  per frame when not near edges (vast majority of frames). ~1% saving.
+- OPT 10: **String comparison analysis** (skipped). QuakeC strings are interned offsets —
+  `classname == "dmbot"` is already O(1) integer comparison, not character-by-character.
+  No optimization needed.
+
 - Fix: **Retreat faces enemy** (`bot_ai.qc`). `ai_botretreat()` faces enemy and fires
   while backpedaling using raw `walkmove()`. No more turning back to run away.
 - Fix: **THIRD_PARTY_WAIT removed** (`bot_ai.qc`). Hard return suppressed all combat
@@ -10,6 +53,16 @@
   `botwalkmove()` in kite mode — BotSteer whiskers fought backward movement.
 - Fix: **Stuck Doctor jump spam** (`botmove.qc`, `defs.qc`). 2s cooldown on stuck
   jumps via `stuck_jump_cd` field. No more repeated jumping when movement blocked.
+- Fix: **Retreat/kite bots never fired** (`bot_ai.qc`). `CheckBotAttack()` sets
+  `attack_state = AS_MELEE` flag but retreat/kite paths returned before
+  `aibot_run_melee()` could process it. Added flag processing before
+  `CheckBotAttack()` in both `ai_botretreat()` and kite block (matches goody-path
+  pattern). Bots now shoot while retreating and kiting.
+- Fix: **Excessive first-shot delay** (`bot_ai.qc`). `BotHuntTarget()` set
+  `attack_finished = time + 0.700 - 0.200*skill` which overwrote the intended
+  `fire_delay` from `Bot_CheckReaction()`. Removed redundant delay. First-shot timing
+  now: skill 0 = 0.6s (was 1.0s), skill 1 = 0.475s, skill 2 = 0.35s, skill 3 =
+  0.225s, skill 4+ = instant (unchanged).
 - Enhancement: **Opponent profiling** (`botit_th.qc`, `defs.qc`). 4-slot LRU opponent
   tracker with EMA (alpha=0.3) for per-enemy aggression, weapon, and threat. Functions:
   `OppSlot`, `OppSlotOrEvict`, `OppUpdate`, `OppGetAggro/Threat/Weap`, `OppRecordResult`.

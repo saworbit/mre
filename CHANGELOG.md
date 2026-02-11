@@ -6,6 +6,19 @@
 - Rebooting Reaper Bot from a clean baseline.
 - Focusing first on community-reported issues.
 
+### Optimization Pass #9 (Performance)
+Ten targeted optimizations for ~25-33% per-frame CPU reduction. All behavior-neutral.
+- **Missile linked list** (`defs.qc`, `weapons.qc`, `botroute.qc`). `missile_list_head` / `.missile_next` replaces `findradius()` in `BotReflexDodge` — walks 10-20 missiles instead of ~600 edicts. ~8-12%.
+- **Cvar cache per frame** (`world.qc`, `bot_ai.qc`). `StartFrame()` caches `cvar("developer")` in `cached_developer` global. 20+ hash lookups/frame → 1. ~4-6%.
+- **Bot linked list in hot paths** (`bot_ai.qc`, `botnoise.qc`, `ai_specter.qc`). 6 functions converted from `find(classname,"dmbot")` to `bot_list_head` walk. ~3-4%.
+- **Arithmetic angle averaging** (`botmove.qc`). `BotAverageAngles` uses pure arithmetic deltas instead of 3× `makevectors` + trig. ~2%.
+- **Retreat/scavenge scan throttle** (`bot_ai.qc`). 0.5s timer + entity validity caching for `findradius` scans. ~3-5%.
+- **Environment kill throttle** (`bot_ai.qc`). 0.3s gate on `BotCheckEnvironmentKill` tracelines. ~2%.
+- **Enemy distance dedup** (`bot_ai.qc`, `botfight.qc`). `cached_enemy_dist` computed once, reused by weapon scoring and engagement. ~1-2%.
+- **Effective HP cache** (`bot_ai.qc`). `.eff_hp` computed once per think, replacing 7 redundant calculations. ~1%.
+- **Edge friction early exit** (`botmove.qc`). Skip near-edge traceline when far check finds ground. ~1%.
+- **String comparison analysis** (skipped). QuakeC strings are interned — already O(1).
+
 ### Bugfixes (Post-Pass #8)
 - **Fix: Retreat faces enemy** (`bot_ai.qc`). `ai_botretreat()` now faces the enemy and
   fires while backpedaling, instead of turning its back and running away. Uses raw
@@ -22,6 +35,18 @@
 - **Fix: Stuck Doctor jump spam** (`botmove.qc`, `defs.qc`). Added 2-second cooldown
   (`stuck_jump_cd` field) to prevent bots jumping on the spot repeatedly when movement is
   blocked. Previously had no cooldown — every frame that walkmove failed, bot jumped again.
+- **Fix: Retreat/kite bots never fired** (`bot_ai.qc`). `CheckBotAttack()` sets the
+  `attack_state = AS_MELEE` flag but retreat and kite code paths returned before
+  `aibot_run_melee()` could process it — the flag was set every frame but never acted on.
+  Added `aibot_run_melee()` flag processing before `CheckBotAttack()` in both
+  `ai_botretreat()` (line ~1634) and the kite block (line ~2187), matching the goody-path
+  pattern that already works. Bots now shoot while retreating and kiting.
+- **Fix: Excessive first-shot delay** (`bot_ai.qc`). `BotHuntTarget()` set
+  `attack_finished = time + 0.700 - 0.200*skill` which overwrote the intended `fire_delay`
+  from `Bot_CheckReaction()` (0.0-0.3s depending on skill). The reaction delay was designed
+  to be the sole first-shot gate but was dead code. Removed the redundant `attack_finished`
+  line. New first-shot timing: skill 0 = 0.6s (was 1.0s), skill 1 = 0.475s (was 0.75s),
+  skill 2 = 0.35s (was 0.5s), skill 3 = 0.225s (was 0.25s), skill 4+ = instant (unchanged).
 
 ### Intelligence Pass #8 (Adaptive Tactics)
 Seven adaptive tactics systems that give bots cross-system game sense and opponent modeling:

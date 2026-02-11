@@ -306,7 +306,7 @@ void (entity player, entity button) BotMarkMandatoryWaypoint = {
    }
    near_node.is_mandatory = TRUE;
    near_node.mandatory_until = (time + 20.000);
-   if ( cvar("developer") ) {
+   if ( cached_developer ) {
       dprint ("Marked mandatory waypoint at ");
       dprint (vtos (near_node.origin));
       dprint ("\n");
@@ -544,7 +544,7 @@ void () Player_AutoWaypoint = {
             near_node = SpawnLearnedWaypoint (self.origin);
             self.last_breadcrumb_pos = self.origin;
             self.last_breadcrumb_yaw = self.v_angle_y;
-            if ( cvar("developer") ) {
+            if ( cached_developer ) {
                dprint ("[");
                dprint (self.netname);
                dprint ("] BREADCRUMB: Learned waypoint at ");
@@ -578,7 +578,7 @@ void () Player_AutoWaypoint = {
                if ( (time > (self.last_rj_time + 1.000)) ) {
                   type = LINK_ROCKETJUMP;
                   self.last_rj_time = time;
-                  if ( cvar("developer") ) {
+                  if ( cached_developer ) {
                      dprint ("Learned ROCKET JUMP path!\n");
                   }
                }
@@ -647,7 +647,7 @@ void (entity node, float amount) ModulateNodeWeight = {
 
    node.last_event_time = time;
 
-   if ( cvar("developer") ) {
+   if ( cached_developer ) {
       if ( amount > 0 ) {
          dprint ("DARWIN: Node marked GLORIOUS (+");
          dprint (ftos(amount));
@@ -668,7 +668,7 @@ void (entity node) MarkDanger = {
    }
    node.danger_cost = (node.danger_cost + 1000.000);
    node.node_traffic = (node.node_traffic * 0.500);
-   if ( cvar("developer") ) {
+   if ( cached_developer ) {
       dprint ("Node marked dangerous!\n");
    }
 

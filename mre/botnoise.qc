@@ -110,7 +110,7 @@ void (entity source, vector org, float volume, float type) Bot_BroadcastNoise = 
    tr_inopen = trace_inopen;
    tr_inwater = trace_inwater;
 
-   bot = find (world, classname, "dmbot");
+   bot = bot_list_head;  // OPT: cached bot linked list
    while ( bot ) {
       if ( (bot.health > FALSE) && (bot != source) ) {
          // 1. Distance
@@ -134,7 +134,7 @@ void (entity source, vector org, float volume, float type) Bot_BroadcastNoise = 
                bot.heard_sound_weapon = source.weapon;
          }
       }
-      bot = find (bot, classname, "dmbot");
+      bot = bot.bot_next;
    }
 
    // Restore trace globals

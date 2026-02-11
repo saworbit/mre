@@ -290,7 +290,7 @@ void () Specter_AssignTargets = {
       i = (i + TRUE);
    }
 
-   bot = find (world,classname,"dmbot");
+   bot = bot_list_head;  // OPT: cached bot linked list
    while ( bot ) {
       if ( (bot.health > FALSE) ) {
          drama = Specter_Drama (bot);
@@ -310,7 +310,7 @@ void () Specter_AssignTargets = {
             i = (i + TRUE);
          }
       }
-      bot = find (bot,classname,"dmbot");
+      bot = bot.bot_next;
    }
 
 };

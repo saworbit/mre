@@ -26,7 +26,7 @@ and control-flow reference.
 
 | Function | File | Called For | Purpose |
 |----------|------|------------|---------|
-| `StartFrame()` | `world.qc:232` | Once per frame | Global frame setup (cvars, framecount, graph + learning decay, Vortex frame) |
+| `StartFrame()` | `world.qc:232` | Once per frame | Global frame setup (cvar cache, framecount, graph + learning decay, Vortex frame) |
 | `PlayerPreThink()` | `client.qc:1120` | Players only | Pre-physics player logic |
 | `PlayerPostThink()` | `client.qc:1339` | Players only | Post-physics player logic |
 | `self.think()` | (per entity) | All entities | Entity-specific behavior |
@@ -1010,10 +1010,68 @@ impulse 106  →  Specter_CycleFocus()     [ai_specter.qc]
 
 ---
 
+## Optimization Infrastructure (Pass #9)
+
+Ten performance optimizations target ~25-33% per-frame CPU reduction while preserving
+all bot intelligence. Key architectural additions:
+
+### Per-Frame Caching (`StartFrame`)
+```
+StartFrame()                             [world.qc]
+  |
+  |-> cached_developer = cvar("developer")   [cached once, read 20+/frame]
+  |-> missile list auto-maintained by weapon fire functions
+```
+
+### Missile Linked List
+```
+W_FireRocket / W_FireGrenade / etc       [weapons.qc]
+  |
+  |-> missile.missile_next = missile_list_head
+  |-> missile_list_head = missile
+  |
+BotReflexDodge()                         [botroute.qc]
+  |
+  |-> walks missile_list_head chain       [10-20 entities vs ~600 edicts]
+  |-> (was: findradius() scanning all edicts)
+```
+
+### Bot Linked List (Hot Paths)
+Six functions converted from `find(classname,"dmbot")` to `bot_list_head` walk:
+- `Bot_AlertNoise` (`bot_ai.qc`) — sound propagation to bots
+- `CallForHelp` (`bot_ai.qc`) — ally alerting
+- `BotfindBot` (`bot_ai.qc`) — bot lookup
+- `BotUpdateMatchPhase` (`bot_ai.qc`) — frag scoring
+- `Bot_BroadcastNoise` (`botnoise.qc`) — noise broadcast
+- `Specter_RankAll` (`ai_specter.qc`) — camera drama ranking
+
+### Per-Think Caching (`BotAI_Main`)
+```
+BotAI_Main()                             [bot_ai.qc]
+  |
+  |-> self.eff_hp = health + armorvalue * armortype    [used 7+ places]
+  |-> cached_enemy_dist = vlen(enemy_delta)            [used by weapon scoring, engagement]
+```
+
+### Throttled Scans
+| Scan | Interval | Cache Field | File |
+|------|----------|-------------|------|
+| Retreat item scan | 0.5s | `retreat_safe_item` | `bot_ai.qc` |
+| Post-kill scavenge | validity-based | `post_kill_loot` | `bot_ai.qc` |
+| Environment kill check | 0.3s | `env_kill_time` | `bot_ai.qc` |
+| Edge friction near-check | skip when far-clear | (early exit) | `botmove.qc` |
+
+### Arithmetic Replacements
+- `BotAverageAngles` (`botmove.qc`): 3× `makevectors` + `vlen` + `vectoyaw` → pure
+  arithmetic delta averaging with 0/360 wraparound
+
+---
+
 ## Version History
 
 | Date | Change |
 |------|--------|
+| 2026-02-11 | Optimization pass #9: missile linked list, cvar cache, bot list hot paths, arithmetic angles, retreat/scavenge throttle, env kill throttle, enemy dist dedup, eff_hp cache, edge friction early exit |
 | 2026-02-10 | Intelligence pass #8: Adaptive tactics — opponent profiling, counter-weapon selection, continuous aggression score, multi-threat awareness, match phase detection, weapon sound inference, adaptive engagement distance |
 | 2026-02-10 | Intelligence pass #7 (planned): Problem-solving review — risk-reward goals, multi-threat assessment, situational weapons, tactical repositioning, combat resource drift, pre-engagement evaluation, sound threat inference |
 | 2026-02-10 | Intelligence pass #6: Navigation humanization — bunny hop rhythm variance, velocity momentum blending, S-curve turns, graduated edge friction, platform fidgeting, roaming speed variation, swimming clumsiness |

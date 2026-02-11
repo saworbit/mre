@@ -78,9 +78,9 @@ Watch bot matches with a smooth, film-like camera system.
 Bots now feel like different-skilled human players rather than identical machines.
 
 - **Aim**: Exponential jitter scaling (skill 0 = ~30 deg miss, skill 5+ = perfect). Pitch jitter from Mirage Minds adds vertical tracking imperfection.
-- **Reactions**: First shot delayed after spotting enemy (skill 0 = 300ms, skill 4+ = instant).
+- **Reactions**: First shot delayed after spotting enemy (skill 0 = 0.6s, skill 2 = 0.35s, skill 4+ = instant).
 - **Prediction**: Non-linear depth curve (skill 0 = 3 steps, skill 10 = 16 steps).
-- **Retreat**: Gradual probability curve based on effective health (health + armor), not hard cutoff. Bots face the enemy while retreating — backpedal with zigzag strafing (±30° weave) and fire while backing away. Retreat toward safety (drift toward nearby health/armor items). No more turning back to run.
+- **Retreat**: Gradual probability curve based on effective health (health + armor), not hard cutoff. Bots face the enemy while retreating — backpedal with zigzag strafing (±30° weave) and continuously fire while backing away. Retreat toward safety (drift toward nearby health/armor items). No more turning back to run. Both retreat and kite paths now properly process the attack flag to fire weapons.
 - **Combat**: Ammo-aware weapon switching, blind fire memory, item grab threat abort. Weapon distance scoring (RL penalized at range, SNG mid-range bonus). Splash risk override (finish kills at close range). Target commitment (150u momentum, near-dead loyalty). Fast-kill hitscan boost (LG/SNG to finish <25 HP enemies). Ambush weapon safety (no RL/GL pre-fire at close range). Threat-scored targeting (prioritize enemies aiming at you with dangerous weapons). Engagement commitment (1-3s scaled hysteresis in prolonged fights).
 - **Powerups**: Quad holders fight to the death (skip retreat). Bots with <80 eff HP flee enemy Quad. Score pressure: losing bots (-5 frags) fight harder, winning bots play safer.
 - **Range**: Weapon-range engagement nudges bots toward optimal distance (LG: 250u, SNG: 350u, RL: 500u, SSG: 200u).
@@ -90,6 +90,16 @@ Bots now feel like different-skilled human players rather than identical machine
 - **Humanization**: Multi-axis Mirage Minds with pitch jitter, glance-aways, and variable hold-fire feints.
 - **Camera**: Specter Gaze enhanced with low-health duel and recent combat drama bonuses.
 - **Adaptive Tactics**: Opponent profiling (4-slot LRU with EMA), counter-weapon selection (RL vs LG, LG vs RL), continuous aggression score (0.0-1.0 fight/kite/retreat spectrum), multi-threat awareness (visible enemy count feeds aggression penalty), match phase detection (SCRAMBLE/CONTROL/ENDGAME item priorities), weapon sound inference (classify heard weapons, adjust caution), adaptive engagement distance (modulated by enemy weapon and aggression).
+
+### Optimization Pass (Performance)
+Structural optimizations for ~25-33% per-frame CPU reduction with zero behavior changes:
+- **Missile linked list**: Dodge scans walk 10-20 missiles instead of scanning all ~600 entities (~8-12%)
+- **Cvar caching**: 20+ per-frame hash lookups reduced to 1 (~4-6%)
+- **Bot list hot paths**: 6 entity scans converted from full edict search to linked list (~3-4%)
+- **Scan throttling**: Retreat items (0.5s), environment kill (0.3s), and scavenge (validity-based) caching (~5-7%)
+- **Arithmetic angles**: Trig-heavy angle averaging replaced with pure arithmetic (~2%)
+- **Distance/HP caching**: Enemy distance and effective HP computed once per think, reused everywhere (~2-3%)
+- **Edge friction early exit**: Skip redundant traceline when not near edges (~1%)
 
 ---
 

@@ -128,7 +128,7 @@ void (float dist) ai_botseek = {
          if ( self.stuck_count > 2 ) {
             self.search_time = time - 1;
 
-            if ( cvar("developer") ) {
+            if ( cached_developer ) {
                dprint("[");
                dprint(self.netname);
                dprint("] STUCK: forcing goal change after ");
@@ -139,7 +139,7 @@ void (float dist) ai_botseek = {
             // DARWIN: Learn from navigation failure
             if ( self.last_waypoint && self.last_waypoint != world ) {
                ModulateNodeWeight (self.last_waypoint, -30);
-               if ( cvar("developer") ) {
+               if ( cached_developer ) {
                   dprint("[");
                   dprint(self.netname);
                   dprint("] DARWIN: Learned BROKEN LINK\n");
@@ -153,7 +153,7 @@ void (float dist) ai_botseek = {
             if ( !self.feeler_mode_active ) {
                self.feeler_mode_active = TRUE;
                self.feeler_start_time = time;
-               if ( cvar("developer") ) {
+               if ( cached_developer ) {
                   dprint("Activating FEELER mode\n");
                }
             }

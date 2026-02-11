@@ -246,7 +246,7 @@ void () BotCheckCuriosity = {
       // Shoot the button!
       self.button0 = TRUE;
 
-      if ( cvar("developer") ) {
+      if ( cached_developer ) {
          dprint ("[");
          dprint (self.netname);
          dprint ("] CURIOSITY: Shooting button!\n");
@@ -261,7 +261,7 @@ void () BotCheckCuriosity = {
       // Might be a secret door - shoot it!
       self.button0 = TRUE;
 
-      if ( cvar("developer") ) {
+      if ( cached_developer ) {
          dprint ("[");
          dprint (self.netname);
          dprint ("] CURIOSITY: Shooting possible secret!\n");
@@ -275,7 +275,7 @@ void () BotCheckCuriosity = {
 
       self.button0 = TRUE;
 
-      if ( cvar("developer") ) {
+      if ( cached_developer ) {
          dprint ("[");
          dprint (self.netname);
          dprint ("] CURIOSITY: Shooting wall target!\n");
@@ -303,18 +303,15 @@ void () BotProactiveNudge = {
    if ( self.feeler_mode_active ) {
       return;
    }
-   // Throttle to reduce per-frame lookahead cost
-   nudge_throttle = cvar ("bot_nudge_throttle");
-   if ( (nudge_throttle <= FALSE) ) {
-      nudge_throttle = 0.200;
-   }
+   // OPT: Use hardcoded throttle instead of per-frame cvar lookup
+   nudge_throttle = 0.200;
    if ( time < self.nudge_time ) {
       return;
    }
    self.nudge_time = (time + nudge_throttle);
 
    // Skip if shadow nav already ran this frame
-   if ( (cvar ("sv_shadow_nav") > FALSE) && (self.nav_predict_time > (time - 0.050)) ) {
+   if ( (self.nav_predict_time > (time - 0.050)) ) {
       return;
    }
 
@@ -436,10 +433,8 @@ float (float ideal_yaw, float speed_factor) BotSteer = {
 
    // Look ahead based on speed
    dist = 50 + (vlen(self.velocity) * 0.125);
-   min_speed = cvar ("bot_hazard_min_speed");
-   if ( (min_speed <= FALSE) ) {
-      min_speed = 60.000;
-   }
+   // OPT: Hardcoded instead of per-frame cvar lookup
+   min_speed = 60.000;
    hazard_check = (dist > 60) && (vlen (self.velocity) > min_speed);
    start = self.origin + '0 0 16';  // Waist height sensor origin
 
@@ -590,29 +585,29 @@ float (float target_yaw) BotClampYaw = {
 // Averages steering decisions over 3 frames to prevent oscillation
 // =============================================================================
 
-// Helper: Average angles while handling 0/360 wraparound
-// Uses vector addition to properly blend angles near the discontinuity
+// OPT: Arithmetic angle average — replaces 3x makevectors + vlen + vectoyaw
+// Handles 0/360 wraparound by computing deltas relative to y1
 float (float y1, float y2, float y3) BotAverageAngles = {
 
-   local vector v1, v2, v3, sum;
+   local float d2, d3, avg;
 
-   // Convert each angle to a unit vector
-   makevectors ('0 1 0' * y1);
-   v1 = v_forward;
-   makevectors ('0 1 0' * y2);
-   v2 = v_forward;
-   makevectors ('0 1 0' * y3);
-   v3 = v_forward;
+   // Deltas relative to y1, wrapped to -180..180
+   d2 = y2 - y1;
+   if ( d2 > 180 ) d2 = d2 - 360;
+   else if ( d2 < -180 ) d2 = d2 + 360;
 
-   // Sum the vectors and convert back to angle
-   sum = v1 + v2 + v3;
+   d3 = y3 - y1;
+   if ( d3 > 180 ) d3 = d3 - 360;
+   else if ( d3 < -180 ) d3 = d3 + 360;
 
-   // Handle degenerate case (all vectors cancel out)
-   if ( vlen (sum) < 0.01 ) {
-      return y1;  // Just use most recent
-   }
+   // y1 contributes delta 0, so average = y1 + (d2+d3)/3
+   avg = y1 + (d2 + d3) * 0.333;
 
-   return vectoyaw (sum);
+   // Normalize to 0..360
+   if ( avg < 0 ) avg = avg + 360;
+   else if ( avg >= 360 ) avg = avg - 360;
+
+   return avg;
 
 };
 
@@ -707,23 +702,22 @@ void () BotApplyEdgeFriction = {
    vel_dir = normalize (self.velocity);
    friction = 1.000;
 
-   // Graduated edge friction: check at two distances for natural deceleration
-   // Far check (64 units): gentle early brake
+   // OPT: Graduated edge friction with early exit
+   // Far check (64 units): if ground found, skip near check (saves 1 traceline)
    ahead = self.origin + (vel_dir * 64);
    down = ahead;
    down_z = down_z - 48;
    traceline (ahead, down, TRUE, self);
    if ( trace_fraction == 1.0 ) {
       friction = 0.920;  // Gentle deceleration starts early
-   }
-
-   // Near check (32 units): heavier brake
-   ahead = self.origin + (vel_dir * 32);
-   down = ahead;
-   down_z = down_z - 48;
-   traceline (ahead, down, TRUE, self);
-   if ( trace_fraction == 1.0 ) {
-      friction = 0.700;  // Heavy braking close to edge
+      // Near check (32 units): only when far check found no ground
+      ahead = self.origin + (vel_dir * 32);
+      down = ahead;
+      down_z = down_z - 48;
+      traceline (ahead, down, TRUE, self);
+      if ( trace_fraction == 1.0 ) {
+         friction = 0.700;  // Heavy braking close to edge
+      }
    }
 
    if ( friction < 1.000 ) {
@@ -984,7 +978,7 @@ void () Bot_DropBreadcrumb = {
    SpawnSavedWaypoint (self.origin, 0.1, 0.0, "");
    self.last_breadcrumb_pos = self.origin;
 
-   if ( cvar("developer") ) {
+   if ( cached_developer ) {
       dprint ("[");
       dprint (self.netname);
       dprint ("] BREADCRUMB: Dropped at ");
@@ -1178,7 +1172,7 @@ float (float s_yaw, float s_dist) botwalkmove = {
             direct_yaw = vectoyaw (dir_to_item);
 
             // Log once when focus mode activates (use button_search_time as cooldown)
-            if ( cvar("developer") && (time > self.button_search_time) ) {
+            if ( cached_developer && (time > self.button_search_time) ) {
                dprint ("[");
                dprint (self.netname);
                dprint ("] FOCUS: Direct drive to ");

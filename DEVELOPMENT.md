@@ -127,6 +127,33 @@ Performance throttles (behavior-neutral, CPU-focused):
 - Ripple interact scans are throttled when no nearby ripple node is cached, and cached nodes are reused when close.
 - Hazard checks in steering are skipped at very low movement speeds to cut redundant traces.
 
+### Optimization pass #9 (structural)
+Ten behavior-neutral optimizations targeting ~25-33% per-frame CPU reduction:
+- **Missile linked list**: `missile_list_head` / `.missile_next` maintained by weapon fire
+  functions (`weapons.qc`). `BotReflexDodge` walks 10-20 missiles instead of `findradius()`
+  scanning ~600 edicts. Largest single win (~8-12%).
+- **Cvar cache**: `StartFrame()` sets `cached_developer = cvar("developer")` once per frame.
+  All hot-path developer checks use the cached global (~4-6%).
+- **Bot linked list (hot paths)**: 6 functions converted from `find(classname,"dmbot")` to
+  `bot_list_head` chain: `Bot_AlertNoise`, `CallForHelp`, `BotfindBot`,
+  `BotUpdateMatchPhase`, `Bot_BroadcastNoise`, `Specter_RankAll` (~3-4%).
+- **Retreat/scavenge caching**: Retreat item scan throttled to 0.5s (`retreat_scan_time` +
+  `retreat_safe_item`). Post-kill scavenge reuses `post_kill_loot` while `SOLID_TRIGGER` (~3-5%).
+- **Arithmetic angles**: `BotAverageAngles` replaced 3× `makevectors` + trig with pure
+  arithmetic delta averaging (~2%).
+- **Environment kill throttle**: 0.3s gate on `BotCheckEnvironmentKill` via `env_kill_time` (~2%).
+- **Enemy distance dedup**: `cached_enemy_dist` set once in `aibot_run_slide`, reused by
+  weapon scoring and `W_BestHeldWeapon` (~1-2%).
+- **Effective HP cache**: `.eff_hp` set once in `BotAI_Main`, replaces 7 redundant
+  `health + armorvalue * armortype` calculations (~1%).
+- **Edge friction early exit**: `BotApplyEdgeFriction` skips near-edge traceline when far
+  check finds ground (~1%).
+- **String comparison** (skipped): QuakeC strings are interned — comparisons already O(1).
+
+New entity fields added in `defs.qc`: `.missile_next`, `.eff_hp`, `.cached_enemy_dist`,
+`.env_kill_time`, `.retreat_scan_time`, `.retreat_safe_item`, `.post_kill_loot`.
+New globals in `defs.qc`: `missile_list_head`, `cached_developer`.
+
 Optional tuning cvars for these throttles:
 - `bot_target_throttle` (float): override target scan throttle (seconds).
 - `bot_goodies_throttle` (float): override item scan throttle (seconds).

@@ -141,6 +141,11 @@ void end_sys_globals;
 .string noise2;
 .string noise3;
 void end_sys_fields;
+
+// === OPTIMIZATION: Missile linked list (avoids findradius in dodge) ===
+entity missile_list_head;
+.entity missile_next;
+
 .float old_waterlevel;
 .float is_mandatory;
 .float mandatory_until;
@@ -507,6 +512,20 @@ float LINK_LADDER     = 6; // Vertical water/ladder logic
 // Humanization: Weapon switch fumble
 .float weapon_switch_time;    // Fire delay after weapon switch
 .float weapon_prev;           // Previous weapon (for detecting switches)
+
+// === OPTIMIZATION: Cached cvar globals (set once per frame in StartFrame) ===
+float cached_developer;
+
+// === OPTIMIZATION: Per-bot cached values (set once per think) ===
+.float eff_hp;               // Cached effective HP: health + armor*armortype
+.float cached_enemy_dist;    // Cached distance to current enemy
+
+// === OPTIMIZATION: Throttle fields for expensive checks ===
+.float env_kill_time;        // Throttle: BotCheckEnvironmentKill (0.3s)
+.float elev_check_time;      // Throttle: elevation preference traces (0.3s)
+.float retreat_scan_time;    // Throttle: retreat item scan (0.5s)
+.entity retreat_safe_item;   // Cached retreat item target
+.entity post_kill_loot;      // Cached post-kill scavenge target
 
 // Air control (inspired by Frogbot AIR_ACCELERATION)
 float BOT_AIR_CONTROL = 1;   // Flag: allow limited air steering after knockback

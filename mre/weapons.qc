@@ -288,8 +288,40 @@ void () s_explode6 = [ 5.000, SUB_Remove ] {
 
 };
 
+// === OPTIMIZATION: Missile list management ===
+// Unlink a missile/grenade from the global missile linked list.
+// Called before removal so BotReflexDodge doesn't iterate dead projectiles.
+void () MissileList_Unlink = {
+   local entity cur;
+   local entity prev;
+
+   if ( missile_list_head == self ) {
+      missile_list_head = self.missile_next;
+      self.missile_next = world;
+      return;
+   }
+   prev = missile_list_head;
+   cur = missile_list_head.missile_next;
+   while ( cur ) {
+      if ( cur == self ) {
+         prev.missile_next = cur.missile_next;
+         cur.missile_next = world;
+         return;
+      }
+      prev = cur;
+      cur = cur.missile_next;
+   }
+};
+
+// Unlink + remove (replaces SUB_Remove for missiles/grenades)
+void () MissileList_Remove = {
+   MissileList_Unlink ();
+   remove (self);
+};
+
 void () BecomeExplosion = {
 
+   MissileList_Unlink ();
    self.movetype = MOVETYPE_NONE;
    self.velocity = VEC_ORIGIN;
    self.touch = SUB_Null;
@@ -310,6 +342,7 @@ void () T_MissileTouch = {
    }
    if ( (pointcontents (self.origin) == CONTENT_SKY) ) {
 
+      MissileList_Unlink ();
       remove (self);
       return ;
 
@@ -354,6 +387,9 @@ void () W_FireRocket = {
    missile.movetype = MOVETYPE_FLYMISSILE;
    missile.solid = SOLID_BBOX;
    missile.classname = "missile";
+   // OPT: Add to global missile list for fast dodge scanning
+   missile.missile_next = missile_list_head;
+   missile_list_head = missile;
    makevectors (self.v_angle);
    if ( (self.classname == "dmbot") ) {
 
@@ -370,7 +406,7 @@ void () W_FireRocket = {
    missile.angles = vectoangles (missile.velocity);
    missile.touch = T_MissileTouch;
    missile.nextthink = (time + MOVETYPE_FLY);
-   missile.think = SUB_Remove;
+   missile.think = MissileList_Remove;
    setmodel (missile,"progs/missile.mdl");
    setsize (missile,VEC_ORIGIN,VEC_ORIGIN);
    if ( (self.classname == "dmbot") ) {
@@ -561,6 +597,9 @@ void () W_FireGrenade = {
    missile.movetype = MOVETYPE_BOUNCE;
    missile.solid = SOLID_BBOX;
    missile.classname = "grenade";
+   // OPT: Add to global missile list for fast dodge scanning
+   missile.missile_next = missile_list_head;
+   missile_list_head = missile;
    makevectors (self.v_angle);
    if ( self.v_angle_x ) {
 

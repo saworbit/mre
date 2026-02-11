@@ -33,14 +33,14 @@ void (vector source_loc, float volume, float priority) Bot_AlertNoise = {
 
    Bot_BroadcastNoise (self, source_loc, volume, NOISE_WEAPON);
 
-   // Find all bots and alert those within range
-   bot = find (world, classname, "dmbot");
+   // OPT: Walk cached bot linked list instead of find()
+   bot = bot_list_head;
    while ( bot ) {
       if ( (bot.health > FALSE) ) {
          // Calculate distance (cheap cull before LOS trace)
          dist = vlen (source_loc - bot.origin);
          if ( dist > volume ) {
-            bot = find (bot, classname, "dmbot");
+            bot = bot.bot_next;
             continue ;
          }
 
@@ -64,7 +64,7 @@ void (vector source_loc, float volume, float priority) Bot_AlertNoise = {
                   bot.noise_priority = priority;
                   bot.investigating = TRUE;
 
-                  if ( cvar("developer") ) {
+                  if ( cached_developer ) {
                      dprint ("[");
                      dprint (bot.netname);
                      dprint ("] HEARD: Combat at ");
@@ -75,7 +75,7 @@ void (vector source_loc, float volume, float priority) Bot_AlertNoise = {
             }
          }
       }
-      bot = find (bot, classname, "dmbot");
+      bot = bot.bot_next;
    }
 
 };
@@ -104,12 +104,10 @@ void () Bot_AnalyzeSound = {
          heard_dist = vlen(self.heard_sound_loc - self.origin);
          if ( heard_dist < 800 ) {
             local float heard_weap;
-            local float eff_hp_snd;
             heard_weap = self.heard_sound_weapon;
-            eff_hp_snd = self.health + (self.armorvalue * self.armortype);
 
             // RL/GL heard nearby while weak: cautious investigation
-            if ( (heard_weap == IT_ROCKET_LAUNCHER || heard_weap == IT_GRENADE_LAUNCHER) && eff_hp_snd < 60 ) {
+            if ( (heard_weap == IT_ROCKET_LAUNCHER || heard_weap == IT_GRENADE_LAUNCHER) && self.eff_hp < 60 ) {
                self.noise_target = self.heard_sound_loc;
                self.noise_time = time;
                self.noise_priority = 30;  // low priority = cautious
@@ -117,7 +115,7 @@ void () Bot_AnalyzeSound = {
                return;
             }
             // Weak weapon heard while strong: aggressive push
-            if ( (heard_weap & (IT_SHOTGUN + IT_NAILGUN + IT_AXE)) && eff_hp_snd > 80 && (self.items & (IT_ROCKET_LAUNCHER + IT_LIGHTNING)) ) {
+            if ( (heard_weap & (IT_SHOTGUN + IT_NAILGUN + IT_AXE)) && self.eff_hp > 80 && (self.items & (IT_ROCKET_LAUNCHER + IT_LIGHTNING)) ) {
                self.noise_target = self.heard_sound_loc;
                self.noise_time = time;
                self.noise_priority = 90;  // high priority = push
@@ -219,7 +217,7 @@ void () CallForHelp = {
    local entity tmp;
 
    HELPING = TRUE;
-   e = find (world,classname,"dmbot");
+   e = bot_list_head;  // OPT: cached bot linked list
    while ( e ) {
 
       if ( (e != self) ) {
@@ -266,7 +264,7 @@ void () CallForHelp = {
          }
 
       }
-      e = find (e,classname,"dmbot");
+      e = e.bot_next;
 
    }
    HELPING = FALSE;
@@ -295,9 +293,7 @@ float () RunAway = {
    if ( (weap & (IT_ROCKET_LAUNCHER + IT_LIGHTNING)) ) {
 
       // Even armed bots should flee when critically wounded
-      local float flee_hp;
-      flee_hp = (self.health + (self.armorvalue * self.armortype));
-      if ( flee_hp > 40.000 ) {
+      if ( self.eff_hp > 40.000 ) {
          return ( FALSE );
       }
       // Below 40 eff HP with good weapon: coin flip to survive
@@ -309,7 +305,7 @@ float () RunAway = {
    }
    if ( (self.items & IT_QUAD) ) {
 
-      if ( ((self.health + (self.armorvalue * self.armortype)) > 25.000) ) {
+      if ( self.eff_hp > 25.000 ) {
 
          return ( FALSE );
 
@@ -321,11 +317,9 @@ float () RunAway = {
       return ( FALSE );
    }
    // Gradual retreat: probability increases as effective health drops
-   local float eff_hp;
-   eff_hp = (self.health + (self.armorvalue * self.armortype));
-   if ( (eff_hp < 60.000) ) {
+   if ( (self.eff_hp < 60.000) ) {
       local float retreat_chance;
-      retreat_chance = ((60.000 - eff_hp) / 60.000);
+      retreat_chance = ((60.000 - self.eff_hp) / 60.000);
       // Score pressure: losing bots fight harder, winning bots play safer
       if ( self.enemy ) {
          local float score_diff;
@@ -356,7 +350,7 @@ float () RunAway = {
    }
    // Even with good weapons, flee enemy Quad if not tanky
    if ( (self.enemy.items & IT_QUAD) ) {
-      if ( ((self.health + (self.armorvalue * self.armortype)) < 80.000) ) {
+      if ( self.eff_hp < 80.000 ) {
          return ( TRUE );
       }
    }
@@ -410,7 +404,9 @@ void () BotHuntTarget = {
    self.ideal_yaw = vectoyaw ((self.enemy.origin - self.origin));
    self.lefty = ((self.lefty - (self.lefty & LOCAL_TIME)) + MOVETYPE_TOSS);
    self.nextthink = (time + 0.100);
-   self.attack_finished = ((time + 0.700) - (0.200 * self.skil));
+   // FIX: Removed excessive attack_finished delay (was 0.7-0.1s per skill).
+   // Bot_CheckReaction already gates first shot via fire_delay (0.0-0.3s).
+   // The old 0.7s at skill 0 caused ~1s of staring before first shot.
    self.search_time = (time + MOVETYPE_PUSH);
    clearCache (self);
    if ( teamplay ) {
@@ -588,7 +584,7 @@ float () BotfindBot = {
 
    if ( !self.lastbot ) {
 
-      self.lastbot = find (world,classname,"dmbot");
+      self.lastbot = bot_list_head;  // OPT: cached bot linked list
 
    }
    n = MOVETYPE_STEP;
@@ -618,10 +614,10 @@ float () BotfindBot = {
          }
 
       }
-      self.lastbot = find (bots,classname,"dmbot");
+      self.lastbot = bots.bot_next;  // OPT: walk linked list
       if ( !self.lastbot ) {
 
-         self.lastbot = find (world,classname,"dmbot");
+         self.lastbot = bot_list_head;  // OPT: wrap around
 
       }
 
@@ -756,7 +752,7 @@ float (entity head, float dist) BotThreatScore = {
 
    adj_dist = dist;
    ehp = (head.health + (head.armorvalue * head.armortype));
-   shp = (self.health + (self.armorvalue * self.armortype));
+   shp = self.eff_hp;  // OPT: use cached value
    // Prefer weaker enemies
    if ( (ehp < shp) && (shp > 0.000) ) {
       adj_dist = (dist * (0.500 + (ehp / (shp * 2.000))));
@@ -1049,7 +1045,11 @@ void (float dist, float turn) aibot_run_slide = {
       dist = (dist * (0.400 + (entry_frac * 0.600)));
    }
 
-   self.ideal_yaw = vectoyaw ((self.enemy.origin - self.origin));
+   // OPT: Compute enemy delta once, cache distance for W_BestHeldWeapon reuse
+   local vector enemy_delta;
+   enemy_delta = self.enemy.origin - self.origin;
+   self.cached_enemy_dist = vlen (enemy_delta);
+   self.ideal_yaw = vectoyaw (enemy_delta);
    ChangeYaw ();
 
    // Weapon-range engagement: gentle nudge toward optimal distance
@@ -1087,7 +1087,7 @@ void (float dist, float turn) aibot_run_slide = {
          if ( opt_dist > 800 ) opt_dist = 800;
       }
 
-      cur_dist = vlen(self.enemy.origin - self.origin);
+      cur_dist = self.cached_enemy_dist;  // OPT: reuse cached distance
       if ( cur_dist > (opt_dist + 100) ) {
          botwalkmove(self.ideal_yaw, dist * 0.300);
       } else if ( cur_dist < (opt_dist - 100) ) {
@@ -1172,7 +1172,7 @@ void (float dist, float turn) aibot_run_slide = {
 
          rdir = (rdir + 1.200);
          rnd = random ();
-         weap = W_BestHeldWeapon ();
+         // OPT: weap already set from W_BestHeldWeapon() above
          if ( (weap == IT_ROCKET_LAUNCHER) ) {
 
             rnd = FALSE;
@@ -1224,7 +1224,7 @@ void (float dist, float turn) aibot_run_slide = {
 
          if ( (rng == RANGE_MID) ) {
 
-            weap = W_BestHeldWeapon ();
+            // OPT: weap already set from W_BestHeldWeapon() above
             if ( (weap == IT_LIGHTNING) ) {
 
                rdir = (rdir - MOVETYPE_WALK);
@@ -1565,27 +1565,35 @@ void (float dist) ai_botretreat = {
    // Movement direction starts as directly away from enemy
    move_yaw = away_yaw;
 
-   // Retreat toward safety: blend movement direction toward nearby health/armor
+   // OPT: Retreat item scan throttled to 0.5s — reuse cached result
    local entity safe_item;
-   local float safe_dist;
    safe_item = world;
-   safe_dist = 600;
-   local entity scan;
-   scan = findradius(self.origin, 600);
-   while ( scan ) {
-      if ( (scan.flags & FL_ITEM) ) {
-         if ( (scan.classname == "item_health") || (scan.classname == "item_armor1") || (scan.classname == "item_armor2") || (scan.classname == "item_armorInv") ) {
-            if ( (scan.solid == SOLID_TRIGGER) ) {
-               local float sd;
-               sd = vlen(scan.origin - self.origin);
-               if ( (sd < safe_dist) ) {
-                  safe_dist = sd;
-                  safe_item = scan;
+   if ( self.retreat_safe_item && self.retreat_safe_item.solid == SOLID_TRIGGER ) {
+      safe_item = self.retreat_safe_item;  // cached result still valid
+   }
+   if ( time >= self.retreat_scan_time ) {
+      local float safe_dist;
+      safe_dist = 600;
+      safe_item = world;
+      local entity scan;
+      scan = findradius(self.origin, 600);
+      while ( scan ) {
+         if ( (scan.flags & FL_ITEM) ) {
+            if ( (scan.classname == "item_health") || (scan.classname == "item_armor1") || (scan.classname == "item_armor2") || (scan.classname == "item_armorInv") ) {
+               if ( (scan.solid == SOLID_TRIGGER) ) {
+                  local float sd;
+                  sd = vlen(scan.origin - self.origin);
+                  if ( (sd < safe_dist) ) {
+                     safe_dist = sd;
+                     safe_item = scan;
+                  }
                }
             }
          }
+         scan = scan.chain;
       }
-      scan = scan.chain;
+      self.retreat_safe_item = safe_item;
+      self.retreat_scan_time = time + 0.500;
    }
    if ( safe_item != world ) {
       local float safe_yaw;
@@ -1626,6 +1634,11 @@ void (float dist) ai_botretreat = {
    }
 
    // Shoot while retreating — real players fire while backpedaling
+   // FIX: CheckBotAttack only sets attack_state flag — must also process it
+   // via aibot_run_melee() to actually fire (matches goody-path pattern)
+   if ( self.attack_state == AS_MELEE ) {
+      aibot_run_melee ();
+   }
    CheckBotAttack ();
 };
 
@@ -1640,7 +1653,7 @@ void (float state, string label) BotLogAI = {
    self.last_ai_state_time = time;
    self.last_ai_state = state;
 
-   if ( (cvar ("developer") <= 0.000) ) {
+   if ( (cached_developer <= 0.000) ) {
 
       return ;
 
@@ -1727,7 +1740,7 @@ float (float dist) BotAI_CheckSoundInvestigation = {
 
    // Only log once when investigation starts (check investigating flag)
    // The flag is set AFTER this check, so first call logs, subsequent don't
-   if ( cvar("developer") && !self.investigating ) {
+   if ( cached_developer && !self.investigating ) {
       dprint ("[");
       dprint (self.netname);
       dprint ("] INVESTIGATING: Moving to ");
@@ -1822,13 +1835,12 @@ float () BotRivalPowerupRush = {
 // =============================================================================
 float () BotAggressionScore = {
    local float aggro;
-   local float eff_hp;
    local float weap;
 
-   eff_hp = self.health + (self.armorvalue * self.armortype);
+   // OPT: use cached eff_hp field directly
 
    // Base: health-mapped (eff_hp 0-120 → aggro 0.1-0.9)
-   aggro = eff_hp / 120;
+   aggro = self.eff_hp / 120;
    if ( aggro > 0.9 ) aggro = 0.9;
    if ( aggro < 0.1 ) aggro = 0.1;
 
@@ -1925,11 +1937,11 @@ void () BotUpdateMatchPhase = {
       if ( e.frags > max_frags ) max_frags = e.frags;
       e = find(e, classname, "player");
    }
-   e = find(world, classname, "dmbot");
+   e = bot_list_head;  // OPT: cached bot linked list
    while ( e ) {
       total_frags = total_frags + e.frags;
       if ( e.frags > max_frags ) max_frags = e.frags;
-      e = find(e, classname, "dmbot");
+      e = e.bot_next;
    }
 
    // Phase thresholds
@@ -1949,6 +1961,9 @@ void (float dist) BotAI_Main = {
    if ( self.deadflag != DEAD_NO ) {
       return;
    }
+
+   // OPT: Cache effective HP once per think (used by RunAway, aggression, etc.)
+   self.eff_hp = self.health + (self.armorvalue * self.armortype);
 
    // Mirage Minds: entropy biasing
    MirageTick ();
@@ -1993,24 +2008,29 @@ void (float dist) BotAI_Main = {
    }
    if ( !self.enemy ) {
 
-      // Post-kill scavenge: briefly seek nearby items before resuming patrol
+      // OPT: Post-kill scavenge — use cached loot if still valid
       if ( (self.post_kill_time > time) ) {
          local entity loot;
-         local float loot_dist;
-         loot = world;
-         loot_dist = 300;
-         local entity sc;
-         sc = findradius(self.origin, 300);
-         while ( sc ) {
-            if ( (sc.flags & FL_ITEM) && (sc.solid == SOLID_TRIGGER) ) {
-               local float ld;
-               ld = vlen(sc.origin - self.origin);
-               if ( (ld < loot_dist) ) {
-                  loot_dist = ld;
-                  loot = sc;
+         loot = self.post_kill_loot;
+         // Only re-scan if cached loot is gone (picked up)
+         if ( !loot || loot.solid != SOLID_TRIGGER ) {
+            local float loot_dist;
+            loot = world;
+            loot_dist = 300;
+            local entity sc;
+            sc = findradius(self.origin, 300);
+            while ( sc ) {
+               if ( (sc.flags & FL_ITEM) && (sc.solid == SOLID_TRIGGER) ) {
+                  local float ld;
+                  ld = vlen(sc.origin - self.origin);
+                  if ( (ld < loot_dist) ) {
+                     loot_dist = ld;
+                     loot = sc;
+                  }
                }
+               sc = sc.chain;
             }
-            sc = sc.chain;
+            self.post_kill_loot = loot;
          }
          if ( loot != world ) {
             self.goalentity.goalentity = loot;
@@ -2168,6 +2188,10 @@ void (float dist) BotAI_Main = {
                      if ( !walkmove(kite_away_yaw + 90, dist * 0.5) )
                         walkmove(kite_away_yaw - 90, dist * 0.5);
             }
+            // FIX: Process attack flag to actually fire during kite
+            if ( self.attack_state == AS_MELEE ) {
+               aibot_run_melee ();
+            }
             CheckBotAttack ();
             return ;
          }
@@ -2184,9 +2208,8 @@ void (float dist) BotAI_Main = {
       // When low health and being chased, set up an ambush instead of
       // running. Stop, aim at the entry point, and wait with SSG/RL.
       // =================================================================
-      local float ambush_hp;
-      ambush_hp = (self.health + (self.armorvalue * self.armortype));
-      if ( ambush_hp < 50 && self.health > 0 && self.enemy ) {
+      // OPT: use cached eff_hp
+      if ( self.eff_hp < 50 && self.health > 0 && self.enemy ) {
 
          // Calculate if enemy is chasing us (dot product check)
          local vector dir_to_bot;
@@ -2200,7 +2223,7 @@ void (float dist) BotAI_Main = {
             // Timeout: skill-scaled (skill 0: 2s, skill 10: 5s)
             if ( self.ambush_ready && time > self.ambush_start_time + (2.000 + self.skil * 0.300) ) {
                self.ambush_ready = FALSE;
-               if ( cvar("developer") ) {
+               if ( cached_developer ) {
                   dprint ("[");
                   dprint (self.netname);
                   dprint ("] AMBUSH: Timeout - resuming normal behavior\n");
@@ -2219,7 +2242,7 @@ void (float dist) BotAI_Main = {
                   self.weapon = IT_ROCKET_LAUNCHER;
                }
 
-               if ( cvar("developer") ) {
+               if ( cached_developer ) {
                   dprint ("[");
                   dprint (self.netname);
                   dprint ("] AMBUSH: Setting trap! Waiting with ");
@@ -2246,7 +2269,7 @@ void (float dist) BotAI_Main = {
                   // Don't pre-fire explosives at close range (splash suicide)
                   if ( !((self.weapon == IT_ROCKET_LAUNCHER) || (self.weapon == IT_GRENADE_LAUNCHER)) ) {
                      self.button0 = TRUE;
-                     if ( cvar("developer") && random() < 0.1 ) {
+                     if ( cached_developer && random() < 0.1 ) {
                         dprint ("[");
                         dprint (self.netname);
                         dprint ("] AMBUSH: Nervous trigger!\n");
@@ -2315,8 +2338,14 @@ void (float dist) BotAI_Main = {
       self.dmg_dealt = self.dmg_dealt + frametime;
    }
 
-   // TACTICAL: Check for displacement kill opportunity (knock into hazard)
-   if ( !BotCheckEnvironmentKill () ) {
+   // OPT: Throttle displacement kill check to 0.3s (expensive: tracelines + pointcontents)
+   local float env_kill;
+   env_kill = FALSE;
+   if ( time >= self.env_kill_time ) {
+      self.env_kill_time = time + 0.300;
+      env_kill = BotCheckEnvironmentKill ();
+   }
+   if ( !env_kill ) {
       CheckBotAttack ();
    }
 
@@ -2578,7 +2607,7 @@ float (float minweight) aibot_checkforGoodies = {
 
                               // Log when sixth sense detects item not in front (with cooldown)
                               // Use blind_fire_time as cooldown to prevent spam when walking past items
-                              if ( cvar("developer") && !infrontofbot(e) && (weight > WANT) && (time > self.blind_fire_time) ) {
+                              if ( cached_developer && !infrontofbot(e) && (weight > WANT) && (time > self.blind_fire_time) ) {
                                  dprint ("[");
                                  dprint (self.netname);
                                  dprint ("] SIXTH_SENSE: Detected ");

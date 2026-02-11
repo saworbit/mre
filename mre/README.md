@@ -133,6 +133,17 @@ For visual/behavioral verification:
 - [ ] **Knockback**: Bots get pushed by rocket explosions ("bounce the Reaper")
 - [ ] **Backpacks**: Dropped backpacks don't appear inside walls/void
 
+### Performance (Optimization Pass #9)
+- [ ] **No Behavior Change**: All optimizations are behavior-neutral (identical gameplay)
+- [ ] **Build Clean**: Compiles with 0 errors, 35 warnings (all pre-existing)
+- [ ] **Stability**: Run 8-bot DM on dm4 for 10+ minutes — no crashes, lockups, or new warnings
+- [ ] **Missile List**: Bots still dodge rockets/grenades correctly (BotReflexDodge)
+- [ ] **Bot Scanning**: Sound propagation, ally alerts, match phase detection still work
+- [ ] **Retreat Caching**: Low-health bots still retreat toward health/armor items
+- [ ] **Scavenge Caching**: Bots still pick up items after kills (2s window)
+- [ ] **Edge Friction**: Bots still brake near edges (no falling off cliffs)
+- [ ] **Angle Smoothing**: 3-frame angle averaging still eliminates jitter
+
 ## Docs
 - `mre/COMMUNITY_ISSUES.md` - Issue tracker with fix status
 - `mre/SOURCES.md` - Research sources

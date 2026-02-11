@@ -91,6 +91,11 @@ from `archive/`.
   - Match phase detection: SCRAMBLE/CONTROL/ENDGAME phases shift item priorities (weapons early, armor mid, powerups late)
   - Weapon sound inference: NOISE_WEAPON handler classifies heard weapons and adjusts investigation urgency by own health
   - Adaptive engagement distance: optimal range modulated by enemy weapon (+100u vs LG, -80u vs RL) and aggression score
+- **Optimization Pass**: Structural performance improvements (~25-33% CPU reduction)
+  - Missile linked list for dodge scans (replaces findradius over ~600 edicts)
+  - Per-frame cvar caching, bot linked list in 6 hot-path functions
+  - Arithmetic angle averaging, retreat/scavenge scan throttling
+  - Enemy distance dedup, effective HP cache, edge friction early exit
 
 ### Investigated (Likely Fixed / Not Found)
 - "Bot frags not shown" - MSG_UPDATEFRAGS sent correctly, likely fixed by 0-index fix

@@ -17,13 +17,16 @@ void () BotReflexDodge = {
       return ;
    }
 
-   missile = findradius (self.origin,500.000);
+   // OPT: Walk cached missile linked list instead of findradius(500)
+   // Eliminates ~600 entity distance checks per bot per frame
+   missile = missile_list_head;
    while ( missile ) {
-      if ( (missile.classname == "missile") || (missile.classname == "grenade") || (missile.model == "progs/missile.mdl") ) {
          if ( vlen (missile.velocity) > 10.000 ) {
-            dir = normalize ((self.origin - missile.origin));
+            dir = (self.origin - missile.origin);
+            threat_dist = vlen (dir);
+            if ( threat_dist < 500.000 ) {
+            dir = dir * (1.0 / threat_dist); // normalize without extra vlen
             if ( (normalize (missile.velocity) * dir) > 0.800 ) {
-               threat_dist = vlen (self.origin - missile.origin);
 
                // Graded dodge: closer threat = stronger response
                // 200u: full power (450), 450u: minimal (200)
@@ -34,7 +37,7 @@ void () BotReflexDodge = {
                // Variable cooldown: strong dodge = longer recovery
                self.last_dodge_time = (time + 1.000 + ((dodge_power / 450.000) * 0.800));
 
-               if ( cvar ("developer") ) {
+               if ( cached_developer ) {
                   dprint ("Bot DODGE: power=");
                   dprint (ftos (floor (dodge_power)));
                   dprint ("\n");
@@ -55,9 +58,9 @@ void () BotReflexDodge = {
                self.button2 = TRUE;
                return ;
             }
+            }
          }
-      }
-      missile = missile.chain;
+      missile = missile.missile_next;
    }
 
 };
@@ -144,7 +147,7 @@ void () BotBlindFire = {
          self.button0 = TRUE;
          self.blind_fire_time = time + 0.8;  // Cooldown
 
-         if ( cvar("developer") ) {
+         if ( cached_developer ) {
             dprint ("[");
             dprint (self.netname);
             dprint ("] PREFIRE: Suppressing corner at ");
@@ -198,7 +201,7 @@ float () BotCheckEnvironmentKill = {
       self.v_angle_x = 20;  // Pitch down
       self.button0 = TRUE;
 
-      if ( cvar("developer") ) {
+      if ( cached_developer ) {
          dprint ("[");
          dprint (self.netname);
          dprint ("] DISPLACEMENT: Attempting hazard knockback!\n");
@@ -753,8 +756,12 @@ float () W_BestHeldWeapon = {
    local float dist;
 
    it = self.items;
-   dist = FALSE;
-   if ( self.enemy ) {
+   // OPT: Use cached enemy distance when available (avoids redundant vlen)
+   if ( self.enemy && self.cached_enemy_dist > 0 ) {
+
+      dist = self.cached_enemy_dist;
+
+   } else if ( self.enemy ) {
 
       dist = vlen ((self.enemy.origin - self.origin));
 
