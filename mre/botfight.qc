@@ -2,6 +2,43 @@ float (entity targ) botrange;
 vector (entity foe) MonteLead;
 float () Slayer_GodMode;
 
+// Direct fire: fires current weapon without animation state changes.
+// Used by BotBlindFire, BotCheckEnvironmentKill, ambush, and button shooting
+// where calling W_BotAttack would overwrite the bot's think chain.
+void () BotDirectFire = {
+   if ( time < self.attack_finished ) return;
+   if ( !W_CheckNoAmmo () ) return;
+   makevectors (self.v_angle);
+   self.effects = self.effects | EF_MUZZLEFLASH;
+   self.show_hostile = time + 1;
+   signalnoise (self, self);
+   if ( self.weapon == IT_AXE ) {
+      W_FireAxe ();
+      self.attack_finished = time + 0.500;
+   } else if ( self.weapon == IT_SHOTGUN ) {
+      W_FireShotgun ();
+      self.attack_finished = time + 0.500;
+   } else if ( self.weapon == IT_SUPER_SHOTGUN ) {
+      W_FireSuperShotgun ();
+      self.attack_finished = time + 0.700;
+   } else if ( self.weapon == IT_NAILGUN ) {
+      W_FireSpikes (4);
+      self.attack_finished = time + 0.200;
+   } else if ( self.weapon == IT_SUPER_NAILGUN ) {
+      W_FireSpikes (-4);
+      self.attack_finished = time + 0.200;
+   } else if ( self.weapon == IT_GRENADE_LAUNCHER ) {
+      W_FireGrenade ();
+      self.attack_finished = time + 0.600;
+   } else if ( self.weapon == IT_ROCKET_LAUNCHER ) {
+      W_FireRocket ();
+      self.attack_finished = time + 0.800;
+   } else if ( self.weapon == IT_LIGHTNING ) {
+      W_FireLightning ();
+      self.attack_finished = time + 0.100;
+   }
+};
+
 // Reflex dodge: evade incoming rockets/grenades
 // Graded response: closer threats produce stronger dodges
 void () BotReflexDodge = {
@@ -34,8 +71,24 @@ void () BotReflexDodge = {
                if ( dodge_power < 200.000 ) dodge_power = 200.000;
                if ( dodge_power > 450.000 ) dodge_power = 450.000;
 
-               // Variable cooldown: strong dodge = longer recovery
-               self.last_dodge_time = (time + 1.000 + ((dodge_power / 450.000) * 0.800));
+               // FIX #11: Differentiate rockets vs grenades
+               // Rockets: harder dodge, shorter cooldown (lethal direct hit)
+               // Grenades: softer dodge + jump over (bounce prediction)
+               local float is_rocket;
+               is_rocket = (missile.classname == "rocket");
+               if ( is_rocket ) {
+                  dodge_power = dodge_power * 1.200;
+                  if ( dodge_power > 540 ) dodge_power = 540;
+                  self.last_dodge_time = (time + 0.800 + ((dodge_power / 540.000) * 0.400));
+               } else {
+                  dodge_power = dodge_power * 0.700;
+                  self.last_dodge_time = (time + 1.200 + ((dodge_power / 450.000) * 0.600));
+                  // Jump over grenades when close
+                  if ( (threat_dist < 200) && (self.flags & FL_ONGROUND) ) {
+                     self.velocity_z = self.velocity_z + 200;
+                     self.button2 = TRUE;
+                  }
+               }
 
                if ( cached_developer ) {
                   dprint ("Bot DODGE: power=");
@@ -144,7 +197,7 @@ void () BotBlindFire = {
          aim_angles = vectoangles (aim_at - self.origin);
          self.v_angle_y = aim_angles_y;
          self.v_angle_x = aim_angles_x;
-         self.button0 = TRUE;
+         BotDirectFire ();
          self.blind_fire_time = time + 0.8;  // Cooldown
 
          if ( cached_developer ) {
@@ -199,7 +252,7 @@ float () BotCheckEnvironmentKill = {
    if ( hazard_found ) {
       // Aim at enemy's FEET to knock them backward
       self.v_angle_x = 20;  // Pitch down
-      self.button0 = TRUE;
+      BotDirectFire ();
 
       if ( cached_developer ) {
          dprint ("[");
@@ -345,18 +398,16 @@ vector () botaim = {
          if ( (self.weapon & IT_ROCKET_LAUNCHER) ) {
 
             tg = leadtarget (src,tg,0.001);
-            if ( (self.origin_z >= self.enemy.origin_z) ) {
+            // FIX #4: RL foot-aim — removed height gate (self.origin_z >= enemy.origin_z)
+            // Real players always aim at feet for splash damage regardless of elevation
+            rnd = ((random () * 3.500) + TRUE);
+            if ( (self.skil > rnd) ) {
 
-               rnd = ((random () * 3.500) + TRUE);
-               if ( (self.skil > rnd) ) {
+               tg_z = ((tg_z + self.enemy.mins_z) + FL_SWIM);
+               traceline (src,tg,TRUE,self);
+               if ( (trace_fraction != TRUE) ) {
 
-                  tg_z = ((tg_z + self.enemy.mins_z) + FL_SWIM);
-                  traceline (src,tg,TRUE,self);
-                  if ( (trace_fraction != TRUE) ) {
-
-                     tg_z = ((tg_z - self.enemy.mins_z) - MOVETYPE_WALK);
-
-                  }
+                  tg_z = ((tg_z - self.enemy.mins_z) - MOVETYPE_WALK);
 
                }
 
@@ -372,10 +423,17 @@ vector () botaim = {
 
                if ( ((self.weapon & IT_SUPER_NAILGUN) || (self.weapon & IT_NAILGUN)) ) {
 
+                  // FIX #3: Nail lead centered on correct inverse velocity (1/1000 = 0.001)
+                  // Old code: random()*0.002 gave 0-0.002, half the time under-leading
+                  // New: skill-scaled noise around the correct value
                   if ( Slayer_GodMode () ) {
-                     rnd = FALSE;
+                     rnd = 0.001;
                   } else {
-                     rnd = (random () * 0.002);
+                     local float nail_noise;
+                     nail_noise = 0.0005 - (self.skil * 0.00004);
+                     if ( nail_noise < 0 ) nail_noise = 0;
+                     rnd = 0.001 + ((random () - 0.500) * 2.000 * nail_noise);
+                     if ( rnd < 0 ) rnd = 0;
                   }
                   tg = leadtarget (src,tg,rnd);
 
@@ -616,17 +674,25 @@ float () W_BestBotWeapon = {
    best_weapon = IT_AXE;
 
    // Thunderbolt scoring
+   // FIX #7: Continuous distance scoring (was discrete RANGE_MELEE/RANGE_NEAR only)
+   // LG effective range is ~600u; peak at close range, linear falloff
    if ( ((self.ammo_cells >= TRUE) && (it & IT_LIGHTNING)) ) {
-      if ( ((rng == RANGE_MELEE) || (rng == RANGE_NEAR)) ) {
-         wlevel = CheckWaterLevel ();
-         if ( (wlevel < FL_SWIM) || (self.items & IT_INVULNERABILITY) ) {
-            score_lg = 100;
-            // DARWIN: Apply personal confidence
-            score_lg = score_lg + (self.confidence_lg * 5);
-            if ( score_lg > best_score ) {
-               best_score = score_lg;
-               best_weapon = IT_LIGHTNING;
-            }
+      wlevel = CheckWaterLevel ();
+      if ( (wlevel < FL_SWIM) || (self.items & IT_INVULNERABILITY) ) {
+         if ( dist < 600 ) {
+            score_lg = 100 - ((dist - 200) * 0.200);
+            if ( score_lg > 100 ) score_lg = 100;
+            if ( score_lg < 40 ) score_lg = 40;
+         }
+         // FIX #19: Underwater LG dominance — devastating vs enemies in water
+         if ( self.enemy && self.enemy.waterlevel > 0 && dist < 600 ) {
+            score_lg = score_lg + 30;
+         }
+         // DARWIN: Apply personal confidence
+         score_lg = score_lg + (self.confidence_lg * 5);
+         if ( score_lg > best_score ) {
+            best_score = score_lg;
+            best_weapon = IT_LIGHTNING;
          }
       }
    }
@@ -651,6 +717,8 @@ float () W_BestBotWeapon = {
    // Super Nailgun scoring
    if ( ((self.ammo_nails >= FL_SWIM) && (it & IT_SUPER_NAILGUN)) ) {
       score_sng = 80;
+      // DARWIN: Apply personal confidence
+      score_sng = score_sng + (self.confidence_sng * 5);
       // SNG excels at mid range (300-700u)
       if ( (dist > 300) && (dist < 700) ) {
          score_sng = score_sng + 15;
@@ -688,6 +756,35 @@ float () W_BestBotWeapon = {
          best_weapon = IT_SUPER_SHOTGUN;
       }
    }
+
+   // FIX #10: Ammo scarcity penalty — conserve low ammo weapons
+   if ( self.ammo_rockets <= 3 ) score_rl = score_rl - 20;
+   if ( self.ammo_cells <= 10 ) score_lg = score_lg - 20;
+   if ( self.ammo_rockets <= 3 ) score_gl = score_gl - 15;
+   if ( self.ammo_nails <= 20 ) score_sng = score_sng - 15;
+   if ( self.ammo_shells <= 5 ) score_ssg = score_ssg - 15;
+
+   // FIX #8: Corridor RL/GL penalty — splash self-damage in tight spaces
+   if ( self.skil >= 2 && (score_rl > 0 || score_gl > 0) ) {
+      makevectors (self.v_angle);
+      traceline (self.origin, self.origin + (v_right * 64), TRUE, self);
+      local float corridor_right;
+      corridor_right = trace_fraction;
+      traceline (self.origin, self.origin - (v_right * 64), TRUE, self);
+      if ( (corridor_right < 0.500) && (trace_fraction < 0.500) ) {
+         score_rl = score_rl - 30;
+         score_gl = score_gl - 30;
+      }
+   }
+
+   // Re-evaluate best after scarcity and corridor penalties
+   best_score = 0;
+   best_weapon = IT_AXE;
+   if ( score_lg > best_score ) { best_score = score_lg; best_weapon = IT_LIGHTNING; }
+   if ( score_rl > best_score ) { best_score = score_rl; best_weapon = IT_ROCKET_LAUNCHER; }
+   if ( score_sng > best_score ) { best_score = score_sng; best_weapon = IT_SUPER_NAILGUN; }
+   if ( score_gl > best_score ) { best_score = score_gl; best_weapon = IT_GRENADE_LAUNCHER; }
+   if ( score_ssg > best_score ) { best_score = score_ssg; best_weapon = IT_SUPER_SHOTGUN; }
 
    // ADAPTIVE TACTICS: Counter-weapon scoring based on enemy's weapon
    // "He has LG? Use RL for splash. He has RL? Use LG to track at range."

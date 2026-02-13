@@ -350,7 +350,7 @@ void () BotPostThink = {
 
          self.movetype = MOVETYPE_STEP;
          self.velocity = '0 0 0';
-         if ( (cvar ("developer") > 0.000) ) {
+         if ( (cached_developer > 0.000) ) {
 
             dprint ("[");
             dprint (self.netname);
@@ -361,7 +361,7 @@ void () BotPostThink = {
       }
       // Log knockback state (developer mode only)
       // Only log when: velocity is significant (> 50), recent knockback, and debounced (0.05s)
-      if ( (cvar ("developer") > 0.000) && (self.knockback_time > (time - 0.100))
+      if ( (cached_developer > 0.000) && (self.knockback_time > (time - 0.100))
            && (vlen (self.velocity) > 50.000) && (time > (self.knockback_log_time + 0.050)) ) {
 
          self.knockback_log_time = time;
@@ -377,7 +377,7 @@ void () BotPostThink = {
 
    }
 
-   if ( cvar ("developer") ) {
+   if ( cached_developer ) {
       local float warp_dist;
 
       if ( self.last_frame_origin != VEC_ORIGIN ) {

@@ -1625,6 +1625,9 @@ void (entity targ, entity attacker) ClientObituary = {
                } else if ( attacker.weapon == IT_GRENADE_LAUNCHER ) {
                   attacker.confidence_gl = attacker.confidence_gl + 1;
                   if ( attacker.confidence_gl > 10 ) attacker.confidence_gl = 10;
+               } else if ( attacker.weapon == IT_SUPER_NAILGUN ) {
+                  attacker.confidence_sng = attacker.confidence_sng + 1;
+                  if ( attacker.confidence_sng > 10 ) attacker.confidence_sng = 10;
                } else if ( attacker.weapon == IT_SHOTGUN || attacker.weapon == IT_SUPER_SHOTGUN ) {
                   attacker.confidence_sg = attacker.confidence_sg + 1;
                   if ( attacker.confidence_sg > 10 ) attacker.confidence_sg = 10;
@@ -1645,6 +1648,9 @@ void (entity targ, entity attacker) ClientObituary = {
                } else if ( targ.weapon == IT_GRENADE_LAUNCHER ) {
                   targ.confidence_gl = targ.confidence_gl - 1;
                   if ( targ.confidence_gl < -10 ) targ.confidence_gl = -10;
+               } else if ( targ.weapon == IT_SUPER_NAILGUN ) {
+                  targ.confidence_sng = targ.confidence_sng - 1;
+                  if ( targ.confidence_sng < -10 ) targ.confidence_sng = -10;
                } else if ( targ.weapon == IT_SHOTGUN || targ.weapon == IT_SUPER_SHOTGUN ) {
                   targ.confidence_sg = targ.confidence_sg - 1;
                   if ( targ.confidence_sg < -10 ) targ.confidence_sg = -10;

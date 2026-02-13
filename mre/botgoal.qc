@@ -61,6 +61,7 @@ void (float dist) ai_botseek = {
    if ( self.enemy ) {
 
       aibot_setupchase ();
+      return ;
 
    }
    if ( BotFindTarget () ) {
@@ -919,9 +920,11 @@ void () updateBotCache = {
 
    } else {
 
-      dprint ("Error - no think update for ");
-      dprint (self.pendingcache.classname);
-      dprint ("\n");
+      if ( cached_developer ) {
+         dprint ("Error - no think update for ");
+         dprint (self.pendingcache.classname);
+         dprint ("\n");
+      }
 
    }
    self.pendingcache = world;
@@ -984,22 +987,31 @@ void () aibot_chooseGoal = {
 
                if ( (e.solid == SOLID_NOT) ) {
 
-                  // Skill 3+ bots anticipate items about to respawn
-                  if ( (self.skil >= 3) && (e.think == SUB_regen) && (e.nextthink > 0) && ((e.nextthink - time) <= 10) ) {
+                  // FIX #2: Skill 3+ bots anticipate items about to respawn
+                  // Travel-aware window: start heading to item when ETA <= travel time + 3s buffer
+                  if ( (self.skil >= 3) && (e.think == SUB_regen) && (e.nextthink > 0) ) {
                      local float spawn_eta;
+                     local float travel_time;
+                     local float timing_window;
                      spawn_eta = e.nextthink - time;
-                     if ( (e.classname == "item_artifact_super_damage") || (e.classname == "item_artifact_invulnerability") ) {
-                        weight = MUST_HAVE * ((10.000 - spawn_eta) / 10.000);
-                     } else {
-                        weight = KINDA_WANT * ((10.000 - spawn_eta) / 10.000);
+                     travel_time = vlen (((e.absmin + e.absmax) * 0.500) - self.origin) * 0.003333;  // dist / 300 speed
+                     timing_window = travel_time + 3;
+                     if ( timing_window < 10 ) timing_window = 10;
+                     if ( spawn_eta <= timing_window ) {
+                        if ( (e.classname == "item_artifact_super_damage") || (e.classname == "item_artifact_invulnerability") ) {
+                           weight = 250 * ((timing_window - spawn_eta) / timing_window);
+                           if ( weight < MUST_HAVE ) weight = MUST_HAVE;
+                        } else {
+                           weight = KINDA_WANT * ((timing_window - spawn_eta) / timing_window);
+                        }
+                        if ( (weight > best) ) {
+                           botTarget.goalentity = e;
+                           best = weight;
+                           bestorg = ((e.absmin + e.absmax) * 0.500);
+                        }
+                        e = e.chain;
+                        continue;
                      }
-                     if ( (weight > best) ) {
-                        botTarget.goalentity = e;
-                        best = weight;
-                        bestorg = ((e.absmin + e.absmax) * 0.500);
-                     }
-                     e = e.chain;
-                     continue;
                   }
                   weight = DONT_WANT;
 

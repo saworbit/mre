@@ -634,7 +634,7 @@ void (vector entry_pos, vector exit_pos) Vortex_FuseTeleChain = {
       }
    }
 
-   if ( cvar ("developer") ) {
+   if ( cached_developer ) {
       dprint ("Tele chain: entry ");
       dprint (ftos (entry_idx));
       dprint (" exit ");

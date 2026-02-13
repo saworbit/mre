@@ -1262,7 +1262,7 @@ float () Quantum_TryLeap = {
       dir = fwd;
       self.weapon = IT_ROCKET_LAUNCHER;
       self.button2 = TRUE;
-      self.button0 = TRUE;
+      // Quantum leap: physics applied directly (velocity + damage), no projectile needed
       self.last_rj = time;
       self.velocity = (self.velocity + (dir * RJ_IMPULSE));
       self.velocity_z = (self.velocity_z + 272.000);
@@ -1272,7 +1272,6 @@ float () Quantum_TryLeap = {
       impulse = Quantum_GJImpulse (self.origin, fwd, rgt, purpose, action_id);
       self.weapon = IT_GRENADE_LAUNCHER;
       self.button2 = TRUE;
-      self.button0 = TRUE;
       self.last_rj = time;
       self.velocity = (self.velocity + impulse);
       self.health = (self.health - Quantum_GJDamage (self.armorvalue));
@@ -1281,7 +1280,6 @@ float () Quantum_TryLeap = {
       impulse = Quantum_GLJImpulse (self.origin, fwd, rgt, purpose, action_id);
       self.weapon = IT_GRENADE_LAUNCHER;
       self.button2 = TRUE;
-      self.button0 = TRUE;
       self.last_rj = time;
       self.velocity = (self.velocity + impulse);
       self.velocity_z = (self.velocity_z + 272.000);
@@ -1435,7 +1433,7 @@ float () Ripple_TryInteract = {
    }
 
    if ( vortex_ripple_type[cur] == RIPPLE_TYPE_SHOOT ) {
-      self.button0 = TRUE;
+      BotDirectFire ();
       return ( TRUE );
    }
    if ( vortex_ripple_type[cur] == RIPPLE_TYPE_TOUCH ) {

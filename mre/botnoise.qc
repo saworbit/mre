@@ -56,20 +56,18 @@ float (entity e) hearnoise = {
    }
    if ( (NOISEQUEUE.goalentity == e) ) {
 
-      dprint (self.teamname);
-      dprint (self.classname);
-      dprint (" heard ");
-      dprint (NOISEQUEUE.goalentity.netname);
-      if ( (NOISEQUEUE.movetarget.classname == "player") ) {
-
-         dprint (" shoot\n");
-
-      } else {
-
-         dprint (" trigger ");
-         dprint (NOISEQUEUE.movetarget.classname);
-         dprint ("\n");
-
+      if ( cached_developer ) {
+         dprint (self.teamname);
+         dprint (self.classname);
+         dprint (" heard ");
+         dprint (NOISEQUEUE.goalentity.netname);
+         if ( (NOISEQUEUE.movetarget.classname == "player") ) {
+            dprint (" shoot\n");
+         } else {
+            dprint (" trigger ");
+            dprint (NOISEQUEUE.movetarget.classname);
+            dprint ("\n");
+         }
       }
       return ( TRUE );
 

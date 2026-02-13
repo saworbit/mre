@@ -3,6 +3,110 @@
 ## Unreleased
 - Clean baseline restored in `mre/`.
 
+### Intelligence Pass #11 (Combat Awareness)
+Ten combat awareness improvements for human-like situational reactions. Files touched:
+`defs.qc`, `bot_ai.qc`.
+
+**HIGH Impact** (`bot_ai.qc`):
+- #1: **Escape Rocket Jump**. Skill 4+ bots fire at own feet when cornered during retreat
+  (eff_hp 50-90, enemy <400u, all walkmove directions blocked). Trades ~50 HP for escape
+  velocity. 3s cooldown via `last_rj_time`. Uses `BotDirectFire()` with temporary weapon
+  swap to RL.
+- #2: **Mid-fight weapon re-evaluation**. Every 0.5s during ATTACK state, skill 2+ bots
+  call `W_BestBotWeapon()` and switch if a better option exists for current range. Throttled
+  via `weapon_eval_time` field. Eliminates fighting entire engagements with wrong weapon.
+- #3: **Damage-aware aggression**. Tracks HP loss rate via `hp_snapshot`/`hp_delta` (sampled
+  1/sec in `BotAI_Main`). In `BotAggressionScore()`: losing 30+ HP/sec → -0.25 aggression,
+  15+ HP/sec → -0.10. Bots no longer push into sustained LG beams.
+- #4: **Anti-tracking strafe reversal**. In `aibot_run_slide()`, when `hp_delta > 20` and
+  enemy uses hitscan (LG/SNG), skill 3+ bots immediately reverse strafe direction with
+  short commitment (0.15-0.35s). Breaks enemy tracking rhythm.
+
+**MEDIUM-HIGH Impact** (`bot_ai.qc`):
+- #5: **Spawn point control**. After killing an enemy, skill 4+ bots with 60+ eff_hp rush
+  the nearest visible `info_player_deathmatch` within 800u. Pre-aims at spawn point.
+  Uses `find()` loop (cold path, post-kill only).
+- #6: **Quad Rampage mode**. When holding Quad Damage, forces `aggression = 1.0` and
+  aggressively calls `BotFindTarget()` if no visible enemy. Skips item detours and retreat.
+  Every second of Quad spent fighting.
+
+**MEDIUM Impact** (`bot_ai.qc`):
+- #7: **Hazard-safe combat strafing**. Before committing strafe direction in
+  `aibot_run_slide()`, checks via `BotDetectHazard()`. Reverses if hazardous, falls back
+  to forward movement if both sides are dangerous. Prevents strafing into lava on DM4.
+- #8: **GL area denial**. During sound investigation (`BotAI_CheckSoundInvestigation`),
+  skill 3+ bots with GL and 3+ rockets occasionally (15% per frame) bounce grenades toward
+  the sound source at 200-600u range.
+- #9: **Weapon-specific movement patterns**. In `aibot_run_slide()`: LG users reduce strafe
+  speed/angle by 50% for better beam tracking. RL users widen strafe 10% for peek-shoot
+  rhythm. SSG users bias toward closing distance beyond 300u.
+- #10: **Proactive combat dodge jumps**. 2-6% chance per frame to jump during combat,
+  weighted by enemy weapon (6% vs RL, 4% vs GL). Suppressed when holding LG (breaks
+  tracking). Uses `last_dodge_time` cooldown (0.6s).
+
+- Silenced debug output: Gated all ungated `dprint` calls behind `cached_developer` in
+  `botnoise.qc` (sound heard), `botspawn.qc` (physics calcs, slow/aim warnings),
+  `botit_th.qc` (copyright), `botgoal.qc` (error), `ai_vortex.qc` (switched from
+  `cvar("developer")` to `cached_developer`). All debug output now toggled via
+  `developer 0/1` in console.
+
+### Intelligence Pass #10 (Combat & Strategy)
+Eighteen targeted intelligence improvements across combat, weapon selection, navigation,
+and strategic decision-making. Files touched: `botfight.qc`, `bot_ai.qc`, `botit_th.qc`,
+`botgoal.qc`, `botmove.qc`.
+
+**Combat & Weapon Selection** (`botfight.qc`):
+- Fix #3: **Nailgun lead correction**. Nail lead centered on correct inverse velocity
+  (1/1000 = 0.001). Old code used `random()*0.002` (0-0.002 range, wrong center).
+  New: skill-scaled noise around 0.001 via `crandom() * noise`.
+- Fix #4: **RL foot-aim height gate removed**. Removed `self.origin_z >= enemy.origin_z`
+  check that only allowed foot-aim when above enemy. Real players always aim at feet
+  for splash damage regardless of relative elevation.
+- Fix #7: **Continuous LG distance scoring**. Replaced discrete RANGE_MELEE/RANGE_NEAR
+  check with continuous curve: peak 100 at 200u, linear falloff to 40 at 600u.
+- Fix #8: **Corridor RL/GL penalty**. Traces v_right at ±64u to detect tight corridors.
+  Both walls within 50% fraction → -30 penalty to RL and GL scores. Prevents splash
+  self-damage in narrow spaces. Skill 2+ gate.
+- Fix #10: **Ammo scarcity penalties**. Low ammo reduces weapon scores: rockets≤3 → -20 RL,
+  cells≤10 → -20 LG, rockets≤3 → -15 GL, nails≤20 → -15 SNG, shells≤5 → -15 SSG.
+  Re-evaluates best weapon after all penalties applied.
+- Fix #11: **Differentiated projectile dodge**. Rockets: 1.2x dodge power (cap 540),
+  shorter cooldown (0.8-1.2s). Grenades: 0.7x dodge power, longer cooldown (1.2-1.8s),
+  jump-over when close (<200u, on ground).
+- Fix #19: **Underwater LG dominance**. +30 score bonus when enemy.waterlevel > 0 and
+  within 600u. LG is devastating against targets in water.
+
+**Targeting & Tactics** (`bot_ai.qc`):
+- Fix #5: **Target deconfliction**. BotThreatScore adds +200 adj_dist per other bot
+  already fighting the same target. Spreads bot aggression across multiple enemies.
+- Fix #12: **Wider cover traces**. Cover left/right offset increased from 32u to 80u
+  for more meaningful cover position detection during strafing.
+- Fix #13: **Sound-driven approach speed**. Investigation movement speed modulated by
+  noise_priority: 0.5-1.0x (louder sounds → faster approach). Was fixed speed.
+- Fix #15: **Post-kill backpack priority**. Backpacks get 0.5x distance multiplier in
+  post-kill scavenge scan, making them appear twice as close. Bots prioritize grabbing
+  the victim's dropped weapons/ammo.
+- Fix #16: **Vulture behavior**. When 2+ threats visible, skill 3+, eff_hp > 60, and
+  enemy is fighting someone else → hold back at 0.3x speed, fire opportunistically.
+  Let them weaken each other before committing.
+- Fix #17: **Retreat teleporter awareness**. Skill 2+ bots scan for trigger_teleport
+  within 400u during retreat. If visible, retreat toward it as an escape route.
+- Fix #20: **Chase path prediction**. When chasing a lost enemy, uses BotPredictPosition
+  with last_enemy_vel to update goal entity position. Skill 2+, within 2s of losing sight.
+
+**Strategic & Navigation** (`botit_th.qc`, `botgoal.qc`, `botmove.qc`):
+- Fix #9: **Powerup weight boost**. Quad and Pent weight increased from 102 to 250,
+  making them unconditionally the highest-priority pickup. Envirosuit kept at WANT (35),
+  other artifacts unchanged at 102.
+- Fix #2: **Travel-aware item timing**. Respawn prediction window expanded from fixed
+  10s to `travel_time + 3s` (minimum 10s), where travel_time = distance/300. Bots head
+  to distant powerups earlier. Quad/Pent get weight 250 with MUST_HAVE floor.
+- Fix #14: **Intelligent roaming**. During CONTROL phase (mid-game), skill 2+ bots bias
+  roaming direction toward nearest item spawn within 1500u instead of random wandering.
+  Keeps bots patrolling item-rich areas for map control.
+- Fix #18: **Bunny hop threshold lowered**. Roaming bunny hop skill gate reduced from 5
+  to 3. Mid-tier bots now hop to distant items instead of walking, improving map traversal.
+
 ### Optimization Pass #9 (Performance)
 Ten targeted optimizations for ~25-33% per-frame CPU reduction. All behavior-neutral
 (zero gameplay changes). Files touched: `defs.qc`, `weapons.qc`, `world.qc`,

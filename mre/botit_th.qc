@@ -238,12 +238,12 @@ float (entity en) OppSlot = {
    return -1;
 };
 
-// Find or create slot (LRU eviction: shift 2→3, 1→2, new→1)
+// Find or create slot (LRU eviction: shift 3→evict, 2→3, 1→2, 0→1, new→0)
 float (entity en) OppSlotOrEvict = {
    local float s;
    s = OppSlot(en);
    if ( s >= 0 ) return s;
-   // Evict slot 3, shift down
+   // Evict slot 3, shift all down
    self.opp_ent_3 = self.opp_ent_2;
    self.opp_aggro_3 = self.opp_aggro_2;
    self.opp_weap_3 = self.opp_weap_2;
@@ -252,11 +252,15 @@ float (entity en) OppSlotOrEvict = {
    self.opp_aggro_2 = self.opp_aggro_1;
    self.opp_weap_2 = self.opp_weap_1;
    self.opp_threat_2 = self.opp_threat_1;
-   self.opp_ent_1 = en;
-   self.opp_aggro_1 = 0.5;
-   self.opp_weap_1 = 0;
-   self.opp_threat_1 = 0.5;
-   return 1;
+   self.opp_ent_1 = self.opp_ent_0;
+   self.opp_aggro_1 = self.opp_aggro_0;
+   self.opp_weap_1 = self.opp_weap_0;
+   self.opp_threat_1 = self.opp_threat_0;
+   self.opp_ent_0 = en;
+   self.opp_aggro_0 = 0.5;
+   self.opp_weap_0 = 0;
+   self.opp_threat_0 = 0.5;
+   return 0;
 };
 
 // EMA update: alpha=0.3 blends new observation with history
@@ -355,9 +359,11 @@ void (entity winner, entity loser) OppRecordResult = {
 
 void () CopyrightNotice = {
 
-   dprint (" The Quake C modifications included in this archive are Copyright 1996, Steven Polge.");
-   dprint ("The original QuakeC source is Copyright 1996, id software.");
-   dprint ("You MAY NOT use these modifications as a basis for other publicly or commercially available work.");
+   if ( cached_developer ) {
+      dprint (" The Quake C modifications included in this archive are Copyright 1996, Steven Polge.");
+      dprint ("The original QuakeC source is Copyright 1996, id software.");
+      dprint ("You MAY NOT use these modifications as a basis for other publicly or commercially available work.");
+   }
 
 };
 float (entity targ) Spotvisible;
@@ -704,11 +710,13 @@ float (entity e) artifactweight = {
 
    local float weight;
 
-   weight = (MUST_HAVE + FL_SWIM);
-   if ( (e.classname == "item_artifact_envirosuit") ) {
-
+   // FIX #9: Powerup weight — Quad/Pent are game-changers, always top priority
+   if ( (e.classname == "item_artifact_super_damage") || (e.classname == "item_artifact_invulnerability") ) {
+      weight = 250;
+   } else if ( (e.classname == "item_artifact_envirosuit") ) {
       weight = WANT;
-
+   } else {
+      weight = (MUST_HAVE + FL_SWIM);
    }
    return ( weight );
 

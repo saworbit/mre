@@ -244,7 +244,7 @@ void () BotCheckCuriosity = {
    if ( (tr_ent.classname == "func_button") && (tr_ent.health > 0) ) {
 
       // Shoot the button!
-      self.button0 = TRUE;
+      BotDirectFire ();
 
       if ( cached_developer ) {
          dprint ("[");
@@ -259,7 +259,7 @@ void () BotCheckCuriosity = {
    if ( (tr_ent.classname == "func_door") && (tr_ent.health > 0) ) {
 
       // Might be a secret door - shoot it!
-      self.button0 = TRUE;
+      BotDirectFire ();
 
       if ( cached_developer ) {
          dprint ("[");
@@ -273,7 +273,7 @@ void () BotCheckCuriosity = {
    // Is it a shootable wall (some maps use this)?
    if ( (tr_ent.classname == "func_wall") && (tr_ent.health > 0) ) {
 
-      self.button0 = TRUE;
+      BotDirectFire ();
 
       if ( cached_developer ) {
          dprint ("[");
@@ -864,7 +864,10 @@ float (float desired_speed) BotSwim = {
       pitch_wobble = (wave_t * 4.000) - 1.000;
    else
       pitch_wobble = 3.000 - (wave_t * 4.000);
-   pitch_wobble = pitch_wobble * (8.000 - self.skil);
+   local float wobble_amp;
+   wobble_amp = 8.000 - self.skil;
+   if ( wobble_amp < 0 ) wobble_amp = 0;
+   pitch_wobble = pitch_wobble * wobble_amp;
    swim_angles_x = swim_angles_x + pitch_wobble;
 
    self.angles = swim_angles;
@@ -1037,7 +1040,7 @@ float (entity next_node, float dist) BotExecuteLink = {
             self.v_angle_y = vectoyaw ((next_node.origin - self.origin));
             self.ideal_yaw = self.v_angle_y;
             ChangeYaw ();
-            self.button0 = TRUE;
+            BotDirectFire ();
             self.button2 = TRUE;
             self.whiskers_allowed = FALSE;
             return ( TRUE );
@@ -1241,8 +1244,8 @@ float (float s_yaw, float s_dist) botwalkmove = {
    }
    if ( is_straight_path && (self.health > 50.000) && !self.feeler_mode_active && self.whiskers_allowed ) {
       if ( !self.enemy || (self.enemy == world) ) {
-         // Only expert bots bunny hop while roaming — casual bots walk
-         if ( (self.skil >= 5.000) && (vlen (self.goalentity.origin - self.origin) > 600.000) ) {
+         // FIX #18: Skilled+ bots bunny hop while roaming (lowered from 5)
+         if ( (self.skil >= 3.000) && (vlen (self.goalentity.origin - self.origin) > 600.000) ) {
             BotBunnyHop (self, s_yaw);
          }
       } else {
@@ -1360,7 +1363,11 @@ float (float s_yaw, float s_dist) botwalkmove = {
 
       // Auto-open door - trigger it directly if it has a use function
       if ( trace_ent.use ) {
-         trace_ent.use ();
+         local entity oself;
+         oself = self;
+         self = trace_ent;
+         self.use ();
+         self = oself;
       }
 
       // Back up slightly to let it open

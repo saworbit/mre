@@ -436,6 +436,7 @@ float LINK_LADDER     = 6; // Vertical water/ladder logic
 .float confidence_lg;        // Lightning Gun
 .float confidence_gl;        // Grenade Launcher
 .float confidence_sg;        // Shotgun/Super Shotgun
+.float confidence_sng;       // Super Nailgun
 
 // --- ADAPTIVE TACTICS (Intelligence Pass #8) ---
 // Opponent Profile Model: 4-slot per-enemy tracker with EMA
@@ -512,6 +513,12 @@ float LINK_LADDER     = 6; // Vertical water/ladder logic
 // Humanization: Weapon switch fumble
 .float weapon_switch_time;    // Fire delay after weapon switch
 .float weapon_prev;           // Previous weapon (for detecting switches)
+
+// Intelligence Pass #11: Combat awareness fields
+.float hp_snapshot;          // HP at last snapshot (for damage rate tracking)
+.float hp_snapshot_time;     // When last HP snapshot was taken
+.float hp_delta;             // HP lost in last second (damage rate)
+.float weapon_eval_time;     // Throttle: mid-combat weapon re-evaluation (0.5s)
 
 // === OPTIMIZATION: Cached cvar globals (set once per frame in StartFrame) ===
 float cached_developer;

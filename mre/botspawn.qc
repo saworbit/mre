@@ -151,10 +151,12 @@ void () setBotGravity = {
    local string tmp;
 
    GRAVITY = (cvar ("sv_gravity") * 0.100);
-   dprint ("Gravity accel is ");
-   tmp = ftos (GRAVITY);
-   dprint (tmp);
-   dprint ("\n");
+   if ( cached_developer ) {
+      dprint ("Gravity accel is ");
+      tmp = ftos (GRAVITY);
+      dprint (tmp);
+      dprint ("\n");
+   }
    newmax = FALSE;
    vel = 270.000;
    MAXJUMP = CONTENT_EMPTY;
@@ -166,10 +168,12 @@ void () setBotGravity = {
 
    }
    MAXJUMP = (MAXJUMP - TRUE);
-   dprint ("Max jump height is ");
-   tmp = ftos (MAXJUMP);
-   dprint (tmp);
-   dprint ("\n");
+   if ( cached_developer ) {
+      dprint ("Max jump height is ");
+      tmp = ftos (MAXJUMP);
+      dprint (tmp);
+      dprint ("\n");
+   }
    LEVELJUMPTIME = FALSE;
    vel = 270.000;
    newmax = FALSE;
@@ -181,10 +185,12 @@ void () setBotGravity = {
 
    }
    LEVELJUMPTIME = (LEVELJUMPTIME - (newmax / vel));
-   dprint ("Level jump time is ");
-   tmp = ftos (LEVELJUMPTIME);
-   dprint (tmp);
-   dprint ("\n");
+   if ( cached_developer ) {
+      dprint ("Level jump time is ");
+      tmp = ftos (LEVELJUMPTIME);
+      dprint (tmp);
+      dprint ("\n");
+   }
    newmax = FALSE;
    vel = 200.000;
    GRENADEMAXHEIGHT = CONTENT_EMPTY;
@@ -195,16 +201,20 @@ void () setBotGravity = {
       newmax = (newmax + (vel * 0.100));
 
    }
-   dprint ("Max grenade height is ");
-   tmp = ftos (GRENADEMAXHEIGHT);
-   dprint (tmp);
-   dprint ("\n");
+   if ( cached_developer ) {
+      dprint ("Max grenade height is ");
+      tmp = ftos (GRENADEMAXHEIGHT);
+      dprint (tmp);
+      dprint ("\n");
+   }
    INVGRENADELEVELDIST = (((0.100 * FL_SWIM) * (200.000 - GRAVITY)) / GRAVITY);
    INVGRENADELEVELDIST = (TRUE / (INVGRENADELEVELDIST * SEARCH_RADIUS));
-   dprint ("inverse grenade level distance is ");
-   tmp = ftos (INVGRENADELEVELDIST);
-   dprint (tmp);
-   dprint ("\n");
+   if ( cached_developer ) {
+      dprint ("inverse grenade level distance is ");
+      tmp = ftos (INVGRENADELEVELDIST);
+      dprint (tmp);
+      dprint ("\n");
+   }
    BOTSPEED = (cvar ("sv_maxspeed") / MOVETYPE_BOUNCE);
 
 };
@@ -384,6 +394,10 @@ void () PutBotInServer = {
    self.ambush_start_time = FALSE;
    self.blind_fire_time = FALSE;
    self.last_enemy_vel = '0 0 0';
+   self.pending_enemy = world;
+   self.reaction_time = FALSE;
+   // Reset aggression EMA so bots don't start over-cautious on respawn
+   self.aggression = 0.500;
    spwn = SelectSpawnPoint ();
    spot = (spwn.origin + '0.000 0.000 1.000');
    self.origin = spot;
@@ -391,6 +405,12 @@ void () PutBotInServer = {
    self.last_frame_origin = self.origin;
    self.angles = spwn.angles;
    self.fixangle = TRUE;
+   // Initialize yaw smoothing to spawn facing to prevent slow-turn on first frames
+   self.last_yaw = self.angles_y;
+   self.smooth_yaw_0 = self.angles_y;
+   self.smooth_yaw_1 = self.angles_y;
+   self.smooth_yaw_2 = self.angles_y;
+   self.smooth_idx = FALSE;
    setmodel (self,"progs/eyes.mdl");
    modelindex_eyes = self.modelindex;
    setmodel (self,"progs/player.mdl");
@@ -425,10 +445,12 @@ void () PutBotInServer = {
    spawn_tdeath (self.origin,self);
    if ( (BOTSPEED < FL_MONSTER) ) {
 
-      dprint ("Feeling kind of slow today (SV_MAXSPEED = ");
-      tmp = ftos ((BOTSPEED * MOVETYPE_BOUNCE));
-      dprint (tmp);
-      dprint ("\n");
+      if ( cached_developer ) {
+         dprint ("Feeling kind of slow today (SV_MAXSPEED = ");
+         tmp = ftos ((BOTSPEED * MOVETYPE_BOUNCE));
+         dprint (tmp);
+         dprint ("\n");
+      }
 
    }
    // FIX: Only warn about sv_aim once per map to prevent spam
@@ -437,10 +459,12 @@ void () PutBotInServer = {
       aimvar = cvar ("sv_aim");
       if ( (aimvar != 0.930) ) {
 
-         dprint ("Note: sv_aim is ");
-         tmp = ftos (aimvar);
-         dprint (tmp);
-         dprint (" (expected 0.93 for baseline bot aim)\n");
+         if ( cached_developer ) {
+            dprint ("Note: sv_aim is ");
+            tmp = ftos (aimvar);
+            dprint (tmp);
+            dprint (" (expected 0.93 for baseline bot aim)\n");
+         }
          sv_aim_warned = TRUE;
 
       }
