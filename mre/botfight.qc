@@ -181,6 +181,9 @@ void () BotBlindFire = {
       // Check if we have line of sight to the predicted spot
       traceline (self.origin + self.view_ofs, aim_at, TRUE, self);
 
+      // FIX: Don't fire if wall blocks the predicted spot — wastes ammo + self-damage
+      if ( trace_fraction < 0.3 ) return;
+
       // 15% chance per frame to suppress fire (skill-scaled)
       // Higher skill = more likely to pre-fire
       if ( random() < (0.05 + self.skil * 0.03) ) {
@@ -224,9 +227,10 @@ float () BotCheckEnvironmentKill = {
    if ( !enemyvisible(self.enemy) ) return FALSE;
    if ( !(self.items & (IT_ROCKET_LAUNCHER | IT_GRENADE_LAUNCHER)) ) return FALSE;
 
-   // Check 100 units behind the enemy for hazards
-   makevectors (self.enemy.angles);
-   check_spot = self.enemy.origin - (v_forward * 100);
+   // FIX: Check behind enemy relative to knockback direction (from bot to enemy),
+   // not enemy facing. Enemy could be looking sideways while we push them into lava.
+   makevectors (vectoangles(self.enemy.origin - self.origin));
+   check_spot = self.enemy.origin + (v_forward * 100);
    check_spot_z = check_spot_z - 64;  // Look down for floor hazard
 
    hazard_found = FALSE;
@@ -636,8 +640,9 @@ float () W_BestBotWeapon = {
          return ( IT_SHOTGUN );
 
       }
-      // Only use explosives at close range with Quad (risk is worth it)
-      if ( (self.items & IT_QUAD) ) {
+      // Only use explosives at close range with Quad/Invuln (risk is worth it)
+      // FIX: Invulnerability also makes close-range RL safe — no self-damage
+      if ( (self.items & (IT_QUAD | IT_INVULNERABILITY)) ) {
 
          if ( ((self.ammo_rockets >= TRUE) && (it & IT_ROCKET_LAUNCHER)) ) {
 
@@ -807,8 +812,10 @@ float () W_BestBotWeapon = {
          score_ssg = score_ssg + 10;
 
       // Re-evaluate best after counter bonuses
+      // FIX: Include GL in re-eval — was omitted, so GL counter-bonuses could never win
       if ( score_lg > best_score ) { best_score = score_lg; best_weapon = IT_LIGHTNING; }
       if ( score_rl > best_score ) { best_score = score_rl; best_weapon = IT_ROCKET_LAUNCHER; }
+      if ( score_gl > best_score ) { best_score = score_gl; best_weapon = IT_GRENADE_LAUNCHER; }
       if ( score_sng > best_score ) { best_score = score_sng; best_weapon = IT_SUPER_NAILGUN; }
       if ( score_ssg > best_score ) { best_score = score_ssg; best_weapon = IT_SUPER_SHOTGUN; }
    }

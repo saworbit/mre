@@ -3,6 +3,122 @@
 ## Unreleased
 - Clean baseline restored in `mre/`.
 
+### Full Review Pass #12 (Reliability, Combat, Performance)
+27 fixes across reliability, combat logic, navigation, strategy, and performance.
+Files touched: `botspawn.qc`, `bot_ai.qc`, `botfight.qc`, `botmove.qc`, `botgoal.qc`,
+`dmbot.qc`, `ai_predict.qc`, `ai_ripple.qc`, `ai_mirage.qc`, `bot_learn.qc`,
+`botnoise.qc`, `botroute.qc`, `world.qc`, `defs.qc`.
+
+**CRITICAL — Spawn & State Resets** (`botspawn.qc`, `bot_ai.qc`):
+- Fix #1: **12+ fields not reset on respawn**. `investigating`, `noise_target`, `noise_time`,
+  `noise_priority`, `heard_sound_*` (4 fields), `hp_snapshot`/`hp_delta`/`hp_snapshot_time`,
+  `post_kill_time`/`post_kill_loot`, `riding_platform`/`platform_wait_time`/`train_stall_time`,
+  `weapon_eval_time`/`env_kill_time`/`visible_threats`, and phantom entity cleanup — all now
+  reset in `PutBotInServer`. Prevents stale sound chasing, false retreat triggers, and entity
+  leaks across lives.
+- Fix #2: **investigating flag never cleared on timeout**. `Bot_AnalyzeSound()` early-returned
+  when sound aged past 2s but never cleared `self.investigating`. Bot stayed in investigate
+  mode indefinitely. Now clears the flag on timeout.
+
+**CRITICAL — Navigation Stalls** (`botmove.qc`, `botgoal.qc`):
+- Fix #5: **func_plat STATE_DOWN missing**. Bot walked off descending platforms. Added
+  `STATE_DOWN` to the wait condition alongside `STATE_UP`/`STATE_TOP`.
+- Fix #6: **LINK_PLAT wait has no timeout**. Nav link waited for a platform with no time
+  limit. Added 5-second timeout via `platform_wait_time`; on expiry, forces goal change.
+
+**CRITICAL — Strategy & Logic** (`bot_ai.qc`, `dmbot.qc`):
+- Fix #3: **SCRAMBLE blocks ENDGAME at low total frags**. `total_frags < 10` check ran
+  before ENDGAME. In a 2-player game where one player is 1 frag from winning but total
+  frags < 10, match stayed in SCRAMBLE. Swapped check order: ENDGAME first.
+- Fix #7: **bot_shot1 missing AI calls**. First shotgun animation frame had no
+  `BotAI_Main()`/`BotPostThink()` — zero AI for one server frame (10% dropout per SG cycle).
+  Added both calls.
+- Fix #8: **Quad Rampage defeated by BotAggressionScore**. Set `aggression = 1.0` before
+  `BotAggressionScore()` which immediately recalculated it to ~0.7. Moved override AFTER
+  the score calculation.
+- Fix #9: **Invulnerability aggression eroded**. Set `aggro = 1.0` at line 2045 but
+  subsequent modifiers (multi-threat, damage panic, phase) subtracted from it. Now uses
+  `force_max_aggro` flag applied after ALL modifiers.
+
+**MEDIUM — Combat** (`botfight.qc`, `bot_ai.qc`):
+- Fix #10: **RunAway() dual system**. Chase state used old binary `RunAway()` while attack
+  state used continuous aggression. Replaced `RunAway()` in `aibot_setupchase` with
+  `self.aggression < 0.35` check for unified behavior.
+- Fix #11: **BotBlindFire ignores walls**. Traced to predicted position but ignored
+  `trace_fraction`, firing rockets into walls. Added `trace_fraction < 0.3` early return.
+- Fix #12: **Env-kill uses enemy facing, not knockback direction**. `BotCheckEnvironmentKill`
+  used `makevectors(self.enemy.angles)` to check behind enemy. Now uses
+  `vectoangles(enemy.origin - self.origin)` for actual knockback direction.
+- Fix #13: **Counter-weapon re-eval omits GL**. Final re-evaluation checked RL/LG/SNG/SSG
+  but not GL — counter-bonuses for GL could never win. Added `score_gl` check.
+- Fix #14: **Invuln bot won't use RL close-range**. Quad allowed close-range RL but
+  invulnerability didn't. Added `IT_INVULNERABILITY` alongside `IT_QUAD` in the check.
+- Fix #15: **secondEnemy() missing else guards**. Fall-through from invisible-enemy block
+  could cause double enemy switch. Added `return` and `else` guards.
+
+**MEDIUM — Prediction & Sound** (`ai_predict.qc`, `bot_ai.qc`, `botnoise.qc`):
+- Fix #16: **Shadow sim clobbers v_forward**. `ShadowCombatSimStep` called `makevectors`
+  for enemy facing, destroying bot's `v_forward`/`v_right` for subsequent beam iterations.
+  Now saves/restores bot vectors.
+- Fix #17: **Double bot iteration in sound system**. `Bot_AlertNoise` called
+  `Bot_BroadcastNoise` (separate bot-list walk with different hearing model), then walked
+  the list itself. Merged into single loop with unified wall-attenuation model; sets
+  `heard_sound_*` fields directly.
+- Fix #13b: **heardistantnoise dead code**. Removed `heardistantnoise()` — unconditional
+  `FALSE` return, zero callers.
+
+**MEDIUM — Bitmask & Navigation** (`botgoal.qc`, `bot_ai.qc`, `botmove.qc`, `botroute.qc`):
+- Fix #18: **lefty bitmask fragility**. `self.lefty + TRUE` could overflow the 3-bit counter
+  (LOCAL_TIME = 7) into flag bits. All 3 increment sites now use saturating increment:
+  only increments if `(self.lefty & LOCAL_TIME) < LOCAL_TIME`.
+- Fix #19: **Feeler mode timeout = silent fail**. After 5s, dropped back to normal steering
+  without forcing a goal change. Same stuck cycle repeated. Now sets `search_time = time - 1`
+  on timeout to force goal re-evaluation.
+- Fix #20: **Step height 22u misses 24u stairs**. `BotIsStep` whisker check used 22u but
+  Quake engine `walkmove` handles up to 24u steps. Many custom maps use 24u. Raised to 24u.
+- Fix #21: **Breadcrumb entity leak**. `SpawnSavedWaypoint` called `botpath()` (spawn())
+  without checking NUMPATHS cap. Added guard: skips spawn if `NUMPATHS >= 140`. Also
+  increments NUMPATHS counter.
+
+**PERFORMANCE & QUALITY** (`ai_mirage.qc`, `ai_predict.qc`, `bot_learn.qc`, `world.qc`,
+`defs.qc`):
+- Fix #22: **Mirage hash X/Y collision**. Same multiplier (37) for X and Y axes caused
+  symmetric positions to hash identically. Changed Y multiplier to 53.
+- Fix #23: **cvar("sv_mirage") uncached**. Called 80x/sec with 8 bots. Added
+  `cached_sv_mirage` global, set once per frame in `StartFrame()`.
+- Fix #24: **EnemiesNear() uncached findradius**. Expensive entity scan in stuck recovery.
+  Replaced with `bot_list_head` walk + `find(classname, "player")` loop.
+- Fix #25: **spectral_visit[] global pollution**. Single array shared across all bots;
+  rollouts interfered with each other. Now cleared at the start of each `EtherealRollout`.
+
+### Brain Death Fixes (Anti-Stall)
+Four fixes for bot "brain death" — states where bots become permanently unresponsive.
+Files touched: `botmove.qc`, `botgoal.qc`, `defs.qc`.
+
+**CRITICAL** (`botmove.qc`):
+- Fix #1: **func_plat STATE_BOTTOM infinite stall**. `BotCheckPlatformRide()` waited on
+  platforms in `STATE_BOTTOM` (parked at rest). Since a plat at bottom never moves until
+  its trigger is activated, bots stood idle forever fidgeting on a motionless lift. Removed
+  `STATE_BOTTOM` from the wait condition — bots now only wait during `STATE_UP` (moving)
+  and `STATE_TOP` (about to descend). At bottom, normal navigation resumes so the bot can
+  walk onto the trigger.
+- Fix #2: **func_train stopped infinite stall**. `BotCheckPlatformRide()` inherited train
+  velocity unconditionally, including `'0 0 0'` on stopped trains. Bot stood motionless
+  forever. Now checks `vlen(plat.velocity) > 1`: if the train stops, a 2-second grace
+  period (via new `train_stall_time` field) lets it restart. After 2s the bot bails off
+  and navigates normally.
+- Fix #3: **SOLVE_BUTTON timeout bypass**. In `ai_botseek()`, the `SOLVE_BUTTON` early
+  return fired before the `search_time` expiry check. `BotSolveDoor()` sets an 8-second
+  budget, but `BotHandleButton()` never enforced it. If a button was unreachable (behind a
+  gap, wrong floor), the bot walked toward it indefinitely. Now checks `search_time` before
+  dispatching to `BotHandleButton()` — if expired, clears the flag and falls through to
+  normal goal selection.
+
+**DEFENSIVE** (`botgoal.qc`):
+- Fix #4: **platform_wait_time safety cap**. Added 5-second sanity cap on
+  `platform_wait_time`. Values more than 5s in the future are clamped; expired values are
+  cleared. Prevents any future code path from accidentally parking a bot forever.
+
 ### Intelligence Pass #11 (Combat Awareness)
 Ten combat awareness improvements for human-like situational reactions. Files touched:
 `defs.qc`, `bot_ai.qc`.

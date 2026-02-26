@@ -35,12 +35,14 @@ void (vector source_loc, float volume, float priority) Bot_AlertNoise = {
    local float dist;
    local float effective_dist;
 
-   Bot_BroadcastNoise (self, source_loc, volume, NOISE_WEAPON);
+   // FIX: Removed redundant Bot_BroadcastNoise call — it did a second bot-list walk
+   // with a different (simpler) hearing model. We now set heard_sound_* fields directly
+   // in this single loop, using the better wall-attenuation model.
 
    // OPT: Walk cached bot linked list instead of find()
    bot = bot_list_head;
    while ( bot ) {
-      if ( (bot.health > FALSE) ) {
+      if ( (bot.health > FALSE) && (bot != self) ) {
          // Calculate distance (cheap cull before LOS trace)
          dist = vlen (source_loc - bot.origin);
          if ( dist > volume ) {
@@ -59,6 +61,12 @@ void (vector source_loc, float volume, float priority) Bot_AlertNoise = {
 
          // If within hearing range
          if ( (effective_dist < volume) ) {
+            // Set heard_sound fields (previously done by Bot_BroadcastNoise)
+            bot.heard_sound_time = time;
+            bot.heard_sound_loc = source_loc;
+            bot.heard_sound_type = NOISE_WEAPON;
+            bot.heard_sound_weapon = self.weapon;
+
             // Only distract if not fighting a visible enemy
             if ( (bot.enemy == world) || !enemyvisible (bot.enemy) ) {
                // Only update if this sound is more important or more recent
@@ -95,6 +103,8 @@ void () Bot_AnalyzeSound = {
    }
    sound_age = time - self.heard_sound_time;
    if ( (sound_age > 2.000) ) {
+      // FIX: Clear investigating flag when sound expires — prevents permanent investigate state
+      self.investigating = FALSE;
       return ;
    }
    if ( self.enemy && enemyvisible (self.enemy) ) {
@@ -562,14 +572,16 @@ void (entity en2) secondEnemy = {
       }
 
    }
+   // FIX: Added return + else guards to prevent fall-through causing double-switch
    if ( !enemyvisible (self.enemy) ) {
 
       endEnemy ();
       self.enemy = en2;
       BotFoundTarget ();
+      return ;
 
    }
-   if ( (en2.weapon & (IT_LIGHTNING + IT_ROCKET_LAUNCHER)) ) {
+   else if ( (en2.weapon & (IT_LIGHTNING + IT_ROCKET_LAUNCHER)) ) {
 
       if ( !(self.enemy.weapon & (IT_LIGHTNING + IT_ROCKET_LAUNCHER)) ) {
 
@@ -2042,7 +2054,11 @@ float () BotAggressionScore = {
 
    // Powerup overrides
    if ( self.items & IT_QUAD ) aggro = aggro + 0.3;
-   if ( self.items & IT_INVULNERABILITY ) aggro = 1.0;
+   // FIX: Invulnerability = unconditional max aggression. Applied after ALL
+   // modifiers below to prevent erosion by threat/damage/phase penalties.
+   local float force_max_aggro;
+   force_max_aggro = FALSE;
+   if ( self.items & IT_INVULNERABILITY ) force_max_aggro = TRUE;
    if ( self.enemy ) {
       if ( self.enemy.items & IT_QUAD ) aggro = aggro - 0.3;
       if ( self.enemy.items & IT_INVULNERABILITY ) aggro = aggro - 0.5;
@@ -2096,6 +2112,9 @@ float () BotAggressionScore = {
    // Skill dampening: low-skill bots are less extreme
    aggro = 0.5 + (aggro - 0.5) * (0.5 + self.skil * 0.05);
 
+   // FIX: Invulnerability override — applied after all modifiers to prevent erosion
+   if ( force_max_aggro ) aggro = 1.0;
+
    // Clamp
    if ( aggro > 1.0 ) aggro = 1.0;
    if ( aggro < 0.0 ) aggro = 0.0;
@@ -2138,11 +2157,13 @@ void () BotUpdateMatchPhase = {
    }
 
    // Phase thresholds
+   // FIX: Check ENDGAME first — someone 1 frag from winning must override
+   // SCRAMBLE even in low-total-frag games (e.g., 2-player 11 vs -2)
    fl = cvar("fraglimit");
-   if ( total_frags < 10 ) {
-      self.match_phase = 0;  // SCRAMBLE: first kills, weapon rush
-   } else if ( fl > 0 && max_frags >= (fl - 5) ) {
+   if ( fl > 0 && max_frags >= (fl - 5) ) {
       self.match_phase = 2;  // ENDGAME: someone near frag limit
+   } else if ( total_frags < 10 ) {
+      self.match_phase = 0;  // SCRAMBLE: first kills, weapon rush
    } else {
       self.match_phase = 1;  // CONTROL: mid-game item dominance
    }
@@ -2346,11 +2367,20 @@ void (float dist) BotAI_Main = {
       }
 
    }
-   self.lefty = (self.lefty + TRUE);
+   // FIX: Saturating increment — prevents counter bits bleeding into flag bits
+   if ( (self.lefty & LOCAL_TIME) < LOCAL_TIME )
+      self.lefty = (self.lefty + TRUE);
+
+   // ADAPTIVE TACTICS: Continuous aggression spectrum (replaces binary RunAway)
+   // aggro < 0.25 = full retreat, 0.25-0.45 = cautious kite, >= 0.45 = fight
+   local float aggro;
+   aggro = BotAggressionScore();
 
    // PASS #11 (#6): Quad Rampage — with Quad, max aggression, skip item detours, hunt enemies
+   // FIX: Applied AFTER BotAggressionScore so it can't be recalculated away
    if ( (self.items & IT_QUAD) && self.health > 0 ) {
       // Force max aggression — every second of Quad must be spent fighting
+      aggro = 1.0;
       self.aggression = 1.0;
       // If no visible enemy, aggressively hunt
       if ( !self.enemy || !enemyvisible (self.enemy) ) {
@@ -2358,11 +2388,6 @@ void (float dist) BotAI_Main = {
       }
       // Never retreat or grab items during Quad — fall through to attack
    }
-
-   // ADAPTIVE TACTICS: Continuous aggression spectrum (replaces binary RunAway)
-   // aggro < 0.25 = full retreat, 0.25-0.45 = cautious kite, >= 0.45 = fight
-   local float aggro;
-   aggro = BotAggressionScore();
 
    // Multi-threat awareness is handled by BotAggressionScore() which applies
    // -0.25/-0.15 penalty for 2+/3+ visible threats. No need for a hard
@@ -2642,7 +2667,9 @@ void () aibot_setupchase = {
       return ;
 
    }
-   if ( RunAway () ) {
+   // FIX: Use continuous aggression score instead of binary RunAway()
+   // Unifies chase with attack state's retreat logic (prevents oscillation)
+   if ( self.aggression < 0.35 ) {
 
       self.lefty = (self.lefty - (self.lefty & LOCAL_TIME));
       aibot_checkforGoodies ((WANT - TRUE));
@@ -2755,7 +2782,9 @@ void (float dist) aibot_chase = {
       }
 
    }
-   self.lefty = (self.lefty + TRUE);
+   // FIX: Saturating increment — prevents counter bits bleeding into flag bits
+   if ( (self.lefty & LOCAL_TIME) < LOCAL_TIME )
+      self.lefty = (self.lefty + TRUE);
    olden = self.enemy;
    if ( BotFindTarget () ) {
 

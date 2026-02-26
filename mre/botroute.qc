@@ -226,10 +226,14 @@ void (vector org, float traffic, float danger, string tgt) SpawnSavedWaypoint = 
 
    local entity node;
 
+   // FIX: Guard against entity leak — don't spawn if we're near the edict limit
+   if ( NUMPATHS >= 140 ) return;
+
    node = botpath ();
    setorigin (node, org);
    node.pathtype = DROPPED;
    node.classname = "BotPath";
+   NUMPATHS = NUMPATHS + TRUE;
 
 };
 

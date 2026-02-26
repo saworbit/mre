@@ -429,17 +429,29 @@ float (vector pos, vector vel, float air_left, vector goal_pos, vector fwd, vect
 float () EnemiesNear = {
 
    local entity scan;
+   local float dist;
 
-   scan = findradius (self.origin, 800.000);
+   // OPT: Walk bot linked list instead of findradius (avoids full entity scan)
+   scan = bot_list_head;
    while ( scan ) {
       if ( (scan != self) && (scan.health > 0.000) ) {
-         if ( (scan.classname == "player") || (scan.classname == "dmbot") ) {
-            if ( visible (scan) ) {
-               return ( TRUE );
-            }
+         dist = vlen (scan.origin - self.origin);
+         if ( dist < 800 && visible (scan) ) {
+            return ( TRUE );
          }
       }
-      scan = scan.chain;
+      scan = scan.bot_next;
+   }
+   // Also check human players
+   scan = find (world, classname, "player");
+   while ( scan ) {
+      if ( (scan != self) && (scan.health > 0.000) ) {
+         dist = vlen (scan.origin - self.origin);
+         if ( dist < 800 && visible (scan) ) {
+            return ( TRUE );
+         }
+      }
+      scan = find (scan, classname, "player");
    }
    return ( FALSE );
 
@@ -1385,8 +1397,13 @@ void (vector bpos, vector bvel, float bair, float bhp, float bammo, vector epos,
       fire_bit = TRUE;
    }
 
+   // FIX: Save bot's v_forward/v_right before enemy makevectors clobbers them
+   local vector bot_fwd, bot_right;
+   bot_fwd = v_forward;
+   bot_right = v_right;
+
    // Bot movement (reuse movement sim)
-   ShadowSimStep (bpos, bvel, bair, move_id, v_forward, v_right, use_trace);
+   ShadowSimStep (bpos, bvel, bair, move_id, bot_fwd, bot_right, use_trace);
    cb_out_bpos = sp_out_pos;
    cb_out_bvel = sp_out_vel;
    cb_out_bair = sp_out_air;
@@ -1401,6 +1418,9 @@ void (vector bpos, vector bvel, float bair, float bhp, float bammo, vector epos,
    makevectors (ang);
    efwd = v_forward;
    eright = v_right;
+   // Restore bot vectors for next iteration of the beam loop
+   v_forward = bot_fwd;
+   v_right = bot_right;
    if ( (enemy_act == 0.000) ) {
       ShadowSimStep (epos, evel, eair, 0.000, efwd, eright, use_trace);
    } else if ( (enemy_act == 1.000) ) {

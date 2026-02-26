@@ -31,7 +31,8 @@ void () MirageTick = {
 
    local float delta;
 
-   if ( (cvar ("sv_mirage") <= FALSE) ) {
+   // OPT: Use cached cvar instead of hash lookup every tick
+   if ( (cached_sv_mirage <= FALSE) ) {
       return;
    }
 
@@ -107,7 +108,8 @@ float (vector pos) Cursed_NodeHash = {
    hx = floor (pos_x / CURSED_GRID);
    hy = floor (pos_y / CURSED_GRID);
    hz = floor (pos_z / 64.000);
-   h = (hx * 37.000) + (hy * 37.000) + (hz * 17.000);
+   // FIX: Distinct primes for X/Y — same multiplier caused symmetric positions to collide
+   h = (hx * 37.000) + (hy * 53.000) + (hz * 17.000);
    if ( (h < 0.000) ) {
       h = -h;
    }

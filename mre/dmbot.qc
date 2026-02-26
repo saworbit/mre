@@ -109,6 +109,9 @@ void () bot_shot1 = [ 113.000, bot_shot2 ] {
 
    self.weaponframe = TRUE;
    self.effects = (self.effects | EF_MUZZLEFLASH);
+   // FIX: Process AI during muzzle flash frame — prevents one-frame dropout
+   BotAI_Main (BOTSPEED);
+   BotPostThink ();
 
 };
 

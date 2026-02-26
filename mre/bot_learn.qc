@@ -218,6 +218,14 @@ float (vector start, vector goal, float maneuver) EtherealRollout = {
    rgt_z = 0.000;
    rgt = normalize (rgt);
 
+   // FIX: Clear visit table to prevent inter-bot pollution from previous rollouts
+   local float ci;
+   ci = 0;
+   while ( ci < VISIT_HASH_SCALE ) {
+      spectral_visit[ci] = 0;
+      ci = ci + 1;
+   }
+
    er_pos[0] = start;
    er_vel[0] = '0 0 0';
    er_air[0] = 12.000;

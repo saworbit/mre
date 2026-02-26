@@ -42,17 +42,36 @@ float () BotCheckPlatformRide = {
    // func_train: horizontal moving platforms (DM2 lava room)
    // Inherit platform velocity to prevent sliding off
    if ( plat.classname == "train" ) {
-      self.velocity = plat.velocity;
-      self.riding_platform = plat;
-      // Stay on the platform - don't try to walk
-      return ( TRUE );
+      // FIX: Only ride if train is actually moving — prevents infinite stall
+      // on stopped trains. 2s grace period lets train start before bailing.
+      if ( vlen (plat.velocity) > 1 ) {
+         self.velocity = plat.velocity;
+         self.riding_platform = plat;
+         self.train_stall_time = 0;
+         return ( TRUE );
+      }
+      // Train stopped — start/continue stall timer
+      if ( self.train_stall_time == 0 ) {
+         self.train_stall_time = time;
+      }
+      if ( (time - self.train_stall_time) < 2.0 ) {
+         // Grace period — train may be about to start
+         self.velocity = '0 0 0';
+         self.riding_platform = plat;
+         return ( TRUE );
+      }
+      // Stalled too long — bail out and navigate normally
+      self.riding_platform = world;
+      self.train_stall_time = 0;
+      return ( FALSE );
    }
 
    // func_plat: vertical lifts - wait for them to move us
    if ( (plat.classname == "func_plat") || (plat.classname == "plat") ) {
-      // If the plat is moving UP or at TOP, wait for it
-      if ( (plat.state == STATE_UP) || (plat.state == STATE_TOP) ||
-           (plat.state == STATE_BOTTOM) ) {
+      // FIX: Only wait when plat is actively moving (STATE_UP/STATE_DOWN)
+      // or at top (STATE_TOP, about to descend). STATE_BOTTOM = parked at
+      // rest; the bot needs to walk onto the trigger to activate it, not wait.
+      if ( (plat.state == STATE_UP) || (plat.state == STATE_TOP) || (plat.state == STATE_DOWN) ) {
          // Human-like fidgeting while waiting (not perfectly still)
          self.velocity_x = (random () - 0.500) * 20.000;
          self.velocity_y = (random () - 0.500) * 20.000;
@@ -351,14 +370,15 @@ void () BotProactiveNudge = {
 // =========================================================================
 
 // HELPER: Check if a "wall" is actually just a small step we can climb
-// Returns TRUE if the obstacle is low enough to step over (< 22 units)
+// Returns TRUE if the obstacle is low enough to step over (<= 24 units)
 float (vector hit_pos, vector dir) BotIsStep = {
 
    local vector step_high;
 
-   // Look 22 units above the hit point (standard step is 18, we give clearance)
+   // FIX: 22 → 24. Quake STEPSIZE is 18 but many custom maps use 24u steps.
+   // The engine walkmove handles up to 24u, so whiskers should match.
    step_high = hit_pos;
-   step_high_z = hit_pos_z + 22;
+   step_high_z = hit_pos_z + 24;
 
    // Trace forward at knee height
    traceline (step_high, step_high + (dir * 16), TRUE, self);
@@ -1051,9 +1071,20 @@ float (entity next_node, float dist) BotExecuteLink = {
    if ( type == LINK_PLAT ) {
       // Simplified platform wait: pause if the link is clearly above us
       if ( next_node.origin_z > (self.origin_z + 16.000) ) {
+         // FIX: Timeout — don't wait more than 5s for a platform that never comes
+         if ( self.platform_wait_time == 0 ) {
+            self.platform_wait_time = time + 5;
+         }
+         if ( self.platform_wait_time < time ) {
+            // Timed out — give up on this link and pick a new goal
+            self.platform_wait_time = 0;
+            self.search_time = time - 1;
+            return ( FALSE );
+         }
          self.velocity = '0 0 0';
          return ( TRUE );
       }
+      self.platform_wait_time = 0;
       self.whiskers_allowed = TRUE;
       return ( FALSE );
    }
@@ -1268,6 +1299,8 @@ float (float s_yaw, float s_dist) botwalkmove = {
       // FEELER MODE: Override normal steering
       if ( time > (self.feeler_start_time + 5) ) {
          self.feeler_mode_active = FALSE;
+         // FIX: Force goal change on feeler timeout — prevents repeating same stuck cycle
+         self.search_time = time - 1;
          flow_yaw = BotSteer (s_yaw, 1.0);
       } else {
          flow_yaw = Bot_FindClearestDirection (self);

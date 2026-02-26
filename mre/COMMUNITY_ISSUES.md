@@ -23,6 +23,10 @@ Items are grouped by theme and phrased as fixable targets.
 - ~~Bots can become stuck running in a small area while still dealing damage.~~
   **Fixed:** Added position delta check in `ai_botseek` to detect when bot hasn't
   moved; forces faster goal timeout and occasional jump attempts. (b23_reaper.md)
+  **Further hardened** in Review Pass #12: Fixed 7 additional stall vectors — func_plat
+  STATE_BOTTOM/STATE_DOWN, func_train stopped stall (2s timeout), SOLVE_BUTTON timeout
+  bypass, LINK_PLAT infinite wait (5s timeout), platform_wait_time sanity cap, feeler
+  mode timeout now forces goal change, and 12+ stale fields cleared on respawn.
 - ~~Camper-like behavior when bots stay near best weapons due to incentive/memory bias.~~
   **Fixed:** Modified `itemweight` to return DONT_WANT for weapons the bot already
   owns when ammo is sufficient. (fandom)

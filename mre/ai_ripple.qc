@@ -1352,7 +1352,8 @@ float () RippleDetect = {
    d = 0.000;
    while ( d < RIPPLE_PULSE_DIRS ) {
       dir = Ripple_PulseDir (d);
-      traceline (block_pos, (block_pos + (dir * (RIPPLE_PULSE_DIST / 64.000))), TRUE, self);
+      // FIX: Was /64 = 2 units (useless). Use full range for button detection.
+      traceline (block_pos, (block_pos + (dir * RIPPLE_PULSE_DIST)), TRUE, self);
       rtype = Ripple_InteractType (trace_ent);
       if ( (rtype > 0.000) ) {
          if ( Ripple_SolveButton (trace_ent.origin, goal_pos, rtype) ) {

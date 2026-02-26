@@ -329,6 +329,7 @@ float () Bot_CheckReaction; // Forward declaration
 // Platform riding (DM2 lava fix)
 .entity riding_platform;     // Platform entity bot is riding (func_train)
 .float platform_wait_time;   // Time to wait for approaching platform
+.float train_stall_time;     // When func_train stopped — bail after 2s
 
 // Button solving (door puzzles)
 .entity blocking_door;       // Door blocking our path
@@ -522,6 +523,7 @@ float LINK_LADDER     = 6; // Vertical water/ladder logic
 
 // === OPTIMIZATION: Cached cvar globals (set once per frame in StartFrame) ===
 float cached_developer;
+float cached_sv_mirage;
 
 // === OPTIMIZATION: Per-bot cached values (set once per think) ===
 .float eff_hp;               // Cached effective HP: health + armor*armortype

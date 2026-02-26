@@ -249,6 +249,7 @@ void () StartFrame = {
    skill = cvar ("skill");
    // OPT: Cache cvars once per frame instead of 30+ hash lookups per bot
    cached_developer = cvar ("developer");
+   cached_sv_mirage = cvar ("sv_mirage");
    framecount = (framecount + TRUE);
    MaintainGraph ();
    DecayEpisodes ();

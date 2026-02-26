@@ -398,6 +398,35 @@ void () PutBotInServer = {
    self.reaction_time = FALSE;
    // Reset aggression EMA so bots don't start over-cautious on respawn
    self.aggression = 0.500;
+   // FIX: Reset sound investigation state — prevents chasing stale sounds from previous life
+   self.investigating = FALSE;
+   self.noise_target = '0 0 0';
+   self.noise_time = 0;
+   self.noise_priority = 0;
+   self.heard_sound_time = 0;
+   self.heard_sound_loc = '0 0 0';
+   self.heard_sound_type = 0;
+   self.heard_sound_weapon = 0;
+   // FIX: Reset damage tracking — prevents stale hp_delta triggering retreat on spawn
+   self.hp_snapshot = 0;
+   self.hp_snapshot_time = 0;
+   self.hp_delta = 0;
+   // FIX: Reset post-kill scavenge — prevents chasing loot from previous life
+   self.post_kill_time = 0;
+   self.post_kill_loot = world;
+   // FIX: Reset platform/train state
+   self.riding_platform = world;
+   self.platform_wait_time = 0;
+   self.train_stall_time = 0;
+   // FIX: Reset combat state
+   self.weapon_eval_time = 0;
+   self.env_kill_time = 0;
+   self.visible_threats = 0;
+   // FIX: Clean up phantom entity from previous life
+   if ( self.phantom ) {
+      remove (self.phantom);
+      self.phantom = world;
+   }
    spwn = SelectSpawnPoint ();
    spot = (spwn.origin + '0.000 0.000 1.000');
    self.origin = spot;

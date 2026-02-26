@@ -77,17 +77,29 @@ void (float dist) ai_botseek = {
       return;
    }
 
-   // FIX: Handle button solving mode
+   // FIX: Handle button solving mode (with timeout — search_time check
+   // is below us so we must enforce it here to prevent infinite pursuit)
    if ( self.lefty & SOLVE_BUTTON ) {
-      BotHandleButton (dist);
-      return;
+      if ( self.search_time < time ) {
+         // Timed out — clear button solving and pick a new goal
+         self.lefty = self.lefty - (self.lefty & SOLVE_BUTTON);
+         self.blocking_door = world;
+         self.target_button = world;
+      } else {
+         BotHandleButton (dist);
+         return;
+      }
    }
 
    // FIX: Platform wait - if waiting for a platform, stay put
+   // Safety cap: never wait more than 5s total (prevents stale/corrupt values)
    if ( self.platform_wait_time > time ) {
+      if ( self.platform_wait_time > (time + 5) )
+         self.platform_wait_time = time + 5;
       self.velocity = '0 0 0';
       return;
    }
+   self.platform_wait_time = 0;  // Clear stale/expired values
 
    // Silent Specters: Stealthy stuck recovery with quiet rollouts
    stuck_dist = vlen (self.origin - self.oldorigin);
@@ -956,7 +968,9 @@ void () aibot_chooseGoal = {
       self.lefty = (self.lefty - ONTRAIN);
 
    }
-   self.lefty = (self.lefty + TRUE);
+   // FIX: Saturating increment — prevents counter bits bleeding into flag bits
+   if ( (self.lefty & LOCAL_TIME) < LOCAL_TIME )
+      self.lefty = (self.lefty + TRUE);
    current = botTarget.goalentity;
    self.search_time = (time + 1.500 + ((10.000 - self.skil) * 0.200));
    best = DONT_WANT;

@@ -75,11 +75,7 @@ float (entity e) hearnoise = {
    return ( FALSE );
 
 };
-float (entity e) heardistantnoise = {
-
-   return ( FALSE );
-
-};
+// heardistantnoise removed — was dead code (unconditional FALSE, no callers)
 
 // Broadcast a noise event to all bots
 void (entity source, vector org, float volume, float type) Bot_BroadcastNoise = {
