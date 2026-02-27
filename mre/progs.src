@@ -51,6 +51,7 @@ botvis.qc
 botgoal.qc
 bot_ai.qc
 bot_learn.qc
+ai_chat.qc
 ai_mirage.qc
 dmbot.qc
 botroute.qc

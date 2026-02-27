@@ -91,6 +91,20 @@ Bots now feel like different-skilled human players rather than identical machine
 - **Camera**: Specter Gaze enhanced with low-health duel and recent combat drama bonuses.
 - **Adaptive Tactics**: Opponent profiling (4-slot LRU with EMA), counter-weapon selection (RL vs LG, LG vs RL), continuous aggression score (0.0-1.0 fight/kite/retreat spectrum), multi-threat awareness (visible enemy count feeds aggression penalty), match phase detection (SCRAMBLE/CONTROL/ENDGAME item priorities), weapon sound inference (classify heard weapons, adjust caution), adaptive engagement distance (modulated by enemy weapon and aggression).
 
+### Humanity Enhancement (Personality & Communication)
+Bots now have individual personalities, emotional state, and in-game communication.
+
+- **Momentum**: Kill streaks make bots overconfident (push harder, steadier aim). Death streaks make them tilted (shakier aim, more fumbles, hesitant pushes).
+- **Grudges**: Dying 3+ times to the same player creates a grudge — that player becomes the bot's top priority target with revenge-themed chat messages.
+- **Personality**: Each bot gets a unique identity: aggression level, preferred weapon (+20 score bonus), chattiness, and movement style. Set once at creation, never changes.
+- **Chat**: Bots trash talk after kills ("ez", "sit down"), acknowledge deaths ("nice", "lucky"), and celebrate powerups ("quad time", "lets go"). Skill-tiered: high skill bots are terse, low skill bots are confused.
+- **Aim**: New target acquisition triggers a fast flick (2x spring stiffness) with realistic overshoot and settle. Sustained tracking has low-frequency oscillation. Taking damage flinches aim.
+- **Hesitation**: Bots occasionally freeze for 200-400ms when a push goes wrong (aggression drops mid-fight). Simulates human "oh crap" moments.
+- **Item Timing**: Skill 3+ bots remember when major items (Quad, armor, mega) were picked up and pre-position for respawns.
+- **Spawn Watch**: After kills, bots glance toward nearby spawn points for 3-5 seconds.
+- **Lurk**: When 3+ nearby enemies are fighting each other, high-skill bots hold back briefly (3s max) before engaging — but always shoot. Smart positioning without sacrificing combat.
+- **Corner Ambush**: During sound investigation, bots detect corners and pre-position with RL/SSG. 5s timeout ensures they don't camp forever.
+
 ### Optimization Pass (Performance)
 Structural optimizations for ~25-33% per-frame CPU reduction with zero behavior changes:
 - **Missile linked list**: Dodge scans walk 10-20 missiles instead of scanning all ~600 entities (~8-12%)

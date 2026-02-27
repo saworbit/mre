@@ -1274,16 +1274,20 @@ float (float s_yaw, float s_dist) botwalkmove = {
       }
    }
    if ( is_straight_path && (self.health > 50.000) && !self.feeler_mode_active && self.whiskers_allowed ) {
+      // PASS #13: Personality movement — aggressive hoppers use lower skill threshold
+      local float hop_thresh;
+      hop_thresh = 3.0;
+      if ( self.personality_move == 1 ) hop_thresh = 2.0;
       if ( !self.enemy || (self.enemy == world) ) {
          // FIX #18: Skilled+ bots bunny hop while roaming (lowered from 5)
-         if ( (self.skil >= 3.000) && (vlen (self.goalentity.origin - self.origin) > 600.000) ) {
+         if ( (self.skil >= hop_thresh) && (vlen (self.goalentity.origin - self.origin) > 600.000) ) {
             BotBunnyHop (self, s_yaw);
          }
       } else {
          local float edist;
          edist = vlen (self.enemy.origin - self.origin);
          // Skilled bots hop when enemy is far away
-         if ( (self.skil >= 3.000) && (edist > 400.000) ) {
+         if ( (self.skil >= hop_thresh) && (edist > 400.000) ) {
             BotBunnyHop (self, s_yaw);
          // Expert bots hop while retreating mid-range
          } else if ( (self.skil >= 4.000) && (edist > 200.000) && (self.lefty & RUNAWAY) ) {

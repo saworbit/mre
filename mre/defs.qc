@@ -536,6 +536,60 @@ float cached_sv_mirage;
 .entity retreat_safe_item;   // Cached retreat item target
 .entity post_kill_loot;      // Cached post-kill scavenge target
 
+// === INTELLIGENCE PASS #13: Humanity Enhancement ===
+
+// Psychological Momentum (persists across lives — NOT reset in PutBotInServer)
+.float momentum;             // 0-1, 0.5 neutral. Kill streak→high, death streak→low
+.float momentum_decay_time;  // Throttle: momentum decay toward 0.5 (10s interval)
+.float streak_kills;         // Consecutive kills this life
+.float streak_deaths;        // Consecutive deaths across lives
+.entity grudge_target;       // Entity we died to 3+ times — revenge priority
+.float grudge_deaths;        // Death count to grudge_target
+.entity last_killer;         // Who killed us last (for grudge tracking)
+
+// Persistent Personality (set once in AddBot, never reset)
+.float personality_aggro;    // Base aggression offset (-0.2 to +0.2)
+.float personality_weap;     // Preferred weapon (IT_* constant), gets +20 score
+.float personality_chat;     // Chat frequency multiplier (0.5-2.0)
+.float personality_move;     // 0=methodical, 1=aggressive bunny-hopper
+
+// Chat System
+.float chat_cooldown;        // Next allowed chat time
+float CHAT_KILL = 1;
+float CHAT_DEATH = 2;
+float CHAT_POWERUP = 3;
+float CHAT_ESCAPE = 4;
+float CHAT_SPAWN = 5;
+
+// Aim Humanization: Flick & Overshoot
+.float aim_flick_time;       // When current target was first acquired
+.entity aim_prev_enemy;      // Previous enemy (detect target switches)
+
+// Decision Hesitation
+.float hesitation_time;      // Temporary movement pause timer
+.float push_start_aggro;     // Aggression when combat engagement started
+
+// Item Timer Awareness (4-slot tracker, like opponent profiles)
+.entity item_timer_ent_0;
+.entity item_timer_ent_1;
+.entity item_timer_ent_2;
+.entity item_timer_ent_3;
+.float item_timer_time_0;
+.float item_timer_time_1;
+.float item_timer_time_2;
+.float item_timer_time_3;
+
+// Spawn Awareness
+.float spawn_watch_time;     // Watch spawn points until this time
+
+// Third-Party Lurk
+.float lurk_time;            // When lurk behavior started
+
+// Forward declaration for chat system (ai_chat.qc compiled before bot_ai.qc)
+void (entity bot, float chat_event) BotChat;
+void (entity item) BotBroadcastItemTimer;
+float (entity bot, entity item) BotGetItemTimer;
+
 // Air control (inspired by Frogbot AIR_ACCELERATION)
 float BOT_AIR_CONTROL = 1;   // Flag: allow limited air steering after knockback
 

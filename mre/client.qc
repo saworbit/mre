@@ -1632,6 +1632,14 @@ void (entity targ, entity attacker) ClientObituary = {
                   attacker.confidence_sg = attacker.confidence_sg + 1;
                   if ( attacker.confidence_sg > 10 ) attacker.confidence_sg = 10;
                }
+
+               // PASS #13: Momentum boost on kill
+               attacker.streak_kills = attacker.streak_kills + 1;
+               attacker.streak_deaths = 0;
+               attacker.momentum = attacker.momentum + 0.05;
+               if ( attacker.momentum > 0.95 ) attacker.momentum = 0.95;
+               // Chat: kill taunt
+               BotChat (attacker, CHAT_KILL);
             }
 
             // ============================================================
@@ -1655,6 +1663,24 @@ void (entity targ, entity attacker) ClientObituary = {
                   targ.confidence_sg = targ.confidence_sg - 1;
                   if ( targ.confidence_sg < -10 ) targ.confidence_sg = -10;
                }
+
+               // PASS #13: Momentum drop on death + grudge tracking
+               targ.streak_kills = 0;
+               targ.streak_deaths = targ.streak_deaths + 1;
+               targ.momentum = targ.momentum - 0.08;
+               if ( targ.momentum < 0.1 ) targ.momentum = 0.1;
+               // Grudge: 3+ deaths to same player = revenge target
+               if ( attacker == targ.last_killer ) {
+                  targ.grudge_deaths = targ.grudge_deaths + 1;
+                  if ( targ.grudge_deaths >= 3 )
+                     targ.grudge_target = attacker;
+               } else {
+                  targ.grudge_deaths = 1;
+                  targ.grudge_target = world;
+               }
+               targ.last_killer = attacker;
+               // Chat: death acknowledgment
+               BotChat (targ, CHAT_DEATH);
             }
 
             // ADAPTIVE TACTICS: Update opponent threat profiles on kill

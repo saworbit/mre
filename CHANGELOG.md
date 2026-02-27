@@ -6,6 +6,74 @@
 - Rebooting Reaper Bot from a clean baseline.
 - Focusing first on community-reported issues.
 
+### Intelligence Pass #13 (Humanity Enhancement)
+Nine interlocking systems that give bots emotional state, communication, individual identity,
+and decision volatility. New file: `ai_chat.qc`. Files touched: `defs.qc`, `bot_ai.qc`,
+`botfight.qc`, `botspawn.qc`, `client.qc`, `items.qc`, `botgoal.qc`, `botmove.qc`.
+
+- **Psychological momentum** (`client.qc`, `bot_ai.qc`, `defs.qc`). Kill streaks boost
+  momentum (+0.05/kill, cap 0.95), death streaks drop it (-0.08/death, floor 0.1). Momentum
+  feeds aggression score (±0.15), aim steadiness (shaky when tilted <0.3), weapon fumble
+  (1.5x delay when tilted), and overconfidence (high momentum partially ignores multi-threat
+  penalty). Decays toward 0.5 neutral over 10s intervals. Persists across lives.
+- **Grudge tracking** (`client.qc`, `bot_ai.qc`). Dying 3+ times to the same player sets
+  them as `grudge_target`. Grudge targets get -200 adjusted distance in `BotThreatScore()`
+  (massive targeting priority). Grudge intensifies spawn watch (5s vs 3s). Grudge-specific
+  death chat messages ("im coming for you", "thats it").
+- **Persistent personality** (`botspawn.qc`, `botfight.qc`, `botmove.qc`). Set once per bot
+  in `AddBot()` from deterministic NUMBOTS seed, never reset:
+  - `personality_aggro` (-0.2 to +0.2): base aggression offset in `BotAggressionScore()`.
+  - `personality_weap` (RL/LG/SNG/SSG/GL): +20 score bonus in `W_BestBotWeapon()`.
+  - `personality_chat` (0.5-2.0): chat frequency multiplier.
+  - `personality_move` (0 or 1): aggressive hoppers get lower bunny hop skill threshold.
+- **Chat/taunt system** (`ai_chat.qc` — new file). Probability-gated chat on kills (30%),
+  deaths (15%), powerups (25%), escapes (10%), spawns (5%). Multiplied by `personality_chat`
+  and `mood_entropy`. Skill-tiered vocabulary: skill 5+ terse (".", "ez"), skill 0-2 confused
+  ("how??", "wait what"). 4-10s cooldown. Grudge death overrides ("ok its personal now").
+- **Flick & overshoot aim** (`botfight.qc`). New target acquisition triggers flick phase
+  (0-200ms): 2x spring stiffness, 0.7x damping for fast slew with overshoot potential.
+  Overshoot impulse injected at ~200ms (magnitude 0.15 - skill*0.02). Low-frequency tracking
+  oscillation (0.5Hz triangle wave) after settling. Damage flinch: hp_delta >10 jolts aim
+  velocity. Momentum affects aim noise (tilted = shaky, in-zone = steady).
+- **Decision hesitation** (`bot_ai.qc`, `botfight.qc`). Temporary movement freeze when
+  aggression drops significantly (>0.2) below push-start level (1%/frame ≈ 25% per push).
+  200-400ms pause simulating "oh crap" moment. Tilted bots fumble weapon switches 1.5x longer.
+- **Item timer awareness** (`ai_chat.qc`, `items.qc`, `botgoal.qc`). Major item pickups
+  (Quad, Pent, Ring, mega health, red/yellow armor) broadcast to all skill 3+ bots via
+  4-slot LRU tracker. `BotGetItemTimer()` used in goal evaluation: bots pre-position for
+  respawns with skill-scaled timing noise. Called from `items.qc` touch functions.
+- **Enhanced spawn awareness** (`bot_ai.qc`). After kills, bots glance toward visible spawn
+  points for 3-5s (skill 3+). 30%/sec chance to look at nearest visible spawn within 1200u.
+  Grudge kills extend watch to 5s.
+- **Third-party lurk** (`bot_ai.qc`). Replaces vulture block. When 3+ nearby threats are
+  fighting each other, skill 5+ bots hold at 0.5x distance. Always allows firing (never
+  suppresses combat). 3s lurk timeout with cooldown prevents re-entry. Debug log: "LURK".
+- **Corner ambush pre-positioning** (`bot_ai.qc`). During sound investigation, skill 3+ bots
+  detect corners (center whisker blocked, side open) and pre-position with RL/SSG (15% chance).
+  5s standalone timeout prevents permanent freeze. Enhances existing ambush system.
+
+### Bugfixes (Post-Pass #13: Multi-Bot Brain Death)
+Five fixes for bots "running around brain dead" in 8-bot games — moving but refusing to engage.
+- **Fix: Lurk over-triggering** (`bot_ai.qc`). Third-party lurk was suppressing combat for
+  nearly every bot. `visible_threats >= 2` was almost always true with 8 bots, `aggro < 0.80`
+  caught ~90% of bots, and fire was suppressed unless enemy < 50 HP. Tightened all gates:
+  `visible_threats >= 3` (was 2), `skill >= 5` (was 3), `aggro < 0.55` (was 0.80),
+  `eff_hp > 80` (was 60), 3s timeout (was 5). Fire suppression removed — bots always shoot.
+- **Fix: visible_threats over-counting** (`bot_ai.qc`). `visible_threats` counter counted
+  every visible enemy within 1200u, including bots across the map. In an 8-bot game this was
+  5-6 threats constantly, applying a permanent -0.40 aggression penalty via multi-threat
+  modifiers. Now only counts threats within 600u — distant bots no longer inflate the counter.
+- **Fix: Corner ambush missing timeout** (`bot_ai.qc`). Corner ambush set `ambush_ready = TRUE`
+  during investigation but had no standalone timeout. The Trap timeout at line 2635 only fires
+  when `eff_hp < 50`. Added 5s standalone timeout that clears `ambush_ready` unconditionally.
+- **Fix: Lurk perpetual re-entry** (`bot_ai.qc`). After 5s lurk timeout, `lurk_time` was reset
+  to 0, allowing immediate re-entry on the next frame. Bot cycled through infinite 5s lurk
+  windows. Now sets `lurk_time = -1` (cooldown sentinel) after timeout. Only resets to 0 when
+  conditions change (enemy stops fighting others).
+- **Fix: Hesitation chaining** (`bot_ai.qc`). No cooldown between hesitation events. After one
+  freeze ended, another could trigger on the very next frame. Added 1s minimum gap: hesitation
+  only triggers when `hesitation_time < time - 1.0`.
+
 ### Optimization Pass #9 (Performance)
 Ten targeted optimizations for ~25-33% per-frame CPU reduction. All behavior-neutral.
 - **Missile linked list** (`defs.qc`, `weapons.qc`, `botroute.qc`). `missile_list_head` / `.missile_next` replaces `findradius()` in `BotReflexDodge` — walks 10-20 missiles instead of ~600 edicts. ~8-12%.

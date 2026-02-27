@@ -1027,6 +1027,34 @@ void () aibot_chooseGoal = {
                         continue;
                      }
                   }
+                  // PASS #13: Item timer memory — even without nextthink, bots remember pickup times
+                  // Adds imprecision based on skill (lower skill = fuzzier memory)
+                  if ( self.skil >= 3 ) {
+                     local float pickup_time;
+                     pickup_time = BotGetItemTimer (self, e);
+                     if ( pickup_time > 0 ) {
+                        local float mem_eta;
+                        local float mem_travel;
+                        local float mem_noise;
+                        local float noise_range;
+                        noise_range = (10 - self.skil * 2);
+                        if ( noise_range < 0 ) noise_range = 0;
+                        mem_noise = (random() - 0.5) * noise_range;
+                        // Standard respawn: 20s for powerups, 20s for armor/mega in DM
+                        mem_eta = (pickup_time + 20 + mem_noise) - time;
+                        mem_travel = vlen(((e.absmin + e.absmax) * 0.5) - self.origin) * 0.003333;
+                        if ( mem_eta > 0 && mem_eta < mem_travel + 5 ) {
+                           weight = MUST_HAVE;
+                           if ( (weight > best) ) {
+                              botTarget.goalentity = e;
+                              best = weight;
+                              bestorg = ((e.absmin + e.absmax) * 0.500);
+                           }
+                           e = e.chain;
+                           continue;
+                        }
+                     }
+                  }
                   weight = DONT_WANT;
 
                } else {

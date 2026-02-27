@@ -397,6 +397,7 @@ void () BotHuntTarget = {
    self.enemyrun = FALSE;
    self.strafetime = FALSE;
    self.combat_entry_time = time;
+   self.push_start_aggro = self.aggression;  // PASS #13: Track aggro at engagement start
    if ( (self.lefty & ONTRAIN) ) {
 
       self.lefty = (self.lefty - ONTRAIN);
@@ -805,6 +806,10 @@ float (entity head, float dist) BotThreatScore = {
       other_bot = other_bot.bot_next;
    }
 
+   // PASS #13: Grudge override — massive priority boost for revenge target
+   if ( head == self.grudge_target )
+      adj_dist = adj_dist - 200;
+
    return ( adj_dist );
 
 };
@@ -883,8 +888,11 @@ float /* Warning: Could not determine return type */ () BotFindTarget = {
 
          if ( BotValidTarget (head) ) {
 
-            self.visible_threats = self.visible_threats + 1;
             dist = vlen (head.origin - self.origin);
+            // Only count nearby threats (600u) for multi-threat aggression penalty.
+            // Seeing bots across the map shouldn't make you feel outnumbered.
+            if ( dist < 600 )
+               self.visible_threats = self.visible_threats + 1;
             local float score;
             score = BotThreatScore (head, dist);
             if ( score < best_dist ) {
@@ -906,8 +914,10 @@ float /* Warning: Could not determine return type */ () BotFindTarget = {
 
       if ( (head.classname == "dmbot") && BotValidTarget (head) ) {
 
-         self.visible_threats = self.visible_threats + 1;
          dist = vlen (head.origin - self.origin);
+         // Only count nearby threats (600u) for multi-threat aggression penalty
+         if ( dist < 600 )
+            self.visible_threats = self.visible_threats + 1;
          local float score2;
          score2 = BotThreatScore (head, dist);
          if ( score2 < best_dist ) {
@@ -1092,6 +1102,51 @@ void (float dist, float turn) aibot_run_slide = {
    local float user_bias;
 
    trn = turn;
+
+   // PASS #13: Decision hesitation — temporary movement freeze
+   if ( time < self.hesitation_time ) {
+      // Bot is hesitating — hold position but keep fighting
+      if ( self.attack_state == AS_MELEE ) aibot_run_melee ();
+      CheckBotAttack ();
+      return;
+   }
+
+   // PASS #13: Mid-push abort — aggression dropped significantly since engagement started
+   // Safety: hesitation_time doubles as cooldown — only triggers when fully expired (+1s gap)
+   if ( self.push_start_aggro > 0 && self.hesitation_time < time - 1.0 ) {
+      if ( self.aggression < self.push_start_aggro - 0.2 ) {
+         // "Oh crap" moment — ~1% per frame chance to freeze briefly
+         if ( random() < 0.01 ) {
+            self.hesitation_time = time + 0.2 + random() * 0.2;
+            self.push_start_aggro = 0;
+         }
+      }
+   }
+
+   // PASS #13: Spawn awareness — glance toward spawn points after a kill
+   if ( time < self.spawn_watch_time && self.skil >= 3 && !self.enemy ) {
+      if ( random() < 0.01 ) {
+         local entity sw_sp;
+         local entity sw_best;
+         local float sw_d, sw_best_d;
+         sw_best = world;
+         sw_best_d = 1200;
+         sw_sp = find (world, classname, "info_player_deathmatch");
+         while ( sw_sp ) {
+            sw_d = vlen (sw_sp.origin - self.origin);
+            if ( sw_d < sw_best_d && sw_d > 100 ) {
+               traceline (self.origin + self.view_ofs, sw_sp.origin, TRUE, self);
+               if ( trace_fraction == 1.0 ) {
+                  sw_best_d = sw_d;
+                  sw_best = sw_sp;
+               }
+            }
+            sw_sp = find (sw_sp, classname, "info_player_deathmatch");
+         }
+         if ( sw_best != world )
+            self.ideal_yaw = vectoyaw (sw_best.origin - self.origin);
+      }
+   }
 
    // Combat entry stutter: brief hesitation when first engaging
    // Humans need a moment to process a new combat encounter
@@ -2109,6 +2164,18 @@ float () BotAggressionScore = {
       }
    }
 
+   // PASS #13: Psychological momentum — kill streaks embolden, death streaks tilt
+   local float mom_offset;
+   mom_offset = (self.momentum - 0.5) * 0.3;  // -0.15 to +0.15
+   aggro = aggro + mom_offset;
+
+   // PASS #13: Personality base aggression offset
+   aggro = aggro + self.personality_aggro;
+
+   // PASS #13: Overconfidence — high momentum partially negates multi-threat penalty
+   if ( self.momentum > 0.8 && self.visible_threats >= 2 )
+      aggro = aggro + 0.15;
+
    // Skill dampening: low-skill bots are less extreme
    aggro = 0.5 + (aggro - 0.5) * (0.5 + self.skil * 0.05);
 
@@ -2193,6 +2260,13 @@ void (float dist) BotAI_Main = {
    // ADAPTIVE TACTICS: Update match phase (throttled)
    BotUpdateMatchPhase();
 
+   // PASS #13: Momentum decay toward 0.5 (neutral) — slow, 10s interval
+   if ( time > self.momentum_decay_time + 10 ) {
+      self.momentum_decay_time = time;
+      if ( self.momentum > 0.52 ) self.momentum = self.momentum - 0.01;
+      else if ( self.momentum < 0.48 ) self.momentum = self.momentum + 0.01;
+   }
+
    // Weapon confidence decay: 10% per minute prevents stale preferences
    if ( time > (self.confidence_decay_time + 60.000) ) {
       self.confidence_decay_time = time;
@@ -2250,6 +2324,14 @@ void (float dist) BotAI_Main = {
             self.search_time = time + 3.0;
             self.ideal_yaw = vectoyaw (best_sp.origin - self.origin);
          }
+      }
+
+      // PASS #13: Spawn awareness — watch spawn points after a kill
+      if ( self.skil >= 3 ) {
+         self.spawn_watch_time = time + 3.0;
+         // Grudge intensification: killed grudge target = watch longer
+         if ( self.enemy == self.grudge_target )
+            self.spawn_watch_time = time + 5.0;
       }
 
       BotLogAI (AI_STATE_NONE, "NO_ENEMY");
@@ -2393,21 +2475,33 @@ void (float dist) BotAI_Main = {
    // -0.25/-0.15 penalty for 2+/3+ visible threats. No need for a hard
    // THIRD_PARTY_WAIT return — that suppresses all combat and causes oscillation.
 
-   // FIX #16: Vulture — when enemy is fighting someone else, hold back and let them weaken
-   if ( self.visible_threats >= 2 && self.skil >= 3 && self.enemy ) {
+   // PASS #13: Third-party lurk — hold back when two enemies are actively fighting
+   // TIGHTENED: requires 3+ visible threats, skill 5+, low aggression, AND enemy must
+   // be actively engaged with someone else. Never suppresses fire — just holds distance.
+   // Previous version triggered in nearly all multi-bot games and suppressed combat.
+   if ( self.visible_threats >= 3 && self.skil >= 5 && self.enemy ) {
       if ( self.enemy.enemy && self.enemy.enemy != self && self.enemy.enemy.health > 0 ) {
-         // Enemy focused on someone else — vulture opportunity
-         if ( self.eff_hp > 60 && aggro < 0.80 ) {
-            self.third_party_time = time;
-            BotLogAI (AI_STATE_INVESTIGATE, "VULTURE");
-            // Maintain distance, observe, take potshots
-            aibot_run_slide (dist * 0.300, NOTURN);
-            if ( self.attack_state == AS_MELEE ) {
-               aibot_run_melee ();
+         if ( self.eff_hp > 80 && aggro < 0.55 ) {
+            // Enter or maintain lurk (lurk_time == 0 means ready,
+            // -1 means exhausted/cooldown — prevents immediate re-entry after timeout)
+            if ( self.lurk_time == 0 )
+               self.lurk_time = time;
+
+            // Lurk timeout: 3s max, then fall through to normal combat
+            if ( self.lurk_time > 0 && time < self.lurk_time + 3 ) {
+               self.third_party_time = time;
+               BotLogAI (AI_STATE_INVESTIGATE, "LURK");
+               // Hold further back (0.5x distance) but ALWAYS allow firing
+               aibot_run_slide (dist * 0.500, NOTURN);
+               if ( self.attack_state == AS_MELEE ) aibot_run_melee ();
+               CheckBotAttack ();
+               return ;
+            } else {
+               self.lurk_time = -1;  // Timeout expired — cooldown prevents re-entry
             }
-            CheckBotAttack ();
-            return ;
          }
+      } else {
+         self.lurk_time = 0;  // Conditions no longer met
       }
    }
 
@@ -2490,6 +2584,49 @@ void (float dist) BotAI_Main = {
    enemy_infront = infrontofbot (self.enemy);
    enemy_yaw = vectoyaw ((self.enemy.origin - self.origin));
    if ( !enemy_vis ) {
+
+      // =================================================================
+      // PASS #13: Corner ambush — pre-position at corners while investigating
+      // When approaching a tight corner during sound investigation, 15% chance
+      // to stop short, pre-aim at the opening, and wait with a strong weapon.
+      // Safety: 5s timeout prevents permanent freeze if enemy never appears.
+      // =================================================================
+      if ( self.ambush_ready && time > self.ambush_start_time + 5.0 ) {
+         self.ambush_ready = FALSE;
+         if ( cached_developer ) {
+            dprint ("[");
+            dprint (self.netname);
+            dprint ("] CORNER AMBUSH: Timeout - resuming\n");
+         }
+      }
+      if ( self.investigating && self.skil >= 3 && !self.ambush_ready ) {
+         makevectors (self.angles);
+         traceline (self.origin, self.origin + v_forward * 100, TRUE, self);
+         if ( trace_fraction < 0.5 ) {
+            // Wall ahead — check if side is open (corner geometry)
+            local vector saved_vr;
+            saved_vr = v_right;
+            traceline (self.origin, self.origin + saved_vr * 100, TRUE, self);
+            if ( trace_fraction > 0.8 ) {
+               // Corner detected: wall ahead, open to the side
+               if ( random() < 0.15 ) {
+                  self.ambush_ready = TRUE;
+                  self.ambush_start_time = time;
+                  self.ideal_yaw = vectoyaw (saved_vr);
+                  // Select best ambush weapon
+                  if ( self.items & IT_ROCKET_LAUNCHER && self.ammo_rockets >= 1 )
+                     self.weapon = IT_ROCKET_LAUNCHER;
+                  else if ( self.items & IT_SUPER_SHOTGUN && self.ammo_shells >= 2 )
+                     self.weapon = IT_SUPER_SHOTGUN;
+                  if ( cached_developer ) {
+                     dprint ("[");
+                     dprint (self.netname);
+                     dprint ("] CORNER AMBUSH: Pre-positioning at corner\n");
+                  }
+               }
+            }
+         }
+      }
 
       // =================================================================
       // TACTICAL INTELLIGENCE: THE TRAP (Ambush Logic)

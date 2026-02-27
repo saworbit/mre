@@ -201,6 +201,8 @@ void () health_touch = {
          cacheRoute (other.movetarget,other.movetarget.movetarget,FALSE,self);
 
       }
+      // PASS #13: Track megahealth pickup time
+      BotBroadcastItemTimer (self);
 
    } else {
 
@@ -324,6 +326,9 @@ void () armor_touch = {
       stuffcmd (other,"bf\n");
 
    }
+   // PASS #13: Track major armor pickup times for bot respawn awareness
+   if ( self.classname == "item_armor2" || self.classname == "item_armorInv" )
+      BotBroadcastItemTimer (self);
    activator = other;
    SUB_UseTargets ();
 
@@ -1386,6 +1391,20 @@ void () powerup_touch = {
 
       }
    }
+   // PASS #13: Broadcast item timer to all bots for respawn tracking
+   // Only for major items: Quad, Pent, Invuln, Invisibility
+   if ( self.classname == "item_artifact_super_damage" ||
+        self.classname == "item_artifact_invulnerability" ||
+        self.classname == "item_artifact_invisibility" ) {
+      BotBroadcastItemTimer (self);
+   }
+   // PASS #13: Chat about powerup pickups
+   if ( other.classname == "dmbot" ) {
+      if ( self.classname == "item_artifact_super_damage" ||
+           self.classname == "item_artifact_invulnerability" )
+         BotChat (other, CHAT_POWERUP);
+   }
+
    activator = other;
    SUB_UseTargets ();
 

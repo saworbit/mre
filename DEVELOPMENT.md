@@ -475,6 +475,75 @@ Pitch wobble + sluggish velocity response:
 - Velocity blend: `swim_blend = 0.4 + skill * 0.04` (cap 0.75).
 - All three axes (X/Y/Z) blend toward target velocity.
 
+## Humanity enhancement (intelligence pass #13)
+Nine systems for emotional state, communication, identity, and decision volatility.
+
+### Chat system (`ai_chat.qc`)
+- `BotChat(bot, event)`: probability-gated chat on kills/deaths/powerups/escapes/spawns.
+- Probability multiplied by `personality_chat` (0.5-2.0) and high `mood_entropy` (1.3x).
+- Skill-tiered vocabulary: skill 5+ terse, skill 0-2 confused. 4-10s cooldown per bot.
+- Grudge death messages override normal messages when `grudge_deaths >= 3`.
+
+### Psychological momentum
+- Kill streak: +0.05/kill (cap 0.95). Death streak: -0.08/death (floor 0.1).
+- Feeds `BotAggressionScore()` as `(momentum - 0.5) * 0.3` offset (±0.15).
+- High momentum (>0.8): partially negates multi-threat penalty (+0.15 overconfidence).
+- Low momentum (<0.3): aim noise +0.01, fumble delay 1.5x.
+- Decays toward 0.5 over 10s intervals. Persists across lives.
+
+### Grudge system
+- 3+ deaths to same attacker → `grudge_target` with -200 distance in `BotThreatScore()`.
+- Grudge kills extend spawn watch from 3s to 5s.
+- Grudge-specific death chat: "im coming for you", "you again", "thats it".
+
+### Persistent personality (set once in `AddBot()`)
+- `personality_aggro` (-0.2 to +0.2): feeds `BotAggressionScore()`.
+- `personality_weap` (RL/LG/SNG/SSG/GL): +20 in `W_BestBotWeapon()`.
+- `personality_chat` (0.5-2.0): multiplier on `BotChat()` probability.
+- `personality_move` (0 or 1): aggressive hoppers lower bunny hop threshold by 1.
+
+### Flick & overshoot aim (`botfight.qc`)
+- Flick phase (0-200ms after new target): 2x stiffness, 0.7x damping.
+- Overshoot impulse at ~200ms: magnitude `0.15 - skill*0.02` (bigger for low skill).
+- Tracking oscillation (>500ms): 0.5Hz triangle wave on Y axis.
+- Damage flinch: `hp_delta > 10` jolts aim velocity (capped 0.02).
+
+### Item timer awareness
+- `BotBroadcastItemTimer(item)`: called from `items.qc` on major pickups.
+- 4-slot LRU tracker per bot (skill 3+). Same pattern as opponent profiles.
+- `botgoal.qc` uses `BotGetItemTimer()` to pre-position for respawns.
+- Timing noise: `(random()-0.5) * (10 - skill*2)` seconds.
+
+### Decision hesitation
+- Mid-push abort: 1%/frame chance when aggression drops 0.2+ below push-start level.
+- Freeze duration: 200-400ms. Bot keeps aiming but stops moving.
+- Tilted bots (`momentum < 0.3`) fumble weapon switches 1.5x longer.
+- Safety: 1s minimum gap between hesitation events prevents chaining.
+
+### Spawn watch / Lurk / Corner ambush
+- Post-kill spawn watch: 3s (5s for grudge kills), glance at visible spawns.
+- Third-party lurk: hold 0.5x distance when 3+ nearby threats (600u) are fighting each other.
+  Requires skill 5+, aggro < 0.55, eff_hp > 80. Always allows firing (never suppresses combat).
+  3s timeout with `-1` cooldown sentinel prevents re-entry until conditions change.
+- Corner ambush: detect wall-ahead + side-open during investigation, pre-position with RL/SSG.
+  5s standalone timeout clears `ambush_ready` unconditionally.
+
+### Multi-threat tuning notes
+- `visible_threats` counter only counts enemies within 600u (not full 1200u visibility range).
+  In 8-bot games, distant bots no longer inflate the counter and trigger false multi-threat
+  aggression penalties (-0.25/-0.15). This prevents the permanent -0.40 aggro drain that caused
+  mass passivity in larger games.
+
+### Entity fields added in `defs.qc`
+Momentum: `.momentum`, `.streak_kills`, `.streak_deaths`, `.grudge_target`, `.grudge_deaths`,
+`.last_killer`, `.momentum_decay_time`.
+Personality: `.personality_aggro`, `.personality_weap`, `.personality_chat`, `.personality_move`.
+Chat: `.chat_cooldown`.
+Aim: `.aim_flick_time`, `.aim_prev_enemy`.
+Hesitation: `.hesitation_time`, `.push_start_aggro`.
+Item timers: `.item_timer_ent_0..3`, `.item_timer_time_0..3`.
+Other: `.spawn_watch_time`, `.lurk_time`.
+
 ## Specter Gaze (cinematic spectator camera)
 Two-layer spectator camera system in `mre/ai_specter.qc`, hooked into `PlayerPreThink`
 via `mre/client.qc`.

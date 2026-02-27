@@ -3,6 +3,42 @@
 ## Unreleased
 - Clean baseline restored in `mre/`.
 
+### Intelligence Pass #13 (Humanity Enhancement)
+Nine interlocking systems for emotional state, communication, identity, and decision volatility.
+New file: `ai_chat.qc`. Files touched: `defs.qc`, `bot_ai.qc`, `botfight.qc`, `botspawn.qc`,
+`client.qc`, `items.qc`, `botgoal.qc`, `botmove.qc`.
+
+- **Psychological momentum** (`client.qc`, `bot_ai.qc`). Kill/death streaks shift momentum
+  (0.1-0.95). Feeds aggression (±0.15), aim noise, fumble rate, overconfidence. Decays to 0.5.
+- **Grudge tracking** (`client.qc`, `bot_ai.qc`). 3+ deaths to same player → grudge target
+  with -200 distance priority. Grudge-specific chat messages.
+- **Persistent personality** (`botspawn.qc`, `botfight.qc`, `botmove.qc`). Per-bot aggression
+  offset, weapon preference (+20 score), chat frequency, movement style. Set once, never reset.
+- **Chat/taunt system** (`ai_chat.qc`). Skill-tiered vocabulary on kills/deaths/powerups/
+  escapes/spawns. Probability × personality × entropy. 4-10s cooldown.
+- **Flick & overshoot aim** (`botfight.qc`). 2x stiffness flick phase, overshoot impulse at
+  200ms, tracking oscillation, damage flinch, momentum-scaled noise.
+- **Decision hesitation** (`bot_ai.qc`). 200-400ms freeze when aggression drops mid-push.
+  Tilted bots fumble 1.5x longer.
+- **Item timer awareness** (`ai_chat.qc`, `items.qc`, `botgoal.qc`). 4-slot LRU pickup
+  tracker broadcast to skill 3+ bots. Pre-position for respawns with timing noise.
+- **Enhanced spawn awareness** (`bot_ai.qc`). Post-kill glance at spawn points (3-5s).
+- **Third-party lurk** (`bot_ai.qc`). Hold 0.5x distance when 3+ nearby threats fighting each
+  other, skill 5+, aggro < 0.55. Always fires. 3s timeout with cooldown.
+- **Corner ambush** (`bot_ai.qc`). Pre-position at detected corners during investigation. 5s
+  standalone timeout.
+
+### Bugfixes (Post-Pass #13: Multi-Bot Brain Death)
+Five fixes for bots refusing to engage in 8-bot games. Files touched: `bot_ai.qc`.
+- **Lurk over-triggering**: Gates tightened — `visible_threats >= 3` (was 2), `skill >= 5`
+  (was 3), `aggro < 0.55` (was 0.80), `eff_hp > 80` (was 60), 3s timeout (was 5). Fire
+  suppression removed.
+- **visible_threats over-counting**: Now only counts threats within 600u (was 1200u). Distant
+  bots no longer inflate the counter or aggression penalty.
+- **Corner ambush timeout**: Added 5s standalone timeout (was missing entirely).
+- **Lurk re-entry loop**: `lurk_time = -1` sentinel after timeout prevents infinite re-entry.
+- **Hesitation chaining**: 1s minimum gap between hesitation freeze events.
+
 ### Full Review Pass #12 (Reliability, Combat, Performance)
 27 fixes across reliability, combat logic, navigation, strategy, and performance.
 Files touched: `botspawn.qc`, `bot_ai.qc`, `botfight.qc`, `botmove.qc`, `botgoal.qc`,

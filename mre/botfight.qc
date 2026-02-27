@@ -498,6 +498,17 @@ vector () botaim = {
    // Spring-dampened aim tracking (human-like inertia)
    // Instead of snap-to-target+noise, aim smoothly chases the target
    // with velocity and damping, producing organic tracking curves
+
+   // PASS #13: Detect new target acquisition for flick behavior
+   if ( self.enemy != self.aim_prev_enemy ) {
+      self.aim_flick_time = time;
+      self.aim_prev_enemy = self.enemy;
+      // Reset spring state for clean flick to new target
+      self.last_aim_dir = dir;
+      self.aim_velocity = '0 0 0';
+      self.last_aim_time = time;
+   }
+
    if ( (vlen (self.last_aim_dir) < 0.100) ) {
       self.last_aim_dir = dir;
       self.aim_velocity = '0 0 0';
@@ -508,11 +519,14 @@ vector () botaim = {
    local float damp_c;
    local float dt;
    local vector accel;
+   local float since_flick;
 
    dt = (time - self.last_aim_time);
    self.last_aim_time = time;
    if ( (dt <= FALSE) ) dt = 0.100;
    if ( (dt > 0.200) ) dt = 0.200;
+
+   since_flick = time - self.aim_flick_time;
 
    // Stiffness: how fast aim chases target
    // Skill 0: sluggish (12), Skill 5: snappy (32)
@@ -521,18 +535,66 @@ vector () botaim = {
    // Skill 0: heavy (8), Skill 5: responsive (18)
    damp_c = (8.000 + (sk * 2.000));
 
+   // PASS #13: Flick phase (0-200ms) — fast slew to new target, reduced damping allows overshoot
+   if ( since_flick < 0.2 ) {
+      stiff = stiff * 2.0;
+      damp_c = damp_c * 0.7;
+   }
+   // PASS #13: Overshoot impulse at ~200ms mark — creates visible snap-past-correct pattern
+   if ( since_flick > 0.18 && since_flick < 0.22 ) {
+      local float overshoot_mag;
+      overshoot_mag = 0.15 - sk * 0.02;  // Skill 0: 0.15, Skill 7+: ~0
+      if ( overshoot_mag > 0 && vlen(self.aim_velocity) > 0.01 )
+         self.aim_velocity = self.aim_velocity + normalize(self.aim_velocity) * overshoot_mag;
+   }
+
    accel = (((dir - self.last_aim_dir) * stiff) - (self.aim_velocity * damp_c));
    self.aim_velocity = (self.aim_velocity + (accel * dt));
    self.last_aim_dir = (self.last_aim_dir + (self.aim_velocity * dt));
    self.last_aim_dir = normalize (self.last_aim_dir);
 
+   // PASS #13: Low-frequency tracking oscillation (human imperfection in sustained tracking)
+   if ( since_flick > 0.5 && sk < 7 ) {
+      local float osc_amp;
+      osc_amp = (3 - sk * 0.4) * 0.003;
+      if ( osc_amp > 0 ) {
+         local float wave_t;
+         wave_t = time * 0.5;
+         wave_t = wave_t - floor(wave_t);
+         // Triangle wave: -1 to +1
+         if ( wave_t < 0.5 ) wave_t = wave_t * 4 - 1;
+         else wave_t = 3 - wave_t * 4;
+         self.last_aim_dir = self.last_aim_dir + (wave_t * osc_amp) * '0 1 0';
+      }
+   }
+
    // Micro-noise for human variance (much smaller than old jitter)
    if ( (sk < 5.000) ) {
       local float noise_amt;
       noise_amt = (((5.000 - sk) * (5.000 - sk)) * 0.003);
+      // PASS #13: Momentum affects aim steadiness
+      local float mom_noise;
+      if ( self.momentum < 0.3 )
+         mom_noise = (0.3 - self.momentum) * 0.01;  // Shaky hands when tilted
+      else if ( self.momentum > 0.8 )
+         mom_noise = -0.002;  // Steadier when in the zone
+      else
+         mom_noise = 0;
+      noise_amt = noise_amt + mom_noise;
+      if ( noise_amt < 0 ) noise_amt = 0;
       self.last_aim_dir = (self.last_aim_dir + ((crandom () * noise_amt) * '1 0 0'));
       self.last_aim_dir = (self.last_aim_dir + ((crandom () * noise_amt) * '0 1 0'));
    }
+
+   // PASS #13: Damage flinch — taking heavy fire jolts aim off-target
+   if ( self.hp_delta > 10 ) {
+      local float flinch_mag;
+      flinch_mag = self.hp_delta * 0.002;
+      if ( flinch_mag > 0.02 ) flinch_mag = 0.02;
+      self.aim_velocity = self.aim_velocity + (crandom() * flinch_mag) * '1 0 0';
+      self.aim_velocity = self.aim_velocity + (crandom() * flinch_mag) * '0 1 0';
+   }
+
    // Mirage pitch bias (human imperfection in vertical tracking)
    if ( self.mirage_pitch_bias ) {
       self.last_aim_dir = (self.last_aim_dir + ((self.mirage_pitch_bias * 0.010) * '0 0 1'));
@@ -820,6 +882,22 @@ float () W_BestBotWeapon = {
       if ( score_ssg > best_score ) { best_score = score_ssg; best_weapon = IT_SUPER_SHOTGUN; }
    }
 
+   // PASS #13: Personality weapon affinity — each bot gravitates toward a preferred weapon
+   if ( self.personality_weap ) {
+      if ( self.personality_weap == IT_ROCKET_LAUNCHER && score_rl > 0 ) score_rl = score_rl + 20;
+      else if ( self.personality_weap == IT_LIGHTNING && score_lg > 0 ) score_lg = score_lg + 20;
+      else if ( self.personality_weap == IT_SUPER_NAILGUN && score_sng > 0 ) score_sng = score_sng + 20;
+      else if ( self.personality_weap == IT_SUPER_SHOTGUN && score_ssg > 0 ) score_ssg = score_ssg + 20;
+      else if ( self.personality_weap == IT_GRENADE_LAUNCHER && score_gl > 0 ) score_gl = score_gl + 20;
+
+      // Re-evaluate after personality bonus
+      if ( score_lg > best_score ) { best_score = score_lg; best_weapon = IT_LIGHTNING; }
+      if ( score_rl > best_score ) { best_score = score_rl; best_weapon = IT_ROCKET_LAUNCHER; }
+      if ( score_gl > best_score ) { best_score = score_gl; best_weapon = IT_GRENADE_LAUNCHER; }
+      if ( score_sng > best_score ) { best_score = score_sng; best_weapon = IT_SUPER_NAILGUN; }
+      if ( score_ssg > best_score ) { best_score = score_ssg; best_weapon = IT_SUPER_SHOTGUN; }
+   }
+
    // Fast-kill: boost hitscan weapons to finish low-HP enemies
    if ( self.enemy && (self.enemy.health < 25) ) {
       if ( best_weapon == IT_ROCKET_LAUNCHER || best_weapon == IT_GRENADE_LAUNCHER ) {
@@ -1100,6 +1178,9 @@ void () W_BotAttack = {
       fumble = (0.250 - (self.skil * 0.040));
       if ( fumble < 0.050 ) fumble = 0.050;
       fumble = (fumble * (0.800 + (random () * 0.400)));
+      // PASS #13: Tilted bots fumble more with weapon switches
+      if ( self.momentum < 0.3 )
+         fumble = fumble * 1.5;
       self.weapon_switch_time = (time + fumble);
       self.weapon_prev = self.weapon;
    }

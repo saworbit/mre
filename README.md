@@ -91,6 +91,17 @@ from `archive/`.
   - Match phase detection: SCRAMBLE/CONTROL/ENDGAME phases shift item priorities (weapons early, armor mid, powerups late)
   - Weapon sound inference: NOISE_WEAPON handler classifies heard weapons and adjusts investigation urgency by own health
   - Adaptive engagement distance: optimal range modulated by enemy weapon (+100u vs LG, -80u vs RL) and aggression score
+- **Humanity Enhancement**: Emotional state, communication, personality, and decision volatility
+  - Psychological momentum: kill/death streaks shift aggression, aim noise, and fumble rate
+  - Grudge tracking: 3+ deaths to same player → revenge priority with -200 distance bonus
+  - Persistent personality: per-bot aggression offset, weapon preference, chat frequency, movement style
+  - Chat/taunt system: skill-tiered trash talk on kills/deaths/powerups (probability-gated, cooldown-throttled)
+  - Flick & overshoot aim: fast slew on new targets with overshoot, tracking oscillation, damage flinch
+  - Decision hesitation: mid-push abort when taking heavy fire (200-400ms freeze)
+  - Item timer awareness: bots remember major item pickups and pre-position for respawns
+  - Enhanced spawn watch: post-kill glance at visible spawn points (3-5s)
+  - Third-party lurk: hold back when enemies fight each other, fire opportunistically
+  - Corner ambush: pre-position at detected corners during sound investigation
 - **Optimization Pass**: Structural performance improvements (~25-33% CPU reduction)
   - Missile linked list for dodge scans (replaces findradius over ~600 edicts)
   - Per-frame cvar caching, bot linked list in 6 hot-path functions

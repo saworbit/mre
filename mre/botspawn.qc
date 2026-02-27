@@ -427,6 +427,17 @@ void () PutBotInServer = {
       remove (self.phantom);
       self.phantom = world;
    }
+   // PASS #13: Reset per-life humanity fields (NOT momentum/grudge/personality)
+   self.streak_kills = 0;
+   self.chat_cooldown = 0;
+   self.aim_flick_time = 0;
+   self.aim_prev_enemy = world;
+   self.hesitation_time = 0;
+   self.push_start_aggro = 0;
+   self.spawn_watch_time = 0;
+   self.lurk_time = 0;
+   // Momentum preserved across lives — only init if zero (first spawn)
+   if ( !self.momentum ) self.momentum = 0.5;
    spwn = SelectSpawnPoint ();
    spot = (spwn.origin + '0.000 0.000 1.000');
    self.origin = spot;
@@ -546,6 +557,27 @@ entity () AddBot = {
       self.skil = 10.000;
    }
    self.bot = TRUE;
+
+   // PASS #13: Persistent personality traits — deterministic from bot index
+   local float seed;
+   seed = NUMBOTS * 7 + 3;
+   // Aggression baseline: -0.2 to +0.2 offset
+   self.personality_aggro = ((seed * 13) % 5) * 0.1 - 0.2;
+   // Weapon affinity: cycle through RL, LG, SNG, SSG, GL
+   local float widx;
+   widx = seed % 5;
+   if ( widx == 0 ) self.personality_weap = IT_ROCKET_LAUNCHER;
+   else if ( widx == 1 ) self.personality_weap = IT_LIGHTNING;
+   else if ( widx == 2 ) self.personality_weap = IT_SUPER_NAILGUN;
+   else if ( widx == 3 ) self.personality_weap = IT_SUPER_SHOTGUN;
+   else self.personality_weap = IT_GRENADE_LAUNCHER;
+   // Chat frequency: 0.5 to 2.0 multiplier
+   self.personality_chat = 0.5 + (((seed * 17) % 4) * 0.5);
+   // Movement style: 0=methodical, 1=aggressive bunny-hopper
+   self.personality_move = ((seed * 11) % 2);
+   // Initialize momentum for first life
+   self.momentum = 0.5;
+
    initscore ();
    self = oldself;
    return ( newbot );

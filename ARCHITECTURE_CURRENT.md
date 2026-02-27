@@ -711,6 +711,131 @@ botaim()                                 [botfight.qc]
 
 ---
 
+## Call Graph: Humanity Enhancement (Intelligence Pass #13)
+
+### Psychological Momentum + Grudge Tracking
+
+Momentum and grudge state update on kills/deaths, persist across lives:
+
+```
+ClientObituary(targ, attacker)           [client.qc]
+  │
+  ├─> [if attacker is "dmbot" and killed someone]
+  │     ├─> attacker.streak_kills += 1
+  │     ├─> attacker.momentum += 0.05 (cap 0.95)
+  │     └─> BotChat(attacker, CHAT_KILL)
+  │
+  └─> [if targ is "dmbot" and was killed]
+        ├─> targ.streak_deaths += 1
+        ├─> targ.momentum -= 0.08 (floor 0.1)
+        ├─> [grudge check]
+        │     ├─> same killer 3+ times → targ.grudge_target = attacker
+        │     └─> different killer → reset grudge_deaths to 1
+        └─> BotChat(targ, CHAT_DEATH)
+
+BotAggressionScore()                     [bot_ai.qc]
+  │
+  ├─> mom_offset = (momentum - 0.5) * 0.3   [±0.15]
+  ├─> += personality_aggro                    [±0.2]
+  └─> [momentum > 0.8] partially negate multi-threat penalty
+
+BotThreatScore()                         [bot_ai.qc]
+  │
+  └─> [if head == grudge_target] adj_dist -= 200
+
+BotAI_Main()                             [bot_ai.qc]
+  │
+  └─> [10s decay] momentum drifts toward 0.5 (±0.01)
+```
+
+### Chat System
+
+```
+BotChat(bot, chat_event)                 [ai_chat.qc]
+  │
+  ├─> [cooldown check: time < chat_cooldown → return]
+  ├─> [probability gate: kill=30%, death=15%, powerup=25%, escape=10%, spawn=5%]
+  ├─> chance *= personality_chat * mood_entropy_modifier
+  ├─> [skill-tiered message selection]
+  │     ├─> skill 5+: terse (".", "ez", "lol")
+  │     ├─> skill 3-4: normal ("nice fight", "too slow")
+  │     └─> skill 0-2: confused ("how??", "wait what")
+  ├─> [grudge override: grudge_deaths >= 3 → revenge messages]
+  ├─> bprint(netname + ": " + msg)
+  └─> chat_cooldown = time + 4 + random() * 6
+```
+
+### Item Timer Tracking
+
+```
+items.qc (powerup/armor/mega touch)
+  │
+  └─> BotBroadcastItemTimer(item)          [ai_chat.qc]
+        │
+        └─> [walk bot_list_head, skill 3+ only]
+              └─> store item + time in 4-slot LRU tracker
+
+aibot_chooseGoal()                         [botgoal.qc]
+  │
+  └─> [despawned item evaluation]
+        ├─> BotGetItemTimer(item) → pickup_time
+        ├─> mem_eta = pickup_time + 20 - time + noise
+        └─> [if mem_eta < travel_time + 5] → weight as high priority
+```
+
+### Persistent Personality
+
+```
+AddBot()                                   [botspawn.qc]
+  │
+  └─> [set once from NUMBOTS seed]
+        ├─> personality_aggro: -0.2 to +0.2   → BotAggressionScore()
+        ├─> personality_weap: RL/LG/SNG/SSG/GL → W_BestBotWeapon() +20
+        ├─> personality_chat: 0.5-2.0          → BotChat() probability
+        └─> personality_move: 0 or 1           → BotBunnyHop() threshold
+
+PutBotInServer()                           [botspawn.qc]
+  │
+  ├─> Reset per-life: streak_kills, hesitation, aim_flick, spawn_watch, lurk
+  └─> Preserve: momentum, grudge, personality, item_timers
+```
+
+### Flick & Overshoot Aim
+
+```
+botaim()                                   [botfight.qc]
+  │
+  ├─> [detect new target: enemy != aim_prev_enemy]
+  │     └─> aim_flick_time = time; reset spring state
+  │
+  ├─> [flick phase 0-200ms]: stiffness * 2.0, damping * 0.7
+  ├─> [overshoot at ~200ms]: impulse magnitude 0.15 - skill*0.02
+  ├─> [tracking oscillation >500ms]: 0.5Hz triangle wave on Y axis
+  ├─> [momentum noise]: tilted (<0.3) = shaky, in-zone (>0.8) = steady
+  └─> [damage flinch]: hp_delta > 10 jolts aim velocity
+```
+
+### Decision Hesitation + Lurk + Spawn Watch
+
+```
+aibot_run_slide()                          [bot_ai.qc]
+  │
+  ├─> [hesitation]: time < hesitation_time → freeze (aim only)
+  │
+  ├─> [mid-push abort]: aggression dropped 0.2+ since push start
+  │     └─> 1%/frame → hesitation_time = time + 0.2-0.4s
+  │
+  ├─> [spawn watch]: time < spawn_watch_time, skill 3+
+  │     └─> ~30%/sec glance at nearest visible spawn point
+  │
+  └─> [third-party lurk]: 3+ nearby threats (600u), skill 5+, aggro < 0.55
+        ├─> hold 0.5x distance, ALWAYS allow firing
+        ├─> 3s timeout → engage normally
+        └─> lurk_time = -1 cooldown prevents re-entry until conditions change
+```
+
+---
+
 ## Call Graph: Darwin Update (Adaptive Learning)
 
 ### Negative Reinforcement (Death Learning)
@@ -1071,6 +1196,7 @@ BotAI_Main()                             [bot_ai.qc]
 
 | Date | Change |
 |------|--------|
+| 2026-02-27 | Intelligence pass #13: Humanity enhancement — psychological momentum, grudge tracking, persistent personality, chat/taunt system, flick & overshoot aim, decision hesitation, item timer awareness, enhanced spawn watch, third-party lurk, corner ambush. Post-pass bugfix: tightened lurk gates (visible_threats >= 3/600u, skill 5+, aggro < 0.55), removed fire suppression, added corner ambush timeout, lurk re-entry cooldown, hesitation chain prevention |
 | 2026-02-11 | Optimization pass #9: missile linked list, cvar cache, bot list hot paths, arithmetic angles, retreat/scavenge throttle, env kill throttle, enemy dist dedup, eff_hp cache, edge friction early exit |
 | 2026-02-10 | Intelligence pass #8: Adaptive tactics — opponent profiling, counter-weapon selection, continuous aggression score, multi-threat awareness, match phase detection, weapon sound inference, adaptive engagement distance |
 | 2026-02-10 | Intelligence pass #7 (planned): Problem-solving review — risk-reward goals, multi-threat assessment, situational weapons, tactical repositioning, combat resource drift, pre-engagement evaluation, sound threat inference |
